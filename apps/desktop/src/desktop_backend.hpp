@@ -22,8 +22,10 @@ class DesktopBackend : public QObject {
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE QVariantList listAssets() const;
+    Q_INVOKABLE QVariantList waveformForAsset(const QString& id) const;
     quint64 assetCount() const;
     QString catalogPath() const;
+    QString cacheRoot() const;
 
   signals:
     void assetsChanged();

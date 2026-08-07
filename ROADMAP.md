@@ -60,8 +60,9 @@ Revisit    声音空间 / 声音相册（最高层）
 
 ### Qt（UI / Library / Waveform / Inspector）
 
-- Qt Multimedia 只负责设备 I/O（`QAudioSource`/`QAudioSink` raw 输入输出）。
-- audio graph、waveform、effect pipeline、seek/cache 自己管理。
+- Qt Multimedia 只负责设备 I/O（`QAudioSink` 回调式 API），audio graph、waveform、effect pipeline、seek/cache 自己管理。
+- **Qt 6.11 实测约束（2026-08 验证）**：`QAudioSink::start(QIODevice*)` 拉取模式在 CoreAudio 后端失效（Active 后直接 Idle，从不调用 readData）；`QAudioSink::stop()` 后重复 dispose 会崩溃。正确用法是**回调式 API** `sink.start([](QSpan<float>){...})`，且**单个 sink 全程复用**（suspend/resume 代替销毁）。
+- 因此播放引擎对设备输出**统一立体声 48kHz float**（mono 由 resampler 上混、stereo 直通），设备格式保持稳定；canonical PCM 表示仍是 channel-preserving。
 
 ### C++（Audio Engine）
 
@@ -140,6 +141,8 @@ InferenceBackend
 ## 9. 里程碑
 
 - **M0 Audio Foundation**：Qt 播放、FFmpeg decode、waveform、SQLite、immutable Original、后台 job。
+  - 已完成：FFmpeg probe/流式解码、waveform pyramid（缓存化）、Qt 回调式播放（seek/pause/volume）、Audio Space 列表 + 波形详情。
+  - 待办：后台 job 调度（等 M1 ASR 出现第一个真实消费方再建）、导入目录扫描、播放进度的波形联动优化。
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
 - **M2 Library**：自然语言搜索、人物/声音、时间、audio event、CLAP semantic search。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。

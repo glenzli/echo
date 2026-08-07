@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.28)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Quick)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Quick Multimedia)
 find_package(PkgConfig REQUIRED)
 find_package(Iconv REQUIRED)
 
@@ -32,9 +32,10 @@ file(
     "${PROJECT_SOURCE_DIR}/crates/*/build.rs"
     "${PROJECT_SOURCE_DIR}/crates/*/src/*.rs"
     "${PROJECT_SOURCE_DIR}/crates/*/src/**/*.rs"
-    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/include/**/*.hpp"
-    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/**/*.cpp"
-    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/**/*.hpp"
+    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/include/*.hpp"
+    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/*.cpp"
+    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/bridge/*.cpp"
+    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/bridge/*.hpp"
 )
 
 set(
@@ -104,6 +105,8 @@ qt_add_executable(
     src/main.cpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
+    src/playback_controller.cpp
+    src/playback_controller.hpp
 )
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(
@@ -114,18 +117,22 @@ qt_add_qml_module(
         qml/Main.qml
         qml/EchoButton.qml
         qml/Theme.qml
+        qml/WaveformView.qml
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)
 target_include_directories(
     echo-desktop
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    PRIVATE "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}"
+    PRIVATE
+        "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}"
+        "${PROJECT_SOURCE_DIR}/cpp/echo-audio/include"
 )
 target_link_libraries(
     echo-desktop
     PRIVATE
         Qt6::Quick
+        Qt6::Multimedia
         echo-desktop-rust
         PkgConfig::FFmpeg
         ${CMAKE_DL_LIBS}

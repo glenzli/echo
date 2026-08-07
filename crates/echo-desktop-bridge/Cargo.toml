@@ -13,8 +13,11 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 cxx.workspace = true
+echo-cache.workspace = true
 echo-catalog.workspace = true
+echo-core.workspace = true
 echo-domain.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 
 [build-dependencies]

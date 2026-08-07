@@ -5,6 +5,7 @@ pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavut
 add_library(
     echo-audio STATIC
     src/decode.cpp
+    src/playback.cpp
     src/waveform.cpp
 )
 add_library(Echo::Audio ALIAS echo-audio)
@@ -41,4 +42,12 @@ if(BUILD_TESTING)
     target_link_libraries(echo-waveform-engine-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-waveform-engine-test)
     add_test(NAME echo-waveform-engine-test COMMAND echo-waveform-engine-test)
+
+    add_executable(
+        echo-playback-engine-test
+        tests/playback_engine_test.cpp
+    )
+    target_link_libraries(echo-playback-engine-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-playback-engine-test)
+    add_test(NAME echo-playback-engine-test COMMAND echo-playback-engine-test)
 endif()

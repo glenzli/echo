@@ -1,0 +1,215 @@
+//! Focused engine test: the playback session's realtime read path, seek, and
+//! pause semantics over a synthesized WAV (generated in-memory).
+
+#include <echo/audio/playback.hpp>
+
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <thread>
+#include <vector>
+
+namespace {
+
+std::string synthesize_sine_wav(std::uint32_t sample_rate, double seconds) {
+    const std::uint16_t channels = 1;
+    const std::uint16_t bits = 16;
+    const std::uint32_t sample_count =
+        static_cast<std::uint32_t>(static_cast<double>(sample_rate) * seconds);
+    const std::uint32_t data_bytes = sample_count * channels * bits / 8;
+
+    std::string wav;
+    wav.reserve(44 + data_bytes);
+    const auto append = [&wav](const void* bytes, std::size_t size) {
+        wav.append(static_cast<const char*>(bytes), size);
+    };
+    append("RIFF", 4);
+    const std::uint32_t riff_size = 36 + data_bytes;
+    append(&riff_size, 4);
+    append("WAVE", 4);
+    append("fmt ", 4);
+    const std::uint32_t fmt_size = 16;
+    append(&fmt_size, 4);
+    const std::uint16_t format = 1;
+    append(&format, 2);
+    append(&channels, 2);
+    append(&sample_rate, 4);
+    const std::uint32_t byte_rate = sample_rate * channels * bits / 8;
+    append(&byte_rate, 4);
+    const std::uint16_t block_align = channels * bits / 8;
+    append(&block_align, 2);
+    append(&bits, 2);
+    append("data", 4);
+    append(&data_bytes, 4);
+    for (std::uint32_t index = 0; index < sample_count; ++index) {
+        const double phase = 2.0 * 3.14159265358979323846 * 440.0 * static_cast<double>(index)
+                             / static_cast<double>(sample_rate);
+        const std::int16_t sample = static_cast<std::int16_t>(std::sin(phase) * 12000.0);
+        append(&sample, 2);
+    }
+    return wav;
+}
+
+int failures = 0;
+
+void expect(bool condition, const char* message) {
+    if (!condition) {
+        std::fprintf(stderr, "FAIL: %s\n", message);
+        ++failures;
+    }
+}
+
+/// Pulls until at least `target` frames arrive or the timeout expires.
+std::size_t pull_until(
+    echo::audio::PlaybackSession& session,
+    float* buffer,
+    std::size_t target,
+    std::size_t chunk
+) {
+    std::size_t total = 0;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (total < target && std::chrono::steady_clock::now() < deadline) {
+        total += session.read(buffer + total, chunk);
+        if (total == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+    }
+    return total;
+}
+
+} // namespace
+
+int main(int argc, char* argv[]) {
+    // With one argument, smoke-test playback of that exact file (useful for
+    // engine-level reproduction without Qt); otherwise synthesize a WAV.
+    const std::filesystem::path path =
+        argc > 1
+            ? std::filesystem::path(argv[1])
+            : std::filesystem::temp_directory_path()
+                  / ("echo-playback-test-"
+                     + std::to_string(std::chrono::system_clock::now().time_since_epoch().count())
+                     + ".wav");
+    if (argc <= 1) {
+        std::ofstream file(path, std::ios::binary);
+        const std::string wav = synthesize_sine_wav(44100, 2.0);
+        file.write(wav.data(), static_cast<std::streamsize>(wav.size()));
+    }
+
+    echo::audio::PlaybackSession session(path.string());
+    if (argc > 1) {
+        // Standalone smoke: pull for up to two seconds and report.
+        std::vector<float> buffer(4800, 0.0F);
+        std::size_t total = 0;
+        std::uint64_t last_position = 0;
+        bool nonzero = false;
+        for (int attempt = 0; attempt < 40; ++attempt) {
+            const std::size_t pulled = session.read(buffer.data(), 4800);
+            for (std::size_t index = 0; index < pulled; ++index) {
+                nonzero = nonzero || buffer[index] != 0.0F;
+            }
+            total += pulled;
+            last_position = session.position_millis();
+            if (session.is_ended() || last_position >= session.duration_millis()) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        std::printf(
+            "standalone: pulled %zu frames (%s), position %llu/%llu ms, buffered %zu, "
+            "ended %d\n",
+            total,
+            nonzero ? "nonzero" : "ALL SILENCE",
+            last_position,
+            session.duration_millis(),
+            session.buffered_frames(),
+            session.is_ended() ? 1 : 0
+        );
+        return total > 0 && nonzero ? 0 : 1;
+    }
+    std::remove(path.c_str());
+
+    expect(session.sample_rate() == 48000, "canonical 48 kHz playback");
+    expect(session.channel_count() == 2, "playback always drives a stereo sink");
+    expect(
+        session.duration_millis() >= 1900 && session.duration_millis() <= 2100,
+        "duration is about two seconds"
+    );
+    expect(!session.is_ended(), "session not ended before reads");
+
+    // Realtime path: pull a bounded chunk and verify nonzero audio arrives.
+    std::vector<float> buffer(4800, 0.0F);
+    const std::size_t first = pull_until(session, buffer.data(), 1000, 100);
+    expect(first >= 100, "first reads return frames");
+    {
+        bool nonzero = false;
+        for (std::size_t index = 0; index < first; ++index) {
+            nonzero = nonzero || buffer[index] != 0.0F;
+        }
+        expect(nonzero, "decoded audio is not silence");
+    }
+
+    // Position advances as the consumer pulls.
+    const std::uint64_t position_before = session.position_millis();
+    pull_until(session, buffer.data(), 4800, 4800);
+    const std::uint64_t position_after = session.position_millis();
+    expect(position_after > position_before, "position advances with consumption");
+
+    // Pause: reads drain and then return zero.
+    session.pause();
+    expect(session.is_paused(), "pause is observable");
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    const std::uint64_t position_paused = session.position_millis();
+    session.read(buffer.data(), 100);
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    expect(session.position_millis() >= position_paused, "position freezes while paused");
+    session.resume();
+    expect(!session.is_paused(), "resume clears pause");
+
+    // Seek: reposition and continue reading.
+    session.seek(1000);
+    pull_until(session, buffer.data(), 100, 100);
+    expect(session.position_millis() >= 900, "seek lands near the target");
+
+    // Regression: stop() while the producer is blocked on a full ring (a
+    // paused or stalled consumer) must return promptly instead of joining a
+    // thread that never exits.
+    {
+        const std::filesystem::path second_path =
+            std::filesystem::temp_directory_path()
+            / ("echo-playback-fullring-"
+               + std::to_string(std::chrono::system_clock::now().time_since_epoch().count())
+               + ".wav");
+        {
+            std::ofstream file(second_path, std::ios::binary);
+            const std::string wav = synthesize_sine_wav(44100, 2.0);
+            file.write(wav.data(), static_cast<std::streamsize>(wav.size()));
+        }
+        echo::audio::PlaybackSession second(second_path.string());
+        std::this_thread::sleep_for(std::chrono::milliseconds(400));
+        const auto stop_begin = std::chrono::steady_clock::now();
+        second.stop();
+        const auto stop_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - stop_begin
+        );
+        expect(
+            stop_elapsed < std::chrono::milliseconds(500),
+            "stop returns while the ring is full"
+        );
+        std::remove(second_path.c_str());
+    }
+
+    // Stop: reads return zero immediately.
+    session.stop();
+    expect(session.is_stopped(), "stop is observable");
+    expect(session.read(buffer.data(), 100) == 0, "read after stop returns zero");
+
+    if (failures == 0) {
+        std::printf("playback engine test: ok\n");
+        return 0;
+    }
+    return 1;
+}
