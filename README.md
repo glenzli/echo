@@ -39,6 +39,7 @@ cargo run --package echo-cli -- probe /path/to/recording.m4a
 cargo run --package echo-cli -- waveform ./cache /path/to/recording.m4a
 cargo run --package echo-cli -- list ./catalogs/demo.sqlite
 cargo run --package echo-cli -- models            # cataloged model status
+ECHO_MLX_PYTHON=~/.venvs/mlx/bin/python cargo run --package echo-cli -- transcribe ./catalogs/demo.sqlite /path/to/recording.wav
 ```
 
 Native engine checks (independent CMake graph):

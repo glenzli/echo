@@ -31,7 +31,7 @@ pub struct ModelSpec {
 pub const MODEL_CATALOG: &[ModelSpec] = &[
     ModelSpec {
         id: "qwen3-asr-1.7b-mlx",
-        repo: "mlx-community/Qwen3-ASR-1.7B",
+        repo: "mlx-community/Qwen3-ASR-1.7B-8bit",
         revision: None,
         backend: InferenceBackend::Mlx,
         capability: Capability::Transcribe,
@@ -39,7 +39,7 @@ pub const MODEL_CATALOG: &[ModelSpec] = &[
     },
     ModelSpec {
         id: "qwen3-forced-aligner-0.6b-mlx",
-        repo: "mlx-community/Qwen3-ForcedAligner-0.6B",
+        repo: "mlx-community/Qwen3-ForcedAligner-0.6B-8bit",
         revision: None,
         backend: InferenceBackend::Mlx,
         capability: Capability::Align,
@@ -47,11 +47,11 @@ pub const MODEL_CATALOG: &[ModelSpec] = &[
     },
     ModelSpec {
         id: "sensevoice-small-mlx",
-        repo: "mlx-community/SenseVoiceSmall",
+        repo: "FunAudioLLM/SenseVoiceSmall",
         revision: None,
         backend: InferenceBackend::Mlx,
         capability: Capability::UnderstandAudio,
-        required_files: &["config.json", "model.safetensors"],
+        required_files: &["config.yaml", "model.pt"],
     },
     ModelSpec {
         id: "whisper-small-ggml",

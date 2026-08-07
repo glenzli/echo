@@ -151,6 +151,11 @@ InferenceBackend
   - 已完成：FFmpeg probe/流式解码、waveform pyramid（缓存化）、Qt 回调式播放（seek/pause/volume）、Audio Space 列表 + 波形详情。
   - 待办：后台 job 调度（等 M1 ASR 出现第一个真实消费方再建）、导入目录扫描、播放进度的波形联动优化。
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
+  - 已完成（2026-08）：模型注册表（HF 缓存解析、缺失提示）；ASR worker
+    （`tools/asr/transcribe.py`，子进程契约）；`echo-cli transcribe` 导入→转写→
+    transcript 证据入库（含分段时间戳，`say` 语音实测文本完全正确）。
+  - 待办：SenseVoice（需 `convert.py` 一次性转换后接入）、ForcedAligner 词级对齐、
+    waveform↔transcript 双向同步、桌面端"分析"入口。
 - **M2 Library**：自然语言搜索、人物/声音、时间、audio event、CLAP semantic search。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。

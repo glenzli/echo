@@ -9,6 +9,7 @@ mod import;
 mod list;
 mod models;
 mod probe;
+mod transcribe;
 mod waveform;
 
 fn main() -> anyhow::Result<()> {

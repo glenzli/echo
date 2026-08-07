@@ -7,12 +7,20 @@
 //! scheduling arrives with the first real analysis consumer (see ROADMAP
 //! M0); no scheduler exists before there are jobs to run.
 
+mod analysis;
 mod error;
 mod import;
 mod waveform_artifact;
 
+pub use analysis::{
+    TranscribeWorker, TranscriptPayload, TranscriptSegment, TranscriptWord, record_transcript,
+    run_transcribe,
+};
 pub use error::CoreErrorKind;
 pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
 pub use waveform_artifact::{
     WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,
 };
+
+#[cfg(test)]
+mod tests;
