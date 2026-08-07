@@ -1,0 +1,53 @@
+[workspace]
+members = [
+    "apps/echo-cli",
+    "crates/echo-ai",
+    "crates/echo-cache",
+    "crates/echo-catalog",
+    "crates/echo-core",
+    "crates/echo-domain",
+    "xtask",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+license = "MIT"
+authors = ["Echo contributors"]
+
+[workspace.dependencies]
+anyhow = "1.0.102"
+blake3 = "1.8.5"
+clap = { version = "4.5.52", features = ["derive"] }
+cxx = "=1.0.198"
+echo-cache = { path = "crates/echo-cache" }
+echo-catalog = { path = "crates/echo-catalog" }
+echo-core = { path = "crates/echo-core" }
+echo-domain = { path = "crates/echo-domain" }
+rusqlite = { version = "0.40.1", features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+thiserror = "2.0.18"
+tracing = "0.1.44"
+uuid = { version = "1.23.2", features = ["serde", "std", "v7"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+
+# Foundation artifacts (hashing, SQLite) keep a practical speed in the debug
+# desktop build instead of running their hot loops with opt-level 0.
+[profile.dev.package.echo-cache]
+opt-level = 3
+
+[profile.test.package.echo-cache]
+opt-level = 3
