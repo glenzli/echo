@@ -23,7 +23,7 @@ AI model selection, and milestone plan.
 | AI contracts | [`echo-ai`](crates/echo-ai/src/lib.rs) | Capability routing, inference backend identities |
 | Audio bridge | [`echo-bridge`](crates/echo-bridge/README.md) | Safe Rust API over the C++ audio engine |
 | Native audio engine | [`cpp/echo-audio`](cpp/echo-audio/CMakeLists.txt) | FFmpeg decode, canonical PCM, waveform pyramid |
-| Desktop services | `crates/echo-desktop-bridge` | Long-lived Qt-facing services |
+| Desktop services | [`echo-desktop-bridge`](crates/echo-desktop-bridge/README.md) | Long-lived Qt-facing services |
 | Qt application | [`apps/desktop`](apps/desktop/README.md) | QML presentation, Qt controllers, Audio Space |
 | CLI and validation | [`echo-cli`](apps/echo-cli/src/main.rs), [`xtask`](xtask/src/main.rs) | Operator commands and repository-level checks |
 
@@ -44,6 +44,13 @@ Native engine checks (independent CMake graph):
 
 ```sh
 cmake --preset native-dev && cmake --build --preset native-dev && ctest --preset native-dev
+```
+
+Desktop shell (Qt Quick):
+
+```sh
+cmake --preset desktop-dev && cmake --build --preset desktop-dev
+./.echo-local-build/desktop-dev/apps/desktop/echo-desktop ./catalogs/demo.sqlite
 ```
 
 ## License

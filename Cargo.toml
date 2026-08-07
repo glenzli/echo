@@ -6,6 +6,7 @@ members = [
     "crates/echo-cache",
     "crates/echo-catalog",
     "crates/echo-core",
+    "crates/echo-desktop-bridge",
     "crates/echo-domain",
     "xtask",
 ]
@@ -26,6 +27,7 @@ cxx = "=1.0.198"
 echo-cache = { path = "crates/echo-cache" }
 echo-catalog = { path = "crates/echo-catalog" }
 echo-core = { path = "crates/echo-core" }
+echo-desktop-bridge = { path = "crates/echo-desktop-bridge" }
 echo-domain = { path = "crates/echo-domain" }
 echo-bridge = { path = "crates/echo-bridge" }
 rusqlite = { version = "0.40.1", features = ["bundled"] }

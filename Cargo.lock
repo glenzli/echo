@@ -310,6 +310,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo-desktop-bridge"
+version = "0.1.0"
+dependencies = [
+ "cxx",
+ "cxx-build",
+ "echo-catalog",
+ "echo-domain",
+ "thiserror",
+]
+
+[[package]]
 name = "echo-domain"
 version = "0.1.0"
 dependencies = [
