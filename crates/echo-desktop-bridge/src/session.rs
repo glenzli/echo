@@ -15,6 +15,7 @@ use crate::ffi::{AssetSummaryWire, WaveformArtifactWire, WaveformLevelWire};
 
 /// One catalog attachment. Sessions are created on the Qt main thread and
 /// reused; the catalog serializes its own writes.
+#[derive(Debug)]
 pub struct LibrarySession {
     catalog: Catalog,
     catalog_path: PathBuf,

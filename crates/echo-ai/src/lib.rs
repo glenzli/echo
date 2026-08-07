@@ -1,12 +1,23 @@
-//! AI capability routing and inference backend identities.
+//! AI capability routing, inference backend identities, and the model
+//! registry.
 //!
 //! The business layer never knows which GPU or runtime produces evidence:
 //! a capability request maps to a backend through this crate's routing
-//! contract. Backend implementations (`MLX`, `CoreML`, `CUDA`, `ONNX Runtime`,
-//! whisper.cpp, Cloud) arrive with their first real consumer; this crate owns
-//! the stable vocabulary and the routing table only.
+//! contract, and a logical model resolves to a local snapshot in the
+//! configurable model root. Echo never downloads models — the user maintains
+//! the shared HF cache; missing models report the exact `hf download`
+//! command.
+
+mod model_registry;
+
+pub use model_registry::{
+    MODEL_CATALOG, ModelSpec, ModelStatus, repo_cache_dir, resolve_all, resolve_model,
+};
 
 use serde::{Deserialize, Serialize};
+
+#[cfg(test)]
+mod tests;
 
 /// An analysis capability Echo can request from an inference backend.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

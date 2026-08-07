@@ -1,6 +1,6 @@
 //! Long-lived desktop services bridging Qt to the Rust memory engine.
 //!
-//! QML and desktop controllers never open SQLite, call FFmpeg, or interpret
+//! QML and desktop controllers never open `SQLite`, call `FFmpeg`, or interpret
 //! cache paths: they talk to this crate through the generated CXX ABI, and it
 //! owns the durable [`LibrarySession`] lifecycle.
 
@@ -11,6 +11,7 @@ use crate::session::LibrarySession;
 #[cxx::bridge(namespace = "echo::desktop")]
 mod ffi {
     /// Bounded presentation projection of one asset for the desktop shell.
+    #[derive(Debug)]
     struct AssetSummaryWire {
         id: String,
         path: String,
@@ -21,6 +22,7 @@ mod ffi {
     }
 
     /// One pyramid level of a cached waveform artifact.
+    #[derive(Debug)]
     struct WaveformLevelWire {
         samples_per_bucket: u32,
         mins: Vec<f32>,
@@ -28,6 +30,7 @@ mod ffi {
     }
 
     /// A cached waveform artifact for display.
+    #[derive(Debug)]
     struct WaveformArtifactWire {
         canonical_sample_rate: u32,
         levels: Vec<WaveformLevelWire>,

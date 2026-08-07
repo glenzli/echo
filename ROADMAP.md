@@ -112,9 +112,16 @@ Level 5  LLM contextual understanding / memory association
 
 ## 7. AI 模型选型与路由
 
+**模型获取策略（2026-08 定）**：Echo 不负责下载模型。用户用本机 `hf` 工具维护共享的
+`HuggingFace` 缓存（默认根 `~/.cache/huggingface/hub`，可用 `HF_HOME`/`HF_HUB_CACHE`
+覆盖）；`echo-ai` 的模型注册表把逻辑模型解析到缓存快照路径，缺失时给出精确的
+`hf download <repo>` 命令。设置面板提供模型目录配置与各模型状态。运行时经
+`mlx_audio` 的 `generate.py`（`--model --audio --format json`）子进程调用，使用
+TTS 实验的 venv（Python 3.11 + mlx）。
+
 | 能力 | 模型 | 说明 |
 | --- | --- | --- |
-| 主 ASR（说了什么） | Qwen3-ASR 0.6B/1.7B | 52 种语言方言；Mac 上先用 MLX-Audio adapter |
+| 主 ASR（说了什么） | Qwen3-ASR 0.6B/1.7B | 52 种语言方言；`mlx-community/Qwen3-ASR-1.7B` |
 | 时间对齐 | Qwen3-ForcedAligner 0.6B | word/sentence timestamp，11 种语言 |
 | 发生了什么 | SenseVoiceSmall | ASR + language + emotion + audio events（中文/粤语/英文/日/韩，BGM/掌声/笑声/哭声/咳嗽） |
 | 谁在讲话 | FunASR：VAD + CAM++ speaker model + 标点 | speaker diarization；用户确认 Speaker A=我、B=孩子 |

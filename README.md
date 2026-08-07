@@ -38,6 +38,7 @@ cargo run --package echo-cli -- import ./catalogs/demo.sqlite /path/to/recording
 cargo run --package echo-cli -- probe /path/to/recording.m4a
 cargo run --package echo-cli -- waveform ./cache /path/to/recording.m4a
 cargo run --package echo-cli -- list ./catalogs/demo.sqlite
+cargo run --package echo-cli -- models            # cataloged model status
 ```
 
 Native engine checks (independent CMake graph):

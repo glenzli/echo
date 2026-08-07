@@ -24,6 +24,7 @@ anyhow = "1.0.102"
 blake3 = "1.8.5"
 clap = { version = "4.5.52", features = ["derive"] }
 cxx = "=1.0.198"
+echo-ai = { path = "crates/echo-ai" }
 echo-cache = { path = "crates/echo-cache" }
 echo-catalog = { path = "crates/echo-catalog" }
 echo-core = { path = "crates/echo-core" }

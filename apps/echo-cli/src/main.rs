@@ -7,6 +7,7 @@ mod catalog;
 mod commands;
 mod import;
 mod list;
+mod models;
 mod probe;
 mod waveform;
 

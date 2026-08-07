@@ -2,7 +2,7 @@
 
 use clap::{Parser, Subcommand};
 
-use super::{catalog, import, list, probe, waveform};
+use super::{catalog, import, list, models, probe, waveform};
 
 #[derive(Debug, Parser)]
 #[command(name = "echo-cli", about = "Echo operator commands")]
@@ -42,6 +42,12 @@ pub(crate) enum Command {
         /// Recording file to analyze.
         source: std::path::PathBuf,
     },
+    /// Reports cataloged model presence in the model root.
+    Models {
+        /// Model root (HF hub cache layout); defaults to the standard cache.
+        #[arg(long)]
+        root: Option<std::path::PathBuf>,
+    },
 }
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()> {
@@ -52,5 +58,9 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
         Command::List { catalog } => list::run_list(&catalog),
         Command::Probe { source } => probe::run_probe(&source),
         Command::Waveform { cache, source } => waveform::run_waveform(&cache, &source),
+        Command::Models { root } => {
+            let root = root.unwrap_or_else(models::default_model_root);
+            models::run_models(&root)
+        }
     }
 }
