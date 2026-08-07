@@ -38,14 +38,33 @@ pub enum ImportOutcome {
     AlreadyPresent(AudioAsset),
 }
 
-/// Imports `path` into `catalog_path` without probing the audio engine.
+/// Imports `path` into `catalog_path`, probing the audio engine for
+/// descriptive metadata when the source has an audio stream.
 ///
 /// # Errors
 ///
-/// Returns [`CoreErrorKind::SourceUnavailable`] when the file cannot be read
+/// Returns [`CoreErrorKind::SourceUnavailable`] when the file cannot be read,
+/// [`CoreErrorKind::AudioEngineRejected`] when the probe refuses the source,
 /// and [`CoreErrorKind::Catalog`] when registration fails.
 pub fn import_asset(catalog_path: &Path, source: &Path) -> Result<ImportOutcome, CoreError> {
-    import_asset_with_probe(catalog_path, source, &|_| Ok(None))
+    import_asset_with_probe(catalog_path, source, &audio_engine_probe)
+}
+
+fn audio_engine_probe(source: &Path) -> Result<Option<AudioProbe>, CoreError> {
+    let result = echo_bridge::probe(source)
+        .map_err(|error| CoreError::new(CoreErrorKind::AudioEngineRejected, error.message))?;
+    if !result.has_audio {
+        return Ok(Some(AudioProbe {
+            codec: None,
+            duration_millis: None,
+            recorded_at_millis: None,
+        }));
+    }
+    Ok(Some(AudioProbe {
+        codec: Some(result.codec_name),
+        duration_millis: (result.duration_millis > 0).then_some(result.duration_millis),
+        recorded_at_millis: None,
+    }))
 }
 
 /// Imports `path`, using `probe` for descriptive metadata when the source is

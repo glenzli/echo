@@ -2,6 +2,7 @@
 members = [
     "apps/echo-cli",
     "crates/echo-ai",
+    "crates/echo-bridge",
     "crates/echo-cache",
     "crates/echo-catalog",
     "crates/echo-core",
@@ -26,6 +27,7 @@ echo-cache = { path = "crates/echo-cache" }
 echo-catalog = { path = "crates/echo-catalog" }
 echo-core = { path = "crates/echo-core" }
 echo-domain = { path = "crates/echo-domain" }
+echo-bridge = { path = "crates/echo-bridge" }
 rusqlite = { version = "0.40.1", features = ["bundled"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"

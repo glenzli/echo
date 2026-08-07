@@ -1,0 +1,44 @@
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswresample)
+
+add_library(
+    echo-audio STATIC
+    src/decode.cpp
+    src/waveform.cpp
+)
+add_library(Echo::Audio ALIAS echo-audio)
+
+target_include_directories(echo-audio PUBLIC include)
+
+target_compile_features(echo-audio PUBLIC cxx_std_20)
+
+target_link_libraries(echo-audio PUBLIC PkgConfig::FFmpeg)
+
+function(echo_audio_enable_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(
+            ${target}
+            PRIVATE
+                -Wall
+                -Wextra
+                -Wpedantic
+                -Wconversion
+                -Wsign-conversion
+        )
+    endif()
+endfunction()
+
+echo_audio_enable_warnings(echo-audio)
+
+if(BUILD_TESTING)
+    add_executable(
+        echo-waveform-engine-test
+        tests/waveform_engine_test.cpp
+    )
+    target_link_libraries(echo-waveform-engine-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-waveform-engine-test)
+    add_test(NAME echo-waveform-engine-test COMMAND echo-waveform-engine-test)
+endif()

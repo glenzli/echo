@@ -1,0 +1,132 @@
+//! Builds the C++ audio engine sources together with the generated CXX glue.
+//!
+//! The Cargo source manifest must stay identical to the `CMake` target
+//! sources (`cpp/echo-audio/CMakeLists.txt`); the build fails closed on
+//! divergence.
+
+use std::{
+    collections::BTreeSet,
+    env, fs,
+    path::{Path, PathBuf},
+};
+
+const ENGINE_SOURCES: &[&str] = &[
+    "src/bridge/cxx_bridge.cpp",
+    "src/decode.cpp",
+    "src/waveform.cpp",
+];
+
+const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
+    "include/echo/audio/decode.hpp",
+    "include/echo/audio/waveform.hpp",
+    "src/bridge/cxx_bridge.hpp",
+];
+
+fn track_inputs(audio_root: &Path, inputs: &[&str]) {
+    for relative_path in inputs {
+        println!(
+            "cargo:rerun-if-changed={}",
+            audio_root.join(relative_path).display()
+        );
+    }
+}
+
+fn verify_source_manifest(audio_root: &Path) {
+    let cmake_path = audio_root.join("CMakeLists.txt");
+    let cmake = fs::read_to_string(&cmake_path)
+        .unwrap_or_else(|error| panic!("failed to read {}: {error}", cmake_path.display()));
+    let cmake_sources = cmake
+        .split_whitespace()
+        .map(|token| token.trim_matches(|character| matches!(character, '"' | '(' | ')')))
+        .filter(|token| {
+            token.starts_with("src/")
+                && !token.starts_with("src/bridge/")
+                && Path::new(token)
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("cpp"))
+        })
+        .map(ToOwned::to_owned)
+        .collect::<BTreeSet<_>>();
+    let cargo_sources = ENGINE_SOURCES
+        .iter()
+        .filter(|path| !path.starts_with("src/bridge/"))
+        .map(|path| (*path).to_owned())
+        .collect::<BTreeSet<_>>();
+    let missing = cmake_sources.difference(&cargo_sources).collect::<Vec<_>>();
+    let extra = cargo_sources.difference(&cmake_sources).collect::<Vec<_>>();
+    assert!(
+        missing.is_empty() && extra.is_empty(),
+        "Cargo echo-audio source manifest diverged from CMake; missing={missing:?}; extra={extra:?}"
+    );
+}
+
+fn main() {
+    let crate_root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("crate root"));
+    let repository_root = crate_root.join("../..");
+    let audio_root = repository_root.join("cpp/echo-audio");
+    let audio_include = audio_root.join("include");
+    verify_source_manifest(&audio_root);
+
+    let ffmpeg_libraries = ["libavformat", "libavcodec", "libavutil", "libswresample"];
+    let mut include_paths = Vec::new();
+    let mut link_paths = Vec::new();
+    let mut link_libraries = Vec::new();
+    for library in ffmpeg_libraries {
+        let metadata = pkg_config::Config::new()
+            .cargo_metadata(false)
+            .probe(library)
+            .unwrap_or_else(|_| panic!("pkg-config {library} must be discoverable"));
+        include_paths.extend(metadata.include_paths.iter().cloned());
+        for link_path in &metadata.link_paths {
+            link_paths.push(link_path.clone());
+        }
+        for link_library in &metadata.libs {
+            if link_library == "stdc++" {
+                continue;
+            }
+            link_libraries.push(link_library.clone());
+        }
+    }
+    for include_path in &include_paths {
+        println!("cargo:rustc-link-search=native={}", include_path.display());
+    }
+    for link_path in &link_paths {
+        println!("cargo:rustc-link-search=native={}", link_path.display());
+    }
+    for link_library in &link_libraries {
+        println!("cargo:rustc-link-lib={link_library}");
+    }
+
+    let mut build = cxx_build::bridge("src/lib.rs");
+    for relative_path in ENGINE_SOURCES {
+        build.file(audio_root.join(relative_path));
+    }
+    build.include(&audio_include).include(&audio_root);
+    for include_path in &include_paths {
+        if env::var("CARGO_CFG_TARGET_FAMILY").as_deref() == Ok("unix") {
+            build
+                .flag("-isystem")
+                .flag(include_path.to_string_lossy().as_ref());
+        } else {
+            build.include(include_path);
+        }
+    }
+    build.std("c++20");
+
+    if env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        build.flag("/W4").flag("/permissive-");
+    } else {
+        build
+            .flag("-Wall")
+            .flag("-Wextra")
+            .flag("-Wpedantic")
+            .flag("-Wconversion")
+            .flag("-Wsign-conversion");
+    }
+
+    build.compile("echo-bridge-cxx");
+
+    println!("cargo:rerun-if-changed=src/lib.rs");
+    track_inputs(&audio_root, ENGINE_SOURCES);
+    track_inputs(&audio_root, ENGINE_ADDITIONAL_INPUTS);
+}

@@ -7,6 +7,8 @@ mod catalog;
 mod commands;
 mod import;
 mod list;
+mod probe;
+mod waveform;
 
 fn main() -> anyhow::Result<()> {
     commands::run(std::env::args().skip(1))

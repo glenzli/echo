@@ -2,7 +2,7 @@
 
 use clap::{Parser, Subcommand};
 
-use super::{catalog, import, list};
+use super::{catalog, import, list, probe, waveform};
 
 #[derive(Debug, Parser)]
 #[command(name = "echo-cli", about = "Echo operator commands")]
@@ -30,6 +30,18 @@ pub(crate) enum Command {
         /// Catalog database path.
         catalog: std::path::PathBuf,
     },
+    /// Probes one recording without modifying it.
+    Probe {
+        /// Recording file to probe.
+        source: std::path::PathBuf,
+    },
+    /// Builds a waveform pyramid and publishes it into the cache.
+    Waveform {
+        /// Cache root directory.
+        cache: std::path::PathBuf,
+        /// Recording file to analyze.
+        source: std::path::PathBuf,
+    },
 }
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()> {
@@ -38,5 +50,7 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
         Command::Init { catalog } => catalog::run_init(&catalog),
         Command::Import { catalog, source } => import::run_import(&catalog, &source),
         Command::List { catalog } => list::run_list(&catalog),
+        Command::Probe { source } => probe::run_probe(&source),
+        Command::Waveform { cache, source } => waveform::run_waveform(&cache, &source),
     }
 }

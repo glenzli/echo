@@ -22,7 +22,7 @@ AI model selection, and milestone plan.
 | Core workflows | [`echo-core`](crates/echo-core/src/lib.rs) | Import, scanning, background job scheduling |
 | AI contracts | [`echo-ai`](crates/echo-ai/src/lib.rs) | Capability routing, inference backend identities |
 | Audio bridge | [`echo-bridge`](crates/echo-bridge/README.md) | Safe Rust API over the C++ audio engine |
-| Native audio engine | [`cpp/echo-audio`](cpp/echo-audio/README.md) | FFmpeg decode, canonical PCM, waveform pyramid |
+| Native audio engine | [`cpp/echo-audio`](cpp/echo-audio/CMakeLists.txt) | FFmpeg decode, canonical PCM, waveform pyramid |
 | Desktop services | `crates/echo-desktop-bridge` | Long-lived Qt-facing services |
 | Qt application | [`apps/desktop`](apps/desktop/README.md) | QML presentation, Qt controllers, Audio Space |
 | CLI and validation | [`echo-cli`](apps/echo-cli/src/main.rs), [`xtask`](xtask/src/main.rs) | Operator commands and repository-level checks |
@@ -35,7 +35,15 @@ cargo xtask format         # apply rustfmt and clang-format
 cargo xtask doctor         # verify toolchain prerequisites
 cargo run --package echo-cli -- init ./catalogs/demo.sqlite
 cargo run --package echo-cli -- import ./catalogs/demo.sqlite /path/to/recording.m4a
+cargo run --package echo-cli -- probe /path/to/recording.m4a
+cargo run --package echo-cli -- waveform ./cache /path/to/recording.m4a
 cargo run --package echo-cli -- list ./catalogs/demo.sqlite
+```
+
+Native engine checks (independent CMake graph):
+
+```sh
+cmake --preset native-dev && cmake --build --preset native-dev && ctest --preset native-dev
 ```
 
 ## License

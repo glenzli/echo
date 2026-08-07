@@ -9,6 +9,10 @@
 
 mod error;
 mod import;
+mod waveform_artifact;
 
 pub use error::CoreErrorKind;
 pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
+pub use waveform_artifact::{
+    WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,
+};

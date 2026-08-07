@@ -1,0 +1,48 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "native-dev",
+      "displayName": "Echo native development",
+      "generator": "Ninja",
+      "binaryDir": "${sourceParentDir}/.echo-local-build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON"
+      }
+    },
+    {
+      "name": "desktop-dev",
+      "inherits": "native-dev",
+      "displayName": "Echo macOS desktop development",
+      "cacheVariables": {
+        "ECHO_BUILD_DESKTOP": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "native-dev",
+      "configurePreset": "native-dev"
+    },
+    {
+      "name": "desktop-dev",
+      "configurePreset": "desktop-dev"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "native-dev",
+      "configurePreset": "native-dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
