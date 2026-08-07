@@ -142,13 +142,17 @@ class CanonicalMonoDecoder {
   private:
     template <typename Consumer> void receive_frames(Consumer&& consume) {
         while (avcodec_receive_frame(codec_.get(), frame_.get()) == 0) {
+            // Size by the exact resampled output count: upsampling needs more
+            // output samples than input frames (see playback.cpp).
+            const int output_samples =
+                swr_get_out_samples(swr_.get(), frame_->nb_samples);
             uint8_t* output_data[1] = {nullptr};
             int output_linesize = 0;
             const int allocation_result = av_samples_alloc(
                 output_data,
                 &output_linesize,
                 1,
-                frame_->nb_samples,
+                output_samples,
                 AV_SAMPLE_FMT_FLTP,
                 0
             );
@@ -158,7 +162,7 @@ class CanonicalMonoDecoder {
             const int sample_count = swr_convert(
                 swr_.get(),
                 output_data,
-                frame_->nb_samples,
+                output_samples,
                 const_cast<const uint8_t**>(frame_->extended_data),
                 frame_->nb_samples
             );

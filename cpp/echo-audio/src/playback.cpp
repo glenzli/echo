@@ -371,13 +371,19 @@ class PlaybackSession::Impl {
 
     void decode_and_feed(float* scratch, std::size_t scratch_frames) {
         while (avcodec_receive_frame(codec_.get(), frame_.get()) == 0) {
+            // Upsampling (e.g. 24 kHz TTS -> 48 kHz) needs MORE output
+            // samples than input frames; sizing by the input count overflows
+            // the buffer and corrupts the heap. swr_get_out_samples returns
+            // the exact output count including internal resampler delay.
+            const int output_samples =
+                swr_get_out_samples(swr_.get(), frame_->nb_samples);
             uint8_t* output_data[2] = {nullptr};
             int output_linesize = 0;
             const int allocation_result = av_samples_alloc(
                 output_data,
                 &output_linesize,
                 static_cast<int>(channel_count_),
-                frame_->nb_samples,
+                output_samples,
                 AV_SAMPLE_FMT_FLTP,
                 0
             );
@@ -387,7 +393,7 @@ class PlaybackSession::Impl {
             const int sample_count = swr_convert(
                 swr_.get(),
                 output_data,
-                frame_->nb_samples,
+                output_samples,
                 const_cast<const uint8_t**>(frame_->extended_data),
                 frame_->nb_samples
             );
@@ -441,6 +447,8 @@ class PlaybackSession::Impl {
                     seek_requested_ = false;
                     lock.unlock();
                     perform_seek(target);
+                    // A seek after end-of-stream must restart decoding.
+                    ended_.store(false, std::memory_order_release);
                     seek_completed_.store(true, std::memory_order_release);
                     continue;
                 }

@@ -109,6 +109,8 @@ qt_add_executable(
     src/playback_controller.hpp
     src/ui_preferences.cpp
     src/ui_preferences.hpp
+    src/model_preferences.cpp
+    src/model_preferences.hpp
     src/mac_titlebar.hpp
 )
 if(APPLE)
@@ -134,6 +136,7 @@ qt_add_qml_module(
         icons/refresh.svg
         icons/tune.svg
         icons/waveform.svg
+        icons/mic.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

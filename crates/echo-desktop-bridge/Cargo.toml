@@ -13,6 +13,7 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 cxx.workspace = true
+echo-ai.workspace = true
 echo-cache.workspace = true
 echo-catalog.workspace = true
 echo-core.workspace = true

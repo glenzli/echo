@@ -1,7 +1,16 @@
 #include "desktop_backend.hpp"
 
+#include <QDebug>
+#include <QString>
+
 DesktopBackend::DesktopBackend(rust::Box<echo::desktop::LibrarySession> session, QObject* parent) :
     QObject(parent), session_(std::move(session)) {}
+
+DesktopBackend::~DesktopBackend() {
+    if (analysis_thread_.joinable()) {
+        analysis_thread_.join();
+    }
+}
 
 void DesktopBackend::refresh() {
     emit assetsChanged();
@@ -58,6 +67,80 @@ QVariantList DesktopBackend::waveformForAsset(const QString& id) const {
     }
     return levels;
 }
+
+QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {
+    QVariantList transcripts;
+    rust::Vec<echo::desktop::TranscriptWire> wires;
+    try {
+        wires = session_->session_transcripts(id.toStdString());
+    } catch (const rust::Error& error) {
+        qWarning("transcript query failed for %s: %s", qPrintable(id), error.what());
+        return transcripts;
+    }
+    qInfo("transcripts for %s: %zu record(s)", qPrintable(id), wires.size());
+    for (const auto& wire : wires) {
+        QVariantList segments;
+        for (const auto& segment : wire.segments) {
+            QVariantMap entry;
+            entry.insert(QStringLiteral("text"),
+                         QString::fromUtf8(segment.text.data(), segment.text.size()));
+            entry.insert(QStringLiteral("start"), segment.start);
+            entry.insert(QStringLiteral("end"), segment.end);
+            segments.append(entry);
+        }
+        QVariantMap record;
+        record.insert(QStringLiteral("model"),
+                      QString::fromUtf8(wire.model.data(), wire.model.size()));
+        record.insert(QStringLiteral("modelVersion"),
+                      QString::fromUtf8(wire.model_version.data(), wire.model_version.size()));
+        record.insert(QStringLiteral("language"),
+                      QString::fromUtf8(wire.language.data(), wire.language.size()));
+        record.insert(QStringLiteral("text"),
+                      QString::fromUtf8(wire.text.data(), wire.text.size()));
+        record.insert(QStringLiteral("segments"), segments);
+        transcripts.append(record);
+    }
+    return transcripts;
+}
+
+void DesktopBackend::transcribeAsset(const QString& id, const QString& modelRoot,
+                                     const QString& python, const QString& workerScript) {
+    if (transcribing_) {
+        return;
+    }
+    transcribing_ = true;
+    emit transcriptionStateChanged();
+
+    const rust::String catalog_rust = session_->session_catalog_path();
+    const std::string catalog(catalog_rust.data(), catalog_rust.size());
+    const std::string asset = id.toStdString();
+    const std::string root = modelRoot.toStdString();
+    const std::string interpreter = python.toStdString();
+    const std::string worker = workerScript.toStdString();
+
+    analysis_thread_ = std::thread([this, catalog, asset, root, interpreter, worker] {
+        QString message;
+        bool ok = false;
+        try {
+            const auto segments = echo::desktop::transcribe_asset(
+                catalog, asset, root, interpreter, worker
+            );
+            ok = true;
+            message = QStringLiteral("%1 segments").arg(segments);
+        } catch (const rust::Error& error) {
+            message = QString::fromUtf8(error.what());
+        }
+        const QString asset_id = QString::fromStdString(asset);
+        QMetaObject::invokeMethod(this, [this, asset_id, ok, message] {
+            transcribing_ = false;
+            emit transcriptionStateChanged();
+            emit transcriptionFinished(asset_id, ok, message);
+        }, Qt::QueuedConnection);
+    });
+    analysis_thread_.detach();
+}
+
+bool DesktopBackend::transcribing() const { return transcribing_; }
 
 quint64 DesktopBackend::assetCount() const {
     return session_->session_asset_count();

@@ -82,11 +82,15 @@ void PlaybackController::fillBuffer(QSpan<float> buffer) {
         std::fill(buffer.begin(), buffer.end(), 0.0F);
         return;
     }
-    const std::size_t frames = session->read(buffer.data(), count);
-    if (frames < count) {
-        std::fill(buffer.begin() + static_cast<qint64>(frames), buffer.end(), 0.0F);
-    }
+    // The span holds interleaved samples; the engine reads FRAMES, so the
+    // frame budget is samples / channels. Passing the sample count as the
+    // frame count overflows the span by `channels` (heap corruption).
+    const std::size_t channels = static_cast<std::size_t>(session->channel_count());
+    const std::size_t frames = session->read(buffer.data(), count / channels);
+    std::fill(buffer.begin() + static_cast<qint64>(frames * channels), buffer.end(), 0.0F);
 }
+
+
 
 void PlaybackController::togglePause() {
     const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;

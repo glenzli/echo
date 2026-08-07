@@ -29,6 +29,37 @@ ApplicationWindow {
     property var selectedAsset: null
     property bool appearancePinned: false
 
+    ListModel {
+        id: transcriptModel
+    }
+
+    function refreshTranscripts() : void {
+        transcriptModel.clear()
+        if (selectedAsset === null) {
+            return
+        }
+        const records = backend.transcriptsForAsset(selectedAsset.id)
+        if (records.length === 0) {
+            return
+        }
+        // Newest evidence first; surface its segments.
+        for (const segment of records[0].segments) {
+            transcriptModel.append(segment)
+        }
+    }
+
+    Connections {
+        target: backend
+        function onTranscriptionFinished(assetId: string, ok: bool, message: string) : void {
+            if (assetId === (selectedAsset !== null ? selectedAsset.id : "")) {
+                refreshTranscripts()
+            }
+            if (!ok) {
+                console.warn("transcription failed: " + message)
+            }
+        }
+    }
+
     EchoSettingsDialog {
         id: settingsDialog
     }
@@ -173,13 +204,14 @@ ApplicationWindow {
                             ? Theme.surfaceSelected
                             : Theme.panelRaised
 
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                window.selectedAsset = modelData
-                                player.play(modelData.path)
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    window.selectedAsset = modelData
+                                    player.play(modelData.path)
+                                    refreshTranscripts()
+                                }
                             }
-                        }
 
                         RowLayout {
                             anchors.fill: parent
@@ -223,7 +255,7 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 196
+                Layout.preferredHeight: selectedAsset !== null ? 320 : 0
                 visible: selectedAsset !== null
                 color: Theme.panel
                 radius: 10
@@ -234,12 +266,35 @@ ApplicationWindow {
                     anchors.margins: 12
                     spacing: 8
 
-                    Text {
-                        text: selectedAsset !== null ? selectedAsset.path : ""
-                        color: Theme.textPrimary
-                        font.pixelSize: 13
-                        elide: Text.ElideMiddle
+                    RowLayout {
                         Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: selectedAsset !== null ? selectedAsset.path : ""
+                            color: Theme.textPrimary
+                            font.pixelSize: 13
+                            elide: Text.ElideMiddle
+                            Layout.fillWidth: true
+                        }
+
+                        EchoIconButton {
+                            source: "qrc:/EchoDesktop/icons/mic.svg"
+                            toolTipText: qsTr("Transcribe with local ASR")
+                            enabled: !backend.transcribing
+                            buttonSize: 34
+                            iconSize: 18
+                            onClicked: backend.transcribeAsset(
+                                selectedAsset.id, modelPrefs.modelRoot,
+                                modelPrefs.python, modelPrefs.workerScript)
+                        }
+
+                        Text {
+                            visible: backend.transcribing
+                            text: qsTr("Transcribing…")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontMeta
+                        }
                     }
 
                     WaveformView {
@@ -321,6 +376,66 @@ ApplicationWindow {
                         enabled: player.duration > 0
                         onMoved: player.seek(value)
                     }
+
+                    // Transcript: evidence from the local ASR worker. Click a
+                    // segment to seek the player to that moment.
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 64
+                        visible: transcriptModel.count > 0
+                        color: Theme.surfaceSubtle
+                        radius: Theme.compactControlRadius
+                        border.color: Theme.border
+
+                        ListView {
+                            id: transcriptList
+
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            spacing: 2
+                            clip: true
+                            model: transcriptModel
+                            orientation: ListView.Horizontal
+                            cacheBuffer: 2000
+
+                            delegate: Rectangle {
+                                required property var modelData
+
+                                width: Math.min(implicitWidth, transcriptList.width - 8)
+                                height: transcriptList.height - 8
+                                radius: Theme.compactControlRadius
+                                color: {
+                                    if (player.duration > 0
+                                            && player.position >= modelData.start * 1000
+                                            && player.position <= modelData.end * 1000) {
+                                        return Theme.accentSurface
+                                    }
+                                    return Theme.transparent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: player.seek(modelData.start * 1000)
+                                    cursorShape: Qt.PointingHandCursor
+                                }
+
+                                Text {
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    text: formatTimestamp(modelData.start) + "  "
+                                        + modelData.text
+                                    color: player.duration > 0
+                                        && player.position >= modelData.start * 1000
+                                        && player.position <= modelData.end * 1000
+                                        ? Theme.accentSelectionText
+                                        : Theme.textPrimary
+                                    font.pixelSize: Theme.fontBody
+                                    elide: Text.ElideRight
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -330,6 +445,7 @@ ApplicationWindow {
     // palette from `uiPrefs.dark`.
     Component.onCompleted: {
         settingsDialog.uiPrefs = uiPrefs
+        settingsDialog.modelPrefs = modelPrefs
         Theme.mode = uiPrefs.mode
         uiPrefs.modeChanged.connect(() => {
             Theme.mode = uiPrefs.mode
@@ -344,5 +460,11 @@ ApplicationWindow {
         const minutes = Math.floor(totalSeconds / 60)
         const seconds = totalSeconds % 60
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+    }
+
+    function formatTimestamp(seconds: real) : string {
+        const minutes = Math.floor(seconds / 60)
+        const rest = seconds - minutes * 60
+        return minutes + ":" + (rest < 10 ? "0" : "") + rest.toFixed(1)
     }
 }

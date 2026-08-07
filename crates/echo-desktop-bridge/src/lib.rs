@@ -36,6 +36,24 @@ mod ffi {
         levels: Vec<WaveformLevelWire>,
     }
 
+    /// One transcript segment for display and click-to-seek.
+    #[derive(Debug)]
+    struct TranscriptSegmentWire {
+        text: String,
+        start: f64,
+        end: f64,
+    }
+
+    /// One transcript evidence record.
+    #[derive(Debug)]
+    struct TranscriptWire {
+        model: String,
+        model_version: String,
+        language: String,
+        text: String,
+        segments: Vec<TranscriptSegmentWire>,
+    }
+
     extern "Rust" {
         type LibrarySession;
 
@@ -56,6 +74,21 @@ mod ffi {
             self: &LibrarySession,
             asset_id: &str,
         ) -> Result<WaveformArtifactWire>;
+        /// Returns every transcript evidence record for an asset, newest
+        /// first.
+        fn session_transcripts(
+            self: &LibrarySession,
+            asset_id: &str,
+        ) -> Result<Vec<TranscriptWire>>;
+        /// Transcribes an asset with the configured MLX worker. Stateless so
+        /// it can run on a background thread.
+        fn transcribe_asset(
+            catalog_path: &str,
+            asset_id: &str,
+            model_root: &str,
+            python: &str,
+            worker_script: &str,
+        ) -> Result<u32>;
     }
 }
 
@@ -110,4 +143,34 @@ impl LibrarySession {
         self.waveform_artifact(asset_id)
             .map_err(|error| error.message)
     }
+
+    /// Returns every transcript evidence record for an asset, newest first.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the catalog read fails.
+    fn session_transcripts(&self, asset_id: &str) -> Result<Vec<ffi::TranscriptWire>, String> {
+        self.transcripts(asset_id).map_err(|error| error.message)
+    }
 }
+
+/// Transcribes an asset with the configured MLX worker. Stateless so it can
+/// run on a background thread.
+///
+/// # Errors
+///
+/// Returns the session error message when the model is missing or the worker
+/// fails.
+pub fn transcribe_asset(
+    catalog_path: &str,
+    asset_id: &str,
+    model_root: &str,
+    python: &str,
+    worker_script: &str,
+) -> Result<u32, String> {
+    session::transcribe_asset(catalog_path, asset_id, model_root, python, worker_script)
+        .map_err(|error| error.message)
+}
+
+#[cfg(test)]
+mod tests;

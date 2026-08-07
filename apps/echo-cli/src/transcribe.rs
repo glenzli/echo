@@ -61,8 +61,5 @@ pub(crate) fn run_transcribe(
 }
 
 pub(crate) fn default_python() -> PathBuf {
-    std::env::var_os("ECHO_MLX_PYTHON").map_or_else(
-        || PathBuf::from("python3"),
-        PathBuf::from,
-    )
+    std::env::var_os("ECHO_MLX_PYTHON").map_or_else(|| PathBuf::from("python3"), PathBuf::from)
 }

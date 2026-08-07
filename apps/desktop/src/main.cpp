@@ -2,6 +2,7 @@
 //! playback controller, and UI preferences, then load the Audio Space shell.
 
 #include "desktop_backend.hpp"
+#include "model_preferences.hpp"
 #include "playback_controller.hpp"
 #include "ui_preferences.hpp"
 
@@ -47,6 +48,13 @@ int main(int argc, char* argv[]) {
         "UiPreferences",
         "UiPreferences is created by the host application"
     );
+    qmlRegisterUncreatableType<ModelPreferences>(
+        "EchoDesktop",
+        0,
+        1,
+        "ModelPreferences",
+        "ModelPreferences is created by the host application"
+    );
 
     const std::string catalog = argc > 1 ? std::string(argv[1]) : default_catalog_path();
     const std::string cache_root = argc > 2 ? std::string(argv[2]) : default_cache_root();
@@ -58,11 +66,13 @@ int main(int argc, char* argv[]) {
         DesktopBackend backend(std::move(session));
         PlaybackController player;
         UiPreferences ui_prefs(application);
+        ModelPreferences model_prefs;
 
         QQmlApplicationEngine engine;
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
+        engine.rootContext()->setContextProperty(QStringLiteral("modelPrefs"), &model_prefs);
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {
             std::cerr << "Echo QML shell failed to load" << std::endl;

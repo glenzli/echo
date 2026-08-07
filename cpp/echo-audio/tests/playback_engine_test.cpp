@@ -106,10 +106,18 @@ int main(int argc, char* argv[]) {
         std::size_t total = 0;
         std::uint64_t last_position = 0;
         bool nonzero = false;
+        std::vector<float> dumped;
+        const bool want_dump = std::getenv("ECHO_PLAYBACK_DUMP") != nullptr;
+        if (want_dump) {
+            dumped.reserve(480000);
+        }
         for (int attempt = 0; attempt < 40; ++attempt) {
             const std::size_t pulled = session.read(buffer.data(), 4800);
             for (std::size_t index = 0; index < pulled; ++index) {
                 nonzero = nonzero || buffer[index] != 0.0F;
+                if (want_dump) {
+                    dumped.push_back(buffer[index]);
+                }
             }
             total += pulled;
             last_position = session.position_millis();
@@ -117,6 +125,15 @@ int main(int argc, char* argv[]) {
                 break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        if (want_dump && !dumped.empty()) {
+            if (const char* dump_path = std::getenv("ECHO_PLAYBACK_DUMP")) {
+                std::FILE* dump = std::fopen(dump_path, "wb");
+                if (dump != nullptr) {
+                    std::fwrite(dumped.data(), sizeof(float), dumped.size(), dump);
+                    std::fclose(dump);
+                }
+            }
         }
         std::printf(
             "standalone: pulled %zu frames (%s), position %llu/%llu ms, buffered %zu, "
@@ -200,6 +217,34 @@ int main(int argc, char* argv[]) {
             "stop returns while the ring is full"
         );
         std::remove(second_path.c_str());
+    }
+
+    // Regression: 24 kHz sources (TTS output) upsample 2x to the canonical
+    // 48 kHz; the resampler output buffer must be sized by the exact output
+    // count or decode overflows the heap and distorts playback.
+    {
+        const std::filesystem::path upsample_path =
+            std::filesystem::temp_directory_path() /
+            ("echo-playback-upsample-" +
+             std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) +
+             ".wav");
+        {
+            std::ofstream file(upsample_path, std::ios::binary);
+            const std::string wav = synthesize_sine_wav(24000, 1.0);
+            file.write(wav.data(), static_cast<std::streamsize>(wav.size()));
+        }
+        echo::audio::PlaybackSession upsample(upsample_path.string());
+        std::vector<float> check(4800, 0.0F);
+        const std::size_t pulled = pull_until(upsample, check.data(), 1000, 100);
+        expect(pulled >= 100, "24 kHz source decodes");
+        bool sane = true;
+        for (std::size_t index = 0; index < pulled; ++index) {
+            const float value = check[index];
+            sane = sane && !std::isnan(value) && value >= -1.0F && value <= 1.0F;
+        }
+        expect(sane, "upsampled samples stay finite and bounded");
+        upsample.stop();
+        std::remove(upsample_path.c_str());
     }
 
     // Stop: reads return zero immediately.

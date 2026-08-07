@@ -1,6 +1,7 @@
 //! EchoSettingsDialog: application settings. Appearance mode (System / Light
-//! / Dark) persists through UiPreferences; the effective palette follows the
-//! platform scheme in System mode.
+//! / Dark) persists through UiPreferences; model access is configured through
+//! ModelPreferences (Echo never downloads models — the user maintains the
+//! shared HuggingFace cache).
 
 import QtQuick
 import QtQuick.Controls
@@ -10,17 +11,18 @@ import EchoDesktop
 Dialog {
     id: dialog
 
-    /// Host-provided UI preferences (assigned after the shell composes).
+    /// Host-provided preferences (assigned after the shell composes).
     property UiPreferences uiPrefs: null
+    property ModelPreferences modelPrefs: null
 
     title: qsTr("Settings")
     modal: true
     standardButtons: Dialog.Close
-    width: 340
+    width: 420
     padding: Theme.panelPadding
 
     contentItem: ColumnLayout {
-        spacing: 12
+        spacing: 14
 
         Text {
             text: qsTr("Appearance")
@@ -79,6 +81,76 @@ Dialog {
             font.pixelSize: Theme.fontMeta
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.border
+        }
+
+        Text {
+            text: qsTr("Models")
+            color: Theme.textPrimary
+            font.pixelSize: Theme.fontSection
+            font.bold: true
+        }
+
+        Text {
+            text: qsTr("Echo reads models from the shared HuggingFace cache "
+                       + "and never downloads them. Point the interpreter at "
+                       + "a Python with mlx-audio installed.")
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontMeta
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        GridLayout {
+            Layout.fillWidth: true
+            columns: 2
+            columnSpacing: 8
+            rowSpacing: 8
+
+            Text {
+                text: qsTr("Model root")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontBody
+            }
+
+            TextField {
+                Layout.fillWidth: true
+                text: modelPrefs.modelRoot
+                onEditingFinished: modelPrefs.modelRoot = text
+                selectByMouse: true
+            }
+
+            Text {
+                text: qsTr("Python")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontBody
+            }
+
+            TextField {
+                Layout.fillWidth: true
+                text: modelPrefs.python
+                placeholderText: qsTr("python3")
+                onEditingFinished: modelPrefs.python = text
+                selectByMouse: true
+            }
+
+            Text {
+                text: qsTr("Worker")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontBody
+            }
+
+            TextField {
+                Layout.fillWidth: true
+                text: modelPrefs.workerScript
+                onEditingFinished: modelPrefs.workerScript = text
+                selectByMouse: true
+            }
         }
     }
 }
