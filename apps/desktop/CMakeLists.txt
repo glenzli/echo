@@ -107,7 +107,13 @@ qt_add_executable(
     src/desktop_backend.hpp
     src/playback_controller.cpp
     src/playback_controller.hpp
+    src/ui_preferences.cpp
+    src/ui_preferences.hpp
+    src/mac_titlebar.hpp
 )
+if(APPLE)
+    target_sources(echo-desktop PRIVATE src/mac_titlebar.mm)
+endif()
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(
     echo-desktop
@@ -116,8 +122,18 @@ qt_add_qml_module(
     QML_FILES
         qml/Main.qml
         qml/EchoButton.qml
+        qml/EchoIcon.qml
+        qml/EchoIconButton.qml
+        qml/EchoSettingsDialog.qml
         qml/Theme.qml
         qml/WaveformView.qml
+    RESOURCES
+        icons/play.svg
+        icons/pause.svg
+        icons/stop.svg
+        icons/refresh.svg
+        icons/tune.svg
+        icons/waveform.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

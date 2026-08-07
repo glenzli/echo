@@ -9,6 +9,12 @@ project(
 
 option(ECHO_BUILD_DESKTOP "Build the Qt Quick desktop application" OFF)
 
+if(APPLE)
+    # The desktop toolbar fuses with the native title bar, so Objective-C++
+    # must be available at the project boundary.
+    enable_language(OBJCXX)
+endif()
+
 include(CTest)
 
 add_subdirectory(cpp/echo-audio)

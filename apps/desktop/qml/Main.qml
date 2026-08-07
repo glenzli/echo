@@ -1,10 +1,11 @@
-//! Echo application shell: Audio Space is the first screen. Listen first,
-//! edit second — selecting a recording opens the waveform and playback
-//! controls below the list.
+//! Echo application shell: Audio Space is the first screen. The title bar and
+//! toolbar are one fused chrome surface (window dragging over its empty
+//! area); toolbar actions are icon-first.
 
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import EchoDesktop
 
 ApplicationWindow {
@@ -15,66 +16,112 @@ ApplicationWindow {
     minimumWidth: 760
     minimumHeight: 480
     visible: true
-    title: qsTr("Echo")
+    // macOS paints its own title strip above the QML scene; the window title
+    // would render a second "Echo" there, so it stays empty (Shadow contract).
+    title: Qt.platform.os === "osx" ? "" : qsTr("Echo")
 
-    color: Theme.background
+    // Keep the native frame and traffic-light controls; the toolbar paints
+    // through the transparent title-bar strip (fused title bar + toolbar).
+    flags: Qt.Window | Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
+
+    color: Theme.window
 
     property var selectedAsset: null
+    property bool appearancePinned: false
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
+    EchoSettingsDialog {
+        id: settingsDialog
+    }
+
+    // Fused title bar + toolbar: the QML scene is offset below the native
+    // title strip (32 pt), so the toolbar is pulled up by that amount and
+    // paints from the very top of the window, under the traffic lights.
+    // The actions row (22 pt) then shares one line with the lights.
+    Rectangle {
+        id: titleBar
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 44
+        y: window.visibility === Window.FullScreen ? 0 : -32
+        color: Theme.chrome
 
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 48
-            color: Theme.surface
-            border.color: Theme.divider
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Theme.border
+        }
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                spacing: 12
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: Math.max(
+                SafeArea.margins.left,
+                Qt.platform.os === "osx" && window.visibility !== Window.FullScreen ? 96 : 16
+            )
+            anchors.rightMargin: Math.max(
+                SafeArea.margins.right,
+                Qt.platform.os === "windows" ? 152 : 16
+            )
+            spacing: 8
 
-                Text {
-                    text: qsTr("Echo")
-                    color: Theme.textPrimary
-                    font.pixelSize: 15
-                    font.bold: true
-                }
+            Text {
+                text: qsTr("Echo")
+                color: Theme.textPrimary
+                font.pixelSize: 14
+                font.bold: true
+            }
 
-                Item { Layout.fillWidth: true }
+            Text {
+                text: qsTr("Audio Space")
+                color: Theme.textSecondary
+                font.pixelSize: 12
+            }
 
-                Text {
-                    text: backend.catalogPath
-                    color: Theme.textSecondary
-                    font.pixelSize: 11
-                    elide: Text.ElideMiddle
-                    Layout.maximumWidth: 280
-                }
+            Item {
+                Layout.fillWidth: true
 
-                EchoButton {
-                    text: qsTr("Refresh")
-                    onClicked: backend.refresh()
+                // Native window dragging over the empty chrome area.
+                DragHandler {
+                    acceptedButtons: Qt.LeftButton
+                    target: null
+                    onActiveChanged: {
+                        if (active) {
+                            window.startSystemMove()
+                        }
+                    }
                 }
             }
+
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/refresh.svg"
+                toolTipText: qsTr("Refresh library")
+                onClicked: backend.refresh()
+            }
+
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/tune.svg"
+                toolTipText: qsTr("Settings")
+                onClicked: settingsDialog.open()
+            }
         }
+    }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.divider
-        }
+    Item {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: titleBar.bottom
+        anchors.bottom: parent.bottom
 
-        Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 24
+            spacing: 16
 
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 24
-                spacing: 16
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
 
                 Text {
                     text: qsTr("Audio Space")
@@ -86,173 +133,207 @@ ApplicationWindow {
                 Text {
                     text: qsTr("%1 recordings in your library").arg(backend.assetCount)
                     color: Theme.textSecondary
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.fontBody
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: Theme.surface
-                    radius: 10
-                    border.color: Theme.divider
+                Item { Layout.fillWidth: true }
 
-                    ListView {
-                        id: assetList
-
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 4
-                        clip: true
-                        model: backend.listAssets()
-
-                        delegate: Rectangle {
-                            required property var modelData
-
-                            width: assetList.width - 16
-                            height: 56
-                            radius: 8
-                            color: selectedAsset !== null && selectedAsset.id === modelData.id
-                                ? Qt.lighter(Theme.surfaceRaised, 1.12)
-                                : Theme.surfaceRaised
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    window.selectedAsset = modelData
-                                    player.play(modelData.path)
-                                }
-                            }
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-                                spacing: 12
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-
-                                    Text {
-                                        text: modelData.path
-                                        color: Theme.textPrimary
-                                        font.pixelSize: 13
-                                        elide: Text.ElideMiddle
-                                        Layout.fillWidth: true
-                                    }
-
-                                    Text {
-                                        text: qsTr("%1 · %2 · level %3")
-                                            .arg(modelData.codec)
-                                            .arg(formatDuration(modelData.durationMillis))
-                                            .arg(modelData.maxLevel)
-                                        color: Theme.textSecondary
-                                        font.pixelSize: 11
-                                    }
-                                }
-                            }
-                        }
-
-                        ScrollBar.vertical: ScrollBar {}
-                    }
+                Text {
+                    text: backend.catalogPath
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontMeta
+                    elide: Text.ElideMiddle
+                    Layout.maximumWidth: 260
                 }
+            }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 196
-                    visible: selectedAsset !== null
-                    color: Theme.surface
-                    radius: 10
-                    border.color: Theme.divider
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: Theme.panel
+                radius: 10
+                border.color: Theme.border
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 8
+                ListView {
+                    id: assetList
 
-                        Text {
-                            text: selectedAsset !== null ? selectedAsset.path : ""
-                            color: Theme.textPrimary
-                            font.pixelSize: 13
-                            elide: Text.ElideMiddle
-                            Layout.fillWidth: true
-                        }
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 4
+                    clip: true
+                    model: backend.listAssets()
 
-                        WaveformView {
-                            id: waveform
+                    delegate: Rectangle {
+                        required property var modelData
 
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            levels: selectedAsset !== null
-                                ? backend.waveformForAsset(selectedAsset.id)
-                                : []
-                            progress: player.duration > 0
-                                ? player.position / player.duration
-                                : 0.0
+                        width: assetList.width - 16
+                        height: 56
+                        radius: 8
+                        color: selectedAsset !== null && selectedAsset.id === modelData.id
+                            ? Theme.surfaceSelected
+                            : Theme.panelRaised
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                window.selectedAsset = modelData
+                                player.play(modelData.path)
+                            }
                         }
 
                         RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 10
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 12
 
-                            EchoButton {
-                                text: player.isPlaying ? qsTr("Pause") : qsTr("Play")
-                                enabled: selectedAsset !== null
-                                onClicked: {
-                                    if (player.isPlaying || player.isPaused) {
-                                        player.togglePause()
-                                    } else {
-                                        player.play(selectedAsset.path)
-                                    }
+                            EchoIcon {
+                                source: "qrc:/EchoDesktop/icons/waveform.svg"
+                                size: 18
+                                color: Theme.textSecondary
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Text {
+                                    text: modelData.path
+                                    color: Theme.textPrimary
+                                    font.pixelSize: 13
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: qsTr("%1 · %2 · level %3")
+                                        .arg(modelData.codec)
+                                        .arg(formatDuration(modelData.durationMillis))
+                                        .arg(modelData.maxLevel)
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 11
                                 }
                             }
+                        }
+                    }
 
-                            EchoButton {
-                                text: qsTr("Stop")
-                                enabled: player.duration > 0
-                                onClicked: player.stop()
+                    ScrollBar.vertical: ScrollBar {}
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 196
+                visible: selectedAsset !== null
+                color: Theme.panel
+                radius: 10
+                border.color: Theme.border
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 8
+
+                    Text {
+                        text: selectedAsset !== null ? selectedAsset.path : ""
+                        color: Theme.textPrimary
+                        font.pixelSize: 13
+                        elide: Text.ElideMiddle
+                        Layout.fillWidth: true
+                    }
+
+                    WaveformView {
+                        id: waveform
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        levels: selectedAsset !== null
+                            ? backend.waveformForAsset(selectedAsset.id)
+                            : []
+                        progress: player.duration > 0
+                            ? player.position / player.duration
+                            : 0.0
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        EchoIconButton {
+                            source: player.isPlaying
+                                ? "qrc:/EchoDesktop/icons/pause.svg"
+                                : "qrc:/EchoDesktop/icons/play.svg"
+                            toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Play")
+                            enabled: selectedAsset !== null
+                            buttonSize: 34
+                            iconSize: 18
+                            onClicked: {
+                                if (player.isPlaying || player.isPaused) {
+                                    player.togglePause()
+                                } else {
+                                    player.play(selectedAsset.path)
+                                }
                             }
+                        }
 
-                            Text {
-                                text: formatDuration(player.position) + " / "
-                                    + formatDuration(player.duration)
-                                color: Theme.textSecondary
-                                font.pixelSize: 11
-                            }
+                        EchoIconButton {
+                            source: "qrc:/EchoDesktop/icons/stop.svg"
+                            toolTipText: qsTr("Stop")
+                            enabled: player.duration > 0
+                            buttonSize: 34
+                            iconSize: 18
+                            onClicked: player.stop()
+                        }
 
-                            Item { Layout.fillWidth: true }
+                        Text {
+                            text: formatDuration(player.position) + " / "
+                                + formatDuration(player.duration)
+                            color: Theme.textSecondary
+                            font.pixelSize: 11
+                        }
 
-                            Text {
-                                text: qsTr("Volume")
-                                color: Theme.textSecondary
-                                font.pixelSize: 11
-                            }
+                        Item { Layout.fillWidth: true }
 
-                            Slider {
-                                id: volumeSlider
-
-                                from: 0
-                                to: 1
-                                value: player.volume
-                                Layout.preferredWidth: 120
-                                onMoved: player.volume = value
-                            }
+                        Text {
+                            text: qsTr("Volume")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontMeta
                         }
 
                         Slider {
-                            id: seekSlider
+                            id: volumeSlider
 
-                            Layout.fillWidth: true
                             from: 0
-                            to: Math.max(1, player.duration)
-                            value: player.duration > 0 ? player.position : 0
-                            enabled: player.duration > 0
-                            onMoved: player.seek(value)
+                            to: 1
+                            value: player.volume
+                            Layout.preferredWidth: 120
+                            onMoved: player.volume = value
                         }
+                    }
+
+                    Slider {
+                        id: seekSlider
+
+                        Layout.fillWidth: true
+                        from: 0
+                        to: Math.max(1, player.duration)
+                        value: player.duration > 0 ? player.position : 0
+                        enabled: player.duration > 0
+                        onMoved: player.seek(value)
                     }
                 }
             }
         }
+    }
+
+    // Appearance follows UiPreferences; the Theme singleton resolves the
+    // palette from `uiPrefs.dark`.
+    Component.onCompleted: {
+        settingsDialog.uiPrefs = uiPrefs
+        Theme.mode = uiPrefs.mode
+        uiPrefs.modeChanged.connect(() => {
+            Theme.mode = uiPrefs.mode
+        })
     }
 
     function formatDuration(millis: int) : string {

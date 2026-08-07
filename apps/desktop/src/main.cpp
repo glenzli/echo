@@ -1,12 +1,18 @@
-//! Process startup: open the Library session, register the desktop backend
-//! and playback controller, and load the Audio Space shell.
+//! Process startup: open the Library session, register the desktop backend,
+//! playback controller, and UI preferences, then load the Audio Space shell.
 
 #include "desktop_backend.hpp"
 #include "playback_controller.hpp"
+#include "ui_preferences.hpp"
+
+#if defined(Q_OS_MACOS)
+#include "mac_titlebar.hpp"
+#endif
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlEngine>
 #include <QQuickWindow>
 #include <QTimer>
 
@@ -34,6 +40,13 @@ int main(int argc, char* argv[]) {
     QGuiApplication::setApplicationName(QStringLiteral("Echo"));
     QGuiApplication::setOrganizationName(QStringLiteral("Echo"));
     qputenv("QT_QUICK_CONTROLS_STYLE", "Basic");
+    qmlRegisterUncreatableType<UiPreferences>(
+        "EchoDesktop",
+        0,
+        1,
+        "UiPreferences",
+        "UiPreferences is created by the host application"
+    );
 
     const std::string catalog = argc > 1 ? std::string(argv[1]) : default_catalog_path();
     const std::string cache_root = argc > 2 ? std::string(argv[2]) : default_cache_root();
@@ -44,15 +57,22 @@ int main(int argc, char* argv[]) {
 
         DesktopBackend backend(std::move(session));
         PlaybackController player;
+        UiPreferences ui_prefs(application);
 
         QQmlApplicationEngine engine;
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
+        engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {
             std::cerr << "Echo QML shell failed to load" << std::endl;
             return 1;
         }
+#if defined(Q_OS_MACOS)
+        // The fused toolbar spans the window top (0-44 pt); its center (22)
+        // puts the lights in the same row as the actions.
+        installMacTitleBarAlignment(qobject_cast<QQuickWindow*>(engine.rootObjects().first()), 22);
+#endif
         // Headless smoke aids: ECHO_DEBUG_SCREENSHOT=/path.png captures the
         // first window after the shell settles; ECHO_DEBUG_AUTOPLAY=/file.wav
         // plays a recording first (used together for automated playback
