@@ -182,110 +182,125 @@
     <name>Main</name>
     <message>
         <location filename="../qml/Main.qml" line="21"/>
-        <location filename="../qml/Main.qml" line="183"/>
+        <location filename="../qml/Main.qml" line="198"/>
         <source>Echo</source>
         <translation>Echo</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="77"/>
-        <source>All</source>
-        <translation>全部</translation>
+        <location filename="../qml/Main.qml" line="78"/>
+        <source>Time</source>
+        <translation>时间</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="102"/>
+        <location filename="../qml/Main.qml" line="80"/>
+        <source>All recordings</source>
+        <translation>全部录音</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="95"/>
+        <source>Memories</source>
+        <translation>记忆</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="103"/>
+        <source>Mood</source>
+        <translation>情绪</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="117"/>
         <source>Today</source>
         <translation>今天</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="106"/>
+        <location filename="../qml/Main.qml" line="121"/>
         <source>This week</source>
         <translation>本周</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="110"/>
+        <location filename="../qml/Main.qml" line="125"/>
         <source>This month</source>
         <translation>本月</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="113"/>
+        <location filename="../qml/Main.qml" line="128"/>
         <source>This year</source>
         <translation>今年</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="190"/>
-        <location filename="../qml/Main.qml" line="212"/>
-        <location filename="../qml/Main.qml" line="254"/>
+        <location filename="../qml/Main.qml" line="205"/>
+        <location filename="../qml/Main.qml" line="227"/>
+        <location filename="../qml/Main.qml" line="344"/>
         <source>Audio Space</source>
         <translation>声音空间</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="190"/>
-        <location filename="../qml/Main.qml" line="221"/>
+        <location filename="../qml/Main.qml" line="205"/>
+        <location filename="../qml/Main.qml" line="236"/>
         <source>Library</source>
         <translation>图库</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="230"/>
+        <location filename="../qml/Main.qml" line="245"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="261"/>
+        <location filename="../qml/Main.qml" line="351"/>
         <source>%1 recordings in your library</source>
         <translation>图库中共有 %1 条录音</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="273"/>
+        <location filename="../qml/Main.qml" line="363"/>
         <source>Search transcripts…</source>
         <translation>搜索转写…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="555"/>
+        <location filename="../qml/Main.qml" line="617"/>
         <source>Missing</source>
         <translation>缺失</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="596"/>
+        <location filename="../qml/Main.qml" line="661"/>
         <source>Transcribe with local ASR</source>
         <translation>使用本地 ASR 转写</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="607"/>
+        <location filename="../qml/Main.qml" line="672"/>
         <source>Transcribing…</source>
         <translation>转写中…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="634"/>
+        <location filename="../qml/Main.qml" line="699"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="634"/>
+        <location filename="../qml/Main.qml" line="699"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="649"/>
+        <location filename="../qml/Main.qml" line="714"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="666"/>
+        <location filename="../qml/Main.qml" line="731"/>
         <source>Volume</source>
         <translation>音量</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="802"/>
+        <location filename="../qml/Main.qml" line="867"/>
         <source>Analyzing…</source>
         <translation>分析中…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="803"/>
+        <location filename="../qml/Main.qml" line="868"/>
         <source>Working: %1 pending · %2 running · %3 done</source>
         <translation>处理中：%1 等待 · %2 进行 · %3 完成</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="819"/>
+        <location filename="../qml/Main.qml" line="884"/>
         <source>unknown duration</source>
         <translation>时长未知</translation>
     </message>

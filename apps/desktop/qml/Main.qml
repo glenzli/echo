@@ -48,7 +48,7 @@ ApplicationWindow {
     property string selectedTag: "all"
 
     ListModel {
-        id: tagModel
+        id: collectionModel
     }
 
     ListModel {
@@ -72,24 +72,39 @@ ApplicationWindow {
                 asset.timeBucket = timeBucket(asset.importedAtMillis)
                 allAssets.push(asset)
             }
-            // Rebuild the tag row from contextual evidence.
-            tagModel.clear()
-            tagModel.append({ key: "all", label: qsTr("All") })
+            // Rebuild the collections rail from contextual evidence.
+            collectionModel.clear()
+            collectionModel.append({
+                group: qsTr("Time"),
+                key: "all",
+                label: qsTr("All recordings"),
+                count: assets.length
+            })
             const events = {}
             const moods = {}
             for (const asset of assets) {
                 if (asset.eventType.length > 0) {
-                    events[asset.eventType] = true
+                    events[asset.eventType] = (events[asset.eventType] || 0) + 1
                 }
                 if (asset.mood.length > 0) {
-                    moods[asset.mood] = true
+                    moods[asset.mood] = (moods[asset.mood] || 0) + 1
                 }
             }
             for (const event of Object.keys(events).sort()) {
-                tagModel.append({ key: event, label: event })
+                collectionModel.append({
+                    group: qsTr("Memories"),
+                    key: event,
+                    label: event,
+                    count: events[event]
+                })
             }
             for (const mood of Object.keys(moods).sort()) {
-                tagModel.append({ key: mood, label: mood })
+                collectionModel.append({
+                    group: qsTr("Mood"),
+                    key: mood,
+                    label: mood,
+                    count: moods[mood]
+                })
             }
             refilter()
         }
@@ -239,19 +254,94 @@ ApplicationWindow {
         anchors.top: titleBar.bottom
         anchors.bottom: parent.bottom
 
-        // Audio Space workspace (list first; edit second).
-        ColumnLayout {
+        // Audio Space workspace: three columns like Shadow — collections rail,
+        // center cards, right detail sidebar. Listen first; edit second.
+        RowLayout {
             anchors.fill: parent
             anchors.margins: 24
             spacing: 16
             visible: workspaceIndex === 0
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
+            // Left rail: sound-space collections with counts.
+            Rectangle {
+                Layout.preferredWidth: 190
+                Layout.fillHeight: true
+                color: Theme.panel
+                radius: 10
+                border.color: Theme.border
 
-                Text {
-                    text: qsTr("Audio Space")
+                ListView {
+                    id: collectionList
+
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    clip: true
+                    model: collectionModel
+
+                    section.property: "group"
+                    section.delegate: Text {
+                        height: 24
+                        text: section
+                        color: Theme.textSecondary
+                        font.pixelSize: Theme.fontMeta
+                        font.bold: true
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    delegate: Rectangle {
+                        required property var modelData
+
+                        width: collectionList.width - 16
+                        height: 30
+                        radius: Theme.compactControlRadius
+                        color: selectedTag === modelData.key
+                            ? Theme.accentSurfaceQuiet : Theme.transparent
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                selectedTag = modelData.key
+                                assetModel.refilter()
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 8
+                            spacing: 6
+
+                            Text {
+                                text: modelData.label
+                                color: selectedTag === modelData.key
+                                    ? Theme.accentSelectionText : Theme.textPrimary
+                                font.pixelSize: Theme.fontBody
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                text: String(modelData.count)
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontMeta
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Center column: header, search, sectioned cards.
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 16
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Text {
+                        text: qsTr("Audio Space")
                     color: Theme.textPrimary
                     font.pixelSize: 22
                     font.bold: true
@@ -384,34 +474,6 @@ ApplicationWindow {
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            // Memory tags: derived from contextual evidence (event types and
-            // moods present in the library).
-            ListView {
-                id: tagRow
-
-                Layout.fillWidth: true
-                Layout.preferredHeight: 28
-                orientation: ListView.Horizontal
-                spacing: 6
-                clip: true
-                model: tagModel
-
-                delegate: EchoButton {
-                    required property var modelData
-
-                    height: 26
-                    implicitHeight: 26
-                    implicitWidth: Math.max(64, implicitContentWidth + 20)
-                    text: modelData.label
-                    ghost: true
-                    selected: selectedTag === modelData.key
-                    onClicked: {
-                        selectedTag = modelData.key
-                        assetModel.refilter()
                     }
                 }
             }
@@ -566,9 +628,12 @@ ApplicationWindow {
                 }
             }
 
+            }
+
+            // Right sidebar: the selected recording's detail (Shadow-style).
             Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: selectedAsset !== null ? 320 : 0
+                Layout.preferredWidth: 320
+                Layout.fillHeight: true
                 visible: selectedAsset !== null
                 color: Theme.panel
                 radius: 10
