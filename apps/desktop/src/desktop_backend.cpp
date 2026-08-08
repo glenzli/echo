@@ -168,7 +168,9 @@ bool DesktopBackend::transcribing() const {
 void DesktopBackend::startWorkers(
     const QString& modelRoot,
     const QString& python,
-    const QString& workerScript
+    const QString& workerScript,
+    const QString& ollamaEndpoint,
+    const QString& ollamaModel
 ) {
     try {
         session_->session_start_workers(
