@@ -96,8 +96,7 @@ pub(crate) fn run_jobs(catalog_path: &Path) -> anyhow::Result<()> {
 }
 
 pub(crate) fn default_cache_root() -> PathBuf {
-    std::env::var_os("ECHO_CACHE")
-        .map_or_else(|| PathBuf::from("cache"), PathBuf::from)
+    std::env::var_os("ECHO_CACHE").map_or_else(|| PathBuf::from("cache"), PathBuf::from)
 }
 
 fn now_millis() -> i64 {

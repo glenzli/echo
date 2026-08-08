@@ -12,30 +12,37 @@ constexpr auto kWorkerKey = "models/worker";
 } // namespace
 
 ModelPreferences::ModelPreferences(QObject* parent) : QObject(parent) {
-    const QString config_dir =
-        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    const QString config_dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     QDir().mkpath(config_dir);
-    settings_ = std::make_unique<QSettings>(config_dir + QStringLiteral("/echo.conf"),
-                                            QSettings::IniFormat);
-    model_root_ = settings_->value(QString::fromLatin1(kModelRootKey),
-                                   defaultModelRoot())
-                      .toString();
-    python_ = settings_->value(QString::fromLatin1(kPythonKey),
-                               QString::fromLocal8Bit(qgetenv("ECHO_MLX_PYTHON")))
+    settings_ = std::make_unique<QSettings>(
+        config_dir + QStringLiteral("/echo.conf"),
+        QSettings::IniFormat
+    );
+    model_root_ =
+        settings_->value(QString::fromLatin1(kModelRootKey), defaultModelRoot()).toString();
+    python_ = settings_
+                  ->value(
+                      QString::fromLatin1(kPythonKey),
+                      QString::fromLocal8Bit(qgetenv("ECHO_MLX_PYTHON"))
+                  )
                   .toString();
     if (python_.isEmpty()) {
         python_ = QStringLiteral("python3");
     }
-    worker_script_ = settings_->value(
-                         QString::fromLatin1(kWorkerKey),
-                         QString::fromLocal8Bit(qgetenv("ECHO_ASR_WORKER")))
+    worker_script_ = settings_
+                         ->value(
+                             QString::fromLatin1(kWorkerKey),
+                             QString::fromLocal8Bit(qgetenv("ECHO_ASR_WORKER"))
+                         )
                          .toString();
     if (worker_script_.isEmpty()) {
         worker_script_ = QStringLiteral("tools/asr/transcribe.py");
     }
 }
 
-QString ModelPreferences::modelRoot() const { return model_root_; }
+QString ModelPreferences::modelRoot() const {
+    return model_root_;
+}
 
 void ModelPreferences::setModelRoot(const QString& root) {
     if (root == model_root_) {
@@ -46,7 +53,9 @@ void ModelPreferences::setModelRoot(const QString& root) {
     emit modelRootChanged();
 }
 
-QString ModelPreferences::python() const { return python_; }
+QString ModelPreferences::python() const {
+    return python_;
+}
 
 void ModelPreferences::setPython(const QString& python) {
     if (python == python_) {
@@ -57,7 +66,9 @@ void ModelPreferences::setPython(const QString& python) {
     emit pythonChanged();
 }
 
-QString ModelPreferences::workerScript() const { return worker_script_; }
+QString ModelPreferences::workerScript() const {
+    return worker_script_;
+}
 
 void ModelPreferences::setWorkerScript(const QString& script) {
     if (script == worker_script_) {

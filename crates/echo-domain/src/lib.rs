@@ -22,7 +22,7 @@ pub use analysis::{
 };
 pub use audio_asset::AudioAsset;
 pub use ids::AssetId;
-pub use original::{ContentHash, OriginalRef};
+pub use original::{AssetPathStatus, ContentHash, OriginalRef};
 
 #[cfg(test)]
 mod tests;

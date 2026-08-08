@@ -19,6 +19,7 @@ mod ffi {
         duration_millis: u64,
         imported_at_millis: i64,
         max_level: u8,
+        path_status: String,
     }
 
     /// One pyramid level of a cached waveform artifact.
@@ -52,6 +53,23 @@ mod ffi {
         language: String,
         text: String,
         segments: Vec<TranscriptSegmentWire>,
+    }
+
+    /// Aggregate background job statistics.
+    #[derive(Debug)]
+    struct JobStatsWire {
+        pending: u64,
+        running: u64,
+        done: u64,
+        failed: u64,
+    }
+
+    /// One configured scan root.
+    #[derive(Debug)]
+    struct ScanRootWire {
+        id: i64,
+        root: String,
+        enabled: bool,
     }
 
     extern "Rust" {
@@ -89,6 +107,23 @@ mod ffi {
             python: &str,
             worker_script: &str,
         ) -> Result<u32>;
+        /// Starts the background worker pool (idempotent).
+        fn session_start_workers(
+            self: &LibrarySession,
+            model_root: &str,
+            python: &str,
+            worker_script: &str,
+        ) -> Result<()>;
+        /// Queues scans for every enabled root (incremental detection).
+        fn session_queue_scans(self: &LibrarySession) -> Result<u64>;
+        /// Reads aggregate job statistics.
+        fn session_job_stats(self: &LibrarySession) -> Result<JobStatsWire>;
+        /// Lists configured scan roots.
+        fn session_list_roots(self: &LibrarySession) -> Result<Vec<ScanRootWire>>;
+        /// Adds a scan root and queues its scan.
+        fn session_add_root(self: &LibrarySession, root: &str) -> Result<()>;
+        /// Removes a scan root by id.
+        fn session_remove_root(self: &LibrarySession, id: i64) -> Result<()>;
     }
 }
 
@@ -170,6 +205,68 @@ pub fn transcribe_asset(
 ) -> Result<u32, String> {
     session::transcribe_asset(catalog_path, asset_id, model_root, python, worker_script)
         .map_err(|error| error.message)
+}
+
+impl LibrarySession {
+    /// Starts the background worker pool (idempotent).
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the pool cannot start.
+    fn session_start_workers(
+        &self,
+        model_root: &str,
+        python: &str,
+        worker_script: &str,
+    ) -> Result<(), String> {
+        self.start_workers(model_root, python, worker_script)
+            .map_err(|error| error.message)
+    }
+
+    /// Queues scans for every enabled root (incremental detection).
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when queueing fails.
+    fn session_queue_scans(&self) -> Result<u64, String> {
+        self.queue_scans().map_err(|error| error.message)
+    }
+
+    /// Reads aggregate job statistics.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the read fails.
+    fn session_job_stats(&self) -> Result<ffi::JobStatsWire, String> {
+        self.job_stats().map_err(|error| error.message)
+    }
+
+    /// Lists configured scan roots.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the read fails.
+    fn session_list_roots(&self) -> Result<Vec<ffi::ScanRootWire>, String> {
+        self.list_roots().map_err(|error| error.message)
+    }
+
+    /// Adds a scan root and queues its scan.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the write fails.
+    fn session_add_root(&self, root: &str) -> Result<(), String> {
+        self.add_root(root).map_err(|error| error.message)
+    }
+
+    /// Removes a scan root by id.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the write fails.
+    fn session_remove_root(&self, id: i64) -> Result<(), String> {
+        self.remove_root(id).map_err(|error| error.message)
+    }
 }
 
 #[cfg(test)]

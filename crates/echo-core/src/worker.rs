@@ -99,8 +99,8 @@ fn worker_loop(catalog: &Catalog, config: &WorkerConfig, stop: &AtomicBool) {
             }
             Err(error) => {
                 let _ = catalog.with_transaction(|transaction| {
-                fail_job(transaction, &job.id, &error.to_string(), now)
-            });
+                    fail_job(transaction, &job.id, &error.to_string(), now)
+                });
             }
         }
     }

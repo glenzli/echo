@@ -13,7 +13,9 @@ class ModelPreferences : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString modelRoot READ modelRoot WRITE setModelRoot NOTIFY modelRootChanged)
     Q_PROPERTY(QString python READ python WRITE setPython NOTIFY pythonChanged)
-    Q_PROPERTY(QString workerScript READ workerScript WRITE setWorkerScript NOTIFY workerScriptChanged)
+    Q_PROPERTY(
+        QString workerScript READ workerScript WRITE setWorkerScript NOTIFY workerScriptChanged
+    )
 
   public:
     explicit ModelPreferences(QObject* parent = nullptr);

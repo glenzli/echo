@@ -170,6 +170,31 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
 
                 Text {
+                    id: progressText
+                    text: ""
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontMeta
+                    visible: progressBar.visible
+                }
+
+                Rectangle {
+                    id: progressBar
+
+                    Layout.preferredWidth: 120
+                    Layout.preferredHeight: 3
+                    radius: 2
+                    color: Theme.track
+                    visible: false
+
+                    Rectangle {
+                        width: parent.width * (backend.jobStats().done > 0 ? 1.0 : 0.05)
+                        height: parent.height
+                        radius: 2
+                        color: Theme.accent
+                    }
+                }
+
+                Text {
                     text: backend.catalogPath
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
@@ -244,6 +269,21 @@ ApplicationWindow {
                                         .arg(modelData.maxLevel)
                                     color: Theme.textSecondary
                                     font.pixelSize: 11
+                                }
+                            }
+
+                            Rectangle {
+                                visible: modelData.pathStatus === "missing"
+                                Layout.preferredWidth: 54
+                                Layout.preferredHeight: 18
+                                radius: 9
+                                color: Theme.accentSurfaceQuiet
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: qsTr("Missing")
+                                    color: Theme.accentSelectionText
+                                    font.pixelSize: Theme.fontMeta
                                 }
                             }
                         }
@@ -459,7 +499,38 @@ ApplicationWindow {
         uiPrefs.modeChanged.connect(() => {
             Theme.mode = uiPrefs.mode
         })
+        // Background pipeline + silent incremental detection on every open.
+        backend.startWorkers(modelPrefs.modelRoot, modelPrefs.python,
+                             modelPrefs.workerScript)
+        backend.queueScans()
+        jobTimer.start()
     }
+
+    Timer {
+        id: jobTimer
+
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            if (!backendTranscribing && backend.jobStats().pending === 0
+                    && backend.jobStats().running === 0) {
+                return
+            }
+            progressText.text = backendTranscribing
+                ? qsTr("Analyzing…")
+                : qsTr("Working: %1 pending · %2 running · %3 done")
+                    .arg(backend.jobStats().pending)
+                    .arg(backend.jobStats().running)
+                    .arg(backend.jobStats().done)
+            progressBar.visible = true
+            if (backend.jobStats().pending === 0 && backend.jobStats().running === 0) {
+                progressText.text = ""
+                progressBar.visible = false
+            }
+        }
+    }
+
+    property bool backendTranscribing: backend.transcribing
 
     function formatDuration(millis: int) : string {
         if (millis <= 0) {

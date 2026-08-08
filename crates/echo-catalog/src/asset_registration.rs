@@ -74,8 +74,9 @@ pub fn register_asset(
     }
     let id = AssetId::new();
     transaction.execute(
-        "INSERT INTO assets (id, content_hash, path, size_bytes, codec, duration_millis, \
-         recorded_at_millis, imported_at_millis) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO assets (id, content_hash, path, path_status, size_bytes, codec, \
+         duration_millis, recorded_at_millis, imported_at_millis) \
+         VALUES (?1, ?2, ?3, 'present', ?4, ?5, ?6, ?7, ?8)",
         rusqlite::params![
             id.to_string(),
             hash_text,
@@ -179,7 +180,7 @@ fn update_path(
 fn load_asset(transaction: &Transaction<'_>, id: &str) -> Result<Option<AudioAsset>, CatalogError> {
     transaction
         .query_row(
-            "SELECT id, content_hash, path, size_bytes, codec, duration_millis, \
+            "SELECT id, content_hash, path, path_status, size_bytes, codec, duration_millis, \
              recorded_at_millis, imported_at_millis, (SELECT max_level FROM asset_levels \
              WHERE asset_id = assets.id) FROM assets WHERE id = ?1",
             [id],
@@ -192,26 +193,26 @@ fn load_asset(transaction: &Transaction<'_>, id: &str) -> Result<Option<AudioAss
                         format!("invalid stored content hash {content_hash}").into(),
                     )
                 })?;
-                let size_bytes = u64::try_from(row.get::<_, i64>(3)?).map_err(|_| {
+                let size_bytes = u64::try_from(row.get::<_, i64>(4)?).map_err(|_| {
                     rusqlite::Error::FromSqlConversionFailure(
-                        3,
+                        4,
                         rusqlite::types::Type::Integer,
                         "stored size_bytes is negative".into(),
                     )
                 })?;
-                let duration_millis = match row.get::<_, Option<i64>>(5)? {
+                let duration_millis = match row.get::<_, Option<i64>>(6)? {
                     Some(millis) => Some(u64::try_from(millis).map_err(|_| {
                         rusqlite::Error::FromSqlConversionFailure(
-                            5,
+                            6,
                             rusqlite::types::Type::Integer,
                             "stored duration_millis is negative".into(),
                         )
                     })?),
                     None => None,
                 };
-                let max_level = AnalysisLevel::try_from(row.get::<_, u8>(8)?).map_err(|level| {
+                let max_level = AnalysisLevel::try_from(row.get::<_, u8>(9)?).map_err(|level| {
                     rusqlite::Error::FromSqlConversionFailure(
-                        8,
+                        9,
                         rusqlite::types::Type::Integer,
                         format!("invalid stored analysis level {level}").into(),
                     )
@@ -223,16 +224,28 @@ fn load_asset(transaction: &Transaction<'_>, id: &str) -> Result<Option<AudioAss
                         error.to_string().into(),
                     )
                 })?;
+                let path_status = match row.get::<_, String>(3)?.as_str() {
+                    "present" => echo_domain::AssetPathStatus::Present,
+                    "missing" => echo_domain::AssetPathStatus::Missing,
+                    other => {
+                        return Err(rusqlite::Error::FromSqlConversionFailure(
+                            3,
+                            rusqlite::types::Type::Text,
+                            format!("invalid stored path status {other}").into(),
+                        ));
+                    }
+                };
                 Ok(AudioAsset {
                     id,
                     original: OriginalRef {
                         path: PathBuf::from(row.get::<_, String>(2)?),
                         content_hash: parsed_hash,
+                        path_status,
                         size_bytes,
-                        codec: row.get(4)?,
+                        codec: row.get(5)?,
                         duration_millis,
-                        recorded_at_millis: row.get(6)?,
-                        imported_at_millis: row.get(7)?,
+                        recorded_at_millis: row.get(7)?,
+                        imported_at_millis: row.get(8)?,
                     },
                     max_level,
                 })

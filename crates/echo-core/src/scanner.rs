@@ -12,8 +12,8 @@ use std::{
 };
 
 use echo_catalog::{
-    JobKind, ScanRootJobPayload, add_scan_root, enqueue_job, journal_fingerprint, list_assets,
-    list_scan_roots, mark_asset_missing,
+    FileJobPayload, JobKind, ScanRootJobPayload, add_scan_root, enqueue_job, journal_fingerprint,
+    list_assets, list_scan_roots, mark_asset_missing, mark_asset_present, requeue_scan_job,
 };
 
 use crate::error::{CoreError, CoreErrorKind};
@@ -80,7 +80,7 @@ pub fn scan_root(
                 transaction,
                 &format!("import-{}", path_text.replace(['/', '\\'], "_")),
                 JobKind::ImportFile,
-                &echo_catalog::FileJobPayload {
+                &FileJobPayload {
                     path: path.to_owned(),
                 }
                 .encode(),
@@ -96,23 +96,26 @@ pub fn scan_root(
     })
     .map_err(|message| CoreError::new(CoreErrorKind::SourceUnavailable, message))?;
 
-    // Phase 2: detect assets registered under the root that vanished.
+    // Phase 2: detect assets registered under the root that vanished, and
+    // restore assets whose file returned to the stored path (the journal
+    // fingerprint alone cannot detect a move-back with unchanged mtime).
     let registered = catalog.with_transaction(list_assets)?;
     for asset in registered {
         if !asset.original.path.starts_with(root) {
             continue;
         }
         let path = &asset.original.path;
+        let id_text = asset.id.to_string();
+        let already_missing =
+            catalog.with_transaction(|transaction| asset_is_missing(transaction, &id_text))?;
         if !path.exists() {
-            let already_missing = catalog.with_transaction(|transaction| {
-                asset_is_missing(transaction, &asset.id.to_string())
-            })?;
             if !already_missing {
-                catalog.with_transaction(|transaction| {
-                    mark_asset_missing(transaction, &asset.id.to_string())
-                })?;
+                catalog
+                    .with_transaction(|transaction| mark_asset_missing(transaction, &id_text))?;
                 outcome.assets_marked_missing += 1;
             }
+        } else if already_missing {
+            catalog.with_transaction(|transaction| mark_asset_present(transaction, &id_text))?;
         }
     }
     Ok(outcome)
@@ -180,13 +183,12 @@ pub fn queue_scans_for_enabled_roots(
     let mut queued = 0;
     for root in roots.iter().filter(|root| root.enabled) {
         catalog.with_transaction(|transaction| {
-            enqueue_job(
+            requeue_scan_job(
                 transaction,
                 &format!(
                     "scan-{}",
                     root.root.to_string_lossy().replace(['/', '\\'], "_")
                 ),
-                JobKind::ScanRoot,
                 &ScanRootJobPayload {
                     root: root.root.clone(),
                 }
@@ -211,10 +213,9 @@ pub fn add_root_and_scan(
 ) -> Result<(), CoreError> {
     catalog.with_transaction(|transaction| add_scan_root(transaction, root, now_millis))?;
     catalog.with_transaction(|transaction| {
-        enqueue_job(
+        requeue_scan_job(
             transaction,
             &format!("scan-{}", root.to_string_lossy().replace(['/', '\\'], "_")),
-            JobKind::ScanRoot,
             &ScanRootJobPayload {
                 root: root.to_owned(),
             }

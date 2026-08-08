@@ -224,10 +224,10 @@ int main(int argc, char* argv[]) {
     // count or decode overflows the heap and distorts playback.
     {
         const std::filesystem::path upsample_path =
-            std::filesystem::temp_directory_path() /
-            ("echo-playback-upsample-" +
-             std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) +
-             ".wav");
+            std::filesystem::temp_directory_path()
+            / ("echo-playback-upsample-"
+               + std::to_string(std::chrono::system_clock::now().time_since_epoch().count())
+               + ".wav");
         {
             std::ofstream file(upsample_path, std::ios::binary);
             const std::string wav = synthesize_sine_wav(24000, 1.0);

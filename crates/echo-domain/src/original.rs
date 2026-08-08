@@ -42,6 +42,15 @@ impl From<blake3::Hash> for ContentHash {
     }
 }
 
+/// Path health of one asset's original file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AssetPathStatus {
+    /// The file exists at the stored path.
+    Present,
+    /// The file is currently missing; analysis evidence is retained.
+    Missing,
+}
+
 /// Descriptive reference to the immutable original source of an asset.
 ///
 /// `path` and the metadata fields may change over time (files move, codecs get
@@ -52,6 +61,8 @@ pub struct OriginalRef {
     pub path: PathBuf,
     /// Stable content identity (BLAKE3-256 over the exact bytes).
     pub content_hash: ContentHash,
+    /// Whether the file currently exists at `path`.
+    pub path_status: AssetPathStatus,
     /// File size in bytes at import time.
     pub size_bytes: u64,
     /// Best-known container/codec name (e.g. `aac`, `flac`); filled by the

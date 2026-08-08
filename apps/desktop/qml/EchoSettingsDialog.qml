@@ -152,5 +152,92 @@ Dialog {
                 selectByMouse: true
             }
         }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.border
+        }
+
+        Text {
+            text: qsTr("Library")
+            color: Theme.textPrimary
+            font.pixelSize: Theme.fontSection
+            font.bold: true
+        }
+
+        Text {
+            text: qsTr("Echo watches these folders: new and changed recordings "
+                       + "are imported and analyzed in the background. Missing "
+                       + "files are re-linked automatically when they return.")
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontMeta
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        ListView {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(120, rootListModel.count * 28)
+            clip: true
+            model: rootListModel
+
+            delegate: RowLayout {
+                width: parent.width
+                height: 26
+                spacing: 8
+
+                Text {
+                    text: modelData.root
+                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontBody
+                    elide: Text.ElideMiddle
+                    Layout.fillWidth: true
+                }
+
+                EchoButton {
+                    text: qsTr("Remove")
+                    ghost: true
+                    implicitHeight: 22
+                    onClicked: backend.removeRoot(modelData.id)
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            TextField {
+                id: rootField
+
+                Layout.fillWidth: true
+                placeholderText: qsTr("/path/to/recordings")
+                selectByMouse: true
+            }
+
+            EchoButton {
+                text: qsTr("Add")
+                implicitHeight: 30
+                onClicked: {
+                    if (rootField.text.length > 0) {
+                        backend.addRoot(rootField.text)
+                        rootField.clear()
+                    }
+                }
+            }
+        }
+    }
+
+    ListModel {
+        id: rootListModel
+    }
+
+    onOpened: {
+        rootListModel.clear()
+        const roots = backend.listRoots()
+        for (const root of roots) {
+            rootListModel.append(root)
+        }
     }
 }

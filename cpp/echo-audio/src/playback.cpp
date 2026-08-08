@@ -375,8 +375,7 @@ class PlaybackSession::Impl {
             // samples than input frames; sizing by the input count overflows
             // the buffer and corrupts the heap. swr_get_out_samples returns
             // the exact output count including internal resampler delay.
-            const int output_samples =
-                swr_get_out_samples(swr_.get(), frame_->nb_samples);
+            const int output_samples = swr_get_out_samples(swr_.get(), frame_->nb_samples);
             uint8_t* output_data[2] = {nullptr};
             int output_linesize = 0;
             const int allocation_result = av_samples_alloc(

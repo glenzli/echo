@@ -86,6 +86,29 @@ pub fn enqueue_job(
     Ok(())
 }
 
+/// Queues (or re-queues) a scan job for one root. Unlike ordinary jobs, a
+/// scan re-runs on every startup: the journal makes it cheap, and it is what
+/// powers silent incremental detection. An already-running scan is left alone.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the write cannot be applied.
+pub fn requeue_scan_job(
+    transaction: &Transaction<'_>,
+    id: &str,
+    payload: &serde_json::Value,
+    now_millis: i64,
+) -> Result<(), CatalogError> {
+    transaction.execute(
+        "INSERT INTO jobs (id, kind, payload, state, progress, attempts, created_at_millis, \
+         updated_at_millis) VALUES (?1, 'scan_root', ?2, 'pending', 0, 0, ?3, ?3) \
+         ON CONFLICT(id) DO UPDATE SET state = 'pending', error = NULL, \
+         updated_at_millis = excluded.updated_at_millis WHERE jobs.state != 'running'",
+        rusqlite::params![id, payload.to_string(), now_millis],
+    )?;
+    Ok(())
+}
+
 /// Atomically claims the oldest pending job (pending -> running).
 ///
 /// # Errors

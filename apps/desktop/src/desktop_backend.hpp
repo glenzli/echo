@@ -30,8 +30,19 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList listAssets() const;
     Q_INVOKABLE QVariantList waveformForAsset(const QString& id) const;
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
-    Q_INVOKABLE void transcribeAsset(const QString& id, const QString& modelRoot,
-                                     const QString& python, const QString& workerScript);
+    Q_INVOKABLE void transcribeAsset(
+        const QString& id,
+        const QString& modelRoot,
+        const QString& python,
+        const QString& workerScript
+    );
+    Q_INVOKABLE void
+    startWorkers(const QString& modelRoot, const QString& python, const QString& workerScript);
+    Q_INVOKABLE void queueScans();
+    Q_INVOKABLE QVariantMap jobStats() const;
+    Q_INVOKABLE QVariantList listRoots() const;
+    Q_INVOKABLE bool addRoot(const QString& path);
+    Q_INVOKABLE void removeRoot(qlonglong id);
     quint64 assetCount() const;
     QString catalogPath() const;
     QString cacheRoot() const;
@@ -41,6 +52,7 @@ class DesktopBackend : public QObject {
     void assetsChanged();
     void transcriptionStateChanged();
     void transcriptionFinished(const QString& assetId, bool ok, const QString& message);
+    void jobsChanged();
 
   private:
     rust::Box<echo::desktop::LibrarySession> session_;

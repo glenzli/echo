@@ -12,17 +12,26 @@ use echo_core::{WaveformArtifactPayload, build_and_cache_waveform};
 use echo_domain::AssetId;
 
 use crate::ffi::{
-    AssetSummaryWire, TranscriptSegmentWire, TranscriptWire, WaveformArtifactWire,
-    WaveformLevelWire,
+    AssetSummaryWire, JobStatsWire, ScanRootWire, TranscriptSegmentWire, TranscriptWire,
+    WaveformArtifactWire, WaveformLevelWire,
 };
+
+fn now_millis() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |duration| {
+            i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
+        })
+}
 
 /// One catalog attachment. Sessions are created on the Qt main thread and
 /// reused; the catalog serializes its own writes.
 #[derive(Debug)]
 pub struct LibrarySession {
-    catalog: Catalog,
+    catalog: std::sync::Arc<Catalog>,
     catalog_path: PathBuf,
     cache_root: PathBuf,
+    workers: std::sync::Mutex<Option<echo_core::WorkerPool>>,
 }
 
 /// Error vocabulary for session operations.
@@ -122,10 +131,19 @@ pub fn open_session(path: &str, cache_root: &str) -> Result<LibrarySession, Sess
         message: error.to_string(),
     })?;
     Ok(LibrarySession {
-        catalog,
+        catalog: std::sync::Arc::new(catalog),
         catalog_path,
         cache_root: PathBuf::from(cache_root),
+        workers: std::sync::Mutex::new(None),
     })
+}
+
+impl Drop for LibrarySession {
+    fn drop(&mut self) {
+        if let Some(workers) = self.workers.lock().expect("worker mutex poisoned").take() {
+            workers.stop();
+        }
+    }
 }
 
 impl LibrarySession {
@@ -154,6 +172,11 @@ impl LibrarySession {
                 duration_millis: asset.original.duration_millis.unwrap_or(0),
                 imported_at_millis: asset.original.imported_at_millis,
                 max_level: asset.max_level as u8,
+                path_status: match asset.original.path_status {
+                    echo_domain::AssetPathStatus::Present => "present",
+                    echo_domain::AssetPathStatus::Missing => "missing",
+                }
+                .to_owned(),
             })
             .collect())
     }
@@ -251,6 +274,116 @@ impl LibrarySession {
             });
         }
         Ok(wires)
+    }
+
+    /// Starts the background worker pool (idempotent).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the pool cannot start.
+    pub fn start_workers(
+        &self,
+        model_root: &str,
+        python: &str,
+        worker_script: &str,
+    ) -> Result<(), SessionError> {
+        let mut workers = self.workers.lock().expect("worker mutex poisoned");
+        if workers.is_some() {
+            return Ok(());
+        }
+        let config = echo_core::WorkerConfig {
+            cache_root: self.cache_root.clone(),
+            model_root: PathBuf::from(model_root),
+            python: PathBuf::from(python),
+            worker_script: PathBuf::from(worker_script),
+        };
+        let pool = echo_core::WorkerPool::start(&self.catalog, &config, 2).map_err(|error| {
+            SessionError {
+                message: format!("cannot start workers: {error}"),
+            }
+        })?;
+        *workers = Some(pool);
+        Ok(())
+    }
+
+    /// Queues scans for every enabled root (incremental detection).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when queueing fails.
+    pub fn queue_scans(&self) -> Result<u64, SessionError> {
+        echo_core::queue_scans_for_enabled_roots(&self.catalog, now_millis()).map_err(|error| {
+            SessionError {
+                message: error.to_string(),
+            }
+        })
+    }
+
+    /// Reads aggregate job statistics.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the read fails.
+    pub fn job_stats(&self) -> Result<JobStatsWire, SessionError> {
+        let stats = self
+            .catalog
+            .with_transaction(echo_catalog::job_stats)
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        Ok(JobStatsWire {
+            pending: stats.pending,
+            running: stats.running,
+            done: stats.done,
+            failed: stats.failed,
+        })
+    }
+
+    /// Lists configured scan roots.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the read fails.
+    pub fn list_roots(&self) -> Result<Vec<ScanRootWire>, SessionError> {
+        let roots = self
+            .catalog
+            .with_transaction(echo_catalog::list_scan_roots)
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        Ok(roots
+            .into_iter()
+            .map(|root| ScanRootWire {
+                id: root.id,
+                root: root.root.to_string_lossy().into_owned(),
+                enabled: root.enabled,
+            })
+            .collect())
+    }
+
+    /// Adds a scan root and queues its scan.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the write fails.
+    pub fn add_root(&self, root: &str) -> Result<(), SessionError> {
+        echo_core::add_root_and_scan(&self.catalog, std::path::Path::new(root), now_millis())
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })
+    }
+
+    /// Removes a scan root by id.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the write fails.
+    pub fn remove_root(&self, id: i64) -> Result<(), SessionError> {
+        self.catalog
+            .with_transaction(|transaction| echo_catalog::remove_scan_root(transaction, id))
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })
     }
 
     /// Exposes the catalog for contract tests.

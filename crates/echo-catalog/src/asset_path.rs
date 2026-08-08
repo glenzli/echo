@@ -11,13 +11,6 @@ use rusqlite::{OptionalExtension, Transaction};
 
 use crate::error::CatalogError;
 
-/// Path health of one asset.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AssetPathStatus {
-    Present,
-    Missing,
-}
-
 /// Marks an asset missing because its path no longer exists.
 ///
 /// # Errors
@@ -29,6 +22,22 @@ pub fn mark_asset_missing(
 ) -> Result<(), CatalogError> {
     transaction.execute(
         "UPDATE assets SET path_status = 'missing' WHERE id = ?1",
+        [asset_id],
+    )?;
+    Ok(())
+}
+
+/// Marks an asset present again (its file returned to the stored path).
+///
+/// # Errors
+///
+/// Returns a catalog failure when the write cannot be applied.
+pub fn mark_asset_present(
+    transaction: &Transaction<'_>,
+    asset_id: &str,
+) -> Result<(), CatalogError> {
+    transaction.execute(
+        "UPDATE assets SET path_status = 'present' WHERE id = ?1",
         [asset_id],
     )?;
     Ok(())

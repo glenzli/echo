@@ -39,6 +39,10 @@ QVariantList DesktopBackend::listAssets() const {
             static_cast<qlonglong>(asset.imported_at_millis)
         );
         entry.insert(QStringLiteral("maxLevel"), static_cast<int>(asset.max_level));
+        entry.insert(
+            QStringLiteral("pathStatus"),
+            QString::fromUtf8(asset.path_status.data(), asset.path_status.size())
+        );
         list.append(entry);
     }
     return list;
@@ -82,29 +86,43 @@ QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {
         QVariantList segments;
         for (const auto& segment : wire.segments) {
             QVariantMap entry;
-            entry.insert(QStringLiteral("text"),
-                         QString::fromUtf8(segment.text.data(), segment.text.size()));
+            entry.insert(
+                QStringLiteral("text"),
+                QString::fromUtf8(segment.text.data(), segment.text.size())
+            );
             entry.insert(QStringLiteral("start"), segment.start);
             entry.insert(QStringLiteral("end"), segment.end);
             segments.append(entry);
         }
         QVariantMap record;
-        record.insert(QStringLiteral("model"),
-                      QString::fromUtf8(wire.model.data(), wire.model.size()));
-        record.insert(QStringLiteral("modelVersion"),
-                      QString::fromUtf8(wire.model_version.data(), wire.model_version.size()));
-        record.insert(QStringLiteral("language"),
-                      QString::fromUtf8(wire.language.data(), wire.language.size()));
-        record.insert(QStringLiteral("text"),
-                      QString::fromUtf8(wire.text.data(), wire.text.size()));
+        record.insert(
+            QStringLiteral("model"),
+            QString::fromUtf8(wire.model.data(), wire.model.size())
+        );
+        record.insert(
+            QStringLiteral("modelVersion"),
+            QString::fromUtf8(wire.model_version.data(), wire.model_version.size())
+        );
+        record.insert(
+            QStringLiteral("language"),
+            QString::fromUtf8(wire.language.data(), wire.language.size())
+        );
+        record.insert(
+            QStringLiteral("text"),
+            QString::fromUtf8(wire.text.data(), wire.text.size())
+        );
         record.insert(QStringLiteral("segments"), segments);
         transcripts.append(record);
     }
     return transcripts;
 }
 
-void DesktopBackend::transcribeAsset(const QString& id, const QString& modelRoot,
-                                     const QString& python, const QString& workerScript) {
+void DesktopBackend::transcribeAsset(
+    const QString& id,
+    const QString& modelRoot,
+    const QString& python,
+    const QString& workerScript
+) {
     if (transcribing_) {
         return;
     }
@@ -122,25 +140,110 @@ void DesktopBackend::transcribeAsset(const QString& id, const QString& modelRoot
         QString message;
         bool ok = false;
         try {
-            const auto segments = echo::desktop::transcribe_asset(
-                catalog, asset, root, interpreter, worker
-            );
+            const auto segments =
+                echo::desktop::transcribe_asset(catalog, asset, root, interpreter, worker);
             ok = true;
             message = QStringLiteral("%1 segments").arg(segments);
         } catch (const rust::Error& error) {
             message = QString::fromUtf8(error.what());
         }
         const QString asset_id = QString::fromStdString(asset);
-        QMetaObject::invokeMethod(this, [this, asset_id, ok, message] {
-            transcribing_ = false;
-            emit transcriptionStateChanged();
-            emit transcriptionFinished(asset_id, ok, message);
-        }, Qt::QueuedConnection);
+        QMetaObject::invokeMethod(
+            this,
+            [this, asset_id, ok, message] {
+                transcribing_ = false;
+                emit transcriptionStateChanged();
+                emit transcriptionFinished(asset_id, ok, message);
+            },
+            Qt::QueuedConnection
+        );
     });
     analysis_thread_.detach();
 }
 
-bool DesktopBackend::transcribing() const { return transcribing_; }
+bool DesktopBackend::transcribing() const {
+    return transcribing_;
+}
+
+void DesktopBackend::startWorkers(
+    const QString& modelRoot,
+    const QString& python,
+    const QString& workerScript
+) {
+    try {
+        session_->session_start_workers(
+            modelRoot.toStdString(),
+            python.toStdString(),
+            workerScript.toStdString()
+        );
+    } catch (const rust::Error& error) {
+        qWarning("cannot start background workers: %s", error.what());
+    }
+}
+
+void DesktopBackend::queueScans() {
+    try {
+        const auto queued = session_->session_queue_scans();
+        qInfo("queued %llu background scan(s)", queued);
+        emit jobsChanged();
+    } catch (const rust::Error& error) {
+        qWarning("cannot queue scans: %s", error.what());
+    }
+}
+
+QVariantMap DesktopBackend::jobStats() const {
+    QVariantMap stats;
+    try {
+        const auto wire = session_->session_job_stats();
+        stats.insert(QStringLiteral("pending"), static_cast<qlonglong>(wire.pending));
+        stats.insert(QStringLiteral("running"), static_cast<qlonglong>(wire.running));
+        stats.insert(QStringLiteral("done"), static_cast<qlonglong>(wire.done));
+        stats.insert(QStringLiteral("failed"), static_cast<qlonglong>(wire.failed));
+    } catch (const rust::Error& error) {
+        qWarning("cannot read job stats: %s", error.what());
+    }
+    return stats;
+}
+
+QVariantList DesktopBackend::listRoots() const {
+    QVariantList roots;
+    try {
+        const auto wires = session_->session_list_roots();
+        for (const auto& wire : wires) {
+            QVariantMap entry;
+            entry.insert(QStringLiteral("id"), static_cast<qlonglong>(wire.id));
+            entry.insert(
+                QStringLiteral("root"),
+                QString::fromUtf8(wire.root.data(), wire.root.size())
+            );
+            entry.insert(QStringLiteral("enabled"), wire.enabled);
+            roots.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list scan roots: %s", error.what());
+    }
+    return roots;
+}
+
+bool DesktopBackend::addRoot(const QString& path) {
+    try {
+        session_->session_add_root(path.toStdString());
+        emit jobsChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot add scan root %s: %s", qPrintable(path), error.what());
+        return false;
+    }
+}
+
+void DesktopBackend::removeRoot(qlonglong id) {
+    try {
+        session_->session_remove_root(static_cast<std::int64_t>(id));
+        emit jobsChanged();
+    } catch (const rust::Error& error) {
+        qWarning("cannot remove scan root: %s", error.what());
+    }
+}
 
 quint64 DesktopBackend::assetCount() const {
     return session_->session_asset_count();

@@ -51,6 +51,7 @@ fn original_keeps_content_hash_stable() {
     let original = OriginalRef {
         path: "/tmp/recording.m4a".into(),
         content_hash: ContentHash::new([1; 32]),
+        path_status: crate::AssetPathStatus::Present,
         size_bytes: 4096,
         codec: None,
         duration_millis: None,

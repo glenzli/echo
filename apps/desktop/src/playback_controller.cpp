@@ -90,8 +90,6 @@ void PlaybackController::fillBuffer(QSpan<float> buffer) {
     std::fill(buffer.begin() + static_cast<qint64>(frames * channels), buffer.end(), 0.0F);
 }
 
-
-
 void PlaybackController::togglePause() {
     const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
     if (session == nullptr || sink_ == nullptr) {
