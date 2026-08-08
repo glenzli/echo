@@ -11,7 +11,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
     },
     thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, UNIX_EPOCH},
 };
 
 use echo_catalog::{
@@ -32,6 +32,8 @@ pub struct WorkerConfig {
     pub model_root: PathBuf,
     pub python: PathBuf,
     pub worker_script: PathBuf,
+    pub ollama_endpoint: String,
+    pub ollama_model: String,
 }
 
 /// The worker pool handle.
@@ -53,7 +55,7 @@ impl WorkerPool {
         config: &WorkerConfig,
         worker_count: usize,
     ) -> Result<Self, CoreError> {
-        let now = now_millis();
+        let now = crate::util::now_millis();
         catalog
             .with_transaction(|transaction| recover_interrupted_jobs(transaction, now))
             .map_err(CoreError::from)?;
@@ -83,7 +85,7 @@ impl WorkerPool {
 fn worker_loop(catalog: &Catalog, config: &WorkerConfig, stop: &AtomicBool) {
     while !stop.load(Ordering::Acquire) {
         let claimed = catalog
-            .with_transaction(|transaction| claim_next_job(transaction, now_millis()))
+            .with_transaction(|transaction| claim_next_job(transaction, crate::util::now_millis()))
             .ok()
             .flatten();
         let Some(job) = claimed else {
@@ -91,7 +93,7 @@ fn worker_loop(catalog: &Catalog, config: &WorkerConfig, stop: &AtomicBool) {
             continue;
         };
         let result = dispatch(catalog, config, &job);
-        let now = now_millis();
+        let now = crate::util::now_millis();
         match result {
             Ok(()) => {
                 let _ =
@@ -110,7 +112,7 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
     match job.kind {
         JobKind::ScanRoot => {
             let payload = ScanRootJobPayload::decode(&job.payload)?;
-            scanner::scan_root(catalog, &payload.root, now_millis())?;
+            scanner::scan_root(catalog, &payload.root, crate::util::now_millis())?;
             Ok(())
         }
         JobKind::ImportFile => {
@@ -138,7 +140,47 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
                 .and_then(|name| name.to_str())
                 .unwrap_or("unknown")
                 .to_owned();
-            crate::record_transcript(catalog, asset_id_of(&job.payload)?, &payload, &version)
+            crate::record_transcript(catalog, asset_id_of(&job.payload)?, &payload, &version)?;
+            // Progressive pipeline: transcribe completes, then contextual.
+            let now = crate::util::now_millis();
+            catalog.with_transaction(|transaction| {
+                enqueue_job(
+                    transaction,
+                    &format!("contextual-{asset_id}"),
+                    JobKind::Contextual,
+                    &asset_id_payload(&asset_id),
+                    now,
+                )
+            })?;
+            Ok(())
+        }
+        JobKind::Contextual => {
+            let asset_id = asset_id_of(&job.payload)?;
+            let source = source_path_of(catalog, &asset_id)?;
+            let _ = source;
+            // The transcript is the input; read the newest transcript record.
+            let records = catalog.with_transaction(|transaction| {
+                echo_catalog::query_analysis(transaction, asset_id)
+                    .map_err(|error| CoreError::new(CoreErrorKind::Other, error.to_string()))
+            })?;
+            let transcript = records
+                .iter()
+                .find(|record| record.kind == echo_domain::AnalysisKind::Transcript)
+                .and_then(|record| {
+                    serde_json::from_value::<crate::TranscriptPayload>(record.value.clone()).ok()
+                })
+                .ok_or_else(|| {
+                    CoreError::new(
+                        CoreErrorKind::Other,
+                        "contextual job requires a transcript record",
+                    )
+                })?;
+            let worker = crate::ContextualWorker {
+                endpoint: config.ollama_endpoint.clone(),
+                model: config.ollama_model.clone(),
+            };
+            let payload = crate::run_contextual(&transcript.text, &worker)?;
+            crate::record_contextual(catalog, asset_id, &payload, &worker.model)
         }
     }
 }
@@ -161,7 +203,7 @@ fn import_file(catalog: &Catalog, _config: &WorkerConfig, path: &Path) -> Result
         .map_or(0, |duration| {
             i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
         });
-    let now = now_millis();
+    let now = crate::util::now_millis();
     let hash_text = content_hash.to_string();
     let path_text = path.to_string_lossy().into_owned();
 
@@ -266,13 +308,6 @@ fn kind_text_short(kind: JobKind) -> &'static str {
         JobKind::ImportFile => "import",
         JobKind::AnalyzeWaveform => "waveform",
         JobKind::Transcribe => "transcribe",
+        JobKind::Contextual => "contextual",
     }
-}
-
-fn now_millis() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |duration| {
-            i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
-        })
 }

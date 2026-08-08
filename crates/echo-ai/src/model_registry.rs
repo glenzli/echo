@@ -61,7 +61,55 @@ pub const MODEL_CATALOG: &[ModelSpec] = &[
         capability: Capability::Transcribe,
         required_files: &["ggml-small.bin"],
     },
+    ModelSpec {
+        id: "qwen3.5-4b-ollama",
+        repo: "ollama://qwen3.5:4b-mlx",
+        revision: None,
+        backend: InferenceBackend::Ollama,
+        capability: Capability::Contextual,
+        required_files: &[],
+    },
 ];
+
+/// Resolves an Ollama-served model by checking the server's `/api/tags`.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when the server cannot be reached.
+pub fn resolve_ollama_model(
+    endpoint: &str,
+    model_name: &str,
+) -> Result<ModelStatus, std::io::Error> {
+    let url = format!("{endpoint}/api/tags");
+    let body = ureq::get(&url)
+        .call()
+        .map_err(|error| std::io::Error::other(format!("cannot reach Ollama at {url}: {error}")))?
+        .into_body()
+        .read_to_string()
+        .map_err(|error| std::io::Error::other(format!("cannot read Ollama tags: {error}")))?;
+    let tags: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|error| std::io::Error::other(format!("cannot parse Ollama tags: {error}")))?;
+    let present = tags
+        .get("models")
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|models| {
+            models.iter().any(|model| {
+                model
+                    .get("name")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|name| name == model_name)
+            })
+        });
+    if present {
+        Ok(ModelStatus::Present {
+            snapshot: PathBuf::from(format!("{endpoint}::{model_name}")),
+        })
+    } else {
+        Ok(ModelStatus::Missing {
+            download_command: format!("ollama pull {model_name}"),
+        })
+    }
+}
 
 /// Resolution outcome for one model.
 #[derive(Debug, Clone, PartialEq, Eq)]

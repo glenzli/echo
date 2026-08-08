@@ -133,6 +133,7 @@ const fn minimum_level_for(kind: AnalysisKind) -> AnalysisLevel {
             AnalysisLevel::Understanding
         }
         AnalysisKind::Embedding | AnalysisKind::Semantic => AnalysisLevel::SemanticIndex,
+        AnalysisKind::Contextual => AnalysisLevel::Contextual,
     }
 }
 
@@ -144,6 +145,7 @@ const fn kind_text(kind: AnalysisKind) -> &'static str {
         AnalysisKind::AudioEvents => "audio_events",
         AnalysisKind::Embedding => "embedding",
         AnalysisKind::Semantic => "semantic",
+        AnalysisKind::Contextual => "contextual",
     }
 }
 
@@ -155,6 +157,7 @@ fn parse_kind(text: &str) -> Option<AnalysisKind> {
         "audio_events" => Some(AnalysisKind::AudioEvents),
         "embedding" => Some(AnalysisKind::Embedding),
         "semantic" => Some(AnalysisKind::Semantic),
+        "contextual" => Some(AnalysisKind::Contextual),
         _ => None,
     }
 }

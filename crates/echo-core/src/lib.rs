@@ -8,9 +8,11 @@
 //! M0); no scheduler exists before there are jobs to run.
 
 mod analysis;
+mod contextual;
 mod error;
 mod import;
 mod scanner;
+mod util;
 mod waveform_artifact;
 mod worker;
 
@@ -18,6 +20,7 @@ pub use analysis::{
     TranscribeWorker, TranscriptPayload, TranscriptSegment, TranscriptWord, record_transcript,
     run_transcribe,
 };
+pub use contextual::{ContextualPayload, ContextualWorker, record_contextual, run_contextual};
 pub use error::CoreErrorKind;
 pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
 pub use scanner::{

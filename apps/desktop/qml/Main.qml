@@ -522,7 +522,8 @@ ApplicationWindow {
         })
         // Background pipeline + silent incremental detection on every open.
         backend.startWorkers(modelPrefs.modelRoot, modelPrefs.python,
-                             modelPrefs.workerScript)
+                             modelPrefs.workerScript, modelPrefs.ollamaEndpoint,
+                             modelPrefs.ollamaModel)
         backend.queueScans()
         jobTimer.start()
     }

@@ -66,6 +66,8 @@ pub enum AnalysisKind {
     Embedding,
     /// Semantic segment index.
     Semantic,
+    /// LLM contextual understanding: summary, keywords, mood, place hints.
+    Contextual,
 }
 
 /// A specific model release that produced evidence.

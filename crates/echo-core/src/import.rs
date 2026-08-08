@@ -173,7 +173,7 @@ pub(crate) fn hash_source(source: &Path) -> Result<ContentHash, CoreError> {
     Ok(ContentHash::from(hasher.finalize()))
 }
 
-fn now_millis() -> i64 {
+pub(crate) fn now_millis() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |duration| {

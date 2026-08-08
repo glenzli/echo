@@ -20,22 +20,33 @@ fn catalog_identities_are_unique_and_consistent() {
     let mut ids = std::collections::HashSet::new();
     for spec in MODEL_CATALOG {
         assert!(ids.insert(spec.id), "duplicate model id {}", spec.id);
-        assert!(
-            spec.repo.contains('/'),
-            "repo must be org/name: {}",
-            spec.repo
-        );
-        assert!(!spec.required_files.is_empty());
+        if spec.backend == InferenceBackend::Ollama {
+            assert!(
+                spec.required_files.is_empty(),
+                "ollama needs no local files"
+            );
+            assert_eq!(spec.capability, Capability::Contextual);
+        } else {
+            assert!(
+                spec.repo.contains('/'),
+                "repo must be org/name: {}",
+                spec.repo
+            );
+            assert!(!spec.required_files.is_empty());
+        }
         assert!(matches!(
             spec.backend,
-            InferenceBackend::Mlx | InferenceBackend::WhisperCpp
+            InferenceBackend::Mlx | InferenceBackend::WhisperCpp | InferenceBackend::Ollama
         ));
         assert!(
             matches!(
                 spec.capability,
-                Capability::Transcribe | Capability::Align | Capability::UnderstandAudio
+                Capability::Transcribe
+                    | Capability::Align
+                    | Capability::UnderstandAudio
+                    | Capability::Contextual
             ),
-            "M1 catalog must only declare M1 capabilities"
+            "catalog only declares implemented capabilities"
         );
     }
 }

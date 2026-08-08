@@ -8,6 +8,8 @@ authors.workspace = true
 
 [dependencies]
 serde.workspace = true
+serde_json.workspace = true
+ureq = { version = "3.0.9", default-features = false, features = ["json"] }
 
 [lints]
 workspace = true

@@ -12,6 +12,7 @@ mod model_registry;
 
 pub use model_registry::{
     MODEL_CATALOG, ModelSpec, ModelStatus, repo_cache_dir, resolve_all, resolve_model,
+    resolve_ollama_model,
 };
 
 use serde::{Deserialize, Serialize};
@@ -32,6 +33,8 @@ pub enum Capability {
     Diarize,
     /// Text or audio embedding for semantic search (e.g. CLAP).
     Embed,
+    /// LLM contextual understanding: summary, keywords, mood.
+    Contextual,
 }
 
 /// A concrete inference backend family. Identity only: capability-specific
@@ -48,6 +51,8 @@ pub enum InferenceBackend {
     OnnxRuntime,
     /// Stable baseline transcription engine.
     WhisperCpp,
+    /// Local model server over HTTP (e.g. Ollama).
+    Ollama,
     /// Remote model service.
     Cloud,
 }

@@ -15,6 +15,7 @@ echo-catalog.workspace = true
 echo-domain.workspace = true
 rusqlite.workspace = true
 serde.workspace = true
+ureq = { version = "3.0.9", default-features = false, features = ["json"] }
 serde_json.workspace = true
 thiserror.workspace = true
 

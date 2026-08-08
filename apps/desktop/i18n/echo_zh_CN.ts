@@ -71,26 +71,36 @@
     </message>
     <message>
         <location filename="../qml/EchoSettingsDialog.qml" line="185"/>
-        <source>Echo reads models from the shared HuggingFace cache and never downloads them. Point the interpreter at a Python with mlx-audio installed.</source>
-        <translation>Echo 从共享的 HuggingFace 缓存读取模型，从不自行下载。请将解释器指向已安装 mlx-audio 的 Python 环境。</translation>
+        <source>ASR models come from the shared HuggingFace cache; contextual understanding runs on your local Ollama.</source>
+        <translation>ASR 模型来自共享的 HuggingFace 缓存；上下文理解在你的本地 Ollama 上运行。</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="198"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="234"/>
+        <source>Ollama endpoint</source>
+        <translation>Ollama 地址</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="246"/>
+        <source>Ollama model</source>
+        <translation>Ollama 模型</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="197"/>
         <source>Model root</source>
         <translation>模型目录</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="210"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="209"/>
         <source>Python</source>
         <translation>Python</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="218"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="217"/>
         <source>python3</source>
         <translation>python3</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="223"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="222"/>
         <source>Worker</source>
         <translation>工作脚本</translation>
     </message>
@@ -240,17 +250,17 @@
         <translation>音量</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="541"/>
+        <location filename="../qml/Main.qml" line="542"/>
         <source>Analyzing…</source>
         <translation>分析中…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="542"/>
+        <location filename="../qml/Main.qml" line="543"/>
         <source>Working: %1 pending · %2 running · %3 done</source>
         <translation>处理中：%1 等待 · %2 进行 · %3 完成</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="558"/>
+        <location filename="../qml/Main.qml" line="559"/>
         <source>unknown duration</source>
         <translation>时长未知</translation>
     </message>

@@ -113,6 +113,8 @@ mod ffi {
             model_root: &str,
             python: &str,
             worker_script: &str,
+            ollama_endpoint: &str,
+            ollama_model: &str,
         ) -> Result<()>;
         /// Queues scans for every enabled root (incremental detection).
         fn session_queue_scans(self: &LibrarySession) -> Result<u64>;
@@ -218,9 +220,17 @@ impl LibrarySession {
         model_root: &str,
         python: &str,
         worker_script: &str,
+        ollama_endpoint: &str,
+        ollama_model: &str,
     ) -> Result<(), String> {
-        self.start_workers(model_root, python, worker_script)
-            .map_err(|error| error.message)
+        self.start_workers(
+            model_root,
+            python,
+            worker_script,
+            ollama_endpoint,
+            ollama_model,
+        )
+        .map_err(|error| error.message)
     }
 
     /// Queues scans for every enabled root (incremental detection).

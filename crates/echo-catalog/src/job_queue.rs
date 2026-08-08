@@ -22,6 +22,8 @@ pub enum JobKind {
     AnalyzeWaveform,
     /// Runs the ASR worker and records transcript evidence.
     Transcribe,
+    /// Runs local LLM contextual understanding over a transcript.
+    Contextual,
 }
 
 /// Job lifecycle state.
@@ -360,6 +362,7 @@ pub(crate) const fn kind_text(kind: JobKind) -> &'static str {
         JobKind::ImportFile => "import_file",
         JobKind::AnalyzeWaveform => "analyze_waveform",
         JobKind::Transcribe => "transcribe",
+        JobKind::Contextual => "contextual",
     }
 }
 
@@ -369,6 +372,7 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
         "import_file" => Ok(JobKind::ImportFile),
         "analyze_waveform" => Ok(JobKind::AnalyzeWaveform),
         "transcribe" => Ok(JobKind::Transcribe),
+        "contextual" => Ok(JobKind::Contextual),
         other => Err(CatalogError::new(
             crate::error::CatalogErrorKind::Other,
             format!("unknown job kind {other}"),

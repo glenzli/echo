@@ -182,10 +182,9 @@ Dialog {
                     EchoSectionLabel {
                         Layout.fillWidth: true
                         text: qsTr("Model access")
-                        hint: qsTr("Echo reads models from the shared "
-                                   + "HuggingFace cache and never downloads them. "
-                                   + "Point the interpreter at a Python with "
-                                   + "mlx-audio installed.")
+                        hint: qsTr("ASR models come from the shared HuggingFace "
+                                   + "cache; contextual understanding runs on "
+                                   + "your local Ollama.")
                     }
 
                     GridLayout {
@@ -229,6 +228,30 @@ Dialog {
                             Layout.fillWidth: true
                             text: modelPrefs.workerScript
                             onEditingFinished: modelPrefs.workerScript = text
+                        }
+
+                        Text {
+                            text: qsTr("Ollama endpoint")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontBody
+                        }
+
+                        EchoTextField {
+                            Layout.fillWidth: true
+                            text: modelPrefs.ollamaEndpoint
+                            onEditingFinished: modelPrefs.ollamaEndpoint = text
+                        }
+
+                        Text {
+                            text: qsTr("Ollama model")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontBody
+                        }
+
+                        EchoTextField {
+                            Layout.fillWidth: true
+                            text: modelPrefs.ollamaModel
+                            onEditingFinished: modelPrefs.ollamaModel = text
                         }
                     }
                 }

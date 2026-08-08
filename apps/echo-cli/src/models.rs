@@ -22,6 +22,24 @@ pub(crate) fn default_model_root() -> std::path::PathBuf {
 pub(crate) fn run_models(root: &Path) -> anyhow::Result<()> {
     let resolved = resolve_all(root).context("cannot scan the model root")?;
     for (spec, status) in resolved {
+        if spec.backend == echo_ai::InferenceBackend::Ollama {
+            let endpoint = std::env::var("ECHO_OLLAMA_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:11434".to_owned());
+            let model =
+                std::env::var("ECHO_OLLAMA_MODEL").unwrap_or_else(|_| "qwen3.5:4b-mlx".to_owned());
+            match echo_ai::resolve_ollama_model(&endpoint, &model) {
+                Ok(ModelStatus::Present { .. }) => {
+                    println!("[ok ] {}  ({endpoint}::{model})", spec.id);
+                }
+                Ok(ModelStatus::Missing { download_command }) => {
+                    println!("[missing] {}  ->  {download_command}", spec.id);
+                }
+                Err(error) => {
+                    println!("[missing] {}  ->  {error}", spec.id);
+                }
+            }
+            continue;
+        }
         match status {
             ModelStatus::Present { snapshot } => {
                 println!("[ok ] {}  {}", spec.id, snapshot.display());

@@ -56,6 +56,10 @@ pub(crate) fn run_scan(
         model_root: model_root.to_owned(),
         python: python.to_owned(),
         worker_script: worker.to_owned(),
+        ollama_endpoint: std::env::var("ECHO_OLLAMA_ENDPOINT")
+            .unwrap_or_else(|_| "http://127.0.0.1:11434".to_owned()),
+        ollama_model: std::env::var("ECHO_OLLAMA_MODEL")
+            .unwrap_or_else(|_| "qwen3.5:4b-mlx".to_owned()),
     };
     let pool = echo_core::WorkerPool::start(&catalog, &config, workers)?;
     loop {
@@ -119,6 +123,7 @@ impl JobKindLabel for echo_catalog::Job {
             JobKind::ImportFile => "import",
             JobKind::AnalyzeWaveform => "waveform",
             JobKind::Transcribe => "transcribe",
+            JobKind::Contextual => "contextual",
         }
     }
 }

@@ -286,6 +286,8 @@ impl LibrarySession {
         model_root: &str,
         python: &str,
         worker_script: &str,
+        ollama_endpoint: &str,
+        ollama_model: &str,
     ) -> Result<(), SessionError> {
         let mut workers = self.workers.lock().expect("worker mutex poisoned");
         if workers.is_some() {
@@ -296,6 +298,8 @@ impl LibrarySession {
             model_root: PathBuf::from(model_root),
             python: PathBuf::from(python),
             worker_script: PathBuf::from(worker_script),
+            ollama_endpoint: ollama_endpoint.to_owned(),
+            ollama_model: ollama_model.to_owned(),
         };
         let pool = echo_core::WorkerPool::start(&self.catalog, &config, 2).map_err(|error| {
             SessionError {
