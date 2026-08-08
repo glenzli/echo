@@ -1,12 +1,14 @@
 #include "ui_preferences.hpp"
 
 #include <QDir>
+#include <QQmlEngine>
 #include <QStandardPaths>
 #include <QStyleHints>
 
 namespace {
 
 constexpr auto kAppearanceSettingsKey = "ui/appearanceMode";
+constexpr auto kLanguageSettingsKey = "ui/language";
 
 int normalizeMode(int mode) {
     if (mode >= static_cast<int>(UiPreferences::AppearanceMode::System)
@@ -14,6 +16,23 @@ int normalizeMode(int mode) {
         return mode;
     }
     return static_cast<int>(UiPreferences::AppearanceMode::System);
+}
+
+QString normalizeLanguageMode(const QString& mode) {
+    if (mode == QStringLiteral("zh_CN") || mode == QStringLiteral("en")) {
+        return mode;
+    }
+    return QStringLiteral("system");
+}
+
+QString systemLanguage() {
+    const QStringList ui_languages = QLocale::system().uiLanguages();
+    for (const QString& language : ui_languages) {
+        if (language.startsWith(QStringLiteral("zh"))) {
+            return QStringLiteral("zh_CN");
+        }
+    }
+    return QStringLiteral("en");
 }
 
 } // namespace
@@ -29,6 +48,10 @@ UiPreferences::UiPreferences(QGuiApplication& application, QObject* parent) :
         QSettings::IniFormat
     );
     mode_ = normalizeMode(settings_->value(QString::fromLatin1(kAppearanceSettingsKey), 0).toInt());
+    language_mode_ = normalizeLanguageMode(
+        settings_->value(QString::fromLatin1(kLanguageSettingsKey), QStringLiteral("system"))
+            .toString()
+    );
     QObject::connect(
         application_.styleHints(),
         &QStyleHints::colorSchemeChanged,
@@ -36,6 +59,7 @@ UiPreferences::UiPreferences(QGuiApplication& application, QObject* parent) :
         [this](const Qt::ColorScheme) { refreshEffectiveAppearance(); }
     );
     refreshEffectiveAppearance();
+    applyLanguage();
 }
 
 int UiPreferences::mode() const {
@@ -82,4 +106,51 @@ void UiPreferences::refreshEffectiveAppearance() {
 
 void UiPreferences::storeMode() {
     settings_->setValue(QString::fromLatin1(kAppearanceSettingsKey), mode_);
+}
+
+QString UiPreferences::languageMode() const {
+    return language_mode_;
+}
+
+void UiPreferences::setLanguageMode(const QString& mode) {
+    const QString normalized = normalizeLanguageMode(mode);
+    if (normalized == language_mode_) {
+        return;
+    }
+    language_mode_ = normalized;
+    settings_->setValue(QString::fromLatin1(kLanguageSettingsKey), language_mode_);
+    emit languageModeChanged();
+    applyLanguage();
+}
+
+void UiPreferences::attachEngine(QQmlEngine& engine) {
+    engine_ = &engine;
+    engine_->retranslate();
+}
+
+void UiPreferences::applyLanguage() {
+    const QString effective =
+        language_mode_ == QStringLiteral("system") ? systemLanguage() : language_mode_;
+    auto next_translator = std::make_unique<QTranslator>();
+    bool install_next = false;
+    if (effective == QStringLiteral("zh_CN")) {
+        install_next = next_translator->load(QStringLiteral(":/i18n/echo_zh_CN.qm"));
+        if (!install_next) {
+            effective_language_ = QStringLiteral("en");
+        }
+    }
+    if (translator_ != nullptr) {
+        QCoreApplication::removeTranslator(translator_.get());
+    }
+    translator_ = std::move(next_translator);
+    if (install_next) {
+        QCoreApplication::installTranslator(translator_.get());
+    }
+    effective_language_ = effective;
+    QLocale::setDefault(QLocale(
+        effective == QStringLiteral("zh_CN") ? QStringLiteral("zh_CN") : QStringLiteral("en_US")
+    ));
+    if (engine_ != nullptr) {
+        engine_->retranslate();
+    }
 }

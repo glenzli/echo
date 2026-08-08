@@ -11,12 +11,14 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    /// Runs formatting, lint, and tests (the standard zero-debt gate).
+    /// Runs formatting, lint, tests, and the translation contract.
     Check,
     /// Applies repository formatting (rustfmt, clang-format).
     Format,
     /// Verifies toolchain prerequisites.
     Doctor,
+    /// Verifies the desktop translation catalog contract.
+    DesktopI18nCheck,
 }
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()> {
@@ -26,10 +28,12 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
             crate::format::run_format(true)?;
             run_clippy()?;
             run_tests()?;
+            crate::desktop_i18n::run()?;
             Ok(())
         }
         Command::Format => crate::format::run_format(false),
         Command::Doctor => crate::doctor::run_doctor(),
+        Command::DesktopI18nCheck => crate::desktop_i18n::run(),
     }
 }
 

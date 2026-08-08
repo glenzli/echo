@@ -17,6 +17,7 @@ class DesktopBackend : public QObject {
     Q_OBJECT
     Q_PROPERTY(quint64 assetCount READ assetCount NOTIFY assetsChanged)
     Q_PROPERTY(QString catalogPath READ catalogPath NOTIFY assetsChanged)
+    Q_PROPERTY(QString cacheRoot READ cacheRoot NOTIFY assetsChanged)
     Q_PROPERTY(bool transcribing READ transcribing NOTIFY transcriptionStateChanged)
 
   public:

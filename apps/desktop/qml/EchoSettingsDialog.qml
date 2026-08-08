@@ -1,7 +1,6 @@
-//! EchoSettingsDialog: application settings. Appearance mode (System / Light
-//! / Dark) persists through UiPreferences; model access is configured through
-//! ModelPreferences (Echo never downloads models — the user maintains the
-//! shared HuggingFace cache).
+//! EchoSettingsDialog: application settings with a Shadow-style section list.
+//! General (appearance + language) and Models; Library management lives in
+//! its own workspace panel.
 
 import QtQuick
 import QtQuick.Controls
@@ -15,229 +14,225 @@ Dialog {
     property UiPreferences uiPrefs: null
     property ModelPreferences modelPrefs: null
 
+    readonly property var sections: [
+        { key: "general", title: qsTr("General"), subtitle: qsTr("Appearance & language") },
+        { key: "models", title: qsTr("Models"), subtitle: qsTr("Local inference access") }
+    ]
+    property int selectedIndex: 0
+
     title: qsTr("Settings")
     modal: true
     standardButtons: Dialog.Close
-    width: 420
-    padding: Theme.panelPadding
+    width: 560
+    height: 400
+    padding: 0
 
-    contentItem: ColumnLayout {
-        spacing: 14
+    contentItem: RowLayout {
+        spacing: 0
 
-        Text {
-            text: qsTr("Appearance")
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSection
-            font.bold: true
-        }
+        // Section list (left rail).
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 180
+            color: Theme.panel
+            radius: 10
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.topMargin: 12
+                anchors.bottomMargin: 12
+                spacing: 2
 
-            Repeater {
-                model: [
-                    { key: 0, label: qsTr("System") },
-                    { key: 1, label: qsTr("Light") },
-                    { key: 2, label: qsTr("Dark") }
-                ]
+                Repeater {
+                    model: dialog.sections
 
-                delegate: EchoButton {
-                    Layout.fillWidth: true
-                    text: modelData.label
-                    ghost: true
-                    backgroundColor: Theme.accentSurface
-                    textColor: Theme.accentSelectionText
-                    // Selected state is drawn by the caller through the
-                    // non-ghost palette.
-                    background: Rectangle {
-                        radius: Theme.controlRadius
-                        border.width: uiPrefs.mode === modelData.key ? 1 : 0
-                        border.color: uiPrefs.mode === modelData.key
-                            ? Theme.accent : Theme.buttonBorder
-                        color: uiPrefs.mode === modelData.key
-                            ? Theme.accentSurface : Theme.control
-                        Behavior on color {
-                            ColorAnimation { duration: 80 }
+                    delegate: Rectangle {
+                        required property var modelData
+                        required property int index
+
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        radius: Theme.compactControlRadius
+                        color: dialog.selectedIndex === index
+                            ? Theme.accentSurfaceQuiet : Theme.transparent
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: dialog.selectedIndex = index
+                        }
+
+                        ColumnLayout {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: 12
+                            spacing: 1
+
+                            Text {
+                                text: modelData.title
+                                color: dialog.selectedIndex === index
+                                    ? Theme.accentSelectionText : Theme.textPrimary
+                                font.pixelSize: Theme.fontBody
+                                font.bold: dialog.selectedIndex === index
+                            }
+
+                            Text {
+                                text: modelData.subtitle
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontMeta
+                            }
                         }
                     }
-                    contentItem: Text {
-                        text: modelData.label
-                        color: uiPrefs.mode === modelData.key
-                            ? Theme.accentSelectionText : Theme.textPrimary
-                        font.pixelSize: Theme.fontBody
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: dialog.uiPrefs.mode = modelData.key
                 }
             }
         }
 
-        Text {
-            text: qsTr("Echo follows the system appearance in System mode; "
-                       + "you can pin Light or Dark at any time.")
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontMeta
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
-
+        // Selected pane.
         Rectangle {
+            Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.border
-        }
+            color: Theme.panelRaised
+            radius: 10
 
-        Text {
-            text: qsTr("Models")
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSection
-            font.bold: true
-        }
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 16
+                spacing: 14
 
-        Text {
-            text: qsTr("Echo reads models from the shared HuggingFace cache "
-                       + "and never downloads them. Point the interpreter at "
-                       + "a Python with mlx-audio installed.")
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontMeta
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
-
-        GridLayout {
-            Layout.fillWidth: true
-            columns: 2
-            columnSpacing: 8
-            rowSpacing: 8
-
-            Text {
-                text: qsTr("Model root")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontBody
-            }
-
-            TextField {
-                Layout.fillWidth: true
-                text: modelPrefs.modelRoot
-                onEditingFinished: modelPrefs.modelRoot = text
-                selectByMouse: true
-            }
-
-            Text {
-                text: qsTr("Python")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontBody
-            }
-
-            TextField {
-                Layout.fillWidth: true
-                text: modelPrefs.python
-                placeholderText: qsTr("python3")
-                onEditingFinished: modelPrefs.python = text
-                selectByMouse: true
-            }
-
-            Text {
-                text: qsTr("Worker")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontBody
-            }
-
-            TextField {
-                Layout.fillWidth: true
-                text: modelPrefs.workerScript
-                onEditingFinished: modelPrefs.workerScript = text
-                selectByMouse: true
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.border
-        }
-
-        Text {
-            text: qsTr("Library")
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSection
-            font.bold: true
-        }
-
-        Text {
-            text: qsTr("Echo watches these folders: new and changed recordings "
-                       + "are imported and analyzed in the background. Missing "
-                       + "files are re-linked automatically when they return.")
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontMeta
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
-
-        ListView {
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(120, rootListModel.count * 28)
-            clip: true
-            model: rootListModel
-
-            delegate: RowLayout {
-                width: parent.width
-                height: 26
-                spacing: 8
-
-                Text {
-                    text: modelData.root
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontBody
-                    elide: Text.ElideMiddle
+                EchoSectionLabel {
                     Layout.fillWidth: true
+                    text: dialog.sections[dialog.selectedIndex].title
+                    hint: dialog.sections[dialog.selectedIndex].subtitle
                 }
 
-                EchoButton {
-                    text: qsTr("Remove")
-                    ghost: true
-                    implicitHeight: 22
-                    onClicked: backend.removeRoot(modelData.id)
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Theme.border
                 }
-            }
-        }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+                // ---- General pane ----
+                ColumnLayout {
+                    visible: dialog.selectedIndex === 0
+                    Layout.fillWidth: true
+                    spacing: 14
 
-            TextField {
-                id: rootField
+                    EchoSectionLabel {
+                        Layout.fillWidth: true
+                        text: qsTr("Appearance")
+                        hint: qsTr("Echo follows the system appearance in System "
+                                   + "mode; you can pin Light or Dark at any time.")
+                    }
 
-                Layout.fillWidth: true
-                placeholderText: qsTr("/path/to/recordings")
-                selectByMouse: true
-            }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
 
-            EchoButton {
-                text: qsTr("Add")
-                implicitHeight: 30
-                onClicked: {
-                    if (rootField.text.length > 0) {
-                        backend.addRoot(rootField.text)
-                        rootField.clear()
+                        Repeater {
+                            model: [
+                                { key: 0, label: qsTr("System") },
+                                { key: 1, label: qsTr("Light") },
+                                { key: 2, label: qsTr("Dark") }
+                            ]
+
+                            delegate: EchoButton {
+                                Layout.fillWidth: true
+                                text: modelData.label
+                                ghost: true
+                                selected: uiPrefs.mode === modelData.key
+                                onClicked: dialog.uiPrefs.mode = modelData.key
+                            }
+                        }
+                    }
+
+                    EchoSectionLabel {
+                        Layout.fillWidth: true
+                        text: qsTr("Language")
+                        hint: qsTr("The default follows your system language.")
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Repeater {
+                            model: [
+                                { key: "system", label: qsTr("System") },
+                                { key: "zh_CN", label: "中文" },
+                                { key: "en", label: "English" }
+                            ]
+
+                            delegate: EchoButton {
+                                Layout.fillWidth: true
+                                text: modelData.label
+                                ghost: true
+                                selected: uiPrefs.languageMode === modelData.key
+                                onClicked: dialog.uiPrefs.languageMode = modelData.key
+                            }
+                        }
+                    }
+                }
+
+                // ---- Models pane ----
+                ColumnLayout {
+                    visible: dialog.selectedIndex === 1
+                    Layout.fillWidth: true
+                    spacing: 14
+
+                    EchoSectionLabel {
+                        Layout.fillWidth: true
+                        text: qsTr("Model access")
+                        hint: qsTr("Echo reads models from the shared "
+                                   + "HuggingFace cache and never downloads them. "
+                                   + "Point the interpreter at a Python with "
+                                   + "mlx-audio installed.")
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: 8
+                        rowSpacing: 8
+
+                        Text {
+                            text: qsTr("Model root")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontBody
+                        }
+
+                        EchoTextField {
+                            Layout.fillWidth: true
+                            text: modelPrefs.modelRoot
+                            onEditingFinished: modelPrefs.modelRoot = text
+                        }
+
+                        Text {
+                            text: qsTr("Python")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontBody
+                        }
+
+                        EchoTextField {
+                            Layout.fillWidth: true
+                            text: modelPrefs.python
+                            placeholderText: qsTr("python3")
+                            onEditingFinished: modelPrefs.python = text
+                        }
+
+                        Text {
+                            text: qsTr("Worker")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontBody
+                        }
+
+                        EchoTextField {
+                            Layout.fillWidth: true
+                            text: modelPrefs.workerScript
+                            onEditingFinished: modelPrefs.workerScript = text
+                        }
                     }
                 }
             }
-        }
-    }
-
-    ListModel {
-        id: rootListModel
-    }
-
-    onOpened: {
-        rootListModel.clear()
-        const roots = backend.listRoots()
-        for (const root of roots) {
-            rootListModel.append(root)
         }
     }
 }

@@ -73,6 +73,7 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
         engine.rootContext()->setContextProperty(QStringLiteral("modelPrefs"), &model_prefs);
+        ui_prefs.attachEngine(engine);
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {
             std::cerr << "Echo QML shell failed to load" << std::endl;

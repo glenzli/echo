@@ -3,9 +3,10 @@
 
 cmake_minimum_required(VERSION 3.28)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Quick Multimedia)
+find_package(Qt6 6.5 REQUIRED COMPONENTS LinguistTools Quick Multimedia)
 find_package(PkgConfig REQUIRED)
 find_package(Iconv REQUIRED)
+qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh_CN)
 
 # The Rust desktop bridge is built by Cargo with its own target directory so
 # the generated CXX ABI header can be synced into a stable include root.
@@ -126,7 +127,10 @@ qt_add_qml_module(
         qml/EchoButton.qml
         qml/EchoIcon.qml
         qml/EchoIconButton.qml
+        qml/EchoSectionLabel.qml
         qml/EchoSettingsDialog.qml
+        qml/EchoTextField.qml
+        qml/LibraryPanel.qml
         qml/Theme.qml
         qml/WaveformView.qml
     RESOURCES
@@ -137,6 +141,7 @@ qt_add_qml_module(
         icons/tune.svg
         icons/waveform.svg
         icons/mic.svg
+        icons/folder.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)
@@ -159,6 +164,21 @@ target_link_libraries(
 )
 
 add_dependencies(echo-desktop echo-desktop-rust-build)
+
+# Translation contract: echo_zh_CN.ts is compiled into the /i18n resource.
+qt_add_translations(
+    echo-desktop
+    TARGETS echo-desktop
+    SOURCE_TARGETS echo-desktop
+    TS_FILE_BASE echo
+    TS_FILE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/i18n"
+    RESOURCE_PREFIX "/i18n"
+    LUPDATE_TARGET echo-desktop-update-translations
+    LUPDATE_OPTIONS -no-obsolete
+    LRELEASE_TARGET echo-desktop-release-translations
+    LRELEASE_OPTIONS -nounfinished
+    NO_GENERATE_PLURALS_TS_FILE
+)
 
 if(MSVC)
     target_compile_options(echo-desktop PRIVATE /W4 /permissive-)

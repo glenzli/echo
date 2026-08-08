@@ -27,7 +27,7 @@ ApplicationWindow {
     color: Theme.window
 
     property var selectedAsset: null
-    property bool appearancePinned: false
+    property int workspaceIndex: 0
 
     ListModel {
         id: transcriptModel
@@ -105,7 +105,7 @@ ApplicationWindow {
             }
 
             Text {
-                text: qsTr("Audio Space")
+                text: workspaceIndex === 0 ? qsTr("Audio Space") : qsTr("Library")
                 color: Theme.textSecondary
                 font.pixelSize: 12
             }
@@ -126,9 +126,21 @@ ApplicationWindow {
             }
 
             EchoIconButton {
-                source: "qrc:/EchoDesktop/icons/refresh.svg"
-                toolTipText: qsTr("Refresh library")
-                onClicked: backend.refresh()
+                source: "qrc:/EchoDesktop/icons/waveform.svg"
+                toolTipText: qsTr("Audio Space")
+                selected: workspaceIndex === 0
+                checkable: true
+                checked: workspaceIndex === 0
+                onClicked: workspaceIndex = 0
+            }
+
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/folder.svg"
+                toolTipText: qsTr("Library")
+                selected: workspaceIndex === 1
+                checkable: true
+                checked: workspaceIndex === 1
+                onClicked: workspaceIndex = 1
             }
 
             EchoIconButton {
@@ -145,10 +157,12 @@ ApplicationWindow {
         anchors.top: titleBar.bottom
         anchors.bottom: parent.bottom
 
+        // Audio Space workspace (list first; edit second).
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 24
             spacing: 16
+            visible: workspaceIndex === 0
 
             RowLayout {
                 Layout.fillWidth: true
@@ -487,6 +501,13 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+
+        // Library workspace: scan roots, missing recordings, storage.
+        LibraryPanel {
+            anchors.fill: parent
+            anchors.margins: 24
+            visible: workspaceIndex === 1
         }
     }
 
