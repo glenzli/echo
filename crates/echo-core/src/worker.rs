@@ -49,8 +49,8 @@ impl WorkerPool {
     ///
     /// Returns [`CoreError`] when the recovery pass fails.
     pub fn start(
-        catalog: Arc<Catalog>,
-        config: WorkerConfig,
+        catalog: &Arc<Catalog>,
+        config: &WorkerConfig,
         worker_count: usize,
     ) -> Result<Self, CoreError> {
         let now = now_millis();
@@ -61,11 +61,11 @@ impl WorkerPool {
         let stop = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
         for _ in 0..worker_count {
-            let catalog = catalog.clone();
+            let catalog = Arc::clone(catalog);
             let config = config.clone();
             let stop = stop.clone();
             handles.push(thread::spawn(move || {
-                worker_loop(catalog, config, stop);
+                worker_loop(&catalog, &config, &stop);
             }));
         }
         Ok(Self { stop, handles })
@@ -80,7 +80,7 @@ impl WorkerPool {
     }
 }
 
-fn worker_loop(catalog: Arc<Catalog>, config: WorkerConfig, stop: Arc<AtomicBool>) {
+fn worker_loop(catalog: &Catalog, config: &WorkerConfig, stop: &AtomicBool) {
     while !stop.load(Ordering::Acquire) {
         let claimed = catalog
             .with_transaction(|transaction| claim_next_job(transaction, now_millis()))
@@ -90,7 +90,7 @@ fn worker_loop(catalog: Arc<Catalog>, config: WorkerConfig, stop: Arc<AtomicBool
             thread::sleep(Duration::from_millis(200));
             continue;
         };
-        let result = dispatch(&catalog, &config, &job);
+        let result = dispatch(catalog, config, &job);
         let now = now_millis();
         match result {
             Ok(()) => {
@@ -99,8 +99,8 @@ fn worker_loop(catalog: Arc<Catalog>, config: WorkerConfig, stop: Arc<AtomicBool
             }
             Err(error) => {
                 let _ = catalog.with_transaction(|transaction| {
-                    fail_job(transaction, &job.id, &error.to_string(), now)
-                });
+                fail_job(transaction, &job.id, &error.to_string(), now)
+            });
             }
         }
     }

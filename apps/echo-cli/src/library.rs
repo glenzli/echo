@@ -57,7 +57,7 @@ pub(crate) fn run_scan(
         python: python.to_owned(),
         worker_script: worker.to_owned(),
     };
-    let pool = echo_core::WorkerPool::start(catalog.clone(), config, workers)?;
+    let pool = echo_core::WorkerPool::start(&catalog, &config, workers)?;
     loop {
         let stats: JobStats = catalog.with_transaction(job_stats)?;
         print!(

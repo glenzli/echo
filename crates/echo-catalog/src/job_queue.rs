@@ -178,6 +178,10 @@ pub fn update_job_progress(
 
 /// Resets interrupted jobs after a crash (running -> pending).
 ///
+/// # Panics
+///
+/// Panics when the affected row count exceeds `u64`.
+///
 /// # Errors
 ///
 /// Returns a catalog failure when the write cannot be applied.
@@ -193,6 +197,10 @@ pub fn recover_interrupted_jobs(
 }
 
 /// Reads queue statistics.
+///
+/// # Panics
+///
+/// Panics when a count exceeds `u64`.
 ///
 /// # Errors
 ///
@@ -269,6 +277,10 @@ impl FileJobPayload {
     }
 
     /// Decodes the payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns a catalog failure when the payload lacks a path.
     pub fn decode(value: &serde_json::Value) -> Result<Self, CatalogError> {
         let path = value
             .get("path")
@@ -299,6 +311,10 @@ impl ScanRootJobPayload {
     }
 
     /// Decodes the payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns a catalog failure when the payload lacks a root.
     pub fn decode(value: &serde_json::Value) -> Result<Self, CatalogError> {
         let root = value
             .get("root")

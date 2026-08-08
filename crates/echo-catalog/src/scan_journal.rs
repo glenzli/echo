@@ -7,6 +7,10 @@ use crate::error::CatalogError;
 
 /// Looks up the journaled fingerprint for a path.
 ///
+/// # Panics
+///
+/// Panics when the stored size exceeds `u64`.
+///
 /// # Errors
 ///
 /// Returns a catalog failure when the read cannot be applied.
@@ -25,6 +29,10 @@ pub fn journal_fingerprint(
 }
 
 /// Records a file fingerprint after a successful import.
+///
+/// # Panics
+///
+/// Panics when the size exceeds `i64`.
 ///
 /// # Errors
 ///
