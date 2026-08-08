@@ -57,7 +57,7 @@ fn transcripts_round_trip_through_a_live_catalog() {
     let echo_catalog::RegisterAsset::Created(asset) = asset else {
         panic!("fixture must create")
     };
-    echo_core::record_transcript(&session.catalog(), asset.id, &payload, "fixture-rev")
+    echo_core::record_transcript(session.catalog(), asset.id, &payload, "fixture-rev")
         .expect("record");
 
     let wires = session.transcripts(&asset.id.to_string()).expect("query");
@@ -65,7 +65,7 @@ fn transcripts_round_trip_through_a_live_catalog() {
     assert_eq!(wires[0].text, "今天天气不错");
     assert_eq!(wires[0].language, "zh");
     assert_eq!(wires[0].segments.len(), 1);
-    assert_eq!(wires[0].segments[0].end, 2.1);
+    assert!((wires[0].segments[0].end - 2.1).abs() < f64::EPSILON);
 
     // Missing models must fail with the download hint, not crash.
     let error = transcribe_asset(
