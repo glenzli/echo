@@ -17,6 +17,7 @@ mod job_queue;
 mod scan_journal;
 mod scan_root;
 mod schema;
+mod search;
 
 pub use analysis::{AnalysisQueryError, AppendAnalysisRecord, query_analysis, record_analysis};
 pub use asset_path::{mark_asset_missing, mark_asset_present, relink_asset_by_hash};
@@ -34,6 +35,9 @@ pub use job_queue::{
 };
 pub use scan_journal::{journal_fingerprint, upsert_journal};
 pub use scan_root::{ScanRoot, add_scan_root, list_scan_roots, remove_scan_root};
+pub use search::{
+    SearchHit, index_transcript, remove_transcript_index, search_transcripts, segment_cjk,
+};
 
 #[cfg(test)]
 mod tests;

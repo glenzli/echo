@@ -249,6 +249,40 @@ void DesktopBackend::removeRoot(qlonglong id) {
     }
 }
 
+QVariantList DesktopBackend::search(const QString& query) const {
+    QVariantList results;
+    if (query.trimmed().isEmpty()) {
+        return results;
+    }
+    try {
+        const auto wires = session_->session_search(query.toStdString(), 20);
+        for (const auto& wire : wires) {
+            QVariantMap entry;
+            entry.insert(
+                QStringLiteral("id"),
+                QString::fromUtf8(wire.asset_id.data(), wire.asset_id.size())
+            );
+            entry.insert(
+                QStringLiteral("path"),
+                QString::fromUtf8(wire.path.data(), wire.path.size())
+            );
+            entry.insert(
+                QStringLiteral("codec"),
+                QString::fromUtf8(wire.codec.data(), wire.codec.size())
+            );
+            entry.insert(
+                QStringLiteral("snippet"),
+                QString::fromUtf8(wire.snippet.data(), wire.snippet.size())
+            );
+            entry.insert(QStringLiteral("startMillis"), static_cast<qlonglong>(wire.start_millis));
+            results.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("search failed: %s", error.what());
+    }
+    return results;
+}
+
 quint64 DesktopBackend::assetCount() const {
     return session_->session_asset_count();
 }

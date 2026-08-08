@@ -200,8 +200,9 @@ Dialog {
                         }
 
                         EchoTextField {
+                            id: modelRootField
+
                             Layout.fillWidth: true
-                            text: modelPrefs.modelRoot
                             onEditingFinished: modelPrefs.modelRoot = text
                         }
 
@@ -212,8 +213,9 @@ Dialog {
                         }
 
                         EchoTextField {
+                            id: pythonField
+
                             Layout.fillWidth: true
-                            text: modelPrefs.python
                             placeholderText: qsTr("python3")
                             onEditingFinished: modelPrefs.python = text
                         }
@@ -225,8 +227,9 @@ Dialog {
                         }
 
                         EchoTextField {
+                            id: workerField
+
                             Layout.fillWidth: true
-                            text: modelPrefs.workerScript
                             onEditingFinished: modelPrefs.workerScript = text
                         }
 
@@ -237,8 +240,9 @@ Dialog {
                         }
 
                         EchoTextField {
+                            id: ollamaEndpointField
+
                             Layout.fillWidth: true
-                            text: modelPrefs.ollamaEndpoint
                             onEditingFinished: modelPrefs.ollamaEndpoint = text
                         }
 
@@ -249,8 +253,9 @@ Dialog {
                         }
 
                         EchoTextField {
+                            id: ollamaModelField
+
                             Layout.fillWidth: true
-                            text: modelPrefs.ollamaModel
                             onEditingFinished: modelPrefs.ollamaModel = text
                         }
                     }

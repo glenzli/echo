@@ -12,8 +12,8 @@ use echo_core::{WaveformArtifactPayload, build_and_cache_waveform};
 use echo_domain::AssetId;
 
 use crate::ffi::{
-    AssetSummaryWire, JobStatsWire, ScanRootWire, TranscriptSegmentWire, TranscriptWire,
-    WaveformArtifactWire, WaveformLevelWire,
+    AssetSummaryWire, JobStatsWire, ScanRootWire, SearchHitWire, TranscriptSegmentWire,
+    TranscriptWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 fn now_millis() -> i64 {
@@ -388,6 +388,99 @@ impl LibrarySession {
             .map_err(|error| SessionError {
                 message: error.to_string(),
             })
+    }
+
+    /// Full-text search over indexed transcripts. Each hit carries the best
+    /// matching segment's start time so the UI can jump straight to it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the search fails.
+    pub fn search(&self, query: &str, limit: u64) -> Result<Vec<SearchHitWire>, SessionError> {
+        let hits = self
+            .catalog
+            .with_transaction(|transaction| {
+                echo_catalog::search_transcripts(transaction, query, limit)
+            })
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        let mut wires = Vec::new();
+        for hit in hits {
+            let id = AssetId::from_str(&hit.asset_id).map_err(|error| SessionError {
+                message: format!("bad asset id {}: {error}", hit.asset_id),
+            })?;
+            let asset =
+                self.catalog
+                    .with_transaction(|transaction| match find_by_id(transaction, id) {
+                        Ok(AssetLookup::Found(asset)) => Ok(asset),
+                        Ok(AssetLookup::NotFound) => Err(SessionError {
+                            message: format!("asset {} not found", hit.asset_id),
+                        }),
+                        Err(error) => Err(SessionError {
+                            message: error.to_string(),
+                        }),
+                    })?;
+            let start_millis = self.best_segment_start_millis(id, query)?;
+            wires.push(SearchHitWire {
+                asset_id: hit.asset_id,
+                path: asset.original.path.to_string_lossy().into_owned(),
+                codec: asset
+                    .original
+                    .codec
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_owned()),
+                snippet: hit.snippet,
+                start_millis,
+            });
+        }
+        Ok(wires)
+    }
+
+    /// Finds the transcript segment whose text best overlaps the query and
+    /// returns its start time in milliseconds.
+    fn best_segment_start_millis(
+        &self,
+        asset_id: AssetId,
+        query: &str,
+    ) -> Result<u64, SessionError> {
+        let records = self
+            .catalog
+            .with_transaction(|transaction| query_analysis(transaction, asset_id))
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        let transcript = records
+            .iter()
+            .find(|record| record.kind == echo_domain::AnalysisKind::Transcript)
+            .and_then(|record| {
+                serde_json::from_value::<echo_core::TranscriptPayload>(record.value.clone()).ok()
+            });
+        let Some(transcript) = transcript else {
+            return Ok(0);
+        };
+        let query_chars: Vec<char> = query.chars().filter(|c| !c.is_whitespace()).collect();
+        let mut best_start = None;
+        let mut best_overlap = 0usize;
+        for segment in &transcript.segments {
+            let overlap = query_chars
+                .iter()
+                .filter(|c| segment.text.contains(**c))
+                .count();
+            if overlap > best_overlap {
+                best_overlap = overlap;
+                best_start = Some(segment.start);
+            }
+        }
+        // Segment starts are seconds bounded by recording length; the
+        // float-to-int conversion cannot lose meaningful precision here.
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss
+        )]
+        let start_millis = (best_start.unwrap_or(0.0).max(0.0) * 1000.0) as u64;
+        Ok(start_millis)
     }
 
     /// Exposes the catalog for contract tests.

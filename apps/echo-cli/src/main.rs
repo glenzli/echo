@@ -10,6 +10,7 @@ mod library;
 mod list;
 mod models;
 mod probe;
+mod search;
 mod transcribe;
 mod waveform;
 

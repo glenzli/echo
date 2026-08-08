@@ -33,6 +33,18 @@ ApplicationWindow {
         id: transcriptModel
     }
 
+    ListModel {
+        id: searchModel
+
+        function refresh() : void {
+            clear()
+            const hits = backend.search(searchField.text)
+            for (const hit of hits) {
+                append(hit)
+            }
+        }
+    }
+
     function refreshTranscripts() : void {
         transcriptModel.clear()
         if (selectedAsset === null) {
@@ -183,6 +195,21 @@ ApplicationWindow {
 
                 Item { Layout.fillWidth: true }
 
+                // Transcript search: search a phrase, find and play it.
+                EchoTextField {
+                    id: searchField
+
+                    Layout.preferredWidth: 220
+                    placeholderText: qsTr("Search transcripts…")
+                    onTextChanged: {
+                        if (text.trim().length >= 2) {
+                            searchModel.refresh()
+                        } else {
+                            searchModel.clear()
+                        }
+                    }
+                }
+
                 Text {
                     id: progressText
                     text: ""
@@ -220,6 +247,81 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                visible: searchModel.count > 0
+                color: Theme.panel
+                radius: 10
+                border.color: Theme.border
+
+                ListView {
+                    id: searchList
+
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 4
+                    clip: true
+                    model: searchModel
+
+                    delegate: Rectangle {
+                        required property var modelData
+
+                        width: searchList.width - 16
+                        height: 56
+                        radius: 8
+                        color: Theme.panelRaised
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                window.selectedAsset = modelData
+                                player.play(modelData.path)
+                                player.seek(modelData.startMillis)
+                                refreshTranscripts()
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 12
+
+                            EchoIcon {
+                                source: "qrc:/EchoDesktop/icons/tune.svg"
+                                size: 18
+                                color: Theme.accent
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Text {
+                                    text: modelData.snippet.replace(/ /g, "")
+                                    color: Theme.textPrimary
+                                    font.pixelSize: 13
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: modelData.path + " · "
+                                        + formatTimestamp(modelData.startMillis / 1000)
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 11
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: searchModel.count === 0
                 color: Theme.panel
                 radius: 10
                 border.color: Theme.border

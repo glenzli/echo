@@ -132,23 +132,30 @@ pub fn record_transcript(
         .map_or(0, |duration| {
             i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
         });
-    catalog
-        .with_transaction(|transaction| {
-            record_analysis(
-                transaction,
-                &AppendAnalysisRecord {
-                    asset_id,
-                    record: AnalysisRecord::new(
-                        AnalysisKind::Transcript,
-                        value,
-                        ModelIdentity::new("mlx/qwen3-asr".to_owned(), model_version.to_owned()),
-                        None,
-                        now,
-                    ),
-                },
-            )
-        })
-        .map_err(CoreError::from)
+    catalog.with_transaction(|transaction| {
+        record_analysis(
+            transaction,
+            &AppendAnalysisRecord {
+                asset_id,
+                record: AnalysisRecord::new(
+                    AnalysisKind::Transcript,
+                    value,
+                    ModelIdentity::new("mlx/qwen3-asr".to_owned(), model_version.to_owned()),
+                    None,
+                    now,
+                ),
+            },
+        )?;
+        // Keep the FTS5 index aligned with the newest transcript evidence.
+        echo_catalog::index_transcript(transaction, &asset_id.to_string(), &payload.text).map_err(
+            |error| {
+                CoreError::new(
+                    CoreErrorKind::Other,
+                    format!("cannot index transcript: {error}"),
+                )
+            },
+        )
+    })
 }
 
 fn temporary_output_path() -> PathBuf {

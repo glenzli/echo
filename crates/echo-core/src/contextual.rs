@@ -73,7 +73,7 @@ pub fn run_contextual(
     let url = format!("{}/api/chat", worker.endpoint.trim_end_matches('/'));
     let response = ureq::post(&url)
         .config()
-        .timeout_global(Some(std::time::Duration::from_mins(3)))
+        .timeout_global(Some(std::time::Duration::from_mins(10)))
         .build()
         .send_json(body)
         .map_err(|error| {

@@ -72,6 +72,16 @@ mod ffi {
         enabled: bool,
     }
 
+    /// One transcript search hit for the desktop.
+    #[derive(Debug)]
+    struct SearchHitWire {
+        asset_id: String,
+        path: String,
+        codec: String,
+        snippet: String,
+        start_millis: u64,
+    }
+
     extern "Rust" {
         type LibrarySession;
 
@@ -126,6 +136,12 @@ mod ffi {
         fn session_add_root(self: &LibrarySession, root: &str) -> Result<()>;
         /// Removes a scan root by id.
         fn session_remove_root(self: &LibrarySession, id: i64) -> Result<()>;
+        /// Full-text search over indexed transcripts.
+        fn session_search(
+            self: &LibrarySession,
+            query: &str,
+            limit: u64,
+        ) -> Result<Vec<SearchHitWire>>;
     }
 }
 
@@ -276,6 +292,15 @@ impl LibrarySession {
     /// Returns the session error message when the write fails.
     fn session_remove_root(&self, id: i64) -> Result<(), String> {
         self.remove_root(id).map_err(|error| error.message)
+    }
+
+    /// Full-text search over indexed transcripts.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the search fails.
+    fn session_search(&self, query: &str, limit: u64) -> Result<Vec<ffi::SearchHitWire>, String> {
+        self.search(query, limit).map_err(|error| error.message)
     }
 }
 

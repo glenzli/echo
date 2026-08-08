@@ -5,9 +5,9 @@
 //! module creates the current dated revision atomically and rejects every
 //! other persisted shape. Revisions follow Shadow's contract: `YYYYMMDDNN`.
 
-pub(crate) const SCHEMA_VERSION: i64 = 2_026_080_801;
+pub(crate) const SCHEMA_VERSION: i64 = 2_026_080_802;
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260808.1-library-management";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260808.2-fts5-transcript-search";
 
 pub(crate) const SCHEMA_SQL: &str = "
 CREATE TABLE IF NOT EXISTS catalog_meta (
@@ -74,5 +74,11 @@ CREATE TABLE IF NOT EXISTS scan_journal (
     size_bytes      INTEGER NOT NULL,
     mtime_millis    INTEGER NOT NULL,
     content_hash    TEXT NOT NULL
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS transcript_fts USING fts5(
+    asset_id UNINDEXED,
+    text,
+    tokenize = 'unicode61'
 );
 ";

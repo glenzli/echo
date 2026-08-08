@@ -2,7 +2,7 @@
 
 use clap::{Parser, Subcommand};
 
-use super::{catalog, import, library, list, models, probe, transcribe, waveform};
+use super::{catalog, import, library, list, models, probe, search, transcribe, waveform};
 
 #[derive(Debug, Parser)]
 #[command(name = "echo-cli", about = "Echo operator commands")]
@@ -101,6 +101,16 @@ pub(crate) enum Command {
         /// Catalog database path.
         catalog: std::path::PathBuf,
     },
+    /// Searches indexed transcripts.
+    Search {
+        /// Catalog database path.
+        catalog: std::path::PathBuf,
+        /// Search query.
+        query: String,
+        /// Maximum hits (default 20).
+        #[arg(long, default_value_t = 20)]
+        limit: u64,
+    },
 }
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()> {
@@ -146,5 +156,10 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
             library::run_scan(&catalog, &cache, &model_root, &python, &worker, workers)
         }
         Command::Jobs { catalog } => library::run_jobs(&catalog),
+        Command::Search {
+            catalog,
+            query,
+            limit,
+        } => search::run_search(&catalog, &query, limit),
     }
 }
