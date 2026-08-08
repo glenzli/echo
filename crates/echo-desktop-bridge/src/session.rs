@@ -153,7 +153,7 @@ impl LibrarySession {
     ///
     /// Returns [`SessionError`] when the catalog read fails.
     pub fn list_assets(&self) -> Result<Vec<AssetSummaryWire>, SessionError> {
-        let assets = self
+        let _ = self
             .catalog
             .with_transaction(list_assets)
             .map_err(|error| SessionError {
