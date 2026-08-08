@@ -2,7 +2,7 @@
 
 use clap::{Parser, Subcommand};
 
-use super::{catalog, import, list, models, probe, transcribe, waveform};
+use super::{catalog, import, library, list, models, probe, transcribe, waveform};
 
 #[derive(Debug, Parser)]
 #[command(name = "echo-cli", about = "Echo operator commands")]
@@ -64,6 +64,43 @@ pub(crate) enum Command {
         #[arg(long)]
         worker: Option<std::path::PathBuf>,
     },
+    /// Adds a scan root and queues its scan.
+    AddRoot {
+        /// Catalog database path.
+        catalog: std::path::PathBuf,
+        /// Directory to watch.
+        root: std::path::PathBuf,
+    },
+    /// Lists configured scan roots.
+    Roots {
+        /// Catalog database path.
+        catalog: std::path::PathBuf,
+    },
+    /// Scans all enabled roots and processes the job queue to completion.
+    Scan {
+        /// Catalog database path.
+        catalog: std::path::PathBuf,
+        /// Cache root (default: `ECHO_CACHE` or `cache`).
+        #[arg(long)]
+        cache: Option<std::path::PathBuf>,
+        /// Model root; defaults to the standard HF cache.
+        #[arg(long)]
+        model_root: Option<std::path::PathBuf>,
+        /// MLX interpreter (default: `ECHO_MLX_PYTHON` or `python3`).
+        #[arg(long)]
+        python: Option<std::path::PathBuf>,
+        /// ASR worker script (default: `tools/asr/transcribe.py`).
+        #[arg(long)]
+        worker: Option<std::path::PathBuf>,
+        /// Worker threads (default 2).
+        #[arg(long, default_value_t = 2)]
+        workers: usize,
+    },
+    /// Reports job queue statistics and failures.
+    Jobs {
+        /// Catalog database path.
+        catalog: std::path::PathBuf,
+    },
 }
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()> {
@@ -91,5 +128,23 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
                 worker.unwrap_or_else(|| std::path::PathBuf::from("tools/asr/transcribe.py"));
             transcribe::run_transcribe(&catalog, &source, &model_root, &python, &worker)
         }
+        Command::AddRoot { catalog, root } => library::run_add_root(&catalog, &root),
+        Command::Roots { catalog } => library::run_list_roots(&catalog),
+        Command::Scan {
+            catalog,
+            cache,
+            model_root,
+            python,
+            worker,
+            workers,
+        } => {
+            let cache = cache.unwrap_or_else(library::default_cache_root);
+            let model_root = model_root.unwrap_or_else(models::default_model_root);
+            let python = python.unwrap_or_else(transcribe::default_python);
+            let worker =
+                worker.unwrap_or_else(|| std::path::PathBuf::from("tools/asr/transcribe.py"));
+            library::run_scan(&catalog, &cache, &model_root, &python, &worker, workers)
+        }
+        Command::Jobs { catalog } => library::run_jobs(&catalog),
     }
 }

@@ -10,7 +10,9 @@
 mod analysis;
 mod error;
 mod import;
+mod scanner;
 mod waveform_artifact;
+mod worker;
 
 pub use analysis::{
     TranscribeWorker, TranscriptPayload, TranscriptSegment, TranscriptWord, record_transcript,
@@ -18,9 +20,13 @@ pub use analysis::{
 };
 pub use error::CoreErrorKind;
 pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
+pub use scanner::{
+    FolderScanner, ScanOutcome, add_root_and_scan, queue_scans_for_enabled_roots, scan_root,
+};
 pub use waveform_artifact::{
     WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,
 };
+pub use worker::{WorkerConfig, WorkerPool};
 
 #[cfg(test)]
 mod tests;

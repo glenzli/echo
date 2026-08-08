@@ -149,7 +149,7 @@ fn refresh_path(
     Ok(refreshed)
 }
 
-fn hash_source(source: &Path) -> Result<ContentHash, CoreError> {
+pub(crate) fn hash_source(source: &Path) -> Result<ContentHash, CoreError> {
     let mut file = fs::File::open(source).map_err(|error| {
         CoreError::new(
             CoreErrorKind::SourceUnavailable,

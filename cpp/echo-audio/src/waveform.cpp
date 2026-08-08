@@ -74,7 +74,7 @@ struct SwrDeleter {
 /// resampler; samples are processed immediately and never retained.
 class CanonicalMonoDecoder {
   public:
-    explicit CanonicalMonoDecoder(AVFormatContext* format, const AVStream* stream) {
+    explicit CanonicalMonoDecoder(const AVStream* stream) {
         const AVCodecParameters* codecpar = stream->codecpar;
         const AVCodec* decoder = avcodec_find_decoder(codecpar->codec_id);
         if (decoder == nullptr) {
@@ -144,8 +144,7 @@ class CanonicalMonoDecoder {
         while (avcodec_receive_frame(codec_.get(), frame_.get()) == 0) {
             // Size by the exact resampled output count: upsampling needs more
             // output samples than input frames (see playback.cpp).
-            const int output_samples =
-                swr_get_out_samples(swr_.get(), frame_->nb_samples);
+            const int output_samples = swr_get_out_samples(swr_.get(), frame_->nb_samples);
             uint8_t* output_data[1] = {nullptr};
             int output_linesize = 0;
             const int allocation_result = av_samples_alloc(
@@ -236,7 +235,7 @@ Waveform build_waveform(const std::string& path, uint32_t max_levels) {
         fail("no audio stream in " + path);
     }
 
-    CanonicalMonoDecoder decoder(format.get(), audio_stream);
+    CanonicalMonoDecoder decoder(audio_stream);
 
     std::vector<float> base_mins;
     std::vector<float> base_maxs;

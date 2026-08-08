@@ -8,6 +8,7 @@ authors.workspace = true
 
 [dependencies]
 blake3.workspace = true
+echo-ai.workspace = true
 echo-bridge.workspace = true
 echo-cache.workspace = true
 echo-catalog.workspace = true

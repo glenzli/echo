@@ -401,6 +401,13 @@ ApplicationWindow {
                             delegate: Rectangle {
                                 required property var modelData
 
+                                // Horizontal delegates size by content: the
+                                // Rectangle's implicitWidth comes from the
+                                // text, otherwise every delegate is 0 wide.
+                                readonly property int horizontalPadding: 12
+
+                                implicitWidth: transcriptText.implicitWidth + horizontalPadding
+                                implicitHeight: transcriptList.height - 8
                                 width: Math.min(implicitWidth, transcriptList.width - 8)
                                 height: transcriptList.height - 8
                                 radius: Theme.compactControlRadius
@@ -420,6 +427,8 @@ ApplicationWindow {
                                 }
 
                                 Text {
+                                    id: transcriptText
+
                                     anchors.fill: parent
                                     anchors.margins: 6
                                     text: formatTimestamp(modelData.start) + "  "

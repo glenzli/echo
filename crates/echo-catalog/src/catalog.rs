@@ -9,7 +9,7 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::{
     error::{CatalogError, CatalogErrorKind},
-    schema::{SCHEMA_V1, SCHEMA_VERSION},
+    schema::{SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION},
 };
 
 /// Durable catalog handle. `SQLite` access is serialized through one mutex: the
@@ -54,7 +54,7 @@ pub fn open_catalog(path: &Path) -> Result<Catalog, CatalogError> {
 }
 
 fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
-    connection.execute_batch(SCHEMA_V1)?;
+    connection.execute_batch(SCHEMA_SQL)?;
     let stored_version: Option<i64> = connection
         .query_row(
             "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
@@ -78,14 +78,20 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_version', ?1)",
                 [SCHEMA_VERSION.to_string()],
             )?;
+            connection.execute(
+                "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1)",
+                [SCHEMA_IDENTITY.to_string()],
+            )?;
         }
-        Some(version) if version == SCHEMA_VERSION => {}
+        Some(version) if version == SCHEMA_VERSION => {
+            // Identity is descriptive; the numeric revision is authoritative.
+        }
         Some(version) => {
             return Err(CatalogError::new(
                 CatalogErrorKind::SchemaMismatch,
                 format!(
-                    "catalog at {} uses schema version {version}, this binary supports \
-                     {SCHEMA_VERSION}",
+                    "catalog at {} uses schema revision {version}, this binary supports \
+                     {SCHEMA_VERSION} ({SCHEMA_IDENTITY})",
                     self_path_display(connection)?
                 ),
             ));

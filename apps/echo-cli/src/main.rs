@@ -6,6 +6,7 @@
 mod catalog;
 mod commands;
 mod import;
+mod library;
 mod list;
 mod models;
 mod probe;

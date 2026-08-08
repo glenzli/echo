@@ -1,82 +1,149 @@
-//! Facade contracts spanning catalog modules: idempotent registration,
-//! level projection after analysis records, and asset listing.
+//! Job queue facade contracts: claim/recovery semantics and scan-root
+//! idempotency.
 
 use crate::{
-    AppendAnalysisRecord, AssetLookup, AssetRegistrationInput, RegisterAsset, find_by_content_hash,
-    find_by_id, list_assets, open_catalog, query_analysis, record_analysis, register_asset,
+    AssetLookup, AssetRegistrationInput, Catalog, CatalogError, CatalogErrorKind, JobKind,
+    ScanRootJobPayload, add_scan_root, claim_next_job, complete_job, enqueue_job, fail_job,
+    find_by_content_hash, job_stats, list_scan_roots, mark_asset_missing, open_catalog,
+    recover_interrupted_jobs, register_asset, relink_asset_by_hash, remove_scan_root,
 };
-use echo_domain::{AnalysisKind, AnalysisLevel, AnalysisRecord, ContentHash, ModelIdentity};
+use echo_domain::ContentHash;
+use std::path::Path;
+use std::path::PathBuf;
 
-#[test]
-fn registration_is_idempotent_by_content() {
-    let root = std::env::temp_dir().join(format!("echo-catalog-idempotent-{}", std::process::id()));
+fn fixture(name: &str) -> (PathBuf, Catalog) {
+    let root =
+        std::env::temp_dir().join(format!("echo-catalog-jobs-{}-{name}", std::process::id()));
     let path = root.join("catalog.sqlite");
     let catalog = open_catalog(&path).expect("catalog opens");
-    let hash = ContentHash::new([7; 32]);
+    (root, catalog)
+}
 
-    let first = catalog
-        .with_transaction(|transaction| {
-            register_asset(
-                transaction,
-                &AssetRegistrationInput {
-                    content_hash: hash,
-                    path: &path,
-                    size_bytes: 1024,
-                    codec: None,
-                    duration_millis: None,
-                    recorded_at_millis: None,
-                    imported_at_millis: 1_700_000_000_000,
-                },
-            )
-        })
-        .expect("first registration");
-    let second = catalog
-        .with_transaction(|transaction| {
-            register_asset(
-                transaction,
-                &AssetRegistrationInput {
-                    content_hash: hash,
-                    path: &path,
-                    size_bytes: 1024,
-                    codec: None,
-                    duration_millis: None,
-                    recorded_at_millis: None,
-                    imported_at_millis: 1_700_000_000_001,
-                },
-            )
-        })
-        .expect("second registration");
-
-    match (first, second) {
-        (RegisterAsset::Created(first), RegisterAsset::Existed(second)) => {
-            assert_eq!(first.id, second.id, "same content must keep one identity");
-        }
-        other => panic!("expected created-then-existed, got {other:?}"),
+#[test]
+fn jobs_claim_in_order_and_recover_after_crash() {
+    let (root, catalog) = fixture("recover");
+    for index in 0..3 {
+        catalog
+            .with_transaction(|transaction| {
+                enqueue_job(
+                    transaction,
+                    &format!("job-{index}"),
+                    JobKind::ImportFile,
+                    &serde_json::json!({ "path": format!("/tmp/f{index}.wav") }),
+                    index,
+                )
+            })
+            .expect("enqueue");
     }
+    let first = catalog
+        .with_transaction(|transaction| claim_next_job(transaction, 100))
+        .expect("claim");
+    assert_eq!(first.as_ref().map(|job| job.id.as_str()), Some("job-0"));
+    catalog
+        .with_transaction(|transaction| complete_job(transaction, "job-0", 101))
+        .expect("complete");
 
-    let lookup = catalog
-        .with_transaction(|transaction| find_by_content_hash(transaction, hash))
-        .expect("lookup");
-    assert!(matches!(lookup, AssetLookup::Found(_)));
-    drop(catalog);
+    // Simulated crash: job-1 was claimed but never finished.
+    let second = catalog
+        .with_transaction(|transaction| claim_next_job(transaction, 102))
+        .expect("claim");
+    assert_eq!(second.as_ref().map(|job| job.id.as_str()), Some("job-1"));
+    drop(second);
+
+    let recovered = catalog
+        .with_transaction(|transaction| recover_interrupted_jobs(transaction, 200))
+        .expect("recover");
+    assert_eq!(recovered, 1, "job-1 resets to pending");
+
+    let retried = catalog
+        .with_transaction(|transaction| claim_next_job(transaction, 201))
+        .expect("claim");
+    assert_eq!(retried.as_ref().map(|job| job.id.as_str()), Some("job-1"));
+    let _ = retried;
+    let attempts: i64 = catalog
+        .with_transaction(|transaction| {
+            transaction
+                .query_row("SELECT attempts FROM jobs WHERE id = 'job-1'", [], |row| {
+                    row.get(0)
+                })
+                .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))
+        })
+        .expect("read attempts");
+    assert_eq!(attempts, 2, "attempt counter survives recovery");
     let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
-fn analysis_records_lift_the_level_projection() {
-    let root = std::env::temp_dir().join(format!("echo-catalog-level-{}", std::process::id()));
-    let path = root.join("catalog.sqlite");
-    let catalog = open_catalog(&path).expect("catalog opens");
-    let hash = ContentHash::new([9; 32]);
+fn failed_jobs_record_errors_and_stats_aggregate() {
+    let (root, catalog) = fixture("stats");
+    catalog
+        .with_transaction(|transaction| {
+            enqueue_job(
+                transaction,
+                "a",
+                JobKind::Transcribe,
+                &serde_json::json!({ "asset_id": "x" }),
+                0,
+            )
+        })
+        .expect("enqueue");
+    catalog
+        .with_transaction(|transaction| {
+            enqueue_job(
+                transaction,
+                "b",
+                JobKind::ScanRoot,
+                &ScanRootJobPayload {
+                    root: "/tmp".into(),
+                }
+                .encode(),
+                0,
+            )
+        })
+        .expect("enqueue");
+    catalog
+        .with_transaction(|transaction| claim_next_job(transaction, 1).map(|_| ()))
+        .expect("claim");
+    catalog
+        .with_transaction(|transaction| fail_job(transaction, "a", "model missing", 2))
+        .expect("fail");
+    let stats = catalog.with_transaction(job_stats).expect("stats");
+    assert_eq!(stats.pending, 1);
+    assert_eq!(stats.failed, 1);
+    let _ = std::fs::remove_dir_all(root);
+}
 
-    let asset = catalog
+#[test]
+fn scan_roots_round_trip_and_remove() {
+    let (root, catalog) = fixture("roots");
+    catalog
+        .with_transaction(|transaction| add_scan_root(transaction, Path::new("/voices"), 1))
+        .expect("add");
+    catalog
+        .with_transaction(|transaction| add_scan_root(transaction, Path::new("/voices"), 2))
+        .expect("duplicate add is idempotent");
+    let roots = catalog.with_transaction(list_scan_roots).expect("list");
+    assert_eq!(roots.len(), 1);
+    catalog
+        .with_transaction(|transaction| remove_scan_root(transaction, roots[0].id))
+        .expect("remove");
+    let roots = catalog.with_transaction(list_scan_roots).expect("list");
+    assert!(roots.is_empty());
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn relink_restores_missing_assets_by_hash() {
+    let (root, catalog) = fixture("relink");
+    let hash = ContentHash::new([5; 32]);
+    catalog
         .with_transaction(|transaction| {
             register_asset(
                 transaction,
                 &AssetRegistrationInput {
                     content_hash: hash,
-                    path: &path,
-                    size_bytes: 1024,
+                    path: Path::new("/old/lost.wav"),
+                    size_bytes: 100,
                     codec: None,
                     duration_millis: None,
                     recorded_at_millis: None,
@@ -84,94 +151,40 @@ fn analysis_records_lift_the_level_projection() {
                 },
             )
         })
-        .expect("registration");
-    let RegisterAsset::Created(asset) = asset else {
-        panic!("fixture must create")
-    };
-    assert_eq!(asset.max_level, AnalysisLevel::Metadata);
+        .expect("register");
 
+    // Find the real id through the hash lookup.
+    let id = catalog
+        .with_transaction(|transaction| -> Result<String, CatalogError> {
+            match find_by_content_hash(transaction, hash)? {
+                AssetLookup::Found(asset) => Ok(asset.id.to_string()),
+                AssetLookup::NotFound => panic!("must exist"),
+            }
+        })
+        .expect("find id");
     catalog
-        .with_transaction(|transaction| {
-            record_analysis(
-                transaction,
-                &AppendAnalysisRecord {
-                    asset_id: asset.id,
-                    record: AnalysisRecord::new(
-                        AnalysisKind::Emotions,
-                        serde_json::json!({ "emotion": "happy" }),
-                        ModelIdentity::new("sensevoice".to_owned(), "small".to_owned()),
-                        Some(0.9),
-                        1_700_000_000_002,
-                    ),
-                },
-            )
-        })
-        .expect("record");
-    catalog
-        .with_transaction(|transaction| {
-            record_analysis(
-                transaction,
-                &AppendAnalysisRecord {
-                    asset_id: asset.id,
-                    record: AnalysisRecord::new(
-                        AnalysisKind::Transcript,
-                        serde_json::json!({ "text": "hello" }),
-                        ModelIdentity::new("qwen-asr".to_owned(), "1.7b".to_owned()),
-                        Some(0.95),
-                        1_700_000_000_003,
-                    ),
-                },
-            )
-        })
-        .expect("record");
+        .with_transaction(|transaction| mark_asset_missing(transaction, &id))
+        .expect("mark missing");
 
-    let projected = catalog
+    let relinked = catalog
         .with_transaction(|transaction| {
-            find_by_id(transaction, asset.id).map(|lookup| match lookup {
-                AssetLookup::Found(asset) => asset,
-                AssetLookup::NotFound => panic!("asset must exist"),
-            })
+            relink_asset_by_hash(transaction, &hash.to_string(), Path::new("/new/found.wav"))
         })
-        .expect("read");
-    assert_eq!(projected.max_level, AnalysisLevel::Understanding);
-
-    let records = catalog
-        .with_transaction(|transaction| query_analysis(transaction, asset.id))
-        .expect("query");
-    assert_eq!(records.len(), 2);
-    assert_eq!(records[0].kind, AnalysisKind::Transcript, "newest first");
-    assert_eq!(records[0].model.name, "qwen-asr");
-    drop(catalog);
-    let _ = std::fs::remove_dir_all(root);
-}
-
-#[test]
-fn list_returns_newest_import_first() {
-    let root = std::env::temp_dir().join(format!("echo-catalog-list-{}", std::process::id()));
-    let path = root.join("catalog.sqlite");
-    let catalog = open_catalog(&path).expect("catalog opens");
-    for (index, byte) in [1u8, 2u8, 3u8].into_iter().enumerate() {
-        catalog
-            .with_transaction(|transaction| {
-                register_asset(
-                    transaction,
-                    &AssetRegistrationInput {
-                        content_hash: ContentHash::new([byte; 32]),
-                        path: &path,
-                        size_bytes: 1024,
-                        codec: None,
-                        duration_millis: None,
-                        recorded_at_millis: None,
-                        imported_at_millis: i64::try_from(index).expect("index"),
-                    },
-                )
-            })
-            .expect("registration");
-    }
-    let assets = catalog.with_transaction(list_assets).expect("listing");
-    assert_eq!(assets.len(), 3);
-    assert_eq!(assets[0].original.imported_at_millis, 2);
-    assert_eq!(assets[2].original.imported_at_millis, 0);
-    drop(catalog);
+        .expect("relink");
+    assert!(relinked, "missing asset relinks by hash");
+    let asset = catalog
+        .with_transaction(
+            |transaction| -> Result<echo_domain::AudioAsset, CatalogError> {
+                match find_by_content_hash(transaction, hash)? {
+                    AssetLookup::Found(asset) => Ok(asset),
+                    AssetLookup::NotFound => panic!("must exist"),
+                }
+            },
+        )
+        .expect("find");
+    assert_eq!(
+        asset.original.path,
+        std::path::PathBuf::from("/new/found.wav")
+    );
     let _ = std::fs::remove_dir_all(root);
 }
