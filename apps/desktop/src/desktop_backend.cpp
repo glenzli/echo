@@ -174,7 +174,9 @@ void DesktopBackend::startWorkers(
         session_->session_start_workers(
             modelRoot.toStdString(),
             python.toStdString(),
-            workerScript.toStdString()
+            workerScript.toStdString(),
+            ollamaEndpoint.toStdString(),
+            ollamaModel.toStdString()
         );
     } catch (const rust::Error& error) {
         qWarning("cannot start background workers: %s", error.what());
