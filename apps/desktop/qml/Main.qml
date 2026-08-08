@@ -202,7 +202,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 220
                     placeholderText: qsTr("Search transcripts…")
                     onTextChanged: {
-                        if (text.trim().length >= 2) {
+                        if (text.trim().length >= 1) {
                             searchModel.refresh()
                         } else {
                             searchModel.clear()
