@@ -23,6 +23,11 @@ pub struct AudioSpaceAsset {
 /// Lists every asset with its newest contextual evidence, newest import
 /// first.
 ///
+/// # Panics
+///
+/// Panics when a stored duration is negative or a contextual payload is not
+/// valid JSON (corrupt rows are treated as fatal in this projection).
+///
 /// # Errors
 ///
 /// Returns a catalog failure when the read cannot be applied.
