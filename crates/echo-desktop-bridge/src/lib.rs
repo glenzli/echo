@@ -20,6 +20,10 @@ mod ffi {
         imported_at_millis: i64,
         max_level: u8,
         path_status: String,
+        summary: String,
+        event_type: String,
+        mood: String,
+        keywords: Vec<String>,
     }
 
     /// One pyramid level of a cached waveform artifact.

@@ -11,6 +11,7 @@
 mod analysis;
 mod asset_path;
 mod asset_registration;
+mod audio_space;
 mod catalog;
 mod error;
 mod job_queue;
@@ -25,6 +26,7 @@ pub use asset_registration::{
     AssetLookup, AssetRegistrationInput, RegisterAsset, find_by_content_hash, find_by_id,
     list_assets, register_asset,
 };
+pub use audio_space::{AudioSpaceAsset, list_audio_space};
 pub use catalog::{Catalog, CatalogStats, open_catalog};
 pub use error::CatalogError;
 pub use error::CatalogErrorKind;

@@ -159,24 +159,45 @@ impl LibrarySession {
             .map_err(|error| SessionError {
                 message: error.to_string(),
             })?;
-        Ok(assets
+        let projection = self
+            .catalog
+            .with_transaction(echo_catalog::list_audio_space)
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        Ok(projection
             .into_iter()
-            .map(|asset| AssetSummaryWire {
-                id: asset.id.to_string(),
-                path: asset.original.path.to_string_lossy().into_owned(),
-                codec: asset
-                    .original
-                    .codec
-                    .clone()
-                    .unwrap_or_else(|| "unknown".to_owned()),
-                duration_millis: asset.original.duration_millis.unwrap_or(0),
-                imported_at_millis: asset.original.imported_at_millis,
-                max_level: asset.max_level as u8,
-                path_status: match asset.original.path_status {
-                    echo_domain::AssetPathStatus::Present => "present",
-                    echo_domain::AssetPathStatus::Missing => "missing",
+            .map(|asset| {
+                let (summary, event_type, mood, keywords) = asset
+                    .contextual
+                    .as_ref()
+                    .and_then(|value| {
+                        serde_json::from_value::<echo_core::ContextualPayload>(value.clone()).ok()
+                    })
+                    .map_or(
+                        (String::new(), String::new(), String::new(), Vec::new()),
+                        |payload| {
+                            (
+                                payload.summary,
+                                payload.event_type.unwrap_or_default(),
+                                payload.mood.unwrap_or_default(),
+                                payload.keywords,
+                            )
+                        },
+                    );
+                AssetSummaryWire {
+                    id: asset.id,
+                    path: asset.path.to_string_lossy().into_owned(),
+                    codec: asset.codec.unwrap_or_else(|| "unknown".to_owned()),
+                    duration_millis: asset.duration_millis.unwrap_or(0),
+                    imported_at_millis: asset.imported_at_millis,
+                    max_level: asset.max_level,
+                    path_status: asset.path_status,
+                    summary,
+                    event_type,
+                    mood,
+                    keywords,
                 }
-                .to_owned(),
             })
             .collect())
     }

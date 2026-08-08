@@ -43,6 +43,23 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("pathStatus"),
             QString::fromUtf8(asset.path_status.data(), asset.path_status.size())
         );
+        entry.insert(
+            QStringLiteral("summary"),
+            QString::fromUtf8(asset.summary.data(), asset.summary.size())
+        );
+        entry.insert(
+            QStringLiteral("eventType"),
+            QString::fromUtf8(asset.event_type.data(), asset.event_type.size())
+        );
+        entry.insert(
+            QStringLiteral("mood"),
+            QString::fromUtf8(asset.mood.data(), asset.mood.size())
+        );
+        QVariantList keywords;
+        for (const auto& keyword : asset.keywords) {
+            keywords.append(QString::fromUtf8(keyword.data(), keyword.size()));
+        }
+        entry.insert(QStringLiteral("keywords"), keywords);
         list.append(entry);
     }
     return list;

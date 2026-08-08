@@ -45,6 +45,76 @@ ApplicationWindow {
         }
     }
 
+    property string selectedTag: "all"
+
+    ListModel {
+        id: tagModel
+    }
+
+    ListModel {
+        id: assetModel
+
+        property var allAssets: []
+
+        function refilter() : void {
+            clear()
+            for (const asset of allAssets) {
+                if (selectedTag === "all" || asset.eventType === selectedTag
+                        || asset.mood === selectedTag) {
+                    append(asset)
+                }
+            }
+        }
+
+        function rebuild() : void {
+            const assets = backend.listAssets()
+            for (const asset of assets) {
+                asset.timeBucket = timeBucket(asset.importedAtMillis)
+                allAssets.push(asset)
+            }
+            // Rebuild the tag row from contextual evidence.
+            tagModel.clear()
+            tagModel.append({ key: "all", label: qsTr("All") })
+            const events = {}
+            const moods = {}
+            for (const asset of assets) {
+                if (asset.eventType.length > 0) {
+                    events[asset.eventType] = true
+                }
+                if (asset.mood.length > 0) {
+                    moods[asset.mood] = true
+                }
+            }
+            for (const event of Object.keys(events).sort()) {
+                tagModel.append({ key: event, label: event })
+            }
+            for (const mood of Object.keys(moods).sort()) {
+                tagModel.append({ key: mood, label: mood })
+            }
+            refilter()
+        }
+    }
+
+    function timeBucket(millis: int) : string {
+        const date = new Date(millis)
+        const now = new Date()
+        if (date.toDateString() === now.toDateString()) {
+            return qsTr("Today")
+        }
+        const weekAgo = new Date(now.getTime() - 7 * 86400000)
+        if (date > weekAgo) {
+            return qsTr("This week")
+        }
+        const monthAgo = new Date(now.getTime() - 30 * 86400000)
+        if (date > monthAgo) {
+            return qsTr("This month")
+        }
+        if (date.getFullYear() === now.getFullYear()) {
+            return qsTr("This year")
+        }
+        return String(date.getFullYear())
+    }
+
     function refreshTranscripts() : void {
         transcriptModel.clear()
         if (selectedAsset === null) {
@@ -318,6 +388,34 @@ ApplicationWindow {
                 }
             }
 
+            // Memory tags: derived from contextual evidence (event types and
+            // moods present in the library).
+            ListView {
+                id: tagRow
+
+                Layout.fillWidth: true
+                Layout.preferredHeight: 28
+                orientation: ListView.Horizontal
+                spacing: 6
+                clip: true
+                model: tagModel
+
+                delegate: EchoButton {
+                    required property var modelData
+
+                    height: 26
+                    implicitHeight: 26
+                    implicitWidth: Math.max(64, implicitContentWidth + 20)
+                    text: modelData.label
+                    ghost: true
+                    selected: selectedTag === modelData.key
+                    onClicked: {
+                        selectedTag = modelData.key
+                        assetModel.refilter()
+                    }
+                }
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -333,26 +431,41 @@ ApplicationWindow {
                     anchors.margins: 8
                     spacing: 4
                     clip: true
-                    model: backend.listAssets()
+                    model: assetModel
+
+                    section.property: "timeBucket"
+                    section.delegate: Rectangle {
+                        width: assetList.width - 16
+                        height: 26
+                        color: Theme.transparent
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: section
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontMeta
+                            font.bold: true
+                        }
+                    }
 
                     delegate: Rectangle {
                         required property var modelData
 
                         width: assetList.width - 16
-                        height: 56
+                        height: 64
                         radius: 8
                         color: selectedAsset !== null && selectedAsset.id === modelData.id
                             ? Theme.surfaceSelected
                             : Theme.panelRaised
 
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    window.selectedAsset = modelData
-                                    player.play(modelData.path)
-                                    refreshTranscripts()
-                                }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                window.selectedAsset = modelData
+                                player.play(modelData.path)
+                                refreshTranscripts()
                             }
+                        }
 
                         RowLayout {
                             anchors.fill: parent
@@ -371,35 +484,79 @@ ApplicationWindow {
                                 spacing: 2
 
                                 Text {
-                                    text: modelData.path
+                                    text: modelData.summary.length > 0
+                                        ? modelData.summary
+                                        : modelData.path
                                     color: Theme.textPrimary
                                     font.pixelSize: 13
-                                    elide: Text.ElideMiddle
+                                    elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
 
-                                Text {
-                                    text: qsTr("%1 · %2 · level %3")
-                                        .arg(modelData.codec)
-                                        .arg(formatDuration(modelData.durationMillis))
-                                        .arg(modelData.maxLevel)
-                                    color: Theme.textSecondary
-                                    font.pixelSize: 11
-                                }
-                            }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
 
-                            Rectangle {
-                                visible: modelData.pathStatus === "missing"
-                                Layout.preferredWidth: 54
-                                Layout.preferredHeight: 18
-                                radius: 9
-                                color: Theme.accentSurfaceQuiet
+                                    Text {
+                                        text: modelData.path
+                                        color: Theme.textSecondary
+                                        font.pixelSize: 11
+                                        elide: Text.ElideMiddle
+                                        Layout.fillWidth: true
+                                    }
 
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: qsTr("Missing")
-                                    color: Theme.accentSelectionText
-                                    font.pixelSize: Theme.fontMeta
+                                    Text {
+                                        text: formatDuration(modelData.durationMillis)
+                                        color: Theme.textSecondary
+                                        font.pixelSize: 11
+                                    }
+
+                                    Rectangle {
+                                        visible: modelData.mood.length > 0
+                                        Layout.preferredHeight: 16
+                                        Layout.preferredWidth: moodText.implicitWidth + 12
+                                        radius: 8
+                                        color: Theme.accentSurfaceQuiet
+
+                                        Text {
+                                            id: moodText
+                                            anchors.centerIn: parent
+                                            text: modelData.mood
+                                            color: Theme.accentSelectionText
+                                            font.pixelSize: Theme.fontMeta
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        visible: modelData.eventType.length > 0
+                                        Layout.preferredHeight: 16
+                                        Layout.preferredWidth: eventText.implicitWidth + 12
+                                        radius: 8
+                                        color: Theme.surfaceSubtle
+
+                                        Text {
+                                            id: eventText
+                                            anchors.centerIn: parent
+                                            text: modelData.eventType
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontMeta
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        visible: modelData.pathStatus === "missing"
+                                        Layout.preferredWidth: 54
+                                        Layout.preferredHeight: 16
+                                        radius: 8
+                                        color: Theme.accentSurfaceQuiet
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: qsTr("Missing")
+                                            color: Theme.accentSelectionText
+                                            font.pixelSize: Theme.fontMeta
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -627,6 +784,7 @@ ApplicationWindow {
                              modelPrefs.workerScript, modelPrefs.ollamaEndpoint,
                              modelPrefs.ollamaModel)
         backend.queueScans()
+        assetModel.rebuild()
         jobTimer.start()
     }
 
