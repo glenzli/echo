@@ -45,7 +45,7 @@ Rectangle {
                         && asset.importedAtMillis >= now - 7 * 86400000)
                     || (key === "liked" && asset.liked)
                     || (key === "five-star" && asset.rating === 5)
-                    || (key === "has-text" && asset.textPreview.length > 0)
+                    || (key === "has-speech" && asset.textPreview.length > 0)
                     || (key === "missing" && asset.pathStatus === "missing")) {
                 count += 1
             }
@@ -113,7 +113,7 @@ Rectangle {
 
         Repeater {
             model: [
-                { key: "has-text", label: qsTr("With text"), glyph: "“" },
+                { key: "has-speech", label: qsTr("With speech"), glyph: "“" },
                 { key: "missing", label: qsTr("Missing originals"), glyph: "◇" }
             ]
 

@@ -18,7 +18,7 @@ Item {
     property int preferredCardWidth: 236
     property bool likedOnly: false
     property int minimumRating: 0
-    property bool textOnly: false
+    property bool speechOnly: false
     property var allAssets: []
     property var filteredAssets: []
     property var smartAlbums: []
@@ -78,7 +78,7 @@ Item {
         if (selectedFilter === "recent") return qsTr("Recently added")
         if (selectedFilter === "liked") return qsTr("Liked")
         if (selectedFilter === "five-star") return qsTr("5 stars")
-        if (selectedFilter === "has-text") return qsTr("With text")
+        if (selectedFilter === "has-speech") return qsTr("With speech")
         if (selectedFilter === "missing") return qsTr("Missing originals")
         if (selectedFilter.startsWith("album:")) {
             const album = albumForKey(selectedFilter.substring(6))
@@ -100,7 +100,7 @@ Item {
         if (selectedFilter === "five-star") {
             return asset.rating === 5
         }
-        if (selectedFilter === "has-text") {
+        if (selectedFilter === "has-speech") {
             return asset.textPreview.length > 0
         }
         if (selectedFilter === "missing") {
@@ -144,7 +144,7 @@ Item {
     function matchesFacets(asset: var) : bool {
         return (!likedOnly || asset.liked)
             && (minimumRating === 0 || asset.rating >= minimumRating)
-            && (!textOnly || asset.textPreview.length > 0)
+            && (!speechOnly || asset.textPreview.length > 0)
             && advancedFilterState.matches(asset)
     }
 
@@ -207,15 +207,15 @@ Item {
         refilter()
     }
 
-    function setTextOnly(enabled: bool) : void {
-        textOnly = enabled
+    function setSpeechOnly(enabled: bool) : void {
+        speechOnly = enabled
         refilter()
     }
 
     function clearAllFilters() : void {
         likedOnly = false
         minimumRating = 0
-        textOnly = false
+        speechOnly = false
         advancedFilterState.clear()
     }
 
@@ -341,12 +341,12 @@ Item {
             sortMode: workspace.sortMode
             likedOnly: workspace.likedOnly
             minimumRating: workspace.minimumRating
-            textOnly: workspace.textOnly
+            speechOnly: workspace.speechOnly
             filterState: advancedFilterState
             onSortRequested: mode => workspace.setSortMode(mode)
             onLikedFilterRequested: enabled => workspace.setLikedOnly(enabled)
             onRatingFilterRequested: rating => workspace.setMinimumRating(rating)
-            onTextFilterRequested: enabled => workspace.setTextOnly(enabled)
+            onSpeechFilterRequested: enabled => workspace.setSpeechOnly(enabled)
             onClearAllFiltersRequested: workspace.clearAllFilters()
         }
     }

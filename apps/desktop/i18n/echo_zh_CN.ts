@@ -20,8 +20,8 @@
         <translation>5 星</translation>
     </message>
     <message>
-        <source>With text</source>
-        <translation>包含文字</translation>
+        <source>With speech</source>
+        <translation>包含人声</translation>
     </message>
     <message>
         <source>Missing originals</source>
@@ -62,8 +62,8 @@
     </message>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="99"/>
-        <source>With text</source>
-        <translation>包含文字</translation>
+        <source>With speech</source>
+        <translation>包含人声</translation>
     </message>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="100"/>
@@ -870,25 +870,12 @@
     </message>
     <message>
         <location filename="../qml/SoundWallBottomBar.qml" line="179"/>
-        <source>Show sounds with text only</source>
-        <translation>仅显示包含文字的声音</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWallBottomBar.qml" line="192"/>
-        <source>Text</source>
-        <translation>文字</translation>
+        <source>Show sounds with speech only</source>
+        <translation>仅显示包含人声的声音</translation>
     </message>
     <message>
         <source>Clear all filters</source>
         <translation>清除全部筛选</translation>
-    </message>
-    <message>
-        <source>FILTER</source>
-        <translation>筛选</translation>
-    </message>
-    <message>
-        <source>FILTER %1</source>
-        <translation>筛选 %1</translation>
     </message>
     <message>
         <source>Open advanced filters</source>

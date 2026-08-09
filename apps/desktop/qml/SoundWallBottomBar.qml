@@ -12,17 +12,17 @@ ToolBar {
     required property string sortMode
     required property bool likedOnly
     required property int minimumRating
-    required property bool textOnly
+    required property bool speechOnly
     required property var filterState
 
     signal sortRequested(string mode)
     signal likedFilterRequested(bool enabled)
     signal ratingFilterRequested(int minimumRating)
-    signal textFilterRequested(bool enabled)
+    signal speechFilterRequested(bool enabled)
     signal clearAllFiltersRequested()
 
     readonly property bool anyFilterActive: likedOnly || minimumRating > 0
-        || textOnly || filterState.activeCount > 0
+        || speechOnly || filterState.activeCount > 0
 
     implicitHeight: 44
     topPadding: 5
@@ -112,29 +112,39 @@ ToolBar {
                     color: Theme.border
                 }
 
-                EchoIconButton {
-                    id: advancedFilterButton
-                    source: "qrc:/EchoDesktop/icons/filter.svg"
-                    selected: bar.filterState.activeCount > 0
-                    toolTipText: qsTr("Open advanced filters")
-                    buttonSize: 26
-                    iconSize: 14
-                    onClicked: advancedFilters.presentFrom(advancedFilterButton)
-                }
+                Item {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
 
-                Text {
-                    text: bar.filterState.activeCount > 0
-                        ? qsTr("FILTER %1").arg(bar.filterState.activeCount)
-                        : qsTr("FILTER")
-                    color: bar.filterState.activeCount > 0
-                        ? Theme.accentSelectionText : Theme.textSecondary
-                    font.pixelSize: 9
-                    font.bold: bar.filterState.activeCount > 0
-                    font.letterSpacing: 0.6
-                    verticalAlignment: Text.AlignVCenter
+                    EchoIconButton {
+                        id: advancedFilterButton
+                        anchors.centerIn: parent
+                        source: "qrc:/EchoDesktop/icons/filter.svg"
+                        selected: bar.filterState.activeCount > 0
+                        toolTipText: qsTr("Open advanced filters")
+                        buttonSize: 26
+                        iconSize: 14
+                        onClicked: advancedFilters.presentFrom(advancedFilterButton)
+                    }
 
-                    TapHandler {
-                        onTapped: advancedFilters.presentFrom(advancedFilterButton)
+                    Rectangle {
+                        visible: bar.filterState.activeCount > 0
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        width: Math.max(13, filterCount.implicitWidth + 6)
+                        height: 13
+                        radius: height / 2
+                        color: Theme.accent
+                        z: 3
+
+                        Text {
+                            id: filterCount
+                            anchors.centerIn: parent
+                            text: bar.filterState.activeCount
+                            color: Theme.accentSelectionText
+                            font.pixelSize: 8
+                            font.bold: true
+                        }
                     }
                 }
 
@@ -226,36 +236,13 @@ ToolBar {
                     }
                 }
 
-                Button {
-                    id: textFilter
-
-                    Layout.preferredWidth: 40
-                    Layout.preferredHeight: 26
-                    padding: 0
-                    focusPolicy: Qt.NoFocus
-                    onClicked: bar.textFilterRequested(!bar.textOnly)
-
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Show sounds with text only")
-                    ToolTip.delay: 600
-                    Accessible.name: ToolTip.text
-
-                    background: Rectangle {
-                        radius: 6
-                        color: bar.textOnly ? Theme.accentSurface
-                            : textFilter.hovered ? Theme.buttonGhostHover
-                                                 : Theme.transparent
-                    }
-
-                    contentItem: Text {
-                        text: qsTr("Text")
-                        color: bar.textOnly ? Theme.accentSelectionText
-                                            : Theme.textSecondary
-                        font.pixelSize: Theme.fontMeta
-                        font.bold: bar.textOnly
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/mic.svg"
+                    selected: bar.speechOnly
+                    toolTipText: qsTr("Show sounds with speech only")
+                    buttonSize: 26
+                    iconSize: 14
+                    onClicked: bar.speechFilterRequested(!bar.speechOnly)
                 }
             }
         }
