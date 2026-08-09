@@ -8,8 +8,6 @@ namespace {
 constexpr auto kModelRootKey = "models/root";
 constexpr auto kPythonKey = "models/python";
 constexpr auto kWorkerKey = "models/worker";
-constexpr auto kOllamaEndpointKey = "models/ollamaEndpoint";
-constexpr auto kOllamaModelKey = "models/ollamaModel";
 
 } // namespace
 
@@ -79,32 +77,6 @@ void ModelPreferences::setWorkerScript(const QString& script) {
     worker_script_ = script;
     settings_->setValue(QString::fromLatin1(kWorkerKey), worker_script_);
     emit workerScriptChanged();
-}
-
-QString ModelPreferences::ollamaEndpoint() const {
-    return ollama_endpoint_;
-}
-
-void ModelPreferences::setOllamaEndpoint(const QString& endpoint) {
-    if (endpoint == ollama_endpoint_) {
-        return;
-    }
-    ollama_endpoint_ = endpoint;
-    settings_->setValue(QString::fromLatin1(kOllamaEndpointKey), ollama_endpoint_);
-    emit ollamaEndpointChanged();
-}
-
-QString ModelPreferences::ollamaModel() const {
-    return ollama_model_;
-}
-
-void ModelPreferences::setOllamaModel(const QString& model) {
-    if (model == ollama_model_) {
-        return;
-    }
-    ollama_model_ = model;
-    settings_->setValue(QString::fromLatin1(kOllamaModelKey), ollama_model_);
-    emit ollamaModelChanged();
 }
 
 QString ModelPreferences::defaultModelRoot() {

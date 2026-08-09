@@ -78,7 +78,7 @@ pub fn scan_root(
         catalog.with_transaction(|transaction| {
             enqueue_job(
                 transaction,
-                &format!("import-{}", path_text.replace(['/', '\\'], "_")),
+                &import_job_id(path, size, mtime),
                 JobKind::ImportFile,
                 &FileJobPayload {
                     path: path.to_owned(),
@@ -185,10 +185,7 @@ pub fn queue_scans_for_enabled_roots(
         catalog.with_transaction(|transaction| {
             requeue_scan_job(
                 transaction,
-                &format!(
-                    "scan-{}",
-                    root.root.to_string_lossy().replace(['/', '\\'], "_")
-                ),
+                &scan_job_id(&root.root),
                 &ScanRootJobPayload {
                     root: root.root.clone(),
                 }
@@ -215,7 +212,7 @@ pub fn add_root_and_scan(
     catalog.with_transaction(|transaction| {
         requeue_scan_job(
             transaction,
-            &format!("scan-{}", root.to_string_lossy().replace(['/', '\\'], "_")),
+            &scan_job_id(root),
             &ScanRootJobPayload {
                 root: root.to_owned(),
             }
@@ -225,3 +222,21 @@ pub fn add_root_and_scan(
     })?;
     Ok(())
 }
+
+fn import_job_id(path: &Path, size_bytes: u64, mtime_millis: i64) -> String {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(path.to_string_lossy().as_bytes());
+    hasher.update(&size_bytes.to_le_bytes());
+    hasher.update(&mtime_millis.to_le_bytes());
+    format!("import-{}", hasher.finalize().to_hex())
+}
+
+fn scan_job_id(root: &Path) -> String {
+    format!(
+        "scan-{}",
+        blake3::hash(root.to_string_lossy().as_bytes()).to_hex()
+    )
+}
+
+#[cfg(test)]
+mod tests;

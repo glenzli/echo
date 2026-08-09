@@ -5,7 +5,7 @@
 //! `codec`, timestamps) is descriptive and may be corrected, but the content
 //! hash is the durable identity.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
@@ -39,6 +39,34 @@ impl std::fmt::Display for ContentHash {
 impl From<blake3::Hash> for ContentHash {
     fn from(hash: blake3::Hash) -> Self {
         Self(*hash.as_bytes())
+    }
+}
+
+/// A hexadecimal content identity that is not exactly one BLAKE3-256 digest.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContentHashParseError;
+
+impl std::fmt::Display for ContentHashParseError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("content hash must be exactly 64 hexadecimal characters")
+    }
+}
+
+impl std::error::Error for ContentHashParseError {}
+
+impl FromStr for ContentHash {
+    type Err = ContentHashParseError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.len() != 64 {
+            return Err(ContentHashParseError);
+        }
+        let mut bytes = [0u8; 32];
+        for (index, pair) in text.as_bytes().chunks_exact(2).enumerate() {
+            let pair = std::str::from_utf8(pair).map_err(|_| ContentHashParseError)?;
+            bytes[index] = u8::from_str_radix(pair, 16).map_err(|_| ContentHashParseError)?;
+        }
+        Ok(Self::new(bytes))
     }
 }
 
@@ -76,3 +104,6 @@ pub struct OriginalRef {
     /// Wall-clock import time in unix milliseconds.
     pub imported_at_millis: i64,
 }
+
+#[cfg(test)]
+mod tests;

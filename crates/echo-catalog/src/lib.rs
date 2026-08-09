@@ -13,6 +13,7 @@ mod asset_path;
 mod asset_registration;
 mod audio_space;
 mod catalog;
+mod derived_artifact;
 mod error;
 mod job_queue;
 mod scan_journal;
@@ -28,6 +29,10 @@ pub use asset_registration::{
 };
 pub use audio_space::{AudioSpaceAsset, list_audio_space};
 pub use catalog::{Catalog, CatalogStats, open_catalog};
+pub use derived_artifact::{
+    DerivedArtifactKind, DerivedArtifactRecord, find_derived_artifact, remove_derived_artifact,
+    upsert_derived_artifact,
+};
 pub use error::CatalogError;
 pub use error::CatalogErrorKind;
 pub use job_queue::{

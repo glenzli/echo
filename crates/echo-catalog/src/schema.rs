@@ -5,9 +5,9 @@
 //! module creates the current dated revision atomically and rejects every
 //! other persisted shape. Revisions follow Shadow's contract: `YYYYMMDDNN`.
 
-pub(crate) const SCHEMA_VERSION: i64 = 2_026_080_802;
+pub(crate) const SCHEMA_VERSION: i64 = 2_026_080_901;
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260808.2-fts5-transcript-search";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.1-derived-artifact-references";
 
 pub(crate) const SCHEMA_SQL: &str = "
 CREATE TABLE IF NOT EXISTS catalog_meta (
@@ -45,6 +45,16 @@ CREATE INDEX IF NOT EXISTS analysis_records_asset_kind
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset_id   TEXT PRIMARY KEY REFERENCES assets(id),
     max_level  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS derived_artifacts (
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    kind               TEXT NOT NULL,
+    schema_version     INTEGER NOT NULL,
+    content_hash       TEXT NOT NULL,
+    size_bytes         INTEGER NOT NULL,
+    created_at_millis  INTEGER NOT NULL,
+    PRIMARY KEY (asset_id, kind, schema_version)
 );
 
 CREATE TABLE IF NOT EXISTS scan_roots (

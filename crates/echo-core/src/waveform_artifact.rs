@@ -7,13 +7,23 @@
 
 use std::path::Path;
 
-use echo_cache::{BlobRole, open_blob_store, put_blob};
-use echo_domain::ContentHash;
+use echo_cache::{
+    BlobRole, CacheErrorKind, open_blob_store, put_blob, quarantine_corrupt, read_verified,
+};
+use echo_catalog::{
+    Catalog, DerivedArtifactKind, DerivedArtifactRecord, find_derived_artifact,
+    remove_derived_artifact, upsert_derived_artifact,
+};
+use echo_domain::{AssetId, ContentHash};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, CoreErrorKind};
 
 const WAVEFORM_ARTIFACT_SCHEMA: u32 = 1;
+
+/// Upper bound for a waveform pyramid read. A few hours of base-level peaks
+/// remain well below this limit.
+const MAX_WAVEFORM_ARTIFACT_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Stable payload schema of a cached waveform artifact.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,6 +66,76 @@ pub fn build_and_cache_waveform(
     cache_root: &Path,
     max_levels: u32,
 ) -> Result<WaveformArtifact, CoreError> {
+    build_waveform_artifact(source, cache_root, max_levels).map(|built| built.artifact)
+}
+
+/// Resolves an asset's current waveform artifact, rebuilding and publishing
+/// a new reference when the cache entry is missing, corrupt, or from an
+/// incompatible payload schema.
+///
+/// # Errors
+///
+/// Returns a core failure when the catalog cannot be read or the original
+/// cannot be decoded into a replacement artifact.
+pub fn load_or_build_waveform(
+    catalog: &Catalog,
+    asset_id: AssetId,
+    source: &Path,
+    cache_root: &Path,
+    max_levels: u32,
+) -> Result<WaveformArtifactPayload, CoreError> {
+    let reference = catalog.with_transaction(|transaction| {
+        find_derived_artifact(
+            transaction,
+            asset_id,
+            DerivedArtifactKind::WaveformPyramid,
+            WAVEFORM_ARTIFACT_SCHEMA,
+        )
+    })?;
+    if let Some(reference) = reference {
+        if let Ok(payload) =
+            read_waveform_payload(cache_root, reference.content_hash, reference.size_bytes)
+        {
+            return Ok(payload);
+        }
+        catalog.with_transaction(|transaction| {
+            remove_derived_artifact(
+                transaction,
+                asset_id,
+                DerivedArtifactKind::WaveformPyramid,
+                WAVEFORM_ARTIFACT_SCHEMA,
+            )
+        })?;
+    }
+
+    let built = build_waveform_artifact(source, cache_root, max_levels)?;
+    catalog.with_transaction(|transaction| {
+        upsert_derived_artifact(
+            transaction,
+            &DerivedArtifactRecord {
+                asset_id,
+                kind: DerivedArtifactKind::WaveformPyramid,
+                schema_version: WAVEFORM_ARTIFACT_SCHEMA,
+                content_hash: built.artifact.content_hash,
+                size_bytes: built.size_bytes,
+                created_at_millis: crate::util::now_millis(),
+            },
+        )
+    })?;
+    Ok(built.payload)
+}
+
+struct BuiltWaveformArtifact {
+    artifact: WaveformArtifact,
+    payload: WaveformArtifactPayload,
+    size_bytes: u64,
+}
+
+fn build_waveform_artifact(
+    source: &Path,
+    cache_root: &Path,
+    max_levels: u32,
+) -> Result<BuiltWaveformArtifact, CoreError> {
     let waveform = echo_bridge::waveform::build_waveform(source, max_levels)
         .map_err(|error| CoreError::new(CoreErrorKind::AudioEngineRejected, error.message))?;
     let payload = WaveformArtifactPayload {
@@ -92,10 +172,55 @@ pub fn build_and_cache_waveform(
     let bucket_count = payload.levels.first().map_or(0, |level| {
         u64::try_from(level.mins.len()).expect("bucket count fits u64")
     });
-    Ok(WaveformArtifact {
-        content_hash: blob.content_hash,
-        canonical_sample_rate: payload.canonical_sample_rate,
-        level_count: payload.levels.len(),
-        bucket_count,
+    Ok(BuiltWaveformArtifact {
+        artifact: WaveformArtifact {
+            content_hash: blob.content_hash,
+            canonical_sample_rate: payload.canonical_sample_rate,
+            level_count: payload.levels.len(),
+            bucket_count,
+        },
+        payload,
+        size_bytes: blob.size_bytes,
     })
 }
+
+fn read_waveform_payload(
+    cache_root: &Path,
+    content_hash: ContentHash,
+    expected_size: u64,
+) -> Result<WaveformArtifactPayload, CoreError> {
+    let store = open_blob_store(cache_root).map_err(|error| {
+        CoreError::new(CoreErrorKind::Other, format!("cannot open cache: {error}"))
+    })?;
+    let bytes =
+        read_verified(&store, content_hash, MAX_WAVEFORM_ARTIFACT_BYTES).map_err(|error| {
+            if error.kind == CacheErrorKind::Corrupt {
+                let _ = quarantine_corrupt(&store, content_hash, expected_size);
+            }
+            CoreError::new(
+                CoreErrorKind::Other,
+                format!("cannot read waveform artifact: {error}"),
+            )
+        })?;
+    let payload: WaveformArtifactPayload = serde_json::from_slice(&bytes).map_err(|error| {
+        CoreError::new(
+            CoreErrorKind::Other,
+            format!("cannot decode waveform artifact: {error}"),
+        )
+    })?;
+    if payload.schema != WAVEFORM_ARTIFACT_SCHEMA
+        || payload
+            .levels
+            .iter()
+            .any(|level| level.mins.len() != level.maxs.len())
+    {
+        return Err(CoreError::new(
+            CoreErrorKind::Other,
+            "waveform artifact payload schema is incompatible",
+        ));
+    }
+    Ok(payload)
+}
+
+#[cfg(test)]
+mod tests;

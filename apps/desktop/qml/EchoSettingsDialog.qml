@@ -1,6 +1,6 @@
 //! EchoSettingsDialog: application settings with a Shadow-style section list.
-//! General (appearance + language) and Models; Library management lives in
-//! its own workspace panel.
+//! General (appearance + language) and the transitional inference adapter;
+//! Library management lives in its own workspace panel.
 
 import QtQuick
 import QtQuick.Controls
@@ -17,8 +17,8 @@ Dialog {
     readonly property var sections: [
         { key: "general", title: qsTr("General"),
           subtitle: qsTr("Appearance & language"), icon: "qrc:/EchoDesktop/icons/tune.svg" },
-        { key: "models", title: qsTr("Models"),
-          subtitle: qsTr("Local inference access"), icon: "qrc:/EchoDesktop/icons/mic.svg" }
+        { key: "inference", title: qsTr("Inference"),
+          subtitle: qsTr("Compatibility worker"), icon: "qrc:/EchoDesktop/icons/mic.svg" }
     ]
     property int selectedIndex: 0
 
@@ -241,7 +241,7 @@ Dialog {
                     }
                 }
 
-                // ---- Models pane ----
+                // ---- Transitional inference pane ----
                 ColumnLayout {
                     visible: dialog.selectedIndex === 1
                     Layout.fillWidth: true
@@ -249,10 +249,9 @@ Dialog {
 
                     EchoSectionLabel {
                         Layout.fillWidth: true
-                        text: qsTr("Model access")
-                        hint: qsTr("ASR models come from the shared HuggingFace "
-                                   + "cache; contextual understanding runs on "
-                                   + "your local Ollama.")
+                        text: qsTr("Direct worker (prototype)")
+                        hint: qsTr("This adapter only supports the current ASR proof of concept. "
+                                   + "Production analysis will be scheduled by Infer Build.")
                     }
 
                     GridLayout {
@@ -271,6 +270,7 @@ Dialog {
                             id: modelRootField
 
                             Layout.fillWidth: true
+                            text: modelPrefs !== null ? modelPrefs.modelRoot : ""
                             onEditingFinished: modelPrefs.modelRoot = text
                         }
 
@@ -284,6 +284,7 @@ Dialog {
                             id: pythonField
 
                             Layout.fillWidth: true
+                            text: modelPrefs !== null ? modelPrefs.python : ""
                             placeholderText: qsTr("python3")
                             onEditingFinished: modelPrefs.python = text
                         }
@@ -298,33 +299,8 @@ Dialog {
                             id: workerField
 
                             Layout.fillWidth: true
+                            text: modelPrefs !== null ? modelPrefs.workerScript : ""
                             onEditingFinished: modelPrefs.workerScript = text
-                        }
-
-                        Text {
-                            text: qsTr("Ollama endpoint")
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontBody
-                        }
-
-                        EchoTextField {
-                            id: ollamaEndpointField
-
-                            Layout.fillWidth: true
-                            onEditingFinished: modelPrefs.ollamaEndpoint = text
-                        }
-
-                        Text {
-                            text: qsTr("Ollama model")
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontBody
-                        }
-
-                        EchoTextField {
-                            id: ollamaModelField
-
-                            Layout.fillWidth: true
-                            onEditingFinished: modelPrefs.ollamaModel = text
                         }
                     }
                 }

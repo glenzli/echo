@@ -3,9 +3,9 @@
 //! This crate orchestrates the catalog, the cache, and (later) the C++ audio
 //! engine and AI workers. It knows nothing about Qt.
 //!
-//! Start with [`import`] for the idempotent import path. Background job
-//! scheduling arrives with the first real analysis consumer (see ROADMAP
-//! M0); no scheduler exists before there are jobs to run.
+//! Start with [`import`] for the idempotent import path. The background queue
+//! performs rebuildable Level 0 work; model execution remains behind an
+//! inference boundary and never enters playback.
 
 mod analysis;
 mod contextual;
@@ -28,6 +28,7 @@ pub use scanner::{
 };
 pub use waveform_artifact::{
     WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,
+    load_or_build_waveform,
 };
 pub use worker::{WorkerConfig, WorkerPool};
 

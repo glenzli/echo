@@ -48,14 +48,14 @@ Revisit    声音空间 / 声音相册（最高层）
  decoder/playback        catalog/index
  render graph            provenance
  effects                 jobs/search
- waveform                AI routing
+ waveform                inference intent
         │                    │
         └──────────┬─────────┘
                    │
-               AI Workers
-      ┌────────────┼────────────┐
-      │            │            │
- whisper.cpp   MLX/ONNX     Cloud API
+       Infer Build local control plane
+ admission / policy / scheduler / deployment
+                   │
+       MLX / ONNX / whisper.cpp / Cloud
 ```
 
 ### Qt（UI / Library / Waveform / Inspector）
@@ -77,7 +77,24 @@ Revisit    声音空间 / 声音相册（最高层）
 - SQLite catalog、metadata、provenance
 - 后台 job 系统、analysis 结果
 - semantic search、speaker/event 关系
-- AI capability routing
+- inference intent submission and result ingestion
+
+### Echo 与 Infer Build 的边界
+
+Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控制面。生产链路按以下边界
+演进，Echo 不再自行发展一套模型调度器：
+
+| Echo 负责 | Infer Build 负责 |
+| --- | --- |
+| `AudioAsset`、Original、provenance、分析证据与用户确认 | admission、App policy、router/scheduler、quota、resource reservation |
+| 决定何时提交 `audio.transcribe`、`audio.align`、`text.summarize` 等 Intent Job | 把 Intent 路由到具体模型、worker 和硬件后端 |
+| 保存可追溯结果；模型升级后决定是否重算 | 模型路径、Python/worker 生命周期、部署状态和失败重试 |
+| 进度、取消和失败状态的产品呈现 | Job/Attempt 持久化、资源仲裁和运行审计 |
+
+仓库内现有 MLX/Ollama/脚本调用只作为概念验证和兼容适配层：允许验证数据契约，但不再
+扩充模型选择 UI、物理模型路由、下载器或驻留进程管理。正式接入从一个真实消费方开始，
+优先采用 Infer Build 已有的 `audio.transcribe` / `audio.align` 任务接口；不预建没有消费方的
+第二套调度机制。
 
 ## 4. 音频底层
 
@@ -110,14 +127,10 @@ Level 5  LLM contextual understanding / memory association
 
 首次 import 很快可浏览；机器空闲时慢慢理解过去。
 
-## 7. AI 模型选型与路由
+## 7. 推理能力与模型参考
 
-**模型获取策略（2026-08 定）**：Echo 不负责下载模型。用户用本机 `hf` 工具维护共享的
-`HuggingFace` 缓存（默认根 `~/.cache/huggingface/hub`，可用 `HF_HOME`/`HF_HUB_CACHE`
-覆盖）；`echo-ai` 的模型注册表把逻辑模型解析到缓存快照路径，缺失时给出精确的
-`hf download <repo>` 命令。设置面板提供模型目录配置与各模型状态。运行时经
-`mlx_audio` 的 `generate.py`（`--model --audio --format json`）子进程调用，使用
-TTS 实验的 venv（Python 3.11 + mlx）。
+产品层只依赖能力与证据契约，不依赖某个物理模型。下表是当前验证用候选，不构成 Echo
+自己的模型注册或调度路线；模型获取、部署和硬件路由最终由 Infer Build 负责。
 
 | 能力 | 模型 | 说明 |
 | --- | --- | --- |
@@ -130,14 +143,15 @@ TTS 实验的 venv（Python 3.11 + mlx）。
 
 Effect 策略：传统 DSP（gain/loudness/EQ/filter/compressor/limiter/fade/resample/normalize）CPU 即可，甚至 DeepFilterNet 级别降噪也是低复杂度实时可跑。GPU 只用于 heavy speech enhancement、source separation、de-reverb、neural restoration、大 ASR、audio embedding batch。
 
-InferenceBackend 抽象：
+过渡期的 `InferenceBackend` 抽象：
 
 ```text
 InferenceBackend
 ├── MLX / CoreML / CUDA / ONNX Runtime / whisper.cpp / Cloud
 ```
 
-业务层不感知底层 GPU。effect graph CPU-first，AI Effect 单独进 inference backend。
+业务层不感知底层 GPU。effect graph CPU-first，AI Effect 提交推理 Intent。过渡适配器不得
+越过该边界把模型路径、虚拟环境或 worker 生命周期渗入 catalog、core 或 UI。
 
 ## 8. UI 原则
 
@@ -148,18 +162,34 @@ InferenceBackend
 ## 9. 里程碑
 
 - **M0 Audio Foundation**：Qt 播放、FFmpeg decode、waveform、SQLite、immutable Original、后台 job。
-  - 已完成：FFmpeg probe/流式解码、waveform pyramid（缓存化）、Qt 回调式播放（seek/pause/volume）、Audio Space 列表 + 波形详情。
-  - 待办：后台 job 调度（等 M1 ASR 出现第一个真实消费方再建）、导入目录扫描、播放进度的波形联动优化。
+  - 已完成：FFmpeg probe/流式解码、waveform pyramid、Qt 回调式播放
+    （seek/pause/volume）、SQLite catalog、immutable Original、目录扫描、可恢复 job queue、
+    Audio Space 列表与波形详情。
+  - 已收口（2026-08-09）：waveform artifact 由 catalog 引用并复用；扫描任务身份包含文件指纹，
+    同一路径变更后可重新导入；后台导入只做 Level 0，不再自动跑完整模型链；后台结果在
+    已打开的 Audio Space 中可见；修复失败任务读取和桌面异步生命周期。
+  - 退出标准：导入后快速可浏览、cache 可删可重建、重复扫描幂等、文件变化可重入、播放
+    与 UI 不依赖推理服务在线。
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
-  - 已完成（2026-08）：模型注册表（HF 缓存解析、缺失提示）；ASR worker
-    （`tools/asr/transcribe.py`，子进程契约）；`echo-cli transcribe` 导入→转写→
-    transcript 证据入库（含分段时间戳，`say` 语音实测文本完全正确）。
-  - 待办：SenseVoice（需 `convert.py` 一次性转换后接入）、ForcedAligner 词级对齐、
-    waveform↔transcript 双向同步、桌面端"分析"入口。
+  - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
+    导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
+  - 冻结项：不再增强 Echo 内的物理模型注册、Ollama worker 或裸 Python 路由。
+  - 下一真实切片：通过 Infer Build 提交 `audio.transcribe`，接收 Job/Attempt 进度和结果，
+    保存模型/版本/置信度/时间戳；随后接 `audio.align`，完成 waveform↔transcript 双向定位。
+  - 待办：SenseVoice 能力 Intent、speaker/event 证据、取消/重试产品状态。
 - **M2 Library**：自然语言搜索、人物/声音、时间、audio event、CLAP semantic search。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
+
+### 当前状态校准（2026-08-09）
+
+Echo 处于 **M0 收口、M1 概念验证完成但生产接入尚未开始** 的阶段。Audio Space 已经形成
+首个可用垂直界面，但人物、地点、声音类型仍是展示维度，不应被描述为已经具备完整识别和
+关系系统。M4 表示声音相册体验成熟，而不是首次出现 Audio Space 页面。
+
+在 M1 的 Infer Build 任务切片完成前，不把直接模型调用的数量当作里程碑进度；在 M2 前，
+不把 transcript 包含匹配描述成语义搜索；在 M3 前，不在实时播放路径加入任何 AI effect。
 
 ## 10. 垂直切片（判断 Echo 是否成立的标准）
 

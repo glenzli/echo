@@ -6,9 +6,8 @@ use std::{
     str::FromStr,
 };
 
-use echo_cache::{open_blob_store, read_verified};
 use echo_catalog::{AssetLookup, Catalog, find_by_id, list_assets, open_catalog, query_analysis};
-use echo_core::{WaveformArtifactPayload, build_and_cache_waveform};
+use echo_core::load_or_build_waveform;
 use echo_domain::AssetId;
 
 use crate::ffi::{
@@ -48,10 +47,6 @@ impl From<echo_catalog::CatalogError> for SessionError {
         }
     }
 }
-
-/// Upper bound for a cached waveform artifact read (a few hours of base-level
-/// min/max pairs stay far below this).
-const MAX_WAVEFORM_ARTIFACT_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Transcribes an asset with the configured MLX worker. Stateless so it can
 /// run on a background thread.
@@ -190,6 +185,7 @@ impl LibrarySession {
                     path: asset.path.to_string_lossy().into_owned(),
                     codec: asset.codec.unwrap_or_else(|| "unknown".to_owned()),
                     duration_millis: asset.duration_millis.unwrap_or(0),
+                    recorded_at_millis: asset.recorded_at_millis.unwrap_or(0),
                     imported_at_millis: asset.imported_at_millis,
                     max_level: asset.max_level,
                     path_status: asset.path_status,
@@ -224,21 +220,9 @@ impl LibrarySession {
                         message: error.to_string(),
                     }),
                 })?;
-        let artifact = build_and_cache_waveform(&source, &self.cache_root, 8).map_err(|error| {
-            SessionError {
-                message: format!("cannot build waveform for {}: {error}", source.display()),
-            }
-        })?;
-        let store = open_blob_store(&self.cache_root).map_err(|error| SessionError {
-            message: error.to_string(),
-        })?;
-        let bytes = read_verified(&store, artifact.content_hash, MAX_WAVEFORM_ARTIFACT_BYTES)
+        let payload = load_or_build_waveform(&self.catalog, id, &source, &self.cache_root, 8)
             .map_err(|error| SessionError {
-                message: error.to_string(),
-            })?;
-        let payload: WaveformArtifactPayload =
-            serde_json::from_slice(&bytes).map_err(|error| SessionError {
-                message: format!("cannot decode cached waveform artifact: {error}"),
+                message: format!("cannot build waveform for {}: {error}", source.display()),
             })?;
         Ok(WaveformArtifactWire {
             canonical_sample_rate: payload.canonical_sample_rate,

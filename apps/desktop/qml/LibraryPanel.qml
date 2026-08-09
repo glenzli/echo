@@ -43,8 +43,8 @@ ColumnLayout {
     EchoSectionLabel {
         Layout.fillWidth: true
         text: qsTr("Scan roots")
-        hint: qsTr("New and changed recordings are imported and analyzed in the "
-                   + "background. Missing files are re-linked automatically when "
+        hint: qsTr("New and changed recordings are imported and prepared for browsing "
+                   + "in the background. Missing files re-link automatically when "
                    + "they return.")
     }
 
@@ -224,6 +224,14 @@ ColumnLayout {
             for (const root of roots) {
                 append(root)
             }
+        }
+    }
+
+    Connections {
+        target: backend
+        function onAssetsChanged() : void {
+            rootModel.refresh()
+            missingModel.refresh()
         }
     }
 

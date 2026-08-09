@@ -17,6 +17,7 @@ mod ffi {
         path: String,
         codec: String,
         duration_millis: u64,
+        recorded_at_millis: i64,
         imported_at_millis: i64,
         max_level: u8,
         path_status: String,

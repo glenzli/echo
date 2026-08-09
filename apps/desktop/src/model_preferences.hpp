@@ -29,12 +29,6 @@ class ModelPreferences : public QObject {
     QString workerScript() const;
     void setWorkerScript(const QString& script);
 
-    QString ollamaEndpoint() const;
-    void setOllamaEndpoint(const QString& endpoint);
-
-    QString ollamaModel() const;
-    void setOllamaModel(const QString& model);
-
     /// The standard HuggingFace hub cache path.
     static QString defaultModelRoot();
 
@@ -42,14 +36,10 @@ class ModelPreferences : public QObject {
     void modelRootChanged();
     void pythonChanged();
     void workerScriptChanged();
-    void ollamaEndpointChanged();
-    void ollamaModelChanged();
 
   private:
     std::unique_ptr<QSettings> settings_;
     QString model_root_;
     QString python_;
     QString worker_script_;
-    QString ollama_endpoint_;
-    QString ollama_model_;
 };

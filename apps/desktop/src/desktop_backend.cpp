@@ -38,6 +38,10 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("importedAtMillis"),
             static_cast<qlonglong>(asset.imported_at_millis)
         );
+        entry.insert(
+            QStringLiteral("recordedAtMillis"),
+            static_cast<qlonglong>(asset.recorded_at_millis)
+        );
         entry.insert(QStringLiteral("maxLevel"), static_cast<int>(asset.max_level));
         entry.insert(
             QStringLiteral("pathStatus"),
@@ -143,6 +147,9 @@ void DesktopBackend::transcribeAsset(
     if (transcribing_) {
         return;
     }
+    if (analysis_thread_.joinable()) {
+        analysis_thread_.join();
+    }
     transcribing_ = true;
     emit transcriptionStateChanged();
 
@@ -175,7 +182,6 @@ void DesktopBackend::transcribeAsset(
             Qt::QueuedConnection
         );
     });
-    analysis_thread_.detach();
 }
 
 bool DesktopBackend::transcribing() const {
@@ -185,17 +191,15 @@ bool DesktopBackend::transcribing() const {
 void DesktopBackend::startWorkers(
     const QString& modelRoot,
     const QString& python,
-    const QString& workerScript,
-    const QString& ollamaEndpoint,
-    const QString& ollamaModel
+    const QString& workerScript
 ) {
     try {
         session_->session_start_workers(
             modelRoot.toStdString(),
             python.toStdString(),
             workerScript.toStdString(),
-            ollamaEndpoint.toStdString(),
-            ollamaModel.toStdString()
+            "",
+            ""
         );
     } catch (const rust::Error& error) {
         qWarning("cannot start background workers: %s", error.what());

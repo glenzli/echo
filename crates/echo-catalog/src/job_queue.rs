@@ -274,11 +274,11 @@ pub fn list_failed_jobs(transaction: &Transaction<'_>) -> Result<Vec<Job>, Catal
             kind,
             payload: serde_json::from_str(&row.get::<_, String>(2)?).unwrap_or_default(),
             state: JobState::Failed,
-            progress: row.get(3)?,
-            attempts: row.get(4)?,
-            created_at_millis: row.get(5)?,
-            updated_at_millis: row.get(6)?,
-            error: row.get(7)?,
+            progress: row.get(4)?,
+            attempts: row.get(5)?,
+            created_at_millis: row.get(6)?,
+            updated_at_millis: row.get(7)?,
+            error: row.get(8)?,
         })
     })?;
     let mut jobs = Vec::new();
@@ -379,3 +379,6 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
         )),
     }
 }
+
+#[cfg(test)]
+mod tests;

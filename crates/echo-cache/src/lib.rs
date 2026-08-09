@@ -12,7 +12,7 @@ pub use blobs::{
     BlobRole, BlobStore, CachedBlob, PutBlob, blob_path, open_blob_store, put_blob,
     quarantine_corrupt, read_verified, store_root,
 };
-pub use error::CacheErrorKind;
+pub use error::{CacheError, CacheErrorKind};
 
 #[cfg(test)]
 mod tests;

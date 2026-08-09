@@ -123,8 +123,14 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
         JobKind::AnalyzeWaveform => {
             let asset_id = asset_id_of(&job.payload)?;
             let source = source_path_of(catalog, &asset_id)?;
-            crate::waveform_artifact::build_and_cache_waveform(&source, &config.cache_root, 8)
-                .map(|_| ())
+            crate::waveform_artifact::load_or_build_waveform(
+                catalog,
+                asset_id,
+                &source,
+                &config.cache_root,
+                8,
+            )
+            .map(|_| ())
         }
         JobKind::Transcribe => {
             let asset_id = asset_id_of(&job.payload)?;
@@ -141,17 +147,6 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
                 .unwrap_or("unknown")
                 .to_owned();
             crate::record_transcript(catalog, asset_id_of(&job.payload)?, &payload, &version)?;
-            // Progressive pipeline: transcribe completes, then contextual.
-            let now = crate::util::now_millis();
-            catalog.with_transaction(|transaction| {
-                enqueue_job(
-                    transaction,
-                    &format!("contextual-{asset_id}"),
-                    JobKind::Contextual,
-                    &asset_id_payload(&asset_id),
-                    now,
-                )
-            })?;
             Ok(())
         }
         JobKind::Contextual => {
@@ -236,18 +231,16 @@ fn import_file(catalog: &Catalog, _config: &WorkerConfig, path: &Path) -> Result
                 )?;
                 let asset = find_by_content_hash(transaction, content_hash)?;
                 if let AssetLookup::Found(asset) = asset {
-                    // Queue the progressive analysis chain for new assets.
-                    let mut chain = vec![(JobKind::AnalyzeWaveform, asset_id_payload(&asset.id))];
-                    chain.push((JobKind::Transcribe, asset_id_payload(&asset.id)));
-                    for (kind, payload) in chain {
-                        enqueue_job(
-                            transaction,
-                            &format!("{}-{}", kind_text_short(kind), asset.id),
-                            kind,
-                            &payload,
-                            now,
-                        )?;
-                    }
+                    // Import stays fast and model-independent: Level 0 only.
+                    // Higher levels are explicit inference intents, not an
+                    // automatic raw-model chain.
+                    enqueue_job(
+                        transaction,
+                        &format!("waveform-{}", asset.id),
+                        JobKind::AnalyzeWaveform,
+                        &asset_id_payload(&asset.id),
+                        now,
+                    )?;
                 }
             }
         }
@@ -299,15 +292,5 @@ fn resolve_asr_snapshot(model_root: &Path) -> Result<PathBuf, CoreError> {
             CoreErrorKind::Other,
             format!("ASR model missing; run: {download_command}"),
         )),
-    }
-}
-
-fn kind_text_short(kind: JobKind) -> &'static str {
-    match kind {
-        JobKind::ScanRoot => "scan",
-        JobKind::ImportFile => "import",
-        JobKind::AnalyzeWaveform => "waveform",
-        JobKind::Transcribe => "transcribe",
-        JobKind::Contextual => "contextual",
     }
 }

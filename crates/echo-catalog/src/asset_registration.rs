@@ -256,13 +256,5 @@ fn load_asset(transaction: &Transaction<'_>, id: &str) -> Result<Option<AudioAss
 }
 
 fn parse_hash(text: &str) -> Option<ContentHash> {
-    let mut bytes = [0u8; 32];
-    if text.len() != 64 {
-        return None;
-    }
-    for (index, pair) in text.as_bytes().chunks_exact(2).enumerate() {
-        let pair = std::str::from_utf8(pair).ok()?;
-        bytes[index] = u8::from_str_radix(pair, 16).ok()?;
-    }
-    Some(ContentHash::new(bytes))
+    ContentHash::from_str(text).ok()
 }

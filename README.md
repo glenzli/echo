@@ -30,9 +30,9 @@ AI model selection, and milestone plan.
 ## Developer commands
 
 ```sh
-cargo xtask check          # fmt + clippy + tests
-cargo xtask format         # apply rustfmt and clang-format
-cargo xtask doctor         # verify toolchain prerequisites
+cargo run --package xtask -- check   # fmt + clippy + tests
+cargo run --package xtask -- format  # apply rustfmt and clang-format
+cargo run --package xtask -- doctor  # verify toolchain prerequisites
 cargo run --package echo-cli -- init ./catalogs/demo.sqlite
 cargo run --package echo-cli -- import ./catalogs/demo.sqlite /path/to/recording.m4a
 cargo run --package echo-cli -- probe /path/to/recording.m4a

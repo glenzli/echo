@@ -1,7 +1,7 @@
 //! Desktop backend facade: the only Qt-owned bridge to the Rust memory
 //! engine. QML never opens SQLite; all Library reads go through this object.
-//! Transcription runs on a detached analysis thread through the stateless
-//! bridge function and reports back through queued signals.
+//! Transitional direct transcription runs on one owned analysis thread and
+//! reports back through queued signals.
 
 #pragma once
 
@@ -38,13 +38,8 @@ class DesktopBackend : public QObject {
         const QString& python,
         const QString& workerScript
     );
-    Q_INVOKABLE void startWorkers(
-        const QString& modelRoot,
-        const QString& python,
-        const QString& workerScript,
-        const QString& ollamaEndpoint,
-        const QString& ollamaModel
-    );
+    Q_INVOKABLE void
+    startWorkers(const QString& modelRoot, const QString& python, const QString& workerScript);
     Q_INVOKABLE void queueScans();
     Q_INVOKABLE QVariantMap jobStats() const;
     Q_INVOKABLE QVariantList listRoots() const;
