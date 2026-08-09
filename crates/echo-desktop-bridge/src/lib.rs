@@ -34,6 +34,8 @@ mod ffi {
         trim_end_millis: u64,
         fade_in_millis: u64,
         fade_out_millis: u64,
+        fade_in_curve: u8,
+        fade_out_curve: u8,
         gain_centibels: i16,
         container_format: String,
         sample_rate: u32,
@@ -41,6 +43,18 @@ mod ffi {
         source_title: String,
         source_location: String,
         source_created_at: String,
+    }
+
+    /// One complete authored adjustment crossing the desktop ABI atomically.
+    #[derive(Debug)]
+    struct AssetAdjustmentWire {
+        trim_start_millis: u64,
+        trim_end_millis: u64,
+        fade_in_millis: u64,
+        fade_out_millis: u64,
+        fade_in_curve: u8,
+        fade_out_curve: u8,
+        gain_centibels: i16,
     }
 
     /// One indexed keyword facet over the newest contextual evidence.
@@ -175,11 +189,7 @@ mod ffi {
         fn session_set_asset_adjustment(
             self: &LibrarySession,
             asset_id: &str,
-            trim_start_millis: u64,
-            trim_end_millis: u64,
-            fade_in_millis: u64,
-            fade_out_millis: u64,
-            gain_centibels: i16,
+            adjustment: &AssetAdjustmentWire,
         ) -> Result<()>;
         /// Starts the background worker pool (idempotent).
         fn session_start_workers(self: &LibrarySession, runtime_endpoint: &str) -> Result<()>;
@@ -309,21 +319,10 @@ impl LibrarySession {
     fn session_set_asset_adjustment(
         &self,
         asset_id: &str,
-        trim_start_millis: u64,
-        trim_end_millis: u64,
-        fade_in_millis: u64,
-        fade_out_millis: u64,
-        gain_centibels: i16,
+        adjustment: &ffi::AssetAdjustmentWire,
     ) -> Result<(), String> {
-        self.set_asset_adjustment(
-            asset_id,
-            trim_start_millis,
-            trim_end_millis,
-            fade_in_millis,
-            fade_out_millis,
-            gain_centibels,
-        )
-        .map_err(|error| error.message)
+        self.set_asset_adjustment(asset_id, adjustment)
+            .map_err(|error| error.message)
     }
 }
 

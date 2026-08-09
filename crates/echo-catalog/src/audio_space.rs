@@ -74,7 +74,8 @@ pub fn list_audio_space(
          COALESCE(u.liked, 0), COALESCE(u.rating, 0), \
          m.container_format, m.sample_rate, m.channel_count, m.entries_json, \
          adj.id, adj.trim_start_millis, adj.trim_end_millis, adj.fade_in_millis, \
-         adj.fade_out_millis, adj.gain_centibels, adj.created_at_millis \
+         adj.fade_out_millis, adj.fade_in_curve, adj.fade_out_curve, \
+         adj.gain_centibels, adj.created_at_millis \
          FROM assets a LEFT JOIN asset_user_state u ON u.asset_id = a.id \
          LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
          LEFT JOIN asset_adjustment_revisions adj ON adj.id = (\
@@ -107,13 +108,23 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
                 .expect("fade in is non-negative"),
             u64::try_from(row.get::<_, i64>(23).expect("fade out reads"))
                 .expect("fade out is non-negative"),
-            i16::try_from(row.get::<_, i64>(24).expect("gain reads")).expect("gain fits centibels"),
+            echo_domain::FadeCurves::new(
+                echo_domain::FadeCurve::from_catalog_value(
+                    row.get::<_, i64>(24).expect("fade in curve reads"),
+                )
+                .expect("fade in curve is valid"),
+                echo_domain::FadeCurve::from_catalog_value(
+                    row.get::<_, i64>(25).expect("fade out curve reads"),
+                )
+                .expect("fade out curve is valid"),
+            ),
+            i16::try_from(row.get::<_, i64>(26).expect("gain reads")).expect("gain fits centibels"),
         )
         .expect("stored adjustment is valid");
         crate::AssetAdjustmentRevision {
             revision_id,
             graph,
-            created_at_millis: row.get(25).expect("adjustment timestamp reads"),
+            created_at_millis: row.get(27).expect("adjustment timestamp reads"),
         }
     });
     Ok(AudioSpaceAsset {

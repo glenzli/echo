@@ -146,6 +146,7 @@ qt_add_qml_module(
         qml/InspectorSection.qml
         qml/MainTitleBar.qml
         qml/SoundAdvancedFilterPopup.qml
+        qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
         qml/SoundEditorTimeline.qml
         qml/SoundEditingWorkspace.qml

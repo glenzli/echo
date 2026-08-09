@@ -27,10 +27,12 @@ copies prepared frames. Audio Space playback consumes the saved revision and
 never mutates adjustment parameters.
 
 `SoundEditorTimeline.qml` owns the editor's high-frequency interaction state:
-time projection, logarithmic zoom, horizontal navigation, direct trim handles,
-linear fade handles, the clip-gain dB line, playhead, and transient gesture
-readouts. `SoundAdjustmentEditor.qml` remains the authoritative draft and
-publication owner, while `SoundEditingWorkspace.qml` owns source, transport,
+time projection, logarithmic zoom, horizontal navigation, direct trim and fade
+handles, time selection, the clip-gain dB line, playhead, and transient gesture
+readouts. `SoundAdjustmentDraft.qml` owns validation, gesture-coalesced
+undo/redo history, saved-state comparison, and explicit publication.
+`SoundAdjustmentEditor.qml` is the precision inspector, while
+`SoundEditingWorkspace.qml` owns source, transport, selection looping,
 adjusted/original audition, and backend lifecycle. Pointer movement never
 persists or recompiles playback; the prepared graph is rebuilt only when the
 user explicitly auditions the changed draft.

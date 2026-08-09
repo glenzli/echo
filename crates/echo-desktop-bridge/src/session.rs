@@ -57,6 +57,8 @@ struct AdjustmentWireFields {
     trim_end_millis: u64,
     fade_in_millis: u64,
     fade_out_millis: u64,
+    fade_in_curve: u8,
+    fade_out_curve: u8,
     gain_centibels: i16,
 }
 
@@ -71,6 +73,8 @@ fn adjustment_wire_fields(
             trim_end_millis: source_duration_millis.unwrap_or(0),
             fade_in_millis: 0,
             fade_out_millis: 0,
+            fade_in_curve: 0,
+            fade_out_curve: 0,
             gain_centibels: 0,
         },
         |revision| AdjustmentWireFields {
@@ -79,6 +83,10 @@ fn adjustment_wire_fields(
             trim_end_millis: revision.graph.trim_end_millis(),
             fade_in_millis: revision.graph.fade_in_millis(),
             fade_out_millis: revision.graph.fade_out_millis(),
+            fade_in_curve: u8::try_from(revision.graph.fade_in_curve().catalog_value())
+                .expect("fade curve catalog values fit u8"),
+            fade_out_curve: u8::try_from(revision.graph.fade_out_curve().catalog_value())
+                .expect("fade curve catalog values fit u8"),
             gain_centibels: revision.graph.gain_centibels(),
         },
     )
@@ -163,6 +171,8 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         trim_end_millis: adjustment.trim_end_millis,
         fade_in_millis: adjustment.fade_in_millis,
         fade_out_millis: adjustment.fade_out_millis,
+        fade_in_curve: adjustment.fade_in_curve,
+        fade_out_curve: adjustment.fade_out_curve,
         gain_centibels: adjustment.gain_centibels,
         container_format,
         sample_rate,
@@ -331,11 +341,7 @@ impl LibrarySession {
     pub fn set_asset_adjustment(
         &self,
         asset_id: &str,
-        trim_start_millis: u64,
-        trim_end_millis: u64,
-        fade_in_millis: u64,
-        fade_out_millis: u64,
-        gain_centibels: i16,
+        adjustment: &crate::ffi::AssetAdjustmentWire,
     ) -> Result<(), SessionError> {
         let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
             message: format!("invalid asset id {asset_id}: {error}"),
@@ -357,11 +363,21 @@ impl LibrarySession {
         })?;
         let graph = echo_domain::AdjustmentGraph::new(
             duration,
-            trim_start_millis,
-            trim_end_millis,
-            fade_in_millis,
-            fade_out_millis,
-            gain_centibels,
+            adjustment.trim_start_millis,
+            adjustment.trim_end_millis,
+            adjustment.fade_in_millis,
+            adjustment.fade_out_millis,
+            echo_domain::FadeCurves::new(
+                echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_in_curve))
+                    .map_err(|error| SessionError {
+                        message: error.to_string(),
+                    })?,
+                echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_out_curve))
+                    .map_err(|error| SessionError {
+                        message: error.to_string(),
+                    })?,
+            ),
+            adjustment.gain_centibels,
         )
         .map_err(|error| SessionError {
             message: error.to_string(),

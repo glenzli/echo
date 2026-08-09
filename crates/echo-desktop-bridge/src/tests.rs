@@ -161,8 +161,17 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         panic!("fixture must create")
     };
 
+    let adjustment = crate::ffi::AssetAdjustmentWire {
+        trim_start_millis: 1_000,
+        trim_end_millis: 9_000,
+        fade_in_millis: 250,
+        fade_out_millis: 500,
+        fade_in_curve: 1,
+        fade_out_curve: 2,
+        gain_centibels: -350,
+    };
     session
-        .set_asset_adjustment(&asset.id.to_string(), 1_000, 9_000, 250, 500, -350)
+        .set_asset_adjustment(&asset.id.to_string(), &adjustment)
         .expect("adjustment saves");
     let projected = session.list_assets().expect("assets project");
     assert_eq!(projected.len(), 1);
@@ -171,6 +180,8 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].trim_end_millis, 9_000);
     assert_eq!(projected[0].fade_in_millis, 250);
     assert_eq!(projected[0].fade_out_millis, 500);
+    assert_eq!(projected[0].fade_in_curve, 1);
+    assert_eq!(projected[0].fade_out_curve, 2);
     assert_eq!(projected[0].gain_centibels, -350);
     let _ = std::fs::remove_dir_all(root);
 }

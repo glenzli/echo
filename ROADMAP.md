@@ -303,6 +303,13 @@ InferenceBackend
     播放图；支持在同一裁剪选区内切换 Adjusted／Original 做 A/B 试听。参数栏只承担精确读数、
     撤销当前草稿、清空调整与显式保存版本。此切片不伪装已实现任意包络关键帧、曲线类型、EQ、
     响度、Dynamics、降噪或导出；这些仍需先扩展 AdjustmentGraph 与执行器合同。
+  - 编辑器第二个基础切片（2026-08-10）：`AdjustmentGraph` 与 Catalog `20260810.2` 将淡入、
+    淡出分别扩展为 Linear、Smooth、Equal Power 三种稳定曲线；旧版本记录迁移后明确保留为
+    Linear。C++ 播放生产线程按曲线计算真实振幅，时间轴绘制与试听执行共享同一枚举合同，不再把
+    曲线当作纯 UI 外观。编辑工作区增加短生命周期时间选区、选区循环、按选区裁切，以及按完整
+    手势合并的 Undo／Redo；`SoundAdjustmentDraft` 独立承担校验、历史和显式发布，时间轴与右侧
+    精调检查器只负责直接操作和呈现。此切片仍不包含关键帧包络、响度测量、EQ、Dynamics、降噪
+    或导出；这些应各自以真实执行器和可验证用户结果进入后续版本图，而不是先放置无效控件。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 

@@ -36,6 +36,8 @@ class PlaybackController : public QObject {
         qint64 trimEndMillis,
         qint64 fadeInMillis,
         qint64 fadeOutMillis,
+        int fadeInCurve,
+        int fadeOutCurve,
         int gainCentibels
     );
     Q_INVOKABLE void togglePause();

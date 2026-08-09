@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use echo_domain::{AdjustmentGraph, ContentHash};
+use echo_domain::{AdjustmentGraph, ContentHash, FadeCurve, FadeCurves};
 
 use super::*;
 use crate::{AssetRegistrationInput, RegisterAsset, open_catalog, register_asset};
@@ -35,8 +35,16 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         None
     );
 
-    let graph =
-        AdjustmentGraph::new(10_000, 1_000, 9_000, 250, 500, -300).expect("graph validates");
+    let graph = AdjustmentGraph::new(
+        10_000,
+        1_000,
+        9_000,
+        250,
+        500,
+        FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
+        -300,
+    )
+    .expect("graph validates");
     let first = catalog
         .with_transaction(|transaction| record_adjustment_graph(transaction, asset_id, graph, 20))
         .expect("first revision writes");
@@ -45,8 +53,16 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         .expect("duplicate save reads current");
     assert_eq!(duplicate, first);
 
-    let second_graph =
-        AdjustmentGraph::new(10_000, 2_000, 8_000, 100, 100, 0).expect("second graph validates");
+    let second_graph = AdjustmentGraph::new(
+        10_000,
+        2_000,
+        8_000,
+        100,
+        100,
+        FadeCurves::new(FadeCurve::Linear, FadeCurve::Smooth),
+        0,
+    )
+    .expect("second graph validates");
     let second = catalog
         .with_transaction(|transaction| {
             record_adjustment_graph(transaction, asset_id, second_graph, 40)

@@ -82,6 +82,8 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("fadeOutMillis"),
             static_cast<qlonglong>(asset.fade_out_millis)
         );
+        entry.insert(QStringLiteral("fadeInCurve"), static_cast<int>(asset.fade_in_curve));
+        entry.insert(QStringLiteral("fadeOutCurve"), static_cast<int>(asset.fade_out_curve));
         entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
         entry.insert(
             QStringLiteral("containerFormat"),
@@ -195,22 +197,26 @@ bool DesktopBackend::setAssetAdjustment(
     qlonglong trimEndMillis,
     qlonglong fadeInMillis,
     qlonglong fadeOutMillis,
+    int fadeInCurve,
+    int fadeOutCurve,
     int gainCentibels
 ) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
+        || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
     try {
-        session_->session_set_asset_adjustment(
-            id.toStdString(),
-            static_cast<std::uint64_t>(trimStartMillis),
-            static_cast<std::uint64_t>(trimEndMillis),
-            static_cast<std::uint64_t>(fadeInMillis),
-            static_cast<std::uint64_t>(fadeOutMillis),
-            static_cast<std::int16_t>(gainCentibels)
-        );
+        echo::desktop::AssetAdjustmentWire adjustment;
+        adjustment.trim_start_millis = static_cast<std::uint64_t>(trimStartMillis);
+        adjustment.trim_end_millis = static_cast<std::uint64_t>(trimEndMillis);
+        adjustment.fade_in_millis = static_cast<std::uint64_t>(fadeInMillis);
+        adjustment.fade_out_millis = static_cast<std::uint64_t>(fadeOutMillis);
+        adjustment.fade_in_curve = static_cast<std::uint8_t>(fadeInCurve);
+        adjustment.fade_out_curve = static_cast<std::uint8_t>(fadeOutCurve);
+        adjustment.gain_centibels = static_cast<std::int16_t>(gainCentibels);
+        session_->session_set_asset_adjustment(id.toStdString(), adjustment);
         emit assetsChanged();
         return true;
     } catch (const rust::Error& error) {

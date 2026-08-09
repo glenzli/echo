@@ -1,7 +1,7 @@
 //! Append-only persistence for user-authored, non-destructive sound
 //! adjustments. Originals and analysis evidence are never modified.
 
-use echo_domain::{AdjustmentGraph, AssetId};
+use echo_domain::{AdjustmentGraph, AssetId, FadeCurve};
 use rusqlite::{OptionalExtension, Transaction};
 
 use crate::{CatalogError, CatalogErrorKind};
@@ -41,7 +41,8 @@ pub fn latest_adjustment_graph(
     let stored = transaction
         .query_row(
             "SELECT id, trim_start_millis, trim_end_millis, fade_in_millis, \
-             fade_out_millis, gain_centibels, created_at_millis \
+             fade_out_millis, fade_in_curve, fade_out_curve, gain_centibels, \
+             created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
             [asset_id.to_string()],
@@ -54,11 +55,23 @@ pub fn latest_adjustment_graph(
                     row.get::<_, i64>(4)?,
                     row.get::<_, i64>(5)?,
                     row.get::<_, i64>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, i64>(8)?,
                 ))
             },
         )
         .optional()?;
-    let Some((revision_id, trim_start, trim_end, fade_in, fade_out, gain, created_at)) = stored
+    let Some((
+        revision_id,
+        trim_start,
+        trim_end,
+        fade_in,
+        fade_out,
+        fade_in_curve,
+        fade_out_curve,
+        gain,
+        created_at,
+    )) = stored
     else {
         return Ok(None);
     };
@@ -68,6 +81,7 @@ pub fn latest_adjustment_graph(
         stored_millis(trim_end)?,
         stored_millis(fade_in)?,
         stored_millis(fade_out)?,
+        echo_domain::FadeCurves::new(stored_curve(fade_in_curve)?, stored_curve(fade_out_curve)?),
         i16::try_from(gain).map_err(|_| {
             CatalogError::new(CatalogErrorKind::Other, "stored adjustment gain is invalid")
         })?,
@@ -113,6 +127,7 @@ pub fn record_adjustment_graph(
         graph.trim_end_millis(),
         graph.fade_in_millis(),
         graph.fade_out_millis(),
+        echo_domain::FadeCurves::new(graph.fade_in_curve(), graph.fade_out_curve()),
         graph.gain_centibels(),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
@@ -123,14 +138,17 @@ pub fn record_adjustment_graph(
     }
     transaction.execute(
         "INSERT INTO asset_adjustment_revisions (asset_id, trim_start_millis, \
-         trim_end_millis, fade_in_millis, fade_out_millis, gain_centibels, \
-         created_at_millis) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+         trim_end_millis, fade_in_millis, fade_out_millis, fade_in_curve, \
+         fade_out_curve, gain_centibels, created_at_millis) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
             millis_i64(validated.trim_end_millis())?,
             millis_i64(validated.fade_in_millis())?,
             millis_i64(validated.fade_out_millis())?,
+            validated.fade_in_curve().catalog_value(),
+            validated.fade_out_curve().catalog_value(),
             i64::from(validated.gain_centibels()),
             now_millis,
         ],
@@ -140,6 +158,11 @@ pub fn record_adjustment_graph(
         graph: validated,
         created_at_millis: now_millis,
     })
+}
+
+fn stored_curve(value: i64) -> Result<FadeCurve, CatalogError> {
+    FadeCurve::from_catalog_value(value)
+        .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))
 }
 
 fn stored_millis(value: i64) -> Result<u64, CatalogError> {

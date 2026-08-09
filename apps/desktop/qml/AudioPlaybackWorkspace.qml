@@ -32,6 +32,8 @@ Rectangle {
         ? Number(asset.trimEndMillis) : sourceDurationMillis
     readonly property int fadeInMillis: hasAsset ? Number(asset.fadeInMillis) : 0
     readonly property int fadeOutMillis: hasAsset ? Number(asset.fadeOutMillis) : 0
+    readonly property int fadeInCurve: hasAsset ? Number(asset.fadeInCurve) : 0
+    readonly property int fadeOutCurve: hasAsset ? Number(asset.fadeOutCurve) : 0
     readonly property int gainCentibels: hasAsset ? Number(asset.gainCentibels) : 0
 
     color: Theme.panelRaised
@@ -79,7 +81,8 @@ Rectangle {
 
     function adjustmentKey() : string {
         return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis
-            + ":" + fadeOutMillis + ":" + gainCentibels
+            + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve
+            + ":" + gainCentibels
     }
 
     function playFrom(millis: int) : void {
@@ -87,7 +90,8 @@ Rectangle {
             return
         }
         player.playAdjusted(asset.path, trimStartMillis, trimEndMillis,
-                            fadeInMillis, fadeOutMillis, gainCentibels)
+                            fadeInMillis, fadeOutMillis, fadeInCurve,
+                            fadeOutCurve, gainCentibels)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis))

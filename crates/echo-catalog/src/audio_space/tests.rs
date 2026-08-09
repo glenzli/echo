@@ -55,8 +55,19 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
             record_adjustment_graph(
                 transaction,
                 asset_id,
-                echo_domain::AdjustmentGraph::new(1_000, 100, 900, 50, 100, -200)
-                    .expect("adjustment validates"),
+                echo_domain::AdjustmentGraph::new(
+                    1_000,
+                    100,
+                    900,
+                    50,
+                    100,
+                    echo_domain::FadeCurves::new(
+                        echo_domain::FadeCurve::Smooth,
+                        echo_domain::FadeCurve::EqualPower,
+                    ),
+                    -200,
+                )
+                .expect("adjustment validates"),
                 31,
             )?;
             Ok(asset_id)

@@ -4,6 +4,14 @@
 
 namespace echo::audio {
 
+/// Authored fade interpolation. Numeric values match Echo's stable Catalog
+/// representation and are validated before a playback plan is accepted.
+enum class FadeCurve : std::uint8_t {
+    Linear = 0,
+    Smooth = 1,
+    EqualPower = 2,
+};
+
 /// Authored non-destructive playback adjustments. Milliseconds and
 /// centibels are explicit so the cross-language boundary never relies on
 /// floating-point UI units. A zero `trim_end_millis` means source end.
@@ -12,6 +20,8 @@ struct PlaybackAdjustment {
     std::uint64_t trim_end_millis = 0;
     std::uint64_t fade_in_millis = 0;
     std::uint64_t fade_out_millis = 0;
+    FadeCurve fade_in_curve = FadeCurve::Linear;
+    FadeCurve fade_out_curve = FadeCurve::Linear;
     std::int16_t gain_centibels = 0;
 };
 
@@ -41,6 +51,8 @@ class PreparedAdjustment {
     std::uint64_t fade_out_frames_ = 0;
     std::uint64_t trim_start_millis_ = 0;
     std::uint64_t trim_end_millis_ = 0;
+    FadeCurve fade_in_curve_ = FadeCurve::Linear;
+    FadeCurve fade_out_curve_ = FadeCurve::Linear;
     float gain_amplitude_ = 1.0F;
 };
 

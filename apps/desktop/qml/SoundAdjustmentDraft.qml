@@ -1,0 +1,236 @@
+//! Authoritative editor draft for one selected immutable original. It owns
+//! validation, gesture-coalesced undo/redo history, saved-state comparison,
+//! and explicit publication; presentation components only mutate this owner.
+
+import QtQuick
+
+QtObject {
+    id: draft
+
+    required property var asset
+
+    property int trimStartMillis: 0
+    property int trimEndMillis: 0
+    property int fadeInMillis: 0
+    property int fadeOutMillis: 0
+    property int fadeInCurve: 0
+    property int fadeOutCurve: 0
+    property int gainCentibels: 0
+
+    property var _savedSnapshot: ({})
+    property var _history: []
+    property int _historyIndex: -1
+    property var _gestureStart: null
+    property bool _restoring: false
+
+    readonly property int sourceDurationMillis: asset
+        ? Math.max(0, Number(asset.durationMillis)) : 0
+    readonly property int selectedDurationMillis: Math.max(0,
+        trimEndMillis - trimStartMillis)
+    readonly property bool canUndo: _historyIndex > 0
+    readonly property bool canRedo: _historyIndex >= 0
+        && _historyIndex < _history.length - 1
+    readonly property bool identity: trimStartMillis === 0
+        && trimEndMillis === sourceDurationMillis
+        && fadeInMillis === 0 && fadeOutMillis === 0
+        && fadeInCurve === 0 && fadeOutCurve === 0
+        && gainCentibels === 0
+    readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
+
+    signal saveRequested(int startMillis, int endMillis,
+                         int fadeIn, int fadeOut,
+                         int fadeInCurve, int fadeOutCurve,
+                         int gain)
+
+    function clamp(value: real, minimum: real, maximum: real) : real {
+        return Math.max(minimum, Math.min(maximum, value))
+    }
+
+    function snapshot() : var {
+        return {
+            trimStartMillis: trimStartMillis,
+            trimEndMillis: trimEndMillis,
+            fadeInMillis: fadeInMillis,
+            fadeOutMillis: fadeOutMillis,
+            fadeInCurve: fadeInCurve,
+            fadeOutCurve: fadeOutCurve,
+            gainCentibels: gainCentibels
+        }
+    }
+
+    function copySnapshot(value: var) : var {
+        return {
+            trimStartMillis: Number(value.trimStartMillis),
+            trimEndMillis: Number(value.trimEndMillis),
+            fadeInMillis: Number(value.fadeInMillis),
+            fadeOutMillis: Number(value.fadeOutMillis),
+            fadeInCurve: Number(value.fadeInCurve),
+            fadeOutCurve: Number(value.fadeOutCurve),
+            gainCentibels: Number(value.gainCentibels)
+        }
+    }
+
+    function sameSnapshot(left: var, right: var) : bool {
+        if (!left || !right) return false
+        return Number(left.trimStartMillis) === Number(right.trimStartMillis)
+            && Number(left.trimEndMillis) === Number(right.trimEndMillis)
+            && Number(left.fadeInMillis) === Number(right.fadeInMillis)
+            && Number(left.fadeOutMillis) === Number(right.fadeOutMillis)
+            && Number(left.fadeInCurve) === Number(right.fadeInCurve)
+            && Number(left.fadeOutCurve) === Number(right.fadeOutCurve)
+            && Number(left.gainCentibels) === Number(right.gainCentibels)
+    }
+
+    function assetSnapshot() : var {
+        if (!asset) {
+            return {
+                trimStartMillis: 0, trimEndMillis: 0,
+                fadeInMillis: 0, fadeOutMillis: 0,
+                fadeInCurve: 0, fadeOutCurve: 0,
+                gainCentibels: 0
+            }
+        }
+        const duration = Math.max(0, Number(asset.durationMillis))
+        return {
+            trimStartMillis: Math.max(0, Number(asset.trimStartMillis)),
+            trimEndMillis: Number(asset.trimEndMillis) > 0
+                ? Number(asset.trimEndMillis) : duration,
+            fadeInMillis: Math.max(0, Number(asset.fadeInMillis)),
+            fadeOutMillis: Math.max(0, Number(asset.fadeOutMillis)),
+            fadeInCurve: clamp(Number(asset.fadeInCurve || 0), 0, 2),
+            fadeOutCurve: clamp(Number(asset.fadeOutCurve || 0), 0, 2),
+            gainCentibels: clamp(Number(asset.gainCentibels), -2400, 1200)
+        }
+    }
+
+    function applySnapshot(value: var) : void {
+        _restoring = true
+        trimStartMillis = Number(value.trimStartMillis)
+        trimEndMillis = Number(value.trimEndMillis)
+        fadeInMillis = Number(value.fadeInMillis)
+        fadeOutMillis = Number(value.fadeOutMillis)
+        fadeInCurve = Number(value.fadeInCurve)
+        fadeOutCurve = Number(value.fadeOutCurve)
+        gainCentibels = Number(value.gainCentibels)
+        _restoring = false
+    }
+
+    function resetFromAsset() : void {
+        const persisted = assetSnapshot()
+        applySnapshot(persisted)
+        _savedSnapshot = copySnapshot(persisted)
+        _history = [copySnapshot(persisted)]
+        _historyIndex = 0
+        _gestureStart = null
+    }
+
+    function pushCurrent() : void {
+        if (_restoring || _gestureStart !== null) return
+        const current = snapshot()
+        if (_historyIndex >= 0
+                && sameSnapshot(current, _history[_historyIndex])) return
+        const next = _history.slice(0, _historyIndex + 1)
+        next.push(copySnapshot(current))
+        _history = next
+        _historyIndex = next.length - 1
+    }
+
+    function beginGesture() : void {
+        if (_gestureStart === null) {
+            _gestureStart = copySnapshot(snapshot())
+        }
+    }
+
+    function endGesture() : void {
+        if (_gestureStart === null) return
+        const start = _gestureStart
+        _gestureStart = null
+        if (!sameSnapshot(start, snapshot())) pushCurrent()
+    }
+
+    function cancelGesture() : void {
+        if (_gestureStart === null) return
+        const start = _gestureStart
+        _gestureStart = null
+        applySnapshot(start)
+    }
+
+    function undo() : void {
+        if (!canUndo) return
+        _historyIndex -= 1
+        applySnapshot(_history[_historyIndex])
+    }
+
+    function redo() : void {
+        if (!canRedo) return
+        _historyIndex += 1
+        applySnapshot(_history[_historyIndex])
+    }
+
+    function setTrimRange(startMillis: int, endMillis: int) : void {
+        const minimumDuration = Math.min(50, sourceDurationMillis)
+        const start = Math.round(clamp(startMillis, 0,
+            Math.max(0, sourceDurationMillis - minimumDuration)))
+        const end = Math.round(clamp(endMillis, start + minimumDuration,
+            sourceDurationMillis))
+        trimStartMillis = start
+        trimEndMillis = end
+        fadeInMillis = Math.min(fadeInMillis, selectedDurationMillis)
+        fadeOutMillis = Math.min(fadeOutMillis,
+            Math.max(0, selectedDurationMillis - fadeInMillis))
+        pushCurrent()
+    }
+
+    function setFades(fadeIn: int, fadeOut: int) : void {
+        fadeInMillis = Math.round(clamp(fadeIn, 0, selectedDurationMillis))
+        fadeOutMillis = Math.round(clamp(fadeOut, 0,
+            Math.max(0, selectedDurationMillis - fadeInMillis)))
+        pushCurrent()
+    }
+
+    function setFadeCurves(fadeIn: int, fadeOut: int) : void {
+        fadeInCurve = Math.round(clamp(fadeIn, 0, 2))
+        fadeOutCurve = Math.round(clamp(fadeOut, 0, 2))
+        pushCurrent()
+    }
+
+    function setGain(centibels: int) : void {
+        gainCentibels = Math.round(clamp(centibels, -2400, 1200))
+        pushCurrent()
+    }
+
+    function clear() : void {
+        applySnapshot({
+            trimStartMillis: 0,
+            trimEndMillis: sourceDurationMillis,
+            fadeInMillis: 0,
+            fadeOutMillis: 0,
+            fadeInCurve: 0,
+            fadeOutCurve: 0,
+            gainCentibels: 0
+        })
+        pushCurrent()
+    }
+
+    function revert() : void {
+        applySnapshot(_savedSnapshot)
+        pushCurrent()
+    }
+
+    function save() : void {
+        if (!asset || !dirty) return
+        saveRequested(trimStartMillis, trimEndMillis,
+            fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve,
+            gainCentibels)
+    }
+
+    function markSaved() : void {
+        _savedSnapshot = copySnapshot(snapshot())
+        _history = [copySnapshot(snapshot())]
+        _historyIndex = 0
+        _gestureStart = null
+    }
+
+    onAssetChanged: resetFromAsset()
+    Component.onCompleted: resetFromAsset()
+}

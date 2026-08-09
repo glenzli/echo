@@ -1,6 +1,6 @@
-//! Dedicated editing workspace. It owns selected-source lifecycle, adjusted
-//! audition, original comparison, transport, and version publication while
-//! SoundEditorTimeline owns direct manipulation of the adjustment draft.
+//! Dedicated sound-adjustment workspace. It coordinates immutable-source
+//! playback, draft audition, selection looping, and explicit publication;
+//! timeline gestures and draft history remain in their semantic owners.
 
 import QtQuick
 import QtQuick.Controls
@@ -57,38 +57,36 @@ Rectangle {
 
     function adjustmentKey() : string {
         const prefix = auditionOriginal ? "original" : "adjusted"
-        return prefix + ":" + adjustmentEditor.trimStartMillis + ":"
-            + adjustmentEditor.trimEndMillis + ":"
-            + (auditionOriginal ? 0 : adjustmentEditor.fadeInMillis) + ":"
-            + (auditionOriginal ? 0 : adjustmentEditor.fadeOutMillis) + ":"
-            + (auditionOriginal ? 0 : adjustmentEditor.gainCentibels)
+        return prefix + ":" + adjustmentDraft.trimStartMillis + ":"
+            + adjustmentDraft.trimEndMillis + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.fadeInMillis) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.fadeInCurve) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.gainCentibels)
     }
 
     function refreshAsset() : void {
         waveformLevels = []
-        if (!asset || !asset.id || asset.pathStatus === "missing") {
-            return
-        }
+        if (!asset || !asset.id || asset.pathStatus === "missing") return
         waveformLevels = backend.waveformForAsset(asset.id)
     }
 
     function playFrom(millis: int) : void {
-        if (!asset || asset.pathStatus === "missing") {
-            return
-        }
+        if (!asset || asset.pathStatus === "missing") return
         player.playAdjusted(asset.path,
-                            adjustmentEditor.trimStartMillis,
-                            adjustmentEditor.trimEndMillis,
-                            auditionOriginal ? 0 : adjustmentEditor.fadeInMillis,
-                            auditionOriginal ? 0 : adjustmentEditor.fadeOutMillis,
-                            auditionOriginal ? 0 : adjustmentEditor.gainCentibels)
+                            adjustmentDraft.trimStartMillis,
+                            adjustmentDraft.trimEndMillis,
+                            auditionOriginal ? 0 : adjustmentDraft.fadeInMillis,
+                            auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis,
+                            auditionOriginal ? 0 : adjustmentDraft.fadeInCurve,
+                            auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve,
+                            auditionOriginal ? 0 : adjustmentDraft.gainCentibels)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
-        const start = Math.max(adjustmentEditor.trimStartMillis,
-                               Math.min(millis, adjustmentEditor.trimEndMillis))
-        if (start > adjustmentEditor.trimStartMillis) {
-            player.seek(start)
-        }
+        const start = Math.max(adjustmentDraft.trimStartMillis,
+            Math.min(millis, adjustmentDraft.trimEndMillis))
+        if (start > adjustmentDraft.trimStartMillis) player.seek(start)
     }
 
     function seekOrLoad(millis: int) : void {
@@ -96,15 +94,21 @@ Rectangle {
         if (loadedPath !== asset.path || loadedAdjustmentKey !== adjustmentKey()) {
             playFrom(millis)
         } else {
-            player.seek(Math.max(adjustmentEditor.trimStartMillis,
-                Math.min(millis, adjustmentEditor.trimEndMillis)))
+            player.seek(Math.max(adjustmentDraft.trimStartMillis,
+                Math.min(millis, adjustmentDraft.trimEndMillis)))
         }
+    }
+
+    function defaultPlaybackStart() : int {
+        return editorTimeline.hasTimeSelection
+            ? editorTimeline.selectionStartMillis
+            : adjustmentDraft.trimStartMillis
     }
 
     function togglePlayback() : void {
         if (!hasAsset || asset.pathStatus === "missing") return
         if (loadedPath !== asset.path || loadedAdjustmentKey !== adjustmentKey()) {
-            playFrom(adjustmentEditor.trimStartMillis)
+            playFrom(defaultPlaybackStart())
         } else {
             player.togglePause()
         }
@@ -113,12 +117,10 @@ Rectangle {
     function setOriginalAudition(enabled: bool) : void {
         if (auditionOriginal === enabled) return
         const resumeAt = loadedPath === (hasAsset ? asset.path : "")
-            ? player.position : adjustmentEditor.trimStartMillis
+            ? player.position : defaultPlaybackStart()
         const wasLoaded = hasAsset && loadedPath === asset.path
         auditionOriginal = enabled
-        if (wasLoaded) {
-            playFrom(resumeAt)
-        }
+        if (wasLoaded) playFrom(resumeAt)
     }
 
     onAssetChanged: {
@@ -134,6 +136,36 @@ Rectangle {
 
         function onAssetsChanged() : void {
             workspace.refreshAsset()
+        }
+    }
+
+    SoundAdjustmentDraft {
+        id: adjustmentDraft
+
+        asset: workspace.asset
+
+        onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut,
+                                  fadeInCurve, fadeOutCurve, gain) {
+            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
+                                           fadeIn, fadeOut, fadeInCurve,
+                                           fadeOutCurve, gain)) {
+                adjustmentDraft.markSaved()
+                workspace.auditionOriginal = false
+                workspace.loadedAdjustmentKey = ""
+            }
+        }
+    }
+
+    Timer {
+        interval: 40
+        repeat: true
+        running: workspace.hasAsset && player.playing
+            && editorTimeline.loopSelection && editorTimeline.hasTimeSelection
+            && workspace.loadedPath === workspace.asset.path
+        onTriggered: {
+            if (player.position >= editorTimeline.selectionEndMillis - 40) {
+                player.seek(editorTimeline.selectionStartMillis)
+            }
         }
     }
 
@@ -219,34 +251,55 @@ Rectangle {
             }
         }
 
-        SoundEditorTimeline {
-            id: editorTimeline
-
+        RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            waveformLevels: workspace.waveformLevels
-            sourceDurationMillis: adjustmentEditor.sourceDurationMillis
-            trimStartMillis: adjustmentEditor.trimStartMillis
-            trimEndMillis: adjustmentEditor.trimEndMillis
-            fadeInMillis: adjustmentEditor.fadeInMillis
-            fadeOutMillis: adjustmentEditor.fadeOutMillis
-            gainCentibels: adjustmentEditor.gainCentibels
-            playbackPositionMillis: workspace.hasAsset
-                    && workspace.loadedPath === workspace.asset.path
-                ? player.position : adjustmentEditor.trimStartMillis
-            isPlaying: workspace.hasAsset && workspace.loadedPath === workspace.asset.path
-                && player.playing
-            enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
+            spacing: 12
 
-            onTrimRequested: function(startMillis, endMillis) {
-                adjustmentEditor.setTrimRange(startMillis, endMillis)
+            SoundEditorTimeline {
+                id: editorTimeline
+
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                waveformLevels: workspace.waveformLevels
+                sourceDurationMillis: adjustmentDraft.sourceDurationMillis
+                trimStartMillis: adjustmentDraft.trimStartMillis
+                trimEndMillis: adjustmentDraft.trimEndMillis
+                fadeInMillis: adjustmentDraft.fadeInMillis
+                fadeOutMillis: adjustmentDraft.fadeOutMillis
+                fadeInCurve: adjustmentDraft.fadeInCurve
+                fadeOutCurve: adjustmentDraft.fadeOutCurve
+                gainCentibels: adjustmentDraft.gainCentibels
+                playbackPositionMillis: workspace.hasAsset
+                        && workspace.loadedPath === workspace.asset.path
+                    ? player.position : adjustmentDraft.trimStartMillis
+                isPlaying: workspace.hasAsset && workspace.loadedPath === workspace.asset.path
+                    && player.playing
+                enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
+
+                onTrimRequested: function(startMillis, endMillis) {
+                    adjustmentDraft.setTrimRange(startMillis, endMillis)
+                }
+                onFadeRequested: function(fadeIn, fadeOut) {
+                    adjustmentDraft.setFades(fadeIn, fadeOut)
+                }
+                onGainRequested: gain => adjustmentDraft.setGain(gain)
+                onSeekRequested: millis => workspace.seekOrLoad(millis)
+                onPlayPauseRequested: workspace.togglePlayback()
+                onEditGestureStarted: adjustmentDraft.beginGesture()
+                onEditGestureFinished: adjustmentDraft.endGesture()
+                onUndoRequested: adjustmentDraft.undo()
+                onRedoRequested: adjustmentDraft.redo()
             }
-            onFadeRequested: function(fadeIn, fadeOut) {
-                adjustmentEditor.setFades(fadeIn, fadeOut)
+
+            SoundAdjustmentEditor {
+                Layout.preferredWidth: 296
+                Layout.fillHeight: true
+                draft: adjustmentDraft
+                hasTimeSelection: editorTimeline.hasTimeSelection
+                selectionStartMillis: editorTimeline.selectionStartMillis
+                selectionEndMillis: editorTimeline.selectionEndMillis
             }
-            onGainRequested: gain => adjustmentEditor.setGain(gain)
-            onSeekRequested: millis => workspace.seekOrLoad(millis)
-            onPlayPauseRequested: workspace.togglePlayback()
         }
 
         RowLayout {
@@ -304,21 +357,6 @@ Rectangle {
                 ghost: true
                 selected: workspace.auditionOriginal
                 onClicked: workspace.setOriginalAudition(true)
-            }
-        }
-
-        SoundAdjustmentEditor {
-            id: adjustmentEditor
-
-            Layout.fillWidth: true
-            asset: workspace.asset
-
-            onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut, gain) {
-                if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
-                                               fadeIn, fadeOut, gain)) {
-                    workspace.auditionOriginal = false
-                    workspace.loadedAdjustmentKey = ""
-                }
             }
         }
     }

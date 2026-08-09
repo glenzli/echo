@@ -11,6 +11,78 @@ pub const MIN_GAIN_CENTIBELS: i16 = -2_400;
 /// Highest supported output gain in hundredths of one decibel.
 pub const MAX_GAIN_CENTIBELS: i16 = 1_200;
 
+/// Stable fade interpolation authored independently for each edge.
+///
+/// The variants describe time-domain intent. The audio engine owns their
+/// sample-domain evaluation so persistence never stores sampled envelopes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FadeCurve {
+    #[default]
+    Linear,
+    Smooth,
+    EqualPower,
+}
+
+impl FadeCurve {
+    #[must_use]
+    pub const fn catalog_value(self) -> i64 {
+        match self {
+            Self::Linear => 0,
+            Self::Smooth => 1,
+            Self::EqualPower => 2,
+        }
+    }
+
+    /// Restores the stable Catalog representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`FadeCurveValueError`] for unknown persisted values.
+    pub const fn from_catalog_value(value: i64) -> Result<Self, FadeCurveValueError> {
+        match value {
+            0 => Ok(Self::Linear),
+            1 => Ok(Self::Smooth),
+            2 => Ok(Self::EqualPower),
+            _ => Err(FadeCurveValueError),
+        }
+    }
+}
+
+/// A persisted fade curve value outside the stable enum contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FadeCurveValueError;
+
+impl std::fmt::Display for FadeCurveValueError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("fade curve must be linear, smooth, or equal power")
+    }
+}
+
+impl std::error::Error for FadeCurveValueError {}
+
+/// Fade interpolation selected independently for the two clip edges.
+///
+/// Keeping the pair as one value prevents bridge and persistence callers from
+/// silently swapping two adjacent curve arguments.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FadeCurves {
+    pub fade_in: FadeCurve,
+    pub fade_out: FadeCurve,
+}
+
+impl FadeCurves {
+    #[must_use]
+    pub const fn new(fade_in: FadeCurve, fade_out: FadeCurve) -> Self {
+        Self { fade_in, fade_out }
+    }
+
+    #[must_use]
+    pub const fn linear() -> Self {
+        Self::new(FadeCurve::Linear, FadeCurve::Linear)
+    }
+}
+
 /// One validated, non-destructive adjustment graph.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AdjustmentGraph {
@@ -18,6 +90,8 @@ pub struct AdjustmentGraph {
     trim_end_millis: u64,
     fade_in_millis: u64,
     fade_out_millis: u64,
+    fade_in_curve: FadeCurve,
+    fade_out_curve: FadeCurve,
     gain_centibels: i16,
 }
 
@@ -34,6 +108,7 @@ impl AdjustmentGraph {
         trim_end_millis: u64,
         fade_in_millis: u64,
         fade_out_millis: u64,
+        fade_curves: FadeCurves,
         gain_centibels: i16,
     ) -> Result<Self, AdjustmentGraphError> {
         if source_duration_millis == 0
@@ -53,6 +128,8 @@ impl AdjustmentGraph {
             trim_end_millis,
             fade_in_millis,
             fade_out_millis,
+            fade_in_curve: fade_curves.fade_in,
+            fade_out_curve: fade_curves.fade_out,
             gain_centibels,
         })
     }
@@ -64,7 +141,15 @@ impl AdjustmentGraph {
     /// Returns [`AdjustmentGraphError::InvalidTrimRange`] for an unknown or
     /// zero duration.
     pub fn identity(source_duration_millis: u64) -> Result<Self, AdjustmentGraphError> {
-        Self::new(source_duration_millis, 0, source_duration_millis, 0, 0, 0)
+        Self::new(
+            source_duration_millis,
+            0,
+            source_duration_millis,
+            0,
+            0,
+            FadeCurves::linear(),
+            0,
+        )
     }
 
     #[must_use]
@@ -85,6 +170,16 @@ impl AdjustmentGraph {
     #[must_use]
     pub const fn fade_out_millis(self) -> u64 {
         self.fade_out_millis
+    }
+
+    #[must_use]
+    pub const fn fade_in_curve(self) -> FadeCurve {
+        self.fade_in_curve
+    }
+
+    #[must_use]
+    pub const fn fade_out_curve(self) -> FadeCurve {
+        self.fade_out_curve
     }
 
     #[must_use]

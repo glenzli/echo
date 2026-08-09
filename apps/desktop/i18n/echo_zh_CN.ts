@@ -585,11 +585,6 @@
         <translation>有未保存的调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="131"/>
-        <source>No adjustments</source>
-        <translation>暂无调整</translation>
-    </message>
-    <message>
         <location filename="../qml/SoundAdjustmentEditor.qml" line="135"/>
         <source>Revert</source>
         <translation>还原已保存</translation>
@@ -625,9 +620,52 @@
         <translation>淡出</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="168"/>
-        <source>Gain</source>
-        <translation>增益</translation>
+        <source>Undo</source>
+        <translation>撤销</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation>重做</translation>
+    </message>
+    <message>
+        <source>Time selection</source>
+        <translation>时间选区</translation>
+    </message>
+    <message>
+        <source>Range</source>
+        <translation>范围</translation>
+    </message>
+    <message>
+        <source>Crop to selection</source>
+        <translation>裁切到选区</translation>
+    </message>
+    <message>
+        <source>Clip</source>
+        <translation>片段</translation>
+    </message>
+    <message>
+        <source>Clip gain</source>
+        <translation>片段增益</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>输出</translation>
+    </message>
+    <message>
+        <source>Length</source>
+        <translation>长度</translation>
+    </message>
+    <message>
+        <source>Linear</source>
+        <translation>线性</translation>
+    </message>
+    <message>
+        <source>Smooth</source>
+        <translation>平滑</translation>
+    </message>
+    <message>
+        <source>Equal power</source>
+        <translation>等功率</translation>
     </message>
 </context>
 <context>
@@ -804,9 +842,20 @@
         <translation>时间轴位置</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="737"/>
-        <source>Selection %1</source>
-        <translation>选区 %1</translation>
+        <source>Loop</source>
+        <translation>循环</translation>
+    </message>
+    <message>
+        <source>Clear selection</source>
+        <translation>清除选区</translation>
+    </message>
+    <message>
+        <source>Time selection %1</source>
+        <translation>时间选区 %1</translation>
+    </message>
+    <message>
+        <source>Clip %1</source>
+        <translation>片段 %1</translation>
     </message>
 </context>
 <context>

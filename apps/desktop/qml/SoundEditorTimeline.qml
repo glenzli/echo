@@ -16,6 +16,8 @@ Rectangle {
     required property int trimEndMillis
     required property int fadeInMillis
     required property int fadeOutMillis
+    required property int fadeInCurve
+    required property int fadeOutCurve
     required property int gainCentibels
     required property int playbackPositionMillis
     required property bool isPlaying
@@ -23,6 +25,10 @@ Rectangle {
     property real zoomFactor: 1.0
     property real viewStartMillis: 0.0
     property bool followPlayhead: true
+    property bool loopSelection: false
+    property bool hasTimeSelection: false
+    property int selectionStartMillis: 0
+    property int selectionEndMillis: 0
     property string activeGesture: ""
     property string gestureReadout: ""
 
@@ -51,6 +57,10 @@ Rectangle {
     signal gainRequested(int gainCentibels)
     signal seekRequested(int millis)
     signal playPauseRequested()
+    signal editGestureStarted()
+    signal editGestureFinished()
+    signal undoRequested()
+    signal redoRequested()
 
     implicitHeight: 440
     color: Theme.panelRaised
@@ -82,6 +92,49 @@ Rectangle {
     function formatGain(centibels: int) : string {
         return (centibels >= 0 ? "+" : "")
             + (centibels / 100).toFixed(1) + " dB"
+    }
+
+    function curveValue(progress: real, curve: int) : real {
+        const bounded = clamp(progress, 0, 1)
+        if (curve === 1) {
+            return bounded * bounded * (3 - 2 * bounded)
+        }
+        if (curve === 2) {
+            return Math.sin(bounded * Math.PI / 2)
+        }
+        return bounded
+    }
+
+    function appendEnvelopePath(context: var, beginWithMove: bool) : void {
+        const startX = timeToX(trimStartMillis)
+        const endX = timeToX(trimEndMillis)
+        const fadeInX = timeToX(trimStartMillis + fadeInMillis)
+        const fadeOutX = timeToX(trimEndMillis - fadeOutMillis)
+        const gainY = gainToY(gainCentibels)
+        const silenceY = trackSurface.height - 18
+        const startY = fadeInMillis > 0 ? silenceY : gainY
+        if (beginWithMove) context.moveTo(startX, startY)
+        else context.lineTo(startX, startY)
+
+        if (fadeInMillis > 0) {
+            for (let index = 1; index <= 32; ++index) {
+                const progress = index / 32
+                const amplitude = curveValue(progress, fadeInCurve)
+                context.lineTo(startX + (fadeInX - startX) * progress,
+                    silenceY + (gainY - silenceY) * amplitude)
+            }
+        }
+        context.lineTo(fadeOutX, gainY)
+        if (fadeOutMillis > 0) {
+            for (let index = 1; index <= 32; ++index) {
+                const progress = index / 32
+                const amplitude = curveValue(1 - progress, fadeOutCurve)
+                context.lineTo(fadeOutX + (endX - fadeOutX) * progress,
+                    silenceY + (gainY - silenceY) * amplitude)
+            }
+        } else {
+            context.lineTo(endX, gainY)
+        }
     }
 
     function chooseTickInterval() : int {
@@ -156,15 +209,17 @@ Rectangle {
     }
 
     function fitSelection() : void {
-        if (sourceDurationMillis <= 0 || trimEndMillis <= trimStartMillis) {
+        const start = hasTimeSelection ? selectionStartMillis : trimStartMillis
+        const end = hasTimeSelection ? selectionEndMillis : trimEndMillis
+        if (sourceDurationMillis <= 0 || end <= start) {
             return
         }
-        const selected = trimEndMillis - trimStartMillis
+        const selected = end - start
         const paddedDuration = Math.min(sourceDurationMillis, selected * 1.18)
         zoomFactor = clamp(sourceDurationMillis / Math.max(1, paddedDuration),
                            1, maximumZoomFactor)
         const actualDuration = sourceDurationMillis / zoomFactor
-        viewStartMillis = clamp(trimStartMillis - (actualDuration - selected) / 2,
+        viewStartMillis = clamp(start - (actualDuration - selected) / 2,
                                 0, Math.max(0, sourceDurationMillis - actualDuration))
         followPlayhead = false
     }
@@ -177,11 +232,32 @@ Rectangle {
         activeGesture = kind
         gestureReadout = readout
         forceActiveFocus()
+        editGestureStarted()
     }
 
     function endGesture() : void {
         activeGesture = ""
         gestureReadout = ""
+        editGestureFinished()
+    }
+
+    function clearTimeSelection() : void {
+        hasTimeSelection = false
+        selectionStartMillis = 0
+        selectionEndMillis = 0
+        loopSelection = false
+    }
+
+    function setSelectionBoundary(millis: int, isStart: bool) : void {
+        const value = Math.round(clamp(millis, trimStartMillis, trimEndMillis))
+        if (!hasTimeSelection) {
+            selectionStartMillis = isStart ? value : trimStartMillis
+            selectionEndMillis = isStart ? trimEndMillis : value
+            hasTimeSelection = selectionEndMillis > selectionStartMillis
+            return
+        }
+        if (isStart) selectionStartMillis = Math.min(value, selectionEndMillis - 1)
+        else selectionEndMillis = Math.max(value, selectionStartMillis + 1)
     }
 
     onSourceDurationMillisChanged: fitAll()
@@ -189,6 +265,8 @@ Rectangle {
     onTrimEndMillisChanged: envelopeCanvas.requestPaint()
     onFadeInMillisChanged: envelopeCanvas.requestPaint()
     onFadeOutMillisChanged: envelopeCanvas.requestPaint()
+    onFadeInCurveChanged: envelopeCanvas.requestPaint()
+    onFadeOutCurveChanged: envelopeCanvas.requestPaint()
     onGainCentibelsChanged: envelopeCanvas.requestPaint()
     onViewStartMillisChanged: envelopeCanvas.requestPaint()
     onViewDurationMillisChanged: envelopeCanvas.requestPaint()
@@ -203,7 +281,26 @@ Rectangle {
         }
     }
 
-    Keys.onSpacePressed: timeline.playPauseRequested()
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Space) {
+            timeline.playPauseRequested()
+            event.accepted = true
+        } else if (event.key === Qt.Key_I) {
+            timeline.setSelectionBoundary(timeline.playbackPositionMillis, true)
+            event.accepted = true
+        } else if (event.key === Qt.Key_O) {
+            timeline.setSelectionBoundary(timeline.playbackPositionMillis, false)
+            event.accepted = true
+        } else if (event.key === Qt.Key_Escape) {
+            timeline.clearTimeSelection()
+            event.accepted = true
+        } else if (event.key === Qt.Key_Z
+                && (event.modifiers & Qt.MetaModifier)) {
+            if (event.modifiers & Qt.ShiftModifier) timeline.redoRequested()
+            else timeline.undoRequested()
+            event.accepted = true
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -236,6 +333,21 @@ Rectangle {
                 ghost: true
                 selected: timeline.followPlayhead
                 onClicked: timeline.followPlayhead = !timeline.followPlayhead
+            }
+
+            EchoButton {
+                text: qsTr("Loop")
+                ghost: true
+                enabled: timeline.hasTimeSelection
+                selected: timeline.loopSelection
+                onClicked: timeline.loopSelection = !timeline.loopSelection
+            }
+
+            EchoButton {
+                text: qsTr("Clear selection")
+                ghost: true
+                visible: timeline.hasTimeSelection
+                onClicked: timeline.clearTimeSelection()
             }
 
             EchoButton {
@@ -364,6 +476,10 @@ Rectangle {
             MouseArea {
                 id: trackInput
 
+                property real pressX: 0
+                property int anchorMillis: 0
+                property bool draggedSelection: false
+
                 anchors.fill: parent
                 z: 1
                 enabled: timeline.enabled
@@ -372,8 +488,33 @@ Rectangle {
                 cursorShape: Qt.PointingHandCursor
                 onPressed: function(mouse) {
                     timeline.forceActiveFocus()
-                    timeline.followPlayhead = true
-                    timeline.seekRequested(timeline.xToTime(mouse.x))
+                    pressX = mouse.x
+                    anchorMillis = Math.round(timeline.clamp(
+                        timeline.xToTime(mouse.x),
+                        timeline.trimStartMillis, timeline.trimEndMillis))
+                    draggedSelection = false
+                }
+                onPositionChanged: function(mouse) {
+                    if (!pressed) return
+                    if (!draggedSelection && Math.abs(mouse.x - pressX) < 4) return
+                    draggedSelection = true
+                    const current = Math.round(timeline.clamp(
+                        timeline.xToTime(mouse.x),
+                        timeline.trimStartMillis, timeline.trimEndMillis))
+                    timeline.selectionStartMillis = Math.min(anchorMillis, current)
+                    timeline.selectionEndMillis = Math.max(anchorMillis, current)
+                    timeline.hasTimeSelection = timeline.selectionEndMillis
+                        > timeline.selectionStartMillis
+                    timeline.followPlayhead = false
+                }
+                onReleased: function(mouse) {
+                    if (draggedSelection && timeline.hasTimeSelection) {
+                        timeline.followPlayhead = false
+                    } else {
+                        timeline.clearTimeSelection()
+                        timeline.followPlayhead = true
+                        timeline.seekRequested(timeline.xToTime(mouse.x))
+                    }
                 }
                 onWheel: function(wheel) {
                     const horizontal = Math.abs(wheel.pixelDelta.x) > Math.abs(wheel.pixelDelta.y)
@@ -402,6 +543,18 @@ Rectangle {
                 height: parent.height
                 color: Theme.window
                 opacity: 0.74
+            }
+
+            Rectangle {
+                z: 2.5
+                x: timeline.timeToX(timeline.selectionStartMillis)
+                y: 0
+                width: Math.max(0, timeline.timeToX(timeline.selectionEndMillis) - x)
+                height: parent.height
+                color: Theme.accentSurface
+                border.color: Theme.accent
+                opacity: 0.42
+                visible: timeline.hasTimeSelection && width > 0
             }
 
             Rectangle {
@@ -434,30 +587,19 @@ Rectangle {
 
                     const startX = timeline.timeToX(timeline.trimStartMillis)
                     const endX = timeline.timeToX(timeline.trimEndMillis)
-                    const fadeInX = timeline.timeToX(timeline.trimStartMillis
-                        + timeline.fadeInMillis)
-                    const fadeOutX = timeline.timeToX(timeline.trimEndMillis
-                        - timeline.fadeOutMillis)
-                    const gainY = timeline.gainToY(timeline.gainCentibels)
                     const silenceY = height - 18
 
                     context.strokeStyle = Theme.accent
                     context.lineWidth = 2
                     context.beginPath()
-                    context.moveTo(startX, timeline.fadeInMillis > 0 ? silenceY : gainY)
-                    context.lineTo(fadeInX, gainY)
-                    context.lineTo(fadeOutX, gainY)
-                    context.lineTo(endX, timeline.fadeOutMillis > 0 ? silenceY : gainY)
+                    timeline.appendEnvelopePath(context, true)
                     context.stroke()
 
                     context.fillStyle = Theme.accent
                     context.globalAlpha = 0.08
                     context.beginPath()
                     context.moveTo(startX, silenceY)
-                    context.lineTo(startX, timeline.fadeInMillis > 0 ? silenceY : gainY)
-                    context.lineTo(fadeInX, gainY)
-                    context.lineTo(fadeOutX, gainY)
-                    context.lineTo(endX, timeline.fadeOutMillis > 0 ? silenceY : gainY)
+                    timeline.appendEnvelopePath(context, false)
                     context.lineTo(endX, silenceY)
                     context.closePath()
                     context.fill()
@@ -734,8 +876,13 @@ Rectangle {
                 Text {
                     id: selectionText
                     anchors.centerIn: parent
-                    text: qsTr("Selection %1").arg(timeline.formatTime(
-                        timeline.trimEndMillis - timeline.trimStartMillis, true))
+                    text: (timeline.hasTimeSelection
+                        ? qsTr("Time selection %1")
+                        : qsTr("Clip %1")).arg(timeline.formatTime(
+                            timeline.hasTimeSelection
+                                ? timeline.selectionEndMillis - timeline.selectionStartMillis
+                                : timeline.trimEndMillis - timeline.trimStartMillis,
+                            true))
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
                 }

@@ -20,7 +20,8 @@ mod ids;
 mod original;
 
 pub use adjustment::{
-    AdjustmentGraph, AdjustmentGraphError, MAX_GAIN_CENTIBELS, MIN_GAIN_CENTIBELS,
+    AdjustmentGraph, AdjustmentGraphError, FadeCurve, FadeCurveValueError, FadeCurves,
+    MAX_GAIN_CENTIBELS, MIN_GAIN_CENTIBELS,
 };
 pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,

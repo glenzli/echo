@@ -36,6 +36,8 @@ class DesktopBackend : public QObject {
         qlonglong trimEndMillis,
         qlonglong fadeInMillis,
         qlonglong fadeOutMillis,
+        int fadeInCurve,
+        int fadeOutCurve,
         int gainCentibels
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
