@@ -101,10 +101,17 @@ int main(int argc, char* argv[]) {
                 QMetaObject::invokeMethod(root, "openSettings");
             });
         }
+        if (std::getenv("ECHO_DEBUG_OPEN_LIBRARY") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(250, root, [root] {
+                QMetaObject::invokeMethod(root, "openLibrary");
+            });
+        }
         if (const char* shot = std::getenv("ECHO_DEBUG_SCREENSHOT")) {
             if (auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first())) {
                 const bool delayed = std::getenv("ECHO_DEBUG_AUTOPLAY") != nullptr
-                                     || std::getenv("ECHO_DEBUG_OPEN_SETTINGS") != nullptr;
+                                     || std::getenv("ECHO_DEBUG_OPEN_SETTINGS") != nullptr
+                                     || std::getenv("ECHO_DEBUG_OPEN_LIBRARY") != nullptr;
                 const int delay = delayed ? 3000 : 800;
                 QTimer::singleShot(delay, window, [window, shot] {
                     window->grabWindow().save(QString::fromUtf8(shot));

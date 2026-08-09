@@ -9,15 +9,40 @@ import EchoDesktop
 Dialog {
     id: dialog
 
+    parent: Overlay.overlay
+    x: Math.round((parent.width - width) / 2)
+    y: Math.round((parent.height - height) / 2)
+    width: Math.min(840, Math.max(680, parent.width - 96))
+    height: Math.min(650, Math.max(520, parent.height - 96))
     title: qsTr("Library")
     modal: true
-    width: 840
-    height: 650
+    dim: true
     padding: 0
+    closePolicy: Popup.CloseOnEscape
+
+    Overlay.modal: Rectangle {
+        color: Theme.effectiveDark ? "#99000000" : "#660f1720"
+    }
+
+    background: Rectangle {
+        color: Theme.panelRaised
+        radius: 14
+        border.color: Theme.borderStrong
+        border.width: 1
+    }
 
     header: Rectangle {
         implicitHeight: 48
         color: Theme.chrome
+        radius: 14
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 15
+            color: parent.color
+        }
 
         Rectangle {
             anchors.left: parent.left
@@ -41,6 +66,15 @@ Dialog {
     footer: Rectangle {
         implicitHeight: 52
         color: Theme.chrome
+        radius: 14
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 15
+            color: parent.color
+        }
 
         Rectangle {
             anchors.left: parent.left

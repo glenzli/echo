@@ -29,6 +29,10 @@ ApplicationWindow {
         settingsDialog.open()
     }
 
+    function openLibrary() : void {
+        libraryDialog.open()
+    }
+
     EchoSettingsDialog {
         id: settingsDialog
     }
@@ -147,7 +151,7 @@ ApplicationWindow {
 
             anchors.fill: parent
             jobStats: window.jobSnapshot
-            onOpenLibraryRequested: libraryDialog.open()
+            onOpenLibraryRequested: window.openLibrary()
         }
     }
 
