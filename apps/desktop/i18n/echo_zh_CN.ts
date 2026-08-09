@@ -429,8 +429,8 @@
     </message>
     <message>
         <location filename="../qml/EchoSettingsDialog.qml" line="399"/>
-        <source>The consumer credential is injected by the Echo process and is never stored in settings. Endpoint changes take effect after restarting Echo.</source>
-        <translation>消费端凭证由 Echo 进程注入，绝不会保存在设置中。地址修改将在重启 Echo 后生效。</translation>
+        <source>The consumer credential is kept in Echo's private store and is never stored in settings. Endpoint changes take effect after restarting Echo.</source>
+        <translation>消费端凭证保存在 Echo 的私有存储中，绝不会写入设置。地址修改将在重启 Echo 后生效。</translation>
     </message>
     <message>
         <location filename="../qml/EchoSettingsDialog.qml" line="17"/>

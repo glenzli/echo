@@ -2,7 +2,9 @@
 
 use clap::{Parser, Subcommand};
 
-use super::{catalog, import, library, list, models, probe, search, transcribe, waveform};
+use super::{
+    catalog, credentials, import, library, list, models, probe, search, transcribe, waveform,
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "echo-cli", about = "Echo operator commands")]
@@ -47,6 +49,11 @@ pub(crate) enum Command {
         /// Model root (HF hub cache layout); defaults to the standard cache.
         #[arg(long)]
         root: Option<std::path::PathBuf>,
+    },
+    /// Imports an owner-only Infer Runtime consumer credential into Echo.
+    ImportInferCredential {
+        /// Protected source token file (must be owner-only).
+        source: std::path::PathBuf,
     },
     /// Transcribes a recording through Infer Runtime and records evidence.
     Transcribe {
@@ -113,6 +120,7 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
             let root = root.unwrap_or_else(models::default_model_root);
             models::run_models(&root)
         }
+        Command::ImportInferCredential { source } => credentials::run_import(&source),
         Command::Transcribe {
             catalog,
             source,

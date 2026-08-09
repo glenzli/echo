@@ -396,7 +396,7 @@ Dialog {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: qsTr("The consumer credential is injected by the Echo process and is never stored in settings. Endpoint changes take effect after restarting Echo.")
+                                text: qsTr("The consumer credential is kept in Echo's private store and is never stored in settings. Endpoint changes take effect after restarting Echo.")
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontBody
                                 wrapMode: Text.WordWrap

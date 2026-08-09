@@ -177,9 +177,9 @@ QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {
     return transcripts;
 }
 
-void DesktopBackend::startWorkers(const QString& runtimeEndpoint, const QString& runtimeToken) {
+void DesktopBackend::startWorkers(const QString& runtimeEndpoint) {
     try {
-        session_->session_start_workers(runtimeEndpoint.toStdString(), runtimeToken.toStdString());
+        session_->session_start_workers(runtimeEndpoint.toStdString());
     } catch (const rust::Error& error) {
         qWarning("cannot start background workers: %s", error.what());
     }

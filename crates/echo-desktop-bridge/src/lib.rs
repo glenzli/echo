@@ -109,6 +109,8 @@ mod ffi {
     extern "Rust" {
         type LibrarySession;
 
+        /// Reports whether Echo's owner-only Runtime credential is available.
+        fn infer_runtime_credential_available() -> bool;
         /// Opens (creating if needed) the catalog and cache at the given
         /// roots.
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
@@ -140,11 +142,7 @@ mod ffi {
             rating: u8,
         ) -> Result<()>;
         /// Starts the background worker pool (idempotent).
-        fn session_start_workers(
-            self: &LibrarySession,
-            runtime_endpoint: &str,
-            runtime_token: &str,
-        ) -> Result<()>;
+        fn session_start_workers(self: &LibrarySession, runtime_endpoint: &str) -> Result<()>;
         /// Returns the current analysis stage for one asset.
         fn session_analysis_status(
             self: &LibrarySession,
@@ -169,6 +167,10 @@ mod ffi {
             limit: u64,
         ) -> Result<Vec<SearchHitWire>>;
     }
+}
+
+fn infer_runtime_credential_available() -> bool {
+    echo_core::infer_runtime_credential_available()
 }
 
 /// Opens (creating if needed) the catalog at `path` with the cache root at
@@ -255,12 +257,8 @@ impl LibrarySession {
     /// # Errors
     ///
     /// Returns the session error message when the pool cannot start.
-    fn session_start_workers(
-        &self,
-        runtime_endpoint: &str,
-        runtime_token: &str,
-    ) -> Result<(), String> {
-        self.start_workers(runtime_endpoint, runtime_token)
+    fn session_start_workers(&self, runtime_endpoint: &str) -> Result<(), String> {
+        self.start_workers(runtime_endpoint)
             .map_err(|error| error.message)
     }
 

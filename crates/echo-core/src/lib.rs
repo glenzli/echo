@@ -13,6 +13,7 @@ mod contextual;
 mod error;
 mod import;
 mod infer_runtime;
+mod infer_runtime_credentials;
 mod metadata_queue;
 mod scanner;
 mod util;
@@ -31,6 +32,10 @@ pub use infer_runtime::{
     InferRuntimeClient, InferRuntimeConfig, InferRuntimeError, InferRuntimeErrorKind,
     MAX_AUDIO_UPLOAD_BYTES, RuntimeAttempt, RuntimeJobSnapshot, RuntimeProvenance,
     TRANSCRIPTION_INTENT, TranscriptionIntent,
+};
+pub use infer_runtime_credentials::{
+    InferRuntimeCredential, InferRuntimeCredentialError, InferRuntimeCredentialStore,
+    infer_runtime_credential_available, load_infer_runtime_credential,
 };
 pub use scanner::{
     FolderScanner, ScanOutcome, add_root_and_scan, queue_scans_for_enabled_roots, scan_root,

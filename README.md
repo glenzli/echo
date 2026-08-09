@@ -39,7 +39,8 @@ cargo run --package echo-cli -- probe /path/to/recording.m4a
 cargo run --package echo-cli -- waveform ./cache /path/to/recording.m4a
 cargo run --package echo-cli -- list ./catalogs/demo.sqlite
 cargo run --package echo-cli -- models            # cataloged model status
-ECHO_INFER_TOKEN='<consumer secret>' cargo run --package echo-cli -- transcribe ./catalogs/demo.sqlite /path/to/recording.wav
+cargo run --package echo-cli -- import-infer-credential /protected/path/to/echo.token
+cargo run --package echo-cli -- transcribe ./catalogs/demo.sqlite /path/to/recording.wav
 ```
 
 Native engine checks (independent CMake graph):
@@ -52,7 +53,7 @@ Desktop shell (Qt Quick):
 
 ```sh
 cmake --preset desktop-dev && cmake --build --preset desktop-dev
-ECHO_INFER_TOKEN='<consumer secret>' ./.echo-local-build/desktop-dev/apps/desktop/echo-desktop ./catalogs/demo.sqlite
+./.echo-local-build/desktop-dev/apps/desktop/echo-desktop ./catalogs/demo.sqlite
 ```
 
 ## License

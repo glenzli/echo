@@ -49,11 +49,15 @@ pub(crate) fn run_scan(
     );
     let queued = echo_core::queue_scans_for_enabled_roots(&catalog, now_millis())?;
     println!("queued {queued} scan job(s), processing...");
+    let bearer_token = echo_core::load_infer_runtime_credential().map_or_else(
+        |_| String::new(),
+        echo_core::InferRuntimeCredential::into_bearer_token,
+    );
     let config = echo_core::WorkerConfig {
         cache_root: cache_root.to_owned(),
         infer_runtime: echo_core::InferRuntimeConfig {
             base_url: runtime_endpoint.to_owned(),
-            bearer_token: std::env::var("ECHO_INFER_TOKEN").unwrap_or_default(),
+            bearer_token,
         },
     };
     let pool = echo_core::WorkerPool::start(&catalog, &config, workers)?;

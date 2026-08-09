@@ -327,20 +327,23 @@ impl LibrarySession {
     /// # Errors
     ///
     /// Returns [`SessionError`] when the pool cannot start.
-    pub fn start_workers(
-        &self,
-        runtime_endpoint: &str,
-        runtime_token: &str,
-    ) -> Result<(), SessionError> {
+    pub fn start_workers(&self, runtime_endpoint: &str) -> Result<(), SessionError> {
         let mut workers = self.workers.lock().expect("worker mutex poisoned");
         if workers.is_some() {
             return Ok(());
         }
+        // Missing or unsafe credentials must not prevent structural Library
+        // jobs from running. Inference then fails through its sanitized
+        // authentication path while scanning and waveform work continues.
+        let bearer_token = echo_core::load_infer_runtime_credential().map_or_else(
+            |_| String::new(),
+            echo_core::InferRuntimeCredential::into_bearer_token,
+        );
         let config = echo_core::WorkerConfig {
             cache_root: self.cache_root.clone(),
             infer_runtime: echo_core::InferRuntimeConfig {
                 base_url: runtime_endpoint.to_owned(),
-                bearer_token: runtime_token.to_owned(),
+                bearer_token,
             },
         };
         let pool = echo_core::WorkerPool::start(&self.catalog, &config, 2).map_err(|error| {

@@ -66,8 +66,8 @@ int main(int argc, char* argv[]) {
         DesktopBackend backend(std::move(session));
         PlaybackController player;
         UiPreferences ui_prefs(application);
-        InferencePreferences inference_prefs;
-        backend.startWorkers(inference_prefs.runtimeEndpoint(), inference_prefs.runtimeToken());
+        InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
+        backend.startWorkers(inference_prefs.runtimeEndpoint());
 
         QQmlApplicationEngine engine;
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);

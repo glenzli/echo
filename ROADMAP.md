@@ -96,8 +96,8 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 `audio.transcribe` / `audio.align` 任务接口，不预建没有消费方的第二套调度机制。
 
 正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.1` 合同与 inference API `8787`，
-以独立、非资源管理员的 Echo App 身份调用。Echo 只从进程 secret 注入读取 bearer token，
-不把 token、音频、provider 原始错误或物理模型路径写入设置与通用日志。Runtime consumer
+以独立、非资源管理员的 Echo App 身份调用。Echo 只从自身的 owner-only 安全存储读取
+bearer token；明文不跨 Rust/C++/QML 边界，也不写入设置、通用日志或命令行参数。Runtime consumer
 独立拥有合同探测、严格 multipart、HTTP status／`error.code` 分类和 Job snapshot 解码；
 Echo 的后台 worker 只提交产品 Intent、记录本地任务状态并把 Runtime 的 Job／Attempt／
 模型构建证据写入 Catalog。Runtime 不可用不得阻断扫描、波形、播放或 Library 浏览。

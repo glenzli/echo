@@ -10,7 +10,8 @@ constexpr auto kDefaultRuntimeEndpoint = "http://127.0.0.1:8787";
 
 } // namespace
 
-InferencePreferences::InferencePreferences(QObject* parent) : QObject(parent) {
+InferencePreferences::InferencePreferences(bool credentialAvailable, QObject* parent) :
+    QObject(parent), credential_available_(credentialAvailable) {
     const QString config_dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     QDir().mkpath(config_dir);
     settings_ = std::make_unique<QSettings>(
@@ -43,9 +44,5 @@ void InferencePreferences::setRuntimeEndpoint(const QString& endpoint) {
 }
 
 bool InferencePreferences::credentialAvailable() const {
-    return !runtimeToken().isEmpty();
-}
-
-QString InferencePreferences::runtimeToken() const {
-    return QString::fromLocal8Bit(qgetenv("ECHO_INFER_TOKEN"));
+    return credential_available_;
 }

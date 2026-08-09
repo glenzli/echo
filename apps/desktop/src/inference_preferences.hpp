@@ -1,6 +1,6 @@
 //! Infer Runtime consumer preferences. The endpoint is ordinary product
-//! configuration; the bearer token is process-secret input and is never
-//! exposed as a Qt property or persisted by this owner.
+//! configuration. Credential storage belongs to the Rust security owner; this
+//! presentation object receives only its availability state.
 
 #pragma once
 
@@ -19,14 +19,11 @@ class InferencePreferences : public QObject {
     Q_PROPERTY(bool credentialAvailable READ credentialAvailable CONSTANT)
 
   public:
-    explicit InferencePreferences(QObject* parent = nullptr);
+    explicit InferencePreferences(bool credentialAvailable, QObject* parent = nullptr);
 
     QString runtimeEndpoint() const;
     void setRuntimeEndpoint(const QString& endpoint);
     bool credentialAvailable() const;
-
-    /// Returns the process-injected consumer token to native startup only.
-    QString runtimeToken() const;
 
   signals:
     void runtimeEndpointChanged();
@@ -34,4 +31,5 @@ class InferencePreferences : public QObject {
   private:
     std::unique_ptr<QSettings> settings_;
     QString runtime_endpoint_;
+    bool credential_available_ = false;
 };

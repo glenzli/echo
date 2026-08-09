@@ -5,6 +5,7 @@
 
 mod catalog;
 mod commands;
+mod credentials;
 mod import;
 mod library;
 mod list;
