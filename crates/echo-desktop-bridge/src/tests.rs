@@ -73,7 +73,7 @@ fn transcripts_round_trip_through_a_live_catalog() {
         &asset.id.to_string(),
         &root.join("empty-model-root").to_string_lossy(),
         "python3",
-        "tools/asr/transcribe.py",
+        "tools/inference/local_audio_worker.py",
     )
     .expect_err("missing model must fail");
     assert!(

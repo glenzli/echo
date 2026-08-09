@@ -1,6 +1,6 @@
-//! EchoSettingsDialog: application settings with a Shadow-style section list.
-//! General (appearance + language) and the transitional inference adapter;
-//! Library management lives in its own workspace panel.
+//! Centered application settings. General preferences and the temporary
+//! Infer-compatible execution route are presented as product settings rather
+//! than exposing physical model plumbing.
 
 import QtQuick
 import QtQuick.Controls
@@ -10,27 +10,51 @@ import EchoDesktop
 Dialog {
     id: dialog
 
-    /// Host-provided preferences (assigned after the shell composes).
     property UiPreferences uiPrefs: null
     property ModelPreferences modelPrefs: null
-
-    readonly property var sections: [
-        { key: "general", title: qsTr("General"),
-          subtitle: qsTr("Appearance & language"), icon: "qrc:/EchoDesktop/icons/tune.svg" },
-        { key: "inference", title: qsTr("Inference"),
-          subtitle: qsTr("Compatibility worker"), icon: "qrc:/EchoDesktop/icons/mic.svg" }
-    ]
     property int selectedIndex: 0
 
+    readonly property var sections: [
+        { title: qsTr("General"), subtitle: qsTr("Appearance & language"),
+          icon: "qrc:/EchoDesktop/icons/tune.svg" },
+        { title: qsTr("Inference"), subtitle: qsTr("Local compatibility route"),
+          icon: "qrc:/EchoDesktop/icons/mic.svg" }
+    ]
+
+    parent: Overlay.overlay
+    x: Math.round((parent.width - width) / 2)
+    y: Math.round((parent.height - height) / 2)
+    width: Math.min(720, Math.max(620, parent.width - 96))
+    height: Math.min(520, Math.max(460, parent.height - 96))
     title: qsTr("Settings")
     modal: true
-    width: 560
-    height: 430
+    dim: true
     padding: 0
+    closePolicy: Popup.CloseOnEscape
+
+    Overlay.modal: Rectangle {
+        color: Theme.effectiveDark ? "#99000000" : "#660f1720"
+    }
+
+    background: Rectangle {
+        color: Theme.panelRaised
+        radius: 14
+        border.color: Theme.borderStrong
+        border.width: 1
+    }
 
     header: Rectangle {
-        implicitHeight: 48
+        implicitHeight: 58
         color: Theme.chrome
+        radius: 14
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 15
+            color: parent.color
+        }
 
         Rectangle {
             anchors.left: parent.left
@@ -40,20 +64,57 @@ Dialog {
             color: Theme.border
         }
 
-        Text {
-            anchors.left: parent.left
-            anchors.leftMargin: 16
-            anchors.verticalCenter: parent.verticalCenter
-            text: dialog.title
-            color: Theme.textPrimary
-            font.pixelSize: 14
-            font.bold: true
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+
+            Rectangle {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                radius: 9
+                color: Theme.accentSurface
+
+                EchoIcon {
+                    anchors.centerIn: parent
+                    source: "qrc:/EchoDesktop/icons/tune.svg"
+                    size: 17
+                    color: Theme.accentSelectionText
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                Text {
+                    text: qsTr("Echo Settings")
+                    color: Theme.textPrimary
+                    font.pixelSize: 15
+                    font.bold: true
+                }
+
+                Text {
+                    text: qsTr("Appearance, language, and local inference")
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontMeta
+                }
+            }
         }
     }
 
     footer: Rectangle {
-        implicitHeight: 52
+        implicitHeight: 58
         color: Theme.chrome
+        radius: 14
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 15
+            color: parent.color
+        }
 
         Rectangle {
             anchors.left: parent.left
@@ -65,9 +126,8 @@ Dialog {
 
         RowLayout {
             anchors.fill: parent
-            anchors.rightMargin: 12
-            anchors.leftMargin: 12
-            spacing: 8
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
 
             Item { Layout.fillWidth: true }
 
@@ -81,18 +141,15 @@ Dialog {
     contentItem: RowLayout {
         spacing: 0
 
-        // Section list (left rail).
         Rectangle {
             Layout.fillHeight: true
-            Layout.preferredWidth: 180
+            Layout.preferredWidth: 210
             color: Theme.panel
-            radius: 10
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.topMargin: 12
-                anchors.bottomMargin: 12
-                spacing: 2
+                anchors.margins: 12
+                spacing: 4
 
                 Repeater {
                     model: dialog.sections
@@ -102,24 +159,23 @@ Dialog {
                         required property int index
 
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 52
-                        radius: Theme.compactControlRadius
-                        border.width: dialog.selectedIndex === index ? 1 : 0
-                        border.color: dialog.selectedIndex === index
-                            ? Theme.accent : Theme.transparent
+                        Layout.preferredHeight: 58
+                        radius: 8
                         color: dialog.selectedIndex === index
-                            ? Theme.accentSurface : Theme.transparent
+                            ? Theme.accentSurface : sectionHover.hovered
+                                ? Theme.surfaceSubtle : Theme.transparent
+
+                        HoverHandler { id: sectionHover }
 
                         MouseArea {
                             anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: dialog.selectedIndex = index
                         }
 
                         RowLayout {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: 10
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
                             anchors.rightMargin: 10
                             spacing: 10
 
@@ -132,7 +188,7 @@ Dialog {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 1
+                                spacing: 2
 
                                 Text {
                                     text: modelData.title
@@ -143,6 +199,7 @@ Dialog {
                                 }
 
                                 Text {
+                                    Layout.fillWidth: true
                                     text: modelData.subtitle
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontMeta
@@ -152,155 +209,171 @@ Dialog {
                         }
                     }
                 }
+
+                Item { Layout.fillHeight: true }
             }
         }
 
-        // Selected pane.
         Rectangle {
-            Layout.fillHeight: true
             Layout.fillWidth: true
+            Layout.fillHeight: true
             color: Theme.panelRaised
-            radius: 10
 
-            ColumnLayout {
+            StackLayout {
                 anchors.fill: parent
-                anchors.margins: 16
-                spacing: 14
+                anchors.margins: 26
+                currentIndex: dialog.selectedIndex
 
-                EchoSectionLabel {
-                    Layout.fillWidth: true
-                    text: dialog.sections[dialog.selectedIndex].title
-                    hint: dialog.sections[dialog.selectedIndex].subtitle
-                }
+                Item {
+                    ColumnLayout {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: 22
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: Theme.border
-                }
+                        EchoSectionLabel {
+                            Layout.fillWidth: true
+                            text: qsTr("Appearance")
+                            hint: qsTr("Follow the system, or keep Echo light or dark.")
+                        }
 
-                // ---- General pane ----
-                ColumnLayout {
-                    visible: dialog.selectedIndex === 0
-                    Layout.fillWidth: true
-                    spacing: 14
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
 
-                    EchoSectionLabel {
-                        Layout.fillWidth: true
-                        text: qsTr("Appearance")
-                        hint: qsTr("Echo follows the system appearance in System "
-                                   + "mode; you can pin Light or Dark at any time.")
-                    }
+                            Repeater {
+                                model: [
+                                    { key: 0, label: qsTr("System") },
+                                    { key: 1, label: qsTr("Light") },
+                                    { key: 2, label: qsTr("Dark") }
+                                ]
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
+                                delegate: EchoButton {
+                                    Layout.fillWidth: true
+                                    text: modelData.label
+                                    ghost: true
+                                    selected: dialog.uiPrefs !== null
+                                        && dialog.uiPrefs.mode === modelData.key
+                                    onClicked: dialog.uiPrefs.mode = modelData.key
+                                }
+                            }
+                        }
 
-                        Repeater {
-                            model: [
-                                { key: 0, label: qsTr("System") },
-                                { key: 1, label: qsTr("Light") },
-                                { key: 2, label: qsTr("Dark") }
-                            ]
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 1
+                            color: Theme.border
+                        }
 
-                            delegate: EchoButton {
-                                Layout.fillWidth: true
-                                text: modelData.label
-                                ghost: true
-                                selected: uiPrefs.mode === modelData.key
-                                onClicked: dialog.uiPrefs.mode = modelData.key
+                        EchoSectionLabel {
+                            Layout.fillWidth: true
+                            text: qsTr("Language")
+                            hint: qsTr("The default follows your system language.")
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Repeater {
+                                model: [
+                                    { key: "system", label: qsTr("System") },
+                                    { key: "zh_CN", label: "中文" },
+                                    { key: "en", label: "English" }
+                                ]
+
+                                delegate: EchoButton {
+                                    Layout.fillWidth: true
+                                    text: modelData.label
+                                    ghost: true
+                                    selected: dialog.uiPrefs !== null
+                                        && dialog.uiPrefs.languageMode === modelData.key
+                                    onClicked: dialog.uiPrefs.languageMode = modelData.key
+                                }
                             }
                         }
                     }
-
-                    EchoSectionLabel {
-                        Layout.fillWidth: true
-                        text: qsTr("Language")
-                        hint: qsTr("The default follows your system language.")
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Repeater {
-                            model: [
-                                { key: "system", label: qsTr("System") },
-                                { key: "zh_CN", label: "中文" },
-                                { key: "en", label: "English" }
-                            ]
-
-                            delegate: EchoButton {
-                                Layout.fillWidth: true
-                                text: modelData.label
-                                ghost: true
-                                selected: uiPrefs.languageMode === modelData.key
-                                onClicked: dialog.uiPrefs.languageMode = modelData.key
-                            }
-                        }
-                    }
                 }
 
-                // ---- Transitional inference pane ----
-                ColumnLayout {
-                    visible: dialog.selectedIndex === 1
-                    Layout.fillWidth: true
-                    spacing: 14
+                Item {
+                    ColumnLayout {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: 18
 
-                    EchoSectionLabel {
-                        Layout.fillWidth: true
-                        text: qsTr("Direct worker (prototype)")
-                        hint: qsTr("This adapter only supports the current ASR proof of concept. "
-                                   + "Production analysis will be scheduled by Infer Build.")
-                    }
-
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 2
-                        columnSpacing: 8
-                        rowSpacing: 8
-
-                        Text {
-                            text: qsTr("Model root")
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontBody
-                        }
-
-                        EchoTextField {
-                            id: modelRootField
-
+                        EchoSectionLabel {
                             Layout.fillWidth: true
-                            text: modelPrefs !== null ? modelPrefs.modelRoot : ""
-                            onEditingFinished: modelPrefs.modelRoot = text
+                            text: qsTr("Inference route")
+                            hint: qsTr("Infer-compatible request, direct MLX execution")
                         }
 
-                        Text {
-                            text: qsTr("Python")
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontBody
-                        }
-
-                        EchoTextField {
-                            id: pythonField
-
+                        Rectangle {
                             Layout.fillWidth: true
-                            text: modelPrefs !== null ? modelPrefs.python : ""
-                            placeholderText: qsTr("python3")
-                            onEditingFinished: modelPrefs.python = text
+                            Layout.preferredHeight: routeDetails.implicitHeight + 28
+                            radius: 10
+                            color: Theme.surfaceSubtle
+                            border.color: Theme.border
+
+                            ColumnLayout {
+                                id: routeDetails
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.leftMargin: 14
+                                anchors.rightMargin: 14
+                                spacing: 10
+
+                                Repeater {
+                                    model: [
+                                        { label: qsTr("Request contract"), value: "audio.transcribe" },
+                                        { label: qsTr("Execution"), value: qsTr("Local MLX compatibility adapter") },
+                                        { label: qsTr("Python"), value: dialog.modelPrefs !== null
+                                            ? dialog.modelPrefs.python : "" }
+                                    ]
+
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+
+                                        Text {
+                                            text: modelData.label
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontBody
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+
+                                        Text {
+                                            Layout.maximumWidth: routeDetails.width * 0.65
+                                            text: modelData.value
+                                            color: Theme.textPrimary
+                                            font.pixelSize: Theme.fontBody
+                                            elide: Text.ElideMiddle
+                                        }
+                                    }
+                                }
+                            }
                         }
 
-                        Text {
-                            text: qsTr("Worker")
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontBody
-                        }
-
-                        EchoTextField {
-                            id: workerField
-
+                        RowLayout {
                             Layout.fillWidth: true
-                            text: modelPrefs !== null ? modelPrefs.workerScript : ""
-                            onEditingFinished: modelPrefs.workerScript = text
+                            spacing: 8
+
+                            Rectangle {
+                                Layout.preferredWidth: 8
+                                Layout.preferredHeight: 8
+                                radius: 4
+                                color: Theme.accent
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTr("This direct route is temporary. Infer Build will take over scheduling, resources, and audit without changing the product request contract.")
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontBody
+                                wrapMode: Text.WordWrap
+                            }
                         }
                     }
                 }

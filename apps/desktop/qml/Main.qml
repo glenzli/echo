@@ -25,6 +25,10 @@ ApplicationWindow {
 
     readonly property bool jobsActive: jobSnapshot.pending > 0 || jobSnapshot.running > 0
 
+    function openSettings() : void {
+        settingsDialog.open()
+    }
+
     EchoSettingsDialog {
         id: settingsDialog
     }
@@ -127,7 +131,7 @@ ApplicationWindow {
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/tune.svg"
                 toolTipText: qsTr("Settings")
-                onClicked: settingsDialog.open()
+                onClicked: window.openSettings()
             }
         }
     }
@@ -142,7 +146,6 @@ ApplicationWindow {
             id: audioSpace
 
             anchors.fill: parent
-            anchors.margins: 14
             jobStats: window.jobSnapshot
             onOpenLibraryRequested: libraryDialog.open()
         }

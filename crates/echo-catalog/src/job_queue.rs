@@ -20,7 +20,7 @@ pub enum JobKind {
     ImportFile,
     /// Builds and caches the waveform pyramid for an asset.
     AnalyzeWaveform,
-    /// Runs the ASR worker and records transcript evidence.
+    /// Submits audio transcription and records transcript evidence.
     Transcribe,
     /// Runs local LLM contextual understanding over a transcript.
     Contextual,

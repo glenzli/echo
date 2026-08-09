@@ -1,5 +1,5 @@
-//! Model preferences: where Echo finds models and the MLX worker. Echo never
-//! downloads; the user maintains the shared HF cache.
+//! Compatibility inference preferences. The current defaults hard-wire the
+//! local MLX environment while preserving Echo's Infer-compatible request.
 
 #pragma once
 

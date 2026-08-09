@@ -173,9 +173,13 @@ InferenceBackend
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
   - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
     导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
+  - 已接入（过渡切片，2026-08-09）：Echo 以 Infer Build 的 `audio.transcribe` logical intent、
+    标准请求字段和 `infer.*` constraints 形成请求；当前执行端是 JSON-lines 兼容的直接 MLX
+    adapter，只负责把请求硬映射到本地 Qwen3-ASR，不承担路由、准入、重试或资源生命周期。
   - 冻结项：不再增强 Echo 内的物理模型注册、Ollama worker 或裸 Python 路由。
-  - 下一真实切片：通过 Infer Build 提交 `audio.transcribe`，接收 Job/Attempt 进度和结果，
-    保存模型/版本/置信度/时间戳；随后接 `audio.align`，完成 waveform↔transcript 双向定位。
+  - 下一真实切片：用 Infer Build 的正式 HTTP/Job 执行替换直接 adapter，接收 Job/Attempt
+    进度和结果，保存模型/版本/置信度/时间戳；随后接 `audio.align`，完成
+    waveform↔transcript 双向定位。
   - 待办：SenseVoice 能力 Intent、speaker/event 证据、取消/重试产品状态。
 - **M2 Library**：自然语言搜索、人物/声音、时间、audio event、CLAP semantic search。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。

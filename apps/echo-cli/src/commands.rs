@@ -57,10 +57,10 @@ pub(crate) enum Command {
         /// Model root; defaults to the standard HF cache.
         #[arg(long)]
         model_root: Option<std::path::PathBuf>,
-        /// MLX interpreter (default: `ECHO_MLX_PYTHON` or `python3`).
+        /// MLX interpreter (default: `ECHO_MLX_PYTHON` or the local MLX venv).
         #[arg(long)]
         python: Option<std::path::PathBuf>,
-        /// ASR worker script (default: `tools/asr/transcribe.py`).
+        /// Audio worker script (default: `tools/inference/local_audio_worker.py`).
         #[arg(long)]
         worker: Option<std::path::PathBuf>,
     },
@@ -86,10 +86,10 @@ pub(crate) enum Command {
         /// Model root; defaults to the standard HF cache.
         #[arg(long)]
         model_root: Option<std::path::PathBuf>,
-        /// MLX interpreter (default: `ECHO_MLX_PYTHON` or `python3`).
+        /// MLX interpreter (default: `ECHO_MLX_PYTHON` or the local MLX venv).
         #[arg(long)]
         python: Option<std::path::PathBuf>,
-        /// ASR worker script (default: `tools/asr/transcribe.py`).
+        /// Audio worker script (default: `tools/inference/local_audio_worker.py`).
         #[arg(long)]
         worker: Option<std::path::PathBuf>,
         /// Worker threads (default 2).
@@ -134,8 +134,9 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
         } => {
             let model_root = model_root.unwrap_or_else(models::default_model_root);
             let python = python.unwrap_or_else(transcribe::default_python);
-            let worker =
-                worker.unwrap_or_else(|| std::path::PathBuf::from("tools/asr/transcribe.py"));
+            let worker = worker.unwrap_or_else(|| {
+                std::path::PathBuf::from("tools/inference/local_audio_worker.py")
+            });
             transcribe::run_transcribe(&catalog, &source, &model_root, &python, &worker)
         }
         Command::AddRoot { catalog, root } => library::run_add_root(&catalog, &root),
@@ -151,8 +152,9 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
             let cache = cache.unwrap_or_else(library::default_cache_root);
             let model_root = model_root.unwrap_or_else(models::default_model_root);
             let python = python.unwrap_or_else(transcribe::default_python);
-            let worker =
-                worker.unwrap_or_else(|| std::path::PathBuf::from("tools/asr/transcribe.py"));
+            let worker = worker.unwrap_or_else(|| {
+                std::path::PathBuf::from("tools/inference/local_audio_worker.py")
+            });
             library::run_scan(&catalog, &cache, &model_root, &python, &worker, workers)
         }
         Command::Jobs { catalog } => library::run_jobs(&catalog),

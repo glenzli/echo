@@ -21,6 +21,7 @@ CMakeUserPresets.json
 /cache/
 /catalogs/
 /bench-results/
+/local-audio-library/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

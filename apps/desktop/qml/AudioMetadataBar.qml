@@ -43,8 +43,9 @@ Rectangle {
         if (asset.mood.length > 0) {
             parts.push(asset.mood)
         }
-        for (const keyword of asset.keywords) {
-            parts.push(keyword)
+        const keywords = asset.keywords
+        for (let index = 0; index < keywords.length; ++index) {
+            parts.push(String(keywords[index]))
         }
         return parts.join(" · ")
     }

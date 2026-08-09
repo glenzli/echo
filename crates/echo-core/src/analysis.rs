@@ -1,12 +1,15 @@
-//! Transcript analysis: runs the ASR worker as a subprocess and records the
-//! result as evidence in the catalog.
+//! Transcript analysis: submits an Infer-compatible `audio.transcribe`
+//! request to the temporary direct MLX adapter and records the result as
+//! evidence in the catalog.
 //!
-//! The worker contract is a Python script (`tools/asr/transcribe.py`) invoked
-//! with a configured interpreter; the JSON schema below is owned here.
+//! The adapter is deliberately not a scheduler. It preserves the product
+//! request contract while Infer Build is not yet the execution owner.
 
 use std::{
+    collections::BTreeMap,
+    io::Write,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -15,6 +18,39 @@ use echo_domain::{AnalysisKind, AnalysisRecord, AssetId, ModelIdentity};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, CoreErrorKind};
+
+/// Stable Infer Runtime intent consumed by Echo's first real inference slice.
+pub const TRANSCRIPTION_INTENT: &str = "audio.transcribe";
+
+/// Product-level transcription request. These fields mirror Infer Runtime's
+/// `TranscriptionRequest`; the direct adapter only adds local execution data.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TranscriptionIntent {
+    pub model: String,
+    pub language: Option<String>,
+    pub prompt: Option<String>,
+    pub response_format: String,
+    pub temperature: Option<f64>,
+    pub metadata: BTreeMap<String, String>,
+}
+
+impl Default for TranscriptionIntent {
+    fn default() -> Self {
+        Self {
+            model: TRANSCRIPTION_INTENT.to_owned(),
+            language: None,
+            prompt: None,
+            response_format: "verbose_json".to_owned(),
+            temperature: None,
+            metadata: BTreeMap::from([
+                ("infer.policy".to_owned(), "local-first".to_owned()),
+                ("infer.placement".to_owned(), "local_only".to_owned()),
+                ("infer.offline_required".to_owned(), "true".to_owned()),
+                ("infer.fallback".to_owned(), "none".to_owned()),
+            ]),
+        }
+    }
+}
 
 /// One transcribed segment with timestamps in seconds.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -44,16 +80,35 @@ pub struct TranscriptPayload {
     pub segments: Vec<TranscriptSegment>,
 }
 
-/// The ASR worker invocation contract.
+/// Temporary local execution adapter for the Infer-compatible request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TranscribeWorker {
     /// Interpreter that can import `mlx_audio` (the MLX venv's python).
     pub python: PathBuf,
-    /// The worker script (`tools/asr/transcribe.py`).
+    /// The JSON-lines adapter (`tools/inference/local_audio_worker.py`).
     pub script: PathBuf,
 }
 
-/// Runs the ASR worker on `source` with `model_snapshot` and returns the
+#[derive(Debug, Serialize)]
+struct DirectTranscriptionRequest {
+    request_id: String,
+    operation: &'static str,
+    intent: TranscriptionIntent,
+    model: String,
+    audio_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct DirectTranscriptionResponse {
+    request_id: String,
+    ok: bool,
+    #[serde(default)]
+    result: Option<TranscriptPayload>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
+/// Submits the Infer-compatible intent to the direct adapter and returns the
 /// parsed transcript.
 ///
 /// # Errors
@@ -65,49 +120,102 @@ pub fn run_transcribe(
     model_snapshot: &Path,
     worker: &TranscribeWorker,
 ) -> Result<TranscriptPayload, CoreError> {
-    let output_path = temporary_output_path();
-    let output = Command::new(&worker.python)
+    let request = direct_request(source, model_snapshot);
+    let request_id = request.request_id.clone();
+    let mut child = Command::new(&worker.python)
         .arg(&worker.script)
-        .arg("--model")
-        .arg(model_snapshot)
-        .arg("--audio")
-        .arg(source)
-        .arg("--out")
-        .arg(&output_path)
-        .output()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|error| {
             CoreError::new(
                 CoreErrorKind::Other,
                 format!(
-                    "cannot start ASR worker {}: {error}",
+                    "cannot start local inference worker {}: {error}",
                     worker.python.display()
                 ),
             )
         })?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let _ = std::fs::remove_file(&output_path);
-        return Err(CoreError::new(
-            CoreErrorKind::Other,
-            format!("ASR worker failed ({}): {}", output.status, stderr.trim()),
-        ));
-    }
-    let bytes = std::fs::read(&output_path).map_err(|error| {
+    let mut stdin = child.stdin.take().ok_or_else(|| {
+        CoreError::new(CoreErrorKind::Other, "local inference worker has no stdin")
+    })?;
+    serde_json::to_writer(&mut stdin, &request).map_err(|error| {
         CoreError::new(
             CoreErrorKind::Other,
-            format!(
-                "cannot read ASR worker output {}: {error}",
-                output_path.display()
-            ),
+            format!("cannot encode transcription intent: {error}"),
         )
     })?;
-    let _ = std::fs::remove_file(&output_path);
-    serde_json::from_slice(&bytes).map_err(|error| {
+    stdin.write_all(b"\n").map_err(|error| {
         CoreError::new(
             CoreErrorKind::Other,
-            format!("cannot parse ASR worker output: {error}"),
+            format!("cannot submit transcription intent: {error}"),
+        )
+    })?;
+    drop(stdin);
+    let output = child.wait_with_output().map_err(|error| {
+        CoreError::new(
+            CoreErrorKind::Other,
+            format!("cannot wait for local inference worker: {error}"),
+        )
+    })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(CoreError::new(
+            CoreErrorKind::Other,
+            format!(
+                "local inference worker failed ({}): {}",
+                output.status,
+                stderr.trim()
+            ),
+        ));
+    }
+    let response: DirectTranscriptionResponse =
+        serde_json::from_slice(&output.stdout).map_err(|error| {
+            CoreError::new(
+                CoreErrorKind::Other,
+                format!("cannot parse local inference response: {error}"),
+            )
+        })?;
+    if response.request_id != request_id {
+        return Err(CoreError::new(
+            CoreErrorKind::Other,
+            format!(
+                "local inference response id mismatch: expected {request_id}, got {}",
+                response.request_id
+            ),
+        ));
+    }
+    if !response.ok {
+        return Err(CoreError::new(
+            CoreErrorKind::Other,
+            response
+                .error
+                .unwrap_or_else(|| "local inference failed without an error".to_owned()),
+        ));
+    }
+    response.result.ok_or_else(|| {
+        CoreError::new(
+            CoreErrorKind::Other,
+            "local inference succeeded without a transcript result",
         )
     })
+}
+
+fn direct_request(source: &Path, model_snapshot: &Path) -> DirectTranscriptionRequest {
+    DirectTranscriptionRequest {
+        request_id: format!(
+            "echo-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_or(0, |duration| duration.as_nanos())
+        ),
+        operation: "transcribe",
+        intent: TranscriptionIntent::default(),
+        model: model_snapshot.to_string_lossy().into_owned(),
+        audio_path: source.to_string_lossy().into_owned(),
+    }
 }
 
 /// Records a transcript as evidence for `asset_id`.
@@ -158,12 +266,5 @@ pub fn record_transcript(
     })
 }
 
-fn temporary_output_path() -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "echo-transcript-{}-{}.json",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |duration| duration.as_nanos())
-    ))
-}
+#[cfg(test)]
+mod tests;

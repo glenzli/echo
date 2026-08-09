@@ -160,15 +160,15 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        spacing: 12
+        spacing: 0
 
         Rectangle {
-            Layout.preferredWidth: 340
-            Layout.minimumWidth: 320
-            Layout.maximumWidth: 380
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            Layout.minimumWidth: 480
             Layout.fillHeight: true
             color: Theme.panel
-            radius: Theme.panelRadius
+            radius: 0
             border.color: Theme.border
 
             ColumnLayout {
@@ -556,8 +556,9 @@ Item {
             id: previewPane
 
             Layout.fillWidth: true
+            Layout.preferredWidth: 1
             Layout.fillHeight: true
-            Layout.minimumWidth: 720
+            Layout.minimumWidth: 480
             asset: workspace.selectedAsset
         }
     }

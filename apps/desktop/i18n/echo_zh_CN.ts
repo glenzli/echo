@@ -10,47 +10,47 @@
         <translation>未知</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="67"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="68"/>
         <source>Format</source>
         <translation>格式</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="69"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="70"/>
         <source>Audio</source>
         <translation>音频</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="72"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="73"/>
         <source>Duration</source>
         <translation>时长</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="76"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="77"/>
         <source>Recorded</source>
         <translation>录制时间</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="82"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="83"/>
         <source>Evidence</source>
         <translation>证据</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="84"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="85"/>
         <source>Level %1</source>
         <translation>第 %1 层</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="85"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="86"/>
         <source>Original only</source>
         <translation>仅原始文件</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="116"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="117"/>
         <source>Understanding</source>
         <translation>声音理解</translation>
     </message>
     <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="125"/>
+        <location filename="../qml/AudioMetadataBar.qml" line="126"/>
         <source>Not analyzed yet</source>
         <translation>尚未分析</translation>
     </message>
@@ -261,50 +261,30 @@
         <translation>推理</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="21"/>
-        <source>Compatibility worker</source>
-        <translation>兼容工作进程</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="25"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="29"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="190"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="236"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="201"/>
-        <location filename="../qml/EchoSettingsDialog.qml" line="228"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="246"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="280"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="202"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="247"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="203"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="248"/>
         <source>Dark</source>
         <translation>深色</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="252"/>
-        <source>Direct worker (prototype)</source>
-        <translation>直接工作进程（原型）</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="253"/>
-        <source>This adapter only supports the current ASR proof of concept. Production analysis will be scheduled by Infer Build.</source>
-        <translation>此适配器仅支持当前的 ASR 概念验证。正式分析将由 Infer Build 调度。</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="191"/>
-        <source>Echo follows the system appearance in System mode; you can pin Light or Dark at any time.</source>
-        <translation>跟随系统模式下，Echo 会跟随系统外观；你也可以随时固定为浅色或深色。</translation>
     </message>
     <message>
         <location filename="../qml/EchoSettingsDialog.qml" line="18"/>
@@ -312,44 +292,79 @@
         <translation>通用</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="19"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="18"/>
         <source>Appearance &amp; language</source>
         <translation>外观与语言</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="75"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="20"/>
+        <source>Local compatibility route</source>
+        <translation>本地兼容路径</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="91"/>
+        <source>Echo Settings</source>
+        <translation>Echo 设置</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="98"/>
+        <source>Appearance, language, and local inference</source>
+        <translation>外观、语言与本地推理</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="135"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="218"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="237"/>
+        <source>Follow the system, or keep Echo light or dark.</source>
+        <translation>跟随系统外观，或让 Echo 始终保持浅色或深色。</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="270"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="219"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="271"/>
         <source>The default follows your system language.</source>
         <translation>默认跟随系统语言。</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="264"/>
-        <source>Model root</source>
-        <translation>模型目录</translation>
+        <location filename="../qml/EchoSettingsDialog.qml" line="307"/>
+        <source>Inference route</source>
+        <translation>推理路径</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="278"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="308"/>
+        <source>Infer-compatible request, direct MLX execution</source>
+        <translation>兼容 Infer 的请求，由 MLX 直接执行</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="329"/>
+        <source>Request contract</source>
+        <translation>请求契约</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="330"/>
+        <source>Execution</source>
+        <translation>执行方式</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="330"/>
+        <source>Local MLX compatibility adapter</source>
+        <translation>本地 MLX 兼容适配器</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="372"/>
+        <source>This direct route is temporary. Infer Build will take over scheduling, resources, and audit without changing the product request contract.</source>
+        <translation>这条直接执行路径是临时方案。后续 Infer Build 会在不改变产品请求契约的前提下接管调度、资源与审计。</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="331"/>
         <source>Python</source>
         <translation>Python</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="288"/>
-        <source>python3</source>
-        <translation>python3</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="293"/>
-        <source>Worker</source>
-        <translation>工作脚本</translation>
     </message>
 </context>
 <context>

@@ -80,9 +80,9 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 #if defined(Q_OS_MACOS)
-        // The fused toolbar spans the window top (0-44 pt); its center (22)
+        // The fused toolbar spans the window top (0-48 pt); its center (24)
         // puts the lights in the same row as the actions.
-        installMacTitleBarAlignment(qobject_cast<QQuickWindow*>(engine.rootObjects().first()), 22);
+        installMacTitleBarAlignment(qobject_cast<QQuickWindow*>(engine.rootObjects().first()), 24);
 #endif
         // Headless smoke aids: ECHO_DEBUG_SCREENSHOT=/path.png captures the
         // first window after the shell settles; ECHO_DEBUG_AUTOPLAY=/file.wav
@@ -95,9 +95,17 @@ int main(int argc, char* argv[]) {
                 player.play(autoplay_path);
             });
         }
+        if (std::getenv("ECHO_DEBUG_OPEN_SETTINGS") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(250, root, [root] {
+                QMetaObject::invokeMethod(root, "openSettings");
+            });
+        }
         if (const char* shot = std::getenv("ECHO_DEBUG_SCREENSHOT")) {
             if (auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first())) {
-                const int delay = std::getenv("ECHO_DEBUG_AUTOPLAY") != nullptr ? 3000 : 800;
+                const bool delayed = std::getenv("ECHO_DEBUG_AUTOPLAY") != nullptr
+                                     || std::getenv("ECHO_DEBUG_OPEN_SETTINGS") != nullptr;
+                const int delay = delayed ? 3000 : 800;
                 QTimer::singleShot(delay, window, [window, shot] {
                     window->grabWindow().save(QString::fromUtf8(shot));
                     QGuiApplication::exit(0);

@@ -1,6 +1,7 @@
 #include "model_preferences.hpp"
 
 #include <QDir>
+#include <QFileInfo>
 #include <QStandardPaths>
 
 namespace {
@@ -8,6 +9,8 @@ namespace {
 constexpr auto kModelRootKey = "models/root";
 constexpr auto kPythonKey = "models/python";
 constexpr auto kWorkerKey = "models/worker";
+constexpr auto kLegacyWorker = "tools/asr/transcribe.py";
+constexpr auto kDirectWorker = "tools/inference/local_audio_worker.py";
 
 } // namespace
 
@@ -26,7 +29,13 @@ ModelPreferences::ModelPreferences(QObject* parent) : QObject(parent) {
                       QString::fromLocal8Bit(qgetenv("ECHO_MLX_PYTHON"))
                   )
                   .toString();
-    if (python_.isEmpty()) {
+    const QString bundled_mlx_python =
+        QDir::homePath() + QStringLiteral("/ai-lab/audio/qwen-tts/.venv/bin/python");
+    if ((python_.isEmpty() || python_ == QStringLiteral("python3"))
+        && QFileInfo::exists(bundled_mlx_python)) {
+        python_ = bundled_mlx_python;
+        settings_->setValue(QString::fromLatin1(kPythonKey), python_);
+    } else if (python_.isEmpty()) {
         python_ = QStringLiteral("python3");
     }
     worker_script_ = settings_
@@ -35,8 +44,9 @@ ModelPreferences::ModelPreferences(QObject* parent) : QObject(parent) {
                              QString::fromLocal8Bit(qgetenv("ECHO_ASR_WORKER"))
                          )
                          .toString();
-    if (worker_script_.isEmpty()) {
-        worker_script_ = QStringLiteral("tools/asr/transcribe.py");
+    if (worker_script_.isEmpty() || worker_script_ == QString::fromLatin1(kLegacyWorker)) {
+        worker_script_ = QString::fromLatin1(kDirectWorker);
+        settings_->setValue(QString::fromLatin1(kWorkerKey), worker_script_);
     }
 }
 

@@ -17,8 +17,8 @@ mod waveform_artifact;
 mod worker;
 
 pub use analysis::{
-    TranscribeWorker, TranscriptPayload, TranscriptSegment, TranscriptWord, record_transcript,
-    run_transcribe,
+    TRANSCRIPTION_INTENT, TranscribeWorker, TranscriptPayload, TranscriptSegment, TranscriptWord,
+    TranscriptionIntent, record_transcript, run_transcribe,
 };
 pub use contextual::{ContextualPayload, ContextualWorker, record_contextual, run_contextual};
 pub use error::CoreErrorKind;

@@ -14,7 +14,7 @@ Rectangle {
     property string loadedPath: ""
 
     color: Theme.panelRaised
-    radius: Theme.panelRadius
+    radius: 0
     border.color: Theme.border
 
     function fileName(path: string) : string {
