@@ -501,16 +501,53 @@
     </message>
 </context>
 <context>
-    <name>ExpandedSoundWorkspace</name>
+    <name>SoundAdvancedFilterPopup</name>
     <message>
-        <location filename="../qml/ExpandedSoundWorkspace.qml" line="46"/>
-        <source>Sound Wall</source>
-        <translation>声音墙</translation>
+        <source>Advanced filters</source>
+        <translation>复合筛选</translation>
     </message>
     <message>
-        <location filename="../qml/ExpandedSoundWorkspace.qml" line="55"/>
-        <source>Expanded sound</source>
-        <translation>展开的声音</translation>
+        <source>Clear all</source>
+        <translation>清除全部</translation>
+    </message>
+    <message>
+        <source>Close advanced filters</source>
+        <translation>关闭复合筛选</translation>
+    </message>
+    <message>
+        <source>Events</source>
+        <translation>事件</translation>
+    </message>
+    <message>
+        <source>Keywords</source>
+        <translation>关键词</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>地点</translation>
+    </message>
+    <message>
+        <source>Match any value within a category and every active category.</source>
+        <translation>同一类别可匹配任一值；所有启用的类别必须同时匹配。</translation>
+    </message>
+    <message>
+        <source>Mood</source>
+        <translation>情绪</translation>
+    </message>
+    <message>
+        <source>No values in this Library</source>
+        <translation>当前资料库没有可用值</translation>
+    </message>
+    <message>
+        <source>Recording year</source>
+        <translation>录制年份</translation>
+    </message>
+</context>
+<context>
+    <name>SoundFocusView</name>
+    <message>
+        <source>No sounds match these filters</source>
+        <translation>没有声音符合这些筛选条件</translation>
     </message>
 </context>
 <context>
@@ -762,21 +799,6 @@
 <context>
     <name>SoundWallBottomBar</name>
     <message>
-        <location filename="../qml/SoundWallBottomBar.qml" line="28"/>
-        <source>Overview</source>
-        <translation>概览</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWallBottomBar.qml" line="28"/>
-        <source>Browse</source>
-        <translation>浏览</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWallBottomBar.qml" line="28"/>
-        <source>Rich</source>
-        <translation>丰富</translation>
-    </message>
-    <message>
         <location filename="../qml/SoundWallBottomBar.qml" line="56"/>
         <source>Date</source>
         <translation>日期</translation>
@@ -822,14 +844,32 @@
         <translation>%1 / %2 段声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWallBottomBar.qml" line="240"/>
-        <source>Card detail: %1</source>
-        <translation>卡片信息：%1</translation>
+        <source>Clear all filters</source>
+        <translation>清除全部筛选</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWallBottomBar.qml" line="242"/>
-        <source>Sound card detail</source>
-        <translation>声音卡片信息密度</translation>
+        <source>FILTER</source>
+        <translation>筛选</translation>
+    </message>
+    <message>
+        <source>FILTER %1</source>
+        <translation>筛选 %1</translation>
+    </message>
+    <message>
+        <source>Grid view</source>
+        <translation>网格视图</translation>
+    </message>
+    <message>
+        <source>Open advanced filters</source>
+        <translation>打开复合筛选</translation>
+    </message>
+    <message>
+        <source>Single sound with filmstrip</source>
+        <translation>单声音与胶片带</translation>
+    </message>
+    <message>
+        <source>Sound card size</source>
+        <translation>声音卡片大小</translation>
     </message>
 </context>
 </TS>

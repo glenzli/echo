@@ -137,7 +137,6 @@ qt_add_qml_module(
         qml/AudioLibrarySidebar.qml
         qml/AudioPlaybackWorkspace.qml
         qml/AudioSpaceWorkspace.qml
-        qml/ExpandedSoundWorkspace.qml
         qml/EchoButton.qml
         qml/EchoIcon.qml
         qml/EchoIconButton.qml
@@ -146,7 +145,11 @@ qt_add_qml_module(
         qml/EchoTextField.qml
         qml/InspectorSection.qml
         qml/MainTitleBar.qml
+        qml/SoundAdvancedFilterPopup.qml
         qml/SoundCard.qml
+        qml/SoundFilmstripItem.qml
+        qml/SoundFilterState.qml
+        qml/SoundFocusView.qml
         qml/SoundInspector.qml
         qml/SoundLibraryRow.qml
         qml/SoundSelectionToolbar.qml
@@ -163,6 +166,10 @@ qt_add_qml_module(
         icons/waveform.svg
         icons/mic.svg
         icons/folder.svg
+        icons/review-grid.svg
+        icons/filmstrip.svg
+        icons/filter.svg
+        icons/filter-off.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

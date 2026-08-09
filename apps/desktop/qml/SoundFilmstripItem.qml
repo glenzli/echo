@@ -1,0 +1,85 @@
+//! Compact waveform surrogate for the single-sound filmstrip. It owns only
+//! thumbnail-scale waveform readiness and selection presentation.
+
+import QtQuick
+import EchoDesktop
+
+Rectangle {
+    id: thumbnail
+
+    required property var entry
+    required property bool selected
+    property var waveformLevels: []
+
+    signal activated()
+
+    width: 152
+    height: 84
+    radius: 7
+    color: Theme.panelRaised
+    border.width: selected ? 2 : 1
+    border.color: selected ? Theme.accent : Theme.border
+    clip: true
+
+    function fileName(path: string) : string {
+        const normalized = path.replace(/\\/g, "/")
+        return normalized.substring(normalized.lastIndexOf("/") + 1)
+    }
+
+    function loadWaveform() : void {
+        waveformLevels = []
+        if (!entry || !entry.id || entry.pathStatus === "missing") {
+            return
+        }
+        try {
+            waveformLevels = backend.waveformForAsset(entry.id)
+        } catch (error) {
+            waveformLevels = []
+        }
+    }
+
+    onEntryChanged: Qt.callLater(loadWaveform)
+    Component.onCompleted: Qt.callLater(loadWaveform)
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 58
+        color: selected ? "#395a65" : "#31464d"
+
+        WaveformView {
+            anchors.fill: parent
+            anchors.leftMargin: 7
+            anchors.rightMargin: 7
+            anchors.topMargin: 8
+            anchors.bottomMargin: 8
+            levels: thumbnail.waveformLevels
+            fillColor: "#d9f4f8"
+            progressColor: "#ffffff"
+            progress: 0
+        }
+    }
+
+    Text {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 7
+        anchors.rightMargin: 7
+        height: 25
+        text: thumbnail.entry.summary.length > 0
+            ? thumbnail.entry.summary : thumbnail.fileName(thumbnail.entry.path)
+        color: Theme.textPrimary
+        font.pixelSize: 9
+        font.bold: thumbnail.selected
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: thumbnail.activated()
+    }
+}

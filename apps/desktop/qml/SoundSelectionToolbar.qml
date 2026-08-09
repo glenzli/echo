@@ -10,6 +10,7 @@ Rectangle {
     id: toolbar
 
     required property var asset
+    property bool showFocusAction: true
 
     signal affinityRequested(bool liked, int rating)
     signal expandRequested()
@@ -118,9 +119,11 @@ Rectangle {
             Layout.preferredWidth: 1
             Layout.preferredHeight: 20
             color: Theme.border
+            visible: toolbar.showFocusAction
         }
 
         EchoButton {
+            visible: toolbar.showFocusAction
             text: qsTr("Expand") + " ↗"
             ghost: true
             implicitWidth: 78

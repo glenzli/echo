@@ -1,6 +1,6 @@
 //! Audio Space is the Sound Wall projection controller. It owns collection
-//! admission, search/sort, selected identity and browse-to-expanded routing;
-//! sidebar, wall, inspector and playback remain independent UI owners.
+//! admission, search/sort, selected identity and browse presentation routing;
+//! sidebar, wall, focus view, filter state and inspector remain independent.
 
 import QtQuick
 import QtQuick.Controls
@@ -14,7 +14,8 @@ Item {
     property string selectedFilter: "all"
     property string searchText: ""
     property string sortMode: "date"
-    property int preferredCardWidth: 286
+    property string viewMode: "grid"
+    property int preferredCardWidth: 236
     property bool likedOnly: false
     property int minimumRating: 0
     property bool textOnly: false
@@ -22,13 +23,17 @@ Item {
     property var filteredAssets: []
     property var smartAlbums: []
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
-    property int viewIndex: 0
 
     readonly property int visibleAssetCount: filteredAssets.length
-    readonly property string cardDensity: preferredCardWidth <= 260
-        ? "overview" : preferredCardWidth <= 360 ? "browse" : "rich"
+    readonly property string cardDensity: preferredCardWidth <= 205
+        ? "overview" : preferredCardWidth <= 330 ? "browse" : "rich"
 
     signal openLibraryRequested()
+
+    SoundFilterState {
+        id: advancedFilterState
+        assets: workspace.allAssets
+    }
 
     function fileName(path: string) : string {
         const normalized = path.replace(/\\/g, "/")
@@ -127,6 +132,7 @@ Item {
         return (!likedOnly || asset.liked)
             && (minimumRating === 0 || asset.rating >= minimumRating)
             && (!textOnly || asset.textPreview.length > 0)
+            && advancedFilterState.matches(asset)
     }
 
     function refilter() : void {
@@ -162,7 +168,6 @@ Item {
     function selectFilter(key: string) : void {
         selectedFilter = key
         refilter()
-        viewIndex = 0
     }
 
     function setSearchText(text: string) : void {
@@ -194,6 +199,13 @@ Item {
         refilter()
     }
 
+    function clearAllFilters() : void {
+        likedOnly = false
+        minimumRating = 0
+        textOnly = false
+        advancedFilterState.clear()
+    }
+
     function updateAffinity(asset: var, liked: bool, rating: int) : void {
         if (asset === null) {
             return
@@ -203,15 +215,15 @@ Item {
 
     function openAsset(asset: var) : void {
         selectedAsset = asset
-        viewIndex = 1
+        viewMode = "focus"
     }
 
     function selectSearchHit(hit: var) : void {
         for (const asset of allAssets) {
             if (asset.id === hit.id) {
                 selectedAsset = asset
-                viewIndex = 1
-                Qt.callLater(() => expandedSound.playFrom(hit.startMillis))
+                viewMode = "focus"
+                Qt.callLater(() => soundFocus.playFrom(hit.startMillis))
                 return
             }
         }
@@ -222,34 +234,41 @@ Item {
         function onAssetsChanged() : void { workspace.refreshAssets() }
     }
 
-    StackLayout {
-        anchors.fill: parent
-        currentIndex: workspace.viewIndex
+    Connections {
+        target: advancedFilterState
+        function onFiltersChanged() : void { workspace.refilter() }
+    }
 
-        ColumnLayout {
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 0
 
-            RowLayout {
+            AudioLibrarySidebar {
+                Layout.preferredWidth: 220
+                Layout.minimumWidth: 205
+                Layout.fillHeight: true
+                assets: workspace.allAssets
+                smartAlbums: workspace.smartAlbums
+                selectedFilter: workspace.selectedFilter
+                onFilterRequested: key => workspace.selectFilter(key)
+                onManageLibraryRequested: workspace.openLibraryRequested()
+            }
+
+            StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 0
-
-                AudioLibrarySidebar {
-                    Layout.preferredWidth: 220
-                    Layout.minimumWidth: 205
-                    Layout.fillHeight: true
-                    assets: workspace.allAssets
-                    smartAlbums: workspace.smartAlbums
-                    selectedFilter: workspace.selectedFilter
-                    onFilterRequested: key => workspace.selectFilter(key)
-                    onManageLibraryRequested: workspace.openLibraryRequested()
-                }
+                Layout.minimumWidth: 560
+                currentIndex: workspace.viewMode === "grid" ? 0 : 1
 
                 SoundWall {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumWidth: 560
-                    assets: filteredAssets
+                    assets: workspace.filteredAssets
                     selectedAsset: workspace.selectedAsset
                     searchText: workspace.searchText
                     preferredCardWidth: workspace.preferredCardWidth
@@ -261,42 +280,51 @@ Item {
                     }
                 }
 
-                SoundInspector {
-                    Layout.preferredWidth: 390
-                    Layout.minimumWidth: 350
+                SoundFocusView {
+                    id: soundFocus
+
                     Layout.fillHeight: true
-                    asset: workspace.selectedAsset
+                    Layout.fillWidth: true
+                    assets: workspace.filteredAssets
+                    selectedAsset: workspace.selectedAsset
                     jobStats: workspace.jobStats
+                    onAssetSelected: asset => workspace.selectedAsset = asset
                     onAffinityRequested: function(asset, liked, rating) {
                         workspace.updateAffinity(asset, liked, rating)
                     }
                 }
             }
 
-            SoundWallBottomBar {
-                Layout.fillWidth: true
-                sortMode: workspace.sortMode
-                likedOnly: workspace.likedOnly
-                minimumRating: workspace.minimumRating
-                textOnly: workspace.textOnly
-                visibleCount: workspace.visibleAssetCount
-                totalCount: workspace.allAssets.length
-                cardWidth: workspace.preferredCardWidth
-                onSortRequested: mode => workspace.setSortMode(mode)
-                onLikedFilterRequested: enabled => workspace.setLikedOnly(enabled)
-                onRatingFilterRequested: rating => workspace.setMinimumRating(rating)
-                onTextFilterRequested: enabled => workspace.setTextOnly(enabled)
-                onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
+            SoundInspector {
+                Layout.preferredWidth: 390
+                Layout.minimumWidth: 350
+                Layout.fillHeight: true
+                asset: workspace.selectedAsset
+                jobStats: workspace.jobStats
+                onAffinityRequested: function(asset, liked, rating) {
+                    workspace.updateAffinity(asset, liked, rating)
+                }
             }
         }
 
-        ExpandedSoundWorkspace {
-            id: expandedSound
+        SoundWallBottomBar {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            asset: workspace.selectedAsset
-            jobStats: workspace.jobStats
-            onCloseRequested: workspace.viewIndex = 0
+            sortMode: workspace.sortMode
+            likedOnly: workspace.likedOnly
+            minimumRating: workspace.minimumRating
+            textOnly: workspace.textOnly
+            visibleCount: workspace.visibleAssetCount
+            totalCount: workspace.allAssets.length
+            cardWidth: workspace.preferredCardWidth
+            viewMode: workspace.viewMode
+            filterState: advancedFilterState
+            onSortRequested: mode => workspace.setSortMode(mode)
+            onLikedFilterRequested: enabled => workspace.setLikedOnly(enabled)
+            onRatingFilterRequested: rating => workspace.setMinimumRating(rating)
+            onTextFilterRequested: enabled => workspace.setTextOnly(enabled)
+            onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
+            onViewModeRequested: mode => workspace.viewMode = mode
+            onClearAllFiltersRequested: workspace.clearAllFilters()
         }
     }
 }

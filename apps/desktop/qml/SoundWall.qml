@@ -16,7 +16,7 @@ Rectangle {
     required property string density
 
     readonly property int cardHeight: density === "overview"
-        ? 154 : density === "rich" ? 282 : 206
+        ? 148 : density === "rich" ? 278 : 202
 
     signal assetSelected(var asset)
     signal assetOpened(var asset)
@@ -29,7 +29,7 @@ Rectangle {
 
         readonly property int spacing: 12
         readonly property int columns: Math.max(1,
-            Math.floor((width + spacing) / (wall.preferredCardWidth + spacing)))
+            Math.round((width + spacing) / (wall.preferredCardWidth + spacing)))
 
         anchors.fill: parent
         anchors.margins: 14
@@ -38,7 +38,7 @@ Rectangle {
         cellWidth: width / columns
         cellHeight: wall.cardHeight + spacing
         boundsBehavior: Flickable.StopAtBounds
-        bottomMargin: selectionToolbar.visible ? selectionToolbar.height + 24 : 0
+        bottomMargin: selectionToolbar.visible ? selectionToolbar.height + 42 : 18
 
         delegate: Item {
             required property var modelData
@@ -111,9 +111,10 @@ Rectangle {
     SoundSelectionToolbar {
         id: selectionToolbar
 
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 14
+        anchors.rightMargin: 20
+        anchors.bottomMargin: 18
         asset: wall.selectedAsset
         z: 20
         onAffinityRequested: function(liked, rating) {

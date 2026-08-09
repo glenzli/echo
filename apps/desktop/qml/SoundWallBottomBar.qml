@@ -1,6 +1,6 @@
-//! Sound Wall browse state. Sort, additive metadata facets, result count and
-//! semantic card density are global to the wall, so they live in one bottom
-//! toolbar instead of competing with window navigation in the title bar.
+//! Global Audio Space browsing controls. The left capsule owns sort and
+//! filtering affordances, the centered group owns presentation and card scale,
+//! and the right edge reports the filtered result count.
 
 import QtQuick
 import QtQuick.Controls
@@ -17,17 +17,21 @@ ToolBar {
     required property int visibleCount
     required property int totalCount
     required property real cardWidth
+    required property string viewMode
+    required property var filterState
 
     signal sortRequested(string mode)
     signal likedFilterRequested(bool enabled)
     signal ratingFilterRequested(int minimumRating)
     signal textFilterRequested(bool enabled)
     signal cardWidthRequested(real width)
+    signal viewModeRequested(string mode)
+    signal clearAllFiltersRequested()
 
-    readonly property string densityLabel: cardWidth <= 260
-        ? qsTr("Overview") : cardWidth <= 360 ? qsTr("Browse") : qsTr("Rich")
+    readonly property bool anyFilterActive: likedOnly || minimumRating > 0
+        || textOnly || filterState.activeCount > 0
 
-    implicitHeight: 42
+    implicitHeight: 44
     topPadding: 5
     bottomPadding: 5
     leftPadding: 12
@@ -45,120 +49,217 @@ ToolBar {
         }
     }
 
-    contentItem: RowLayout {
-        spacing: 8
+    SoundAdvancedFilterPopup {
+        id: advancedFilters
+        filterState: bar.filterState
+    }
 
-        ComboBox {
-            id: sortBox
-
-            Layout.preferredWidth: 96
-            Layout.preferredHeight: Theme.compactControlHeight
-            model: [qsTr("Date"), qsTr("Duration"), qsTr("Rating")]
-            currentIndex: Math.max(0, ["date", "duration", "rating"]
-                .indexOf(bar.sortMode))
-            onActivated: index => bar.sortRequested(
-                ["date", "duration", "rating"][index])
-
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Sort sounds")
-            ToolTip.delay: 600
-
-            contentItem: Text {
-                leftPadding: 10
-                rightPadding: 24
-                text: sortBox.displayText
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontMeta
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-            }
-
-            indicator: Text {
-                x: sortBox.width - width - 9
-                y: Math.round((sortBox.height - height) / 2) - 1
-                text: "⌄"
-                color: Theme.textSecondary
-                font.pixelSize: 13
-            }
-
-            background: Rectangle {
-                radius: Theme.controlRadius
-                color: sortBox.down ? Theme.controlPressed : Theme.control
-                border.color: sortBox.activeFocus ? Theme.accent : Theme.buttonBorder
-            }
-        }
-
+    contentItem: Item {
         Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 20
-            color: Theme.border
-        }
+            id: filterCapsule
 
-        Button {
-            id: likedFilter
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: filterControls.implicitWidth + 10
+            height: 32
+            radius: 8
+            color: bar.anyFilterActive ? Theme.accentSurfaceQuiet
+                                       : Theme.surfaceSubtle
 
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
-            padding: 0
-            focusPolicy: Qt.NoFocus
-            onClicked: bar.likedFilterRequested(!bar.likedOnly)
+            RowLayout {
+                id: filterControls
 
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Show liked sounds only")
-            ToolTip.delay: 600
-            Accessible.name: ToolTip.text
+                anchors.centerIn: parent
+                height: 28
+                spacing: 2
 
-            background: Rectangle {
-                radius: Theme.compactControlRadius
-                border.width: bar.likedOnly ? 1 : 0
-                border.color: Theme.accent
-                color: bar.likedOnly ? Theme.accentSurfaceQuiet
-                    : likedFilter.hovered ? Theme.buttonGhostHover : Theme.transparent
-            }
+                ComboBox {
+                    id: sortBox
 
-            contentItem: Text {
-                text: bar.likedOnly ? "♥" : "♡"
-                color: bar.likedOnly ? "#dc4b6b" : Theme.textSecondary
-                font.pixelSize: 16
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
-        }
-
-        Row {
-            spacing: 0
-
-            Repeater {
-                model: 5
-
-                delegate: Button {
-                    id: ratingFilter
-                    required property int index
-
-                    readonly property int ratingValue: index + 1
-                    implicitWidth: 20
-                    implicitHeight: 30
-                    padding: 0
-                    focusPolicy: Qt.NoFocus
-                    onClicked: bar.ratingFilterRequested(
-                        bar.minimumRating === ratingValue ? 0 : ratingValue)
+                    Layout.preferredWidth: 82
+                    Layout.preferredHeight: 26
+                    model: [qsTr("Date"), qsTr("Duration"), qsTr("Rating")]
+                    currentIndex: Math.max(0, ["date", "duration", "rating"]
+                        .indexOf(bar.sortMode))
+                    onActivated: index => bar.sortRequested(
+                        ["date", "duration", "rating"][index])
 
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("At least %1 stars").arg(ratingValue)
+                    ToolTip.text: qsTr("Sort sounds")
+                    ToolTip.delay: 600
+
+                    contentItem: Text {
+                        leftPadding: 8
+                        rightPadding: 20
+                        text: sortBox.displayText
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontMeta
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+
+                    indicator: Text {
+                        x: sortBox.width - width - 7
+                        y: Math.round((sortBox.height - height) / 2) - 1
+                        text: "⌄"
+                        color: Theme.textSecondary
+                        font.pixelSize: 12
+                    }
+
+                    background: Rectangle {
+                        radius: 6
+                        color: sortBox.down ? Theme.controlPressed : Theme.control
+                        border.width: 0
+                    }
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 16
+                    color: Theme.border
+                }
+
+                EchoIconButton {
+                    id: advancedFilterButton
+                    source: "qrc:/EchoDesktop/icons/filter.svg"
+                    selected: bar.filterState.activeCount > 0
+                    toolTipText: qsTr("Open advanced filters")
+                    buttonSize: 26
+                    iconSize: 14
+                    onClicked: advancedFilters.presentFrom(advancedFilterButton)
+                }
+
+                Text {
+                    text: bar.filterState.activeCount > 0
+                        ? qsTr("FILTER %1").arg(bar.filterState.activeCount)
+                        : qsTr("FILTER")
+                    color: bar.filterState.activeCount > 0
+                        ? Theme.accentSelectionText : Theme.textSecondary
+                    font.pixelSize: 9
+                    font.bold: bar.filterState.activeCount > 0
+                    font.letterSpacing: 0.6
+                    verticalAlignment: Text.AlignVCenter
+
+                    TapHandler {
+                        onTapped: advancedFilters.presentFrom(advancedFilterButton)
+                    }
+                }
+
+                EchoIconButton {
+                    visible: bar.anyFilterActive
+                    source: "qrc:/EchoDesktop/icons/filter-off.svg"
+                    toolTipText: qsTr("Clear all filters")
+                    buttonSize: 26
+                    iconSize: 14
+                    onClicked: bar.clearAllFiltersRequested()
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 16
+                    color: Theme.border
+                }
+
+                Button {
+                    id: likedFilter
+
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    padding: 0
+                    focusPolicy: Qt.NoFocus
+                    onClicked: bar.likedFilterRequested(!bar.likedOnly)
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Show liked sounds only")
                     ToolTip.delay: 600
                     Accessible.name: ToolTip.text
 
                     background: Rectangle {
-                        radius: 4
-                        color: ratingFilter.hovered
-                            ? Theme.buttonGhostHover : Theme.transparent
+                        radius: 6
+                        color: bar.likedOnly ? Theme.accentSurface
+                            : likedFilter.hovered ? Theme.buttonGhostHover
+                                                  : Theme.transparent
                     }
 
                     contentItem: Text {
-                        text: ratingFilter.ratingValue <= bar.minimumRating ? "★" : "☆"
-                        color: ratingFilter.ratingValue <= bar.minimumRating
-                            ? "#d89a16" : Theme.textDisabled
-                        font.pixelSize: 14
+                        text: bar.likedOnly ? "♥" : "♡"
+                        color: bar.likedOnly ? "#dc4b6b" : Theme.textSecondary
+                        font.pixelSize: 15
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                Row {
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 0
+
+                    Repeater {
+                        model: 5
+
+                        delegate: Button {
+                            id: ratingFilter
+                            required property int index
+
+                            readonly property int ratingValue: index + 1
+                            width: 18
+                            height: 26
+                            padding: 0
+                            focusPolicy: Qt.NoFocus
+                            onClicked: bar.ratingFilterRequested(
+                                bar.minimumRating === ratingValue ? 0 : ratingValue)
+
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("At least %1 stars").arg(ratingValue)
+                            ToolTip.delay: 600
+                            Accessible.name: ToolTip.text
+
+                            background: Rectangle {
+                                radius: 4
+                                color: ratingFilter.hovered
+                                    ? Theme.buttonGhostHover : Theme.transparent
+                            }
+
+                            contentItem: Text {
+                                text: ratingFilter.ratingValue <= bar.minimumRating
+                                    ? "★" : "☆"
+                                color: ratingFilter.ratingValue <= bar.minimumRating
+                                    ? "#d89a16" : Theme.textDisabled
+                                font.pixelSize: 13
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                    }
+                }
+
+                Button {
+                    id: textFilter
+
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 26
+                    padding: 0
+                    focusPolicy: Qt.NoFocus
+                    onClicked: bar.textFilterRequested(!bar.textOnly)
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Show sounds with text only")
+                    ToolTip.delay: 600
+                    Accessible.name: ToolTip.text
+
+                    background: Rectangle {
+                        radius: 6
+                        color: bar.textOnly ? Theme.accentSurface
+                            : textFilter.hovered ? Theme.buttonGhostHover
+                                                 : Theme.transparent
+                    }
+
+                    contentItem: Text {
+                        text: qsTr("Text")
+                        color: bar.textOnly ? Theme.accentSelectionText
+                                            : Theme.textSecondary
+                        font.pixelSize: Theme.fontMeta
+                        font.bold: bar.textOnly
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -166,86 +267,65 @@ ToolBar {
             }
         }
 
-        Button {
-            id: textFilter
+        Row {
+            id: viewControls
 
-            Layout.preferredWidth: 52
-            Layout.preferredHeight: 30
-            padding: 0
-            focusPolicy: Qt.NoFocus
-            onClicked: bar.textFilterRequested(!bar.textOnly)
+            anchors.centerIn: parent
+            height: 30
+            spacing: 3
 
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Show sounds with text only")
-            ToolTip.delay: 600
-            Accessible.name: ToolTip.text
-
-            background: Rectangle {
-                radius: Theme.compactControlRadius
-                border.width: bar.textOnly ? 1 : 0
-                border.color: Theme.accent
-                color: bar.textOnly ? Theme.accentSurfaceQuiet
-                    : textFilter.hovered ? Theme.buttonGhostHover : Theme.transparent
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/review-grid.svg"
+                selected: bar.viewMode === "grid"
+                toolTipText: qsTr("Grid view")
+                buttonSize: 28
+                iconSize: 15
+                onClicked: bar.viewModeRequested("grid")
             }
 
-            contentItem: Text {
-                text: qsTr("Text")
-                color: bar.textOnly ? Theme.accentSelectionText : Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-                font.bold: bar.textOnly
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/filmstrip.svg"
+                selected: bar.viewMode === "focus"
+                toolTipText: qsTr("Single sound with filmstrip")
+                buttonSize: 28
+                iconSize: 15
+                onClicked: bar.viewModeRequested("focus")
+            }
+
+            Rectangle {
+                visible: bar.viewMode === "grid"
+                width: 1
+                height: 18
+                anchors.verticalCenter: parent.verticalCenter
+                color: Theme.border
+            }
+
+            Slider {
+                id: densitySlider
+
+                visible: bar.viewMode === "grid"
+                anchors.verticalCenter: parent.verticalCenter
+                width: 126
+                height: 28
+                from: 180
+                to: 420
+                stepSize: 8
+                value: bar.cardWidth
+                onMoved: bar.cardWidthRequested(value)
+
+                ToolTip.visible: hovered || pressed
+                ToolTip.text: qsTr("Sound card size")
+                ToolTip.delay: 400
+                Accessible.name: ToolTip.text
             }
         }
 
-        Item { Layout.fillWidth: true }
-
         Text {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
             text: qsTr("%1 / %2 sounds").arg(bar.visibleCount).arg(bar.totalCount)
             color: Theme.textSecondary
             font.pixelSize: Theme.fontMeta
-        }
-
-        Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 20
-            color: Theme.border
-        }
-
-        Text {
-            text: bar.densityLabel
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontMeta
-            Layout.minimumWidth: 48
-            horizontalAlignment: Text.AlignRight
-        }
-
-        Text {
-            text: "▦"
-            color: Theme.textDisabled
-            font.pixelSize: 13
-        }
-
-        Slider {
-            id: densitySlider
-
-            Layout.preferredWidth: 112
-            from: 220
-            to: 460
-            stepSize: 10
-            value: bar.cardWidth
-            onMoved: bar.cardWidthRequested(value)
-
-            ToolTip.visible: hovered || pressed
-            ToolTip.text: qsTr("Card detail: %1").arg(bar.densityLabel)
-            ToolTip.delay: 400
-            Accessible.name: qsTr("Sound card detail")
-        }
-
-        Text {
-            text: "▤"
-            color: Theme.textSecondary
-            font.pixelSize: 14
         }
     }
 }
