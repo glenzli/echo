@@ -2,6 +2,10 @@
 /target/
 **/*.rs.bk
 
+# Python tooling
+__pycache__/
+*.py[cod]
+
 # CMake / C++ / Qt
 /build/
 /build-*/

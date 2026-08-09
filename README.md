@@ -52,9 +52,28 @@ cmake --preset native-dev && cmake --build --preset native-dev && ctest --preset
 Desktop shell (Qt Quick):
 
 ```sh
-cmake --preset desktop-dev && cmake --build --preset desktop-dev
-../.echo-local-build/desktop-dev/apps/desktop/Echo.app/Contents/MacOS/Echo ./catalogs/demo.sqlite
+./scripts/build_and_promote_debug.sh
+./scripts/run_debug.sh
 ```
+
+`scripts/run_debug.sh` is the stable local launch command, matching Shadow's
+canonical Debug convention. A validated build is copied into an immutable,
+revision-stamped release under the sibling `.echo-local-build` directory, then
+`current-debug` is advanced atomically. The launcher therefore never depends on
+an agent's candidate build path and never overwrites a running application in
+place. It reuses the ignored `catalogs/demo.sqlite` and `cache` paths by default,
+starts Echo in the background, and writes output to
+`.echo-local-build/logs/echo-debug.log`.
+
+Use `./scripts/run_debug.sh --foreground` for attached debugging,
+`./scripts/run_debug.sh --check` to inspect the resolved paths without launching,
+or pass an explicit catalog and cache root. The
+`./scripts/build_and_promote_debug.sh --check` command reports its stable
+candidate and canonical paths without building.
+
+The canonical external build is the shared `build:echo-canonical-debug` resource
+and its coordination pseudo-path is `@external/echo-canonical-debug`; release
+stewards must serialize promotion of that resource.
 
 ## License
 
