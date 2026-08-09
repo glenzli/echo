@@ -163,7 +163,7 @@ Rectangle {
                         Layout.fillWidth: true
                         label: modelData.label
                         subtitle: sidebar.albumReason(modelData)
-                        glyph: modelData.evidence === "ai" ? "✦" : "▱"
+                        glyph: "▱"
                         count: modelData.count
                         selected: sidebar.selectedFilter === "album:" + modelData.key
                         onActivated: sidebar.filterRequested("album:" + modelData.key)

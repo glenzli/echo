@@ -74,11 +74,7 @@ Rectangle {
         for (let index = 0; index < Math.min(keywordLimit, asset.keywords.length); ++index) {
             keywords.push(String(asset.keywords[index]))
         }
-        if (keywords.length > 0) {
-            return "✦ " + keywords.join(" · ")
-        }
-        return asset.textPreview.length > 0 ? qsTr("✦ AI text available")
-                                           : asset.codec.toUpperCase()
+        return keywords.join(" · ")
     }
 
     function sourceFor(asset: var) : string {
@@ -182,63 +178,12 @@ Rectangle {
             anchors.fill: parent
             anchors.leftMargin: card.rich ? 14 : 10
             anchors.rightMargin: card.rich ? 14 : 10
-            anchors.topMargin: card.overview ? 14 : 26
+            anchors.topMargin: 14
             anchors.bottomMargin: 17
             levels: card.waveformLevels
             fillColor: "#d9f4f8"
             progressColor: "#ffffff"
             progress: 0
-        }
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.leftMargin: 9
-            anchors.topMargin: 8
-            width: evidenceText.implicitWidth + 12
-            height: 21
-            radius: 5
-            color: "#660a1820"
-            visible: !card.overview
-
-            Text {
-                id: evidenceText
-                anchors.centerIn: parent
-                text: card.entry.textPreview.length > 0
-                    ? qsTr("✦ AI text") : qsTr("Source metadata")
-                color: "#f3fbff"
-                font.pixelSize: 9
-                font.bold: true
-            }
-        }
-
-        Rectangle {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.rightMargin: 9
-            anchors.topMargin: 8
-            width: Math.min(soundVisual.width * 0.4, moodText.implicitWidth + 14)
-            height: 21
-            radius: 5
-            color: "#6654314b"
-            visible: !card.overview && card.entry.mood.length > 0
-
-            Accessible.role: Accessible.StaticText
-            Accessible.name: qsTr("Mood: %1").arg(card.entry.mood)
-
-            Text {
-                id: moodText
-                anchors.fill: parent
-                anchors.leftMargin: 7
-                anchors.rightMargin: 7
-                text: card.entry.mood
-                color: "#fff2fa"
-                font.pixelSize: 9
-                font.bold: true
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-            }
         }
 
         Rectangle {
@@ -310,13 +255,46 @@ Rectangle {
             }
         }
 
-        Text {
+        RowLayout {
             Layout.fillWidth: true
             visible: !card.overview
-            text: card.keywordLine
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontMeta
-            elide: Text.ElideRight
+                && (card.entry.mood.length > 0 || card.keywordLine.length > 0)
+            spacing: 6
+
+            Rectangle {
+                Layout.preferredWidth: Math.min(card.width * 0.35,
+                                                moodText.implicitWidth + 14)
+                Layout.preferredHeight: 21
+                radius: 6
+                color: Theme.effectiveDark ? "#4a3345" : "#f5e3ef"
+                visible: card.entry.mood.length > 0
+
+                Accessible.role: Accessible.StaticText
+                Accessible.name: qsTr("Mood: %1").arg(card.entry.mood)
+
+                Text {
+                    id: moodText
+                    anchors.fill: parent
+                    anchors.leftMargin: 7
+                    anchors.rightMargin: 7
+                    text: card.entry.mood
+                    color: Theme.effectiveDark ? "#f4ccdf" : "#8f3f69"
+                    font.pixelSize: 9
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: card.keywordLine.length > 0
+                text: card.keywordLine
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontMeta
+                elide: Text.ElideRight
+            }
         }
 
         Text {

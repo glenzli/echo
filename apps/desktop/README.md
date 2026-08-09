@@ -26,12 +26,12 @@ convention (`EchoButton`, ...) shared with Shadow.
 ```sh
 cmake --preset desktop-dev
 cmake --build --preset desktop-dev
-./.echo-local-build/desktop-dev/apps/desktop/echo-desktop ./catalogs/demo.sqlite ./cache
+../.echo-local-build/desktop-dev/apps/desktop/Echo.app/Contents/MacOS/Echo ./catalogs/demo.sqlite ./cache
 ```
 
 The CMake graph builds `echo-desktop-bridge` with Cargo into its own target
 directory and syncs the generated CXX headers into a stable include root
 ([`cmake/sync_cxxbridge_headers.cmake`](cmake/sync_cxxbridge_headers.cmake)).
-Headless smoke: `ECHO_DEBUG_SCREENSHOT=/tmp/echo.png ./echo-desktop <catalog> <cache>`
+Headless smoke: `ECHO_DEBUG_SCREENSHOT=/tmp/echo.png ../.echo-local-build/desktop-dev/apps/desktop/Echo.app/Contents/MacOS/Echo <catalog> <cache>`
 captures the first window and exits; add `ECHO_DEBUG_AUTOPLAY=/path/file` to
 start playback first.

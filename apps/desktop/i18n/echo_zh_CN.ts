@@ -552,11 +552,6 @@
 <context>
     <name>SoundCard</name>
     <message>
-        <location filename="../qml/SoundCard.qml" line="84"/>
-        <source>✦ AI text available</source>
-        <translation>✦ 已有 AI 文字</translation>
-    </message>
-    <message>
         <source>Mood: %1</source>
         <translation>情绪：%1</translation>
     </message>
@@ -564,16 +559,6 @@
         <location filename="../qml/SoundCard.qml" line="122"/>
         <source>Unknown date</source>
         <translation>日期未知</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundCard.qml" line="214"/>
-        <source>✦ AI text</source>
-        <translation>✦ AI 文字</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundCard.qml" line="214"/>
-        <source>Source metadata</source>
-        <translation>来源元数据</translation>
     </message>
     <message>
         <location filename="../qml/SoundCard.qml" line="243"/>

@@ -53,7 +53,7 @@ Desktop shell (Qt Quick):
 
 ```sh
 cmake --preset desktop-dev && cmake --build --preset desktop-dev
-./.echo-local-build/desktop-dev/apps/desktop/echo-desktop ./catalogs/demo.sqlite
+../.echo-local-build/desktop-dev/apps/desktop/Echo.app/Contents/MacOS/Echo ./catalogs/demo.sqlite
 ```
 
 ## License

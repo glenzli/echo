@@ -103,6 +103,7 @@ set(CMAKE_AUTOUIC ON)
 
 qt_add_executable(
     echo-desktop
+    MACOSX_BUNDLE
     src/main.cpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
@@ -116,6 +117,13 @@ qt_add_executable(
 )
 if(APPLE)
     target_sources(echo-desktop PRIVATE src/mac_titlebar.mm)
+
+    set(ECHO_APP_ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/app-icon.icns")
+    set_source_files_properties(
+        "${ECHO_APP_ICON_FILE}"
+        PROPERTIES MACOSX_PACKAGE_LOCATION Resources
+    )
+    target_sources(echo-desktop PRIVATE "${ECHO_APP_ICON_FILE}")
 endif()
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(
@@ -177,6 +185,17 @@ target_link_libraries(
 )
 
 add_dependencies(echo-desktop echo-desktop-rust-build)
+
+set_target_properties(
+    echo-desktop
+    PROPERTIES
+        MACOSX_BUNDLE_BUNDLE_NAME "Echo"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "dev.echo.audio"
+        MACOSX_BUNDLE_ICON_FILE "app-icon.icns"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "1"
+        OUTPUT_NAME "Echo"
+)
 
 # Translation contract: echo_zh_CN.ts is compiled into the /i18n resource.
 qt_add_translations(
