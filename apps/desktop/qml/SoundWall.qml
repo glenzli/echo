@@ -1,5 +1,5 @@
-//! Parallel sound browsing surface. Window-level search, sort and density
-//! controls live in MainTitleBar; this owner renders the cards and empty state.
+//! Parallel sound browsing surface. The bottom toolbar owns global browse
+//! state; this owner renders density-aware cards and selected-sound actions.
 
 import QtQuick
 import QtQuick.Controls
@@ -13,6 +13,10 @@ Rectangle {
     required property var selectedAsset
     required property string searchText
     required property int preferredCardWidth
+    required property string density
+
+    readonly property int cardHeight: density === "overview"
+        ? 154 : density === "rich" ? 282 : 206
 
     signal assetSelected(var asset)
     signal assetOpened(var asset)
@@ -32,8 +36,9 @@ Rectangle {
         clip: true
         model: wall.assets
         cellWidth: width / columns
-        cellHeight: 218
+        cellHeight: wall.cardHeight + spacing
         boundsBehavior: Flickable.StopAtBounds
+        bottomMargin: selectionToolbar.visible ? selectionToolbar.height + 24 : 0
 
         delegate: Item {
             required property var modelData
@@ -46,15 +51,14 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.rightMargin: soundGrid.spacing
-                height: 206
+                height: wall.cardHeight
                 entry: modelData
                 selected: wall.selectedAsset !== null
                     && wall.selectedAsset.id === modelData.id
+                density: wall.density
+                displayHeight: wall.cardHeight
                 onActivated: wall.assetSelected(modelData)
                 onOpened: wall.assetOpened(modelData)
-                onAffinityRequested: function(liked, rating) {
-                    wall.affinityRequested(modelData, liked, rating)
-                }
             }
         }
 
@@ -102,5 +106,19 @@ Rectangle {
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
         }
+    }
+
+    SoundSelectionToolbar {
+        id: selectionToolbar
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 14
+        asset: wall.selectedAsset
+        z: 20
+        onAffinityRequested: function(liked, rating) {
+            wall.affinityRequested(wall.selectedAsset, liked, rating)
+        }
+        onExpandRequested: wall.assetOpened(wall.selectedAsset)
     }
 }

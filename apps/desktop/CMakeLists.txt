@@ -141,7 +141,9 @@ qt_add_qml_module(
         qml/SoundCard.qml
         qml/SoundInspector.qml
         qml/SoundLibraryRow.qml
+        qml/SoundSelectionToolbar.qml
         qml/SoundWall.qml
+        qml/SoundWallBottomBar.qml
         qml/Theme.qml
         qml/WaveformView.qml
     RESOURCES

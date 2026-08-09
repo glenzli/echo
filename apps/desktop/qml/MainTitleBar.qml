@@ -1,6 +1,6 @@
-//! Echo's one window-chrome owner. Brand, Sound Wall navigation, browsing
-//! controls, settings, native safe areas, and the system-move gesture share
-//! one toolbar, mirroring Shadow's MainTitleBar boundary.
+//! Echo's one window-chrome owner. Brand, search, Sound Wall navigation,
+//! settings, native safe areas, and the system-move gesture share one toolbar,
+//! mirroring Shadow's MainTitleBar boundary. Browse controls live at the bottom.
 
 import QtQuick
 import QtQuick.Controls
@@ -13,21 +13,13 @@ ToolBar {
 
     required property var hostWindow
     required property int workspaceIndex
-    required property string collectionLabel
-    required property int soundCount
     required property string searchText
-    required property string sortMode
-    required property real cardSize
-    required property bool selectedSoundAvailable
     required property bool jobsActive
     required property int activeJobCount
 
     signal soundWallRequested()
     signal settingsRequested()
     signal searchRequested(string text)
-    signal sortRequested(string mode)
-    signal cardSizeRequested(real size)
-    signal expandRequested()
 
     objectName: "titleToolBar"
     Accessible.name: qsTr("Echo toolbar")
@@ -98,35 +90,12 @@ ToolBar {
             anchors.left: brandRow.right
             anchors.leftMargin: 14
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(390, parent.width * 0.36)
-            spacing: 10
+            width: Math.min(300, parent.width * 0.3)
             visible: titleBar.workspaceIndex === 0
-
-            Column {
-                Layout.preferredWidth: 92
-                spacing: 0
-
-                Text {
-                    width: parent.width
-                    text: titleBar.collectionLabel
-                    color: Theme.textPrimary
-                    font.pixelSize: 11
-                    font.bold: true
-                    elide: Text.ElideRight
-                }
-
-                Text {
-                    width: parent.width
-                    text: qsTr("%1 sounds").arg(titleBar.soundCount)
-                    color: Theme.textDisabled
-                    font.pixelSize: 9
-                    elide: Text.ElideRight
-                }
-            }
 
             EchoTextField {
                 Layout.fillWidth: true
-                Layout.maximumWidth: 240
+                Layout.maximumWidth: 280
                 implicitHeight: Theme.compactControlHeight
                 text: titleBar.searchText
                 placeholderText: qsTr("Search text, events, or filenames…")
@@ -161,70 +130,6 @@ ToolBar {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 7
-
-            ComboBox {
-                id: sortBox
-
-                visible: titleBar.workspaceIndex === 0
-                implicitWidth: 96
-                implicitHeight: Theme.compactControlHeight
-                model: [qsTr("Date"), qsTr("Duration"), qsTr("Rating")]
-                currentIndex: Math.max(0, ["date", "duration", "rating"]
-                    .indexOf(titleBar.sortMode))
-                onActivated: index => titleBar.sortRequested(
-                    ["date", "duration", "rating"][index])
-
-                contentItem: Text {
-                    leftPadding: 10
-                    rightPadding: 24
-                    text: sortBox.displayText
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontMeta
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
-                }
-
-                indicator: Text {
-                    x: sortBox.width - width - 9
-                    y: Math.round((sortBox.height - height) / 2) - 1
-                    text: "⌄"
-                    color: Theme.textSecondary
-                    font.pixelSize: 13
-                }
-
-                background: Rectangle {
-                    radius: Theme.controlRadius
-                    color: sortBox.down ? Theme.controlPressed : Theme.control
-                    border.color: sortBox.activeFocus
-                        ? Theme.accent : Theme.buttonBorder
-                }
-            }
-
-            Text {
-                visible: titleBar.workspaceIndex === 0
-                text: qsTr("Size")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-            }
-
-            Slider {
-                visible: titleBar.workspaceIndex === 0
-                Layout.preferredWidth: 68
-                from: 230
-                to: 390
-                stepSize: 10
-                value: titleBar.cardSize
-                onMoved: titleBar.cardSizeRequested(value)
-            }
-
-            EchoButton {
-                visible: titleBar.workspaceIndex === 0
-                    && titleBar.selectedSoundAvailable
-                text: qsTr("Expand") + " ↗"
-                ghost: true
-                implicitHeight: Theme.compactControlHeight
-                onClicked: titleBar.expandRequested()
-            }
 
             Rectangle {
                 visible: titleBar.jobsActive

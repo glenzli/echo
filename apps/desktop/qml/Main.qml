@@ -46,20 +46,12 @@ ApplicationWindow {
     header: MainTitleBar {
         hostWindow: window
         workspaceIndex: window.workspaceIndex
-        collectionLabel: audioSpace.activeCollectionLabel
-        soundCount: audioSpace.visibleAssetCount
         searchText: audioSpace.searchText
-        sortMode: audioSpace.sortMode
-        cardSize: audioSpace.preferredCardWidth
-        selectedSoundAvailable: audioSpace.hasSelectedAsset
         jobsActive: window.jobsActive
         activeJobCount: window.jobSnapshot.pending + window.jobSnapshot.running
         onSoundWallRequested: window.showAudioSpace()
         onSettingsRequested: window.openSettings()
         onSearchRequested: text => audioSpace.setSearchText(text)
-        onSortRequested: mode => audioSpace.setSortMode(mode)
-        onCardSizeRequested: size => audioSpace.setPreferredCardWidth(size)
-        onExpandRequested: audioSpace.expandSelectedAsset()
     }
 
     StackLayout {

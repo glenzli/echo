@@ -1,5 +1,6 @@
-//! A sound's visual surrogate for parallel Library browsing. The card renders
-//! real cached waveform evidence plus source and model-derived metadata.
+//! A sound's visual surrogate for parallel Library browsing. Density changes
+//! the evidence disclosed by the card while the full recording duration always
+//! remains represented by a real, width-selected waveform pyramid level.
 
 import QtQuick
 import QtQuick.Controls
@@ -11,21 +12,25 @@ Rectangle {
 
     required property var entry
     required property bool selected
+    required property string density
+    required property int displayHeight
     property var waveformLevels: []
 
     signal activated()
     signal opened()
-    signal affinityRequested(bool liked, int rating)
 
+    readonly property bool overview: density === "overview"
+    readonly property bool rich: density === "rich"
     readonly property int toneIndex: Math.abs(String(entry.id).charCodeAt(0)
         + String(entry.id).charCodeAt(String(entry.id).length - 1)) % 4
     readonly property color toneStart: ["#173746", "#2c3443", "#304442", "#3d3948"][toneIndex]
     readonly property color toneEnd: ["#668e96", "#8d765b", "#73918a", "#8a7180"][toneIndex]
     readonly property string displayTitle: titleFor(entry)
     readonly property string insightLine: insightFor(entry)
+    readonly property string sourceLine: sourceFor(entry)
 
     implicitWidth: 286
-    implicitHeight: 206
+    implicitHeight: displayHeight
     radius: 10
     color: Theme.panelRaised
     border.width: selected ? 2 : 1
@@ -50,14 +55,15 @@ Rectangle {
     }
 
     function titleFor(asset: var) : string {
+        const maximum = rich ? 58 : overview ? 28 : 34
         if (asset.summary.length > 0) {
-            return compactText(asset.summary, 34)
+            return compactText(asset.summary, maximum)
         }
         if (asset.sourceTitle.length > 0) {
-            return compactText(asset.sourceTitle, 34)
+            return compactText(asset.sourceTitle, maximum)
         }
         if (asset.textPreview.length > 0) {
-            return compactText(asset.textPreview, 28)
+            return compactText(asset.textPreview, maximum)
         }
         return fileName(asset.path)
     }
@@ -70,12 +76,28 @@ Rectangle {
         if (asset.mood.length > 0) {
             parts.push(asset.mood)
         }
-        for (let index = 0; index < Math.min(2, asset.keywords.length); ++index) {
+        const keywordLimit = rich ? 3 : 2
+        for (let index = 0; index < Math.min(keywordLimit, asset.keywords.length); ++index) {
             parts.push(String(asset.keywords[index]))
         }
         if (parts.length === 0) {
             parts.push(asset.textPreview.length > 0 ? qsTr("AI-extracted text")
                                                     : asset.codec.toUpperCase())
+        }
+        return parts.join(" · ")
+    }
+
+    function sourceFor(asset: var) : string {
+        const parts = []
+        if (asset.sourceLocation.length > 0) {
+            parts.push(asset.sourceLocation)
+        }
+        if (asset.codec.length > 0) {
+            parts.push(asset.codec.toUpperCase())
+        }
+        if (asset.sampleRate > 0) {
+            parts.push((asset.sampleRate / 1000).toFixed(
+                asset.sampleRate % 1000 === 0 ? 0 : 1) + " kHz")
         }
         return parts.join(" · ")
     }
@@ -137,10 +159,11 @@ Rectangle {
 
     Rectangle {
         id: soundVisual
+
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: 125
+        height: card.overview ? 98 : card.rich ? 158 : 125
         z: 1
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -149,10 +172,12 @@ Rectangle {
         }
 
         Repeater {
-            model: 11
+            model: card.overview ? 5 : card.rich ? 17 : 11
+
             Rectangle {
                 required property int index
-                x: index * soundVisual.width / 11
+                x: index * soundVisual.width
+                    / (card.overview ? 5 : card.rich ? 17 : 11)
                 width: 1
                 height: soundVisual.height
                 color: "#20ffffff"
@@ -161,9 +186,9 @@ Rectangle {
 
         WaveformView {
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
-            anchors.topMargin: 26
+            anchors.leftMargin: card.rich ? 14 : 10
+            anchors.rightMargin: card.rich ? 14 : 10
+            anchors.topMargin: card.overview ? 14 : 26
             anchors.bottomMargin: 17
             levels: card.waveformLevels
             fillColor: "#d9f4f8"
@@ -180,6 +205,7 @@ Rectangle {
             height: 21
             radius: 5
             color: "#660a1820"
+            visible: !card.overview
 
             Text {
                 id: evidenceText
@@ -227,10 +253,10 @@ Rectangle {
         anchors.top: soundVisual.bottom
         anchors.bottom: parent.bottom
         anchors.leftMargin: 10
-        anchors.rightMargin: 8
-        anchors.topMargin: 8
-        anchors.bottomMargin: 7
-        spacing: 3
+        anchors.rightMargin: 9
+        anchors.topMargin: card.overview ? 6 : 8
+        anchors.bottomMargin: card.overview ? 5 : 7
+        spacing: card.rich ? 4 : 3
         z: 10
 
         RowLayout {
@@ -241,45 +267,63 @@ Rectangle {
                 Layout.fillWidth: true
                 text: card.displayTitle
                 color: Theme.textPrimary
-                font.pixelSize: 12
+                font.pixelSize: card.rich ? 13 : 12
                 font.bold: true
                 elide: Text.ElideRight
             }
 
-            Button {
-                implicitWidth: 22
-                implicitHeight: 22
-                padding: 0
-                onClicked: card.affinityRequested(!card.entry.liked, card.entry.rating)
+            Text {
+                visible: card.entry.liked
+                text: "♥"
+                color: "#dc4b6b"
+                font.pixelSize: 14
+            }
 
-                background: Rectangle {
-                    radius: 5
-                    color: parent.hovered ? Theme.surfaceSubtle : Theme.transparent
-                }
-
-                contentItem: Text {
-                    text: card.entry.liked ? "♥" : "♡"
-                    color: card.entry.liked ? "#dc4b6b" : Theme.textDisabled
-                    font.pixelSize: 15
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+            Text {
+                visible: card.entry.rating > 0
+                text: "★ " + card.entry.rating
+                color: "#d89a16"
+                font.pixelSize: 10
             }
         }
 
         Text {
             Layout.fillWidth: true
+            visible: !card.overview
             text: card.insightLine
             color: Theme.textSecondary
             font.pixelSize: Theme.fontMeta
             elide: Text.ElideRight
         }
 
+        Text {
+            Layout.fillWidth: true
+            Layout.fillHeight: card.rich
+            visible: card.rich && card.entry.textPreview.length > 0
+            text: card.compactText(card.entry.textPreview, 150)
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontBody
+            maximumLineCount: 2
+            wrapMode: Text.WordWrap
+            elide: Text.ElideRight
+        }
+
+        Text {
+            Layout.fillWidth: true
+            visible: card.rich && card.sourceLine.length > 0
+            text: card.sourceLine
+            color: Theme.textDisabled
+            font.pixelSize: 9
+            elide: Text.ElideRight
+        }
+
         RowLayout {
             Layout.fillWidth: true
+            visible: !card.overview
             spacing: 5
 
             Text {
+                Layout.fillWidth: true
                 text: card.entry.sourceLocation.length > 0
                     ? card.entry.sourceLocation
                     : card.formatDate(card.entry.recordedAtMillis > 0
@@ -287,33 +331,14 @@ Rectangle {
                 color: Theme.textDisabled
                 font.pixelSize: 9
                 elide: Text.ElideRight
-                Layout.maximumWidth: card.width * 0.43
             }
 
-            Item { Layout.fillWidth: true }
-
-            Row {
-                spacing: 0
-
-                Repeater {
-                    model: 5
-
-                    delegate: Text {
-                        required property int index
-                        text: index < card.entry.rating ? "★" : "☆"
-                        color: index < card.entry.rating ? "#d89a16" : Theme.textDisabled
-                        font.pixelSize: 11
-
-                        MouseArea {
-                            anchors.fill: parent
-                            anchors.margins: -2
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: card.affinityRequested(
-                                card.entry.liked,
-                                card.entry.rating === parent.index + 1 ? 0 : parent.index + 1)
-                        }
-                    }
-                }
+            Text {
+                visible: card.rich && card.entry.sourceLocation.length > 0
+                text: card.formatDate(card.entry.recordedAtMillis > 0
+                    ? card.entry.recordedAtMillis : card.entry.importedAtMillis)
+                color: Theme.textDisabled
+                font.pixelSize: 9
             }
         }
     }
