@@ -27,6 +27,11 @@ fn candidates_require_two_members_and_follow_newest_evidence() {
             .iter()
             .all(|candidate| candidate.member_asset_ids.len() >= 2)
     );
+    assert!(
+        candidates
+            .iter()
+            .all(|candidate| !candidate.key.starts_with("ai:mood:"))
+    );
     assert_candidate(
         &candidates,
         "ai:event:family breakfast",

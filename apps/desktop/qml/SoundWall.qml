@@ -69,7 +69,7 @@ Rectangle {
         anchors.centerIn: parent
         width: Math.min(parent.width - 60, 360)
         spacing: 10
-        visible: wall.assets.count === 0
+        visible: wall.assets.length === 0
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter

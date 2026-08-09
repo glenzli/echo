@@ -20,7 +20,6 @@ pub enum SmartAlbumFacet {
     Time,
     Place,
     Event,
-    Mood,
     Person,
 }
 
@@ -31,7 +30,6 @@ impl SmartAlbumFacet {
             Self::Time => "time",
             Self::Place => "place",
             Self::Event => "event",
-            Self::Mood => "mood",
             Self::Person => "person",
         }
     }
@@ -133,7 +131,7 @@ fn collect_contextual_groups(
     let mut statement = transaction.prepare(
         "SELECT f.facet_kind, f.normalized_value, f.display_value, f.asset_id \
          FROM contextual_browse_facets f \
-         WHERE f.facet_kind <> 'keyword' AND f.analysis_record_id = (\
+         WHERE f.facet_kind IN ('place', 'event', 'person') AND f.analysis_record_id = (\
              SELECT MAX(r.id) FROM analysis_records r \
              WHERE r.asset_id = f.asset_id AND r.kind = 'contextual'\
          ) ORDER BY f.facet_kind, f.normalized_value, f.asset_id",
@@ -149,7 +147,6 @@ fn collect_contextual_groups(
     for row in rows {
         let (kind, normalized_value, label, asset_id) = row?;
         let facet = match crate::contextual_facets::ContextualFacetKind::from_str(&kind) {
-            Some(crate::contextual_facets::ContextualFacetKind::Mood) => SmartAlbumFacet::Mood,
             Some(crate::contextual_facets::ContextualFacetKind::Place) => SmartAlbumFacet::Place,
             Some(crate::contextual_facets::ContextualFacetKind::Event) => SmartAlbumFacet::Event,
             Some(crate::contextual_facets::ContextualFacetKind::Person) => SmartAlbumFacet::Person,

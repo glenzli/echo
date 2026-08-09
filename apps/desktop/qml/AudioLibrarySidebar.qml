@@ -11,7 +11,6 @@ Rectangle {
 
     required property var assets
     required property var smartAlbums
-    required property var keywordFacets
     required property string selectedFilter
 
     signal filterRequested(string key)
@@ -29,9 +28,6 @@ Rectangle {
         }
         if (album.facet === "event") {
             return qsTr("Shared AI event")
-        }
-        if (album.facet === "mood") {
-            return qsTr("Shared AI mood")
         }
         if (album.facet === "person") {
             return qsTr("Shared AI people hint")
@@ -151,33 +147,6 @@ Rectangle {
                     Layout.leftMargin: 7
                     Layout.topMargin: 2
                     Layout.bottomMargin: 4
-                    text: qsTr("AI KEYWORDS")
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontMeta
-                    font.bold: true
-                    font.letterSpacing: 1.3
-                }
-
-                Repeater {
-                    model: sidebar.keywordFacets
-
-                    delegate: SoundLibraryRow {
-                        required property var modelData
-
-                        Layout.fillWidth: true
-                        label: modelData.label
-                        glyph: "✦"
-                        count: modelData.count
-                        selected: sidebar.selectedFilter === "keyword:" + modelData.key
-                        onActivated: sidebar.filterRequested("keyword:" + modelData.key)
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 7
-                    Layout.topMargin: 10
-                    Layout.bottomMargin: 4
                     text: qsTr("SUGGESTED ALBUMS")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
@@ -206,7 +175,7 @@ Rectangle {
                     Layout.leftMargin: 8
                     Layout.rightMargin: 8
                     visible: sidebar.smartAlbums.length === 0
-                    text: qsTr("Album suggestions will appear when at least two sounds share time, place, mood, event, or people evidence.")
+                    text: qsTr("Album suggestions will appear when at least two sounds share time, place, event, or people evidence.")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     wrapMode: Text.WordWrap

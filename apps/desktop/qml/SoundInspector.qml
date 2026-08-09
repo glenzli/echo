@@ -94,21 +94,15 @@ Rectangle {
         }
     }
 
-    function insightTags() : var {
+    function keywordTags() : var {
+        const values = []
         if (!asset) {
-            return []
-        }
-        const tags = []
-        if (asset.eventType.length > 0) {
-            tags.push(asset.eventType)
-        }
-        if (asset.mood.length > 0) {
-            tags.push(asset.mood)
+            return values
         }
         for (let index = 0; index < asset.keywords.length; ++index) {
-            tags.push(String(asset.keywords[index]))
+            values.push(String(asset.keywords[index]))
         }
-        return tags.slice(0, 6)
+        return values
     }
 
     onAssetChanged: Qt.callLater(refresh)
@@ -320,30 +314,78 @@ Rectangle {
                     }
                 }
 
-                Flow {
+                InspectorSection {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    spacing: 5
+                    title: qsTr("SOUND ATTRIBUTES")
+                    evidence: qsTr("Model evidence")
 
-                    Repeater {
-                        model: inspector.insightTags()
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: 9
+                        rowSpacing: 7
 
-                        delegate: Rectangle {
-                            required property var modelData
-                            width: tagText.implicitWidth + 12
-                            height: 23
-                            radius: 6
-                            color: Theme.accentSurfaceQuiet
+                        Text { text: qsTr("Event"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+                        Text {
+                            Layout.fillWidth: true
+                            text: inspector.asset.eventType.length > 0
+                                ? inspector.asset.eventType : qsTr("Not inferred")
+                            color: inspector.asset.eventType.length > 0
+                                ? Theme.textPrimary : Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                            elide: Text.ElideRight
+                        }
 
-                            Text {
-                                id: tagText
-                                anchors.centerIn: parent
-                                text: String(modelData)
-                                color: Theme.accentSelectionText
-                                font.pixelSize: Theme.fontMeta
+                        Text { text: qsTr("Mood"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+                        Text {
+                            Layout.fillWidth: true
+                            text: inspector.asset.mood.length > 0
+                                ? inspector.asset.mood : qsTr("Not inferred")
+                            color: inspector.asset.mood.length > 0
+                                ? Theme.textPrimary : Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                InspectorSection {
+                    Layout.fillWidth: true
+                    title: qsTr("AI KEYWORDS")
+                    evidence: qsTr("Model evidence")
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 5
+
+                        Repeater {
+                            model: inspector.keywordTags()
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                width: keywordText.implicitWidth + 12
+                                height: 23
+                                radius: 6
+                                color: Theme.accentSurfaceQuiet
+
+                                Text {
+                                    id: keywordText
+                                    anchors.centerIn: parent
+                                    text: String(modelData)
+                                    color: Theme.accentSelectionText
+                                    font.pixelSize: Theme.fontMeta
+                                }
                             }
                         }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: inspector.asset.keywords.length === 0
+                        text: qsTr("No keywords have been extracted yet.")
+                        color: Theme.textDisabled
+                        font.pixelSize: Theme.fontBody
+                        wrapMode: Text.WordWrap
                     }
                 }
 

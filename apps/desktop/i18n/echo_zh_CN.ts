@@ -44,19 +44,14 @@
         <translation>原始文件缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="119"/>
-        <source>AI KEYWORDS</source>
-        <translation>AI 关键词</translation>
-    </message>
-    <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="151"/>
         <source>SUGGESTED ALBUMS</source>
         <translation>建议相册</translation>
     </message>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="157"/>
-        <source>Album suggestions will appear when at least two sounds share time, place, mood, event, or people evidence.</source>
-        <translation>当至少两段声音共享时间、地点、情绪、事件或人物证据时，相册建议会出现在这里。</translation>
+        <source>Album suggestions will appear when at least two sounds share time, place, event, or people evidence.</source>
+        <translation>当至少两段声音共享时间、地点、事件或人物证据时，相册建议会出现在这里。</translation>
     </message>
     <message>
         <source>Shared recording day</source>
@@ -73,10 +68,6 @@
     <message>
         <source>Shared AI event</source>
         <translation>AI 推断的相同事件</translation>
-    </message>
-    <message>
-        <source>Shared AI mood</source>
-        <translation>AI 推断的相同情绪</translation>
     </message>
     <message>
         <source>Shared AI people hint</source>
@@ -562,8 +553,12 @@
     <name>SoundCard</name>
     <message>
         <location filename="../qml/SoundCard.qml" line="84"/>
-        <source>AI-extracted text</source>
-        <translation>AI 提取的文字</translation>
+        <source>✦ AI text available</source>
+        <translation>✦ 已有 AI 文字</translation>
+    </message>
+    <message>
+        <source>Mood: %1</source>
+        <translation>情绪：%1</translation>
     </message>
     <message>
         <location filename="../qml/SoundCard.qml" line="122"/>
@@ -627,6 +622,30 @@
         <location filename="../qml/SoundInspector.qml" line="299"/>
         <source>Play</source>
         <translation>播放</translation>
+    </message>
+    <message>
+        <source>SOUND ATTRIBUTES</source>
+        <translation>声音属性</translation>
+    </message>
+    <message>
+        <source>Event</source>
+        <translation>事件</translation>
+    </message>
+    <message>
+        <source>Mood</source>
+        <translation>情绪</translation>
+    </message>
+    <message>
+        <source>Not inferred</source>
+        <translation>未推断</translation>
+    </message>
+    <message>
+        <source>AI KEYWORDS</source>
+        <translation>AI 关键词</translation>
+    </message>
+    <message>
+        <source>No keywords have been extracted yet.</source>
+        <translation>还没有为这段声音提取关键词。</translation>
     </message>
     <message>
         <location filename="../qml/SoundInspector.qml" line="352"/>

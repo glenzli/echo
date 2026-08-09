@@ -19,12 +19,12 @@ Item {
     property int minimumRating: 0
     property bool textOnly: false
     property var allAssets: []
+    property var filteredAssets: []
     property var smartAlbums: []
-    property var keywordFacets: []
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
     property int viewIndex: 0
 
-    readonly property int visibleAssetCount: filteredAssets.count
+    readonly property int visibleAssetCount: filteredAssets.length
     readonly property string cardDensity: preferredCardWidth <= 260
         ? "overview" : preferredCardWidth <= 360 ? "browse" : "rich"
 
@@ -45,7 +45,6 @@ Item {
             }
         }
         allAssets = assets
-        keywordFacets = backend.listKeywordFacets()
         smartAlbums = backend.listSmartAlbums()
         if (selectedFilter.startsWith("album:")
                 && albumForKey(selectedFilter.substring(6)) === null) {
@@ -54,8 +53,8 @@ Item {
         refilter()
         if (reconciled !== null) {
             selectedAsset = reconciled
-        } else if (filteredAssets.count > 0) {
-            selectedAsset = filteredAssets.get(0)
+        } else if (filteredAssets.length > 0) {
+            selectedAsset = filteredAssets[0]
         } else {
             selectedAsset = null
         }
@@ -93,15 +92,7 @@ Item {
             const album = albumForKey(selectedFilter.substring(6))
             return album !== null && album.memberIds.includes(asset.id)
         }
-        if (selectedFilter.startsWith("keyword:")) {
-            const selectedKeyword = selectedFilter.substring(8)
-            return asset.keywords.some(keyword => normalizedKeyword(keyword) === selectedKeyword)
-        }
         return false
-    }
-
-    function normalizedKeyword(keyword: string) : string {
-        return keyword.trim().split(/\s+/).join(" ").toLocaleLowerCase()
     }
 
     function matchingSearchIds() : var {
@@ -161,10 +152,7 @@ Item {
                 ? right.recordedAtMillis : right.importedAtMillis
             return rightTime - leftTime
         })
-        filteredAssets.clear()
-        for (const asset of admitted) {
-            filteredAssets.append(asset)
-        }
+        filteredAssets = admitted
         if (selectedAsset !== null
                 && !admitted.some(asset => asset.id === selectedAsset.id)) {
             selectedAsset = admitted.length > 0 ? admitted[0] : null
@@ -234,8 +222,6 @@ Item {
         function onAssetsChanged() : void { workspace.refreshAssets() }
     }
 
-    ListModel { id: filteredAssets }
-
     StackLayout {
         anchors.fill: parent
         currentIndex: workspace.viewIndex
@@ -254,7 +240,6 @@ Item {
                     Layout.fillHeight: true
                     assets: workspace.allAssets
                     smartAlbums: workspace.smartAlbums
-                    keywordFacets: workspace.keywordFacets
                     selectedFilter: workspace.selectedFilter
                     onFilterRequested: key => workspace.selectFilter(key)
                     onManageLibraryRequested: workspace.openLibraryRequested()

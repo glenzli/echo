@@ -11,11 +11,13 @@ Canvas {
     property color fillColor: Theme.accent
     property color progressColor: Qt.lighter(Theme.accent, 1.35)
     property real progress: 0.0
+    property bool paintReady: false
 
     readonly property int selectedLevel: pickLevel()
 
     antialiasing: true
-    renderStrategy: Canvas.Cooperative
+    opacity: paintReady ? 1 : 0
+    renderStrategy: Canvas.Immediate
 
     function pickLevel() : int {
         if (levels.length === 0) {
@@ -75,9 +77,18 @@ Canvas {
         context.fill()
     }
 
-    onLevelsChanged: requestPaint()
-    onWidthChanged: requestPaint()
-    onHeightChanged: requestPaint()
+    onLevelsChanged: {
+        paintReady = false
+        requestPaint()
+    }
+    onWidthChanged: {
+        paintReady = false
+        requestPaint()
+    }
+    onHeightChanged: {
+        paintReady = false
+        requestPaint()
+    }
     onProgressChanged: requestPaint()
     onFillColorChanged: requestPaint()
     onProgressColorChanged: requestPaint()
@@ -87,6 +98,7 @@ Canvas {
         context.reset()
         context.clearRect(0, 0, width, height)
         if (selectedLevel < 0) {
+            paintReady = true
             return
         }
         const level = levels[selectedLevel]
@@ -94,6 +106,7 @@ Canvas {
         const maxs = level.maxs
         const bucketCount = mins.length
         if (bucketCount === 0) {
+            paintReady = true
             return
         }
 
@@ -129,5 +142,6 @@ Canvas {
             context.restore()
         }
         context.globalAlpha = 1.0
+        paintReady = true
     }
 }

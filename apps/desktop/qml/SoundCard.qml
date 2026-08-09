@@ -26,7 +26,7 @@ Rectangle {
     readonly property color toneStart: ["#173746", "#2c3443", "#304442", "#3d3948"][toneIndex]
     readonly property color toneEnd: ["#668e96", "#8d765b", "#73918a", "#8a7180"][toneIndex]
     readonly property string displayTitle: titleFor(entry)
-    readonly property string insightLine: insightFor(entry)
+    readonly property string keywordLine: keywordLineFor(entry)
     readonly property string sourceLine: sourceFor(entry)
 
     implicitWidth: 286
@@ -68,23 +68,17 @@ Rectangle {
         return fileName(asset.path)
     }
 
-    function insightFor(asset: var) : string {
-        const parts = []
-        if (asset.eventType.length > 0) {
-            parts.push(asset.eventType)
-        }
-        if (asset.mood.length > 0) {
-            parts.push(asset.mood)
-        }
+    function keywordLineFor(asset: var) : string {
+        const keywords = []
         const keywordLimit = rich ? 3 : 2
         for (let index = 0; index < Math.min(keywordLimit, asset.keywords.length); ++index) {
-            parts.push(String(asset.keywords[index]))
+            keywords.push(String(asset.keywords[index]))
         }
-        if (parts.length === 0) {
-            parts.push(asset.textPreview.length > 0 ? qsTr("AI-extracted text")
-                                                    : asset.codec.toUpperCase())
+        if (keywords.length > 0) {
+            return "✦ " + keywords.join(" · ")
         }
-        return parts.join(" · ")
+        return asset.textPreview.length > 0 ? qsTr("✦ AI text available")
+                                           : asset.codec.toUpperCase()
     }
 
     function sourceFor(asset: var) : string {
@@ -220,6 +214,35 @@ Rectangle {
 
         Rectangle {
             anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.rightMargin: 9
+            anchors.topMargin: 8
+            width: Math.min(soundVisual.width * 0.4, moodText.implicitWidth + 14)
+            height: 21
+            radius: 5
+            color: "#6654314b"
+            visible: !card.overview && card.entry.mood.length > 0
+
+            Accessible.role: Accessible.StaticText
+            Accessible.name: qsTr("Mood: %1").arg(card.entry.mood)
+
+            Text {
+                id: moodText
+                anchors.fill: parent
+                anchors.leftMargin: 7
+                anchors.rightMargin: 7
+                text: card.entry.mood
+                color: "#fff2fa"
+                font.pixelSize: 9
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+        }
+
+        Rectangle {
+            anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.rightMargin: 8
             anchors.bottomMargin: 7
@@ -290,7 +313,7 @@ Rectangle {
         Text {
             Layout.fillWidth: true
             visible: !card.overview
-            text: card.insightLine
+            text: card.keywordLine
             color: Theme.textSecondary
             font.pixelSize: Theme.fontMeta
             elide: Text.ElideRight
