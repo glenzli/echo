@@ -1,6 +1,6 @@
-//! A sound's visual surrogate for parallel Library browsing. Density changes
-//! the evidence disclosed by the card while the full recording duration always
-//! remains represented by a real, width-selected waveform pyramid level.
+//! A sound's information-first visual surrogate for parallel Library browsing.
+//! Density changes the evidence disclosed by the card while a compact, real,
+//! width-selected waveform remains a secondary texture and playback landmark.
 
 import QtQuick
 import QtQuick.Controls
@@ -21,13 +21,16 @@ Rectangle {
 
     readonly property bool overview: density === "overview"
     readonly property bool rich: density === "rich"
-    readonly property int toneIndex: Math.abs(String(entry.id).charCodeAt(0)
-        + String(entry.id).charCodeAt(String(entry.id).length - 1)) % 4
-    readonly property color toneStart: ["#173746", "#2c3443", "#304442", "#3d3948"][toneIndex]
-    readonly property color toneEnd: ["#668e96", "#8d765b", "#73918a", "#8a7180"][toneIndex]
+    readonly property var tonePair: toneFor(entry.recordedAtMillis,
+                                            Theme.effectiveDark)
+    readonly property color toneStart: tonePair.start
+    readonly property color toneEnd: tonePair.end
     readonly property string displayTitle: titleFor(entry)
     readonly property string keywordLine: keywordLineFor(entry)
     readonly property string sourceLine: sourceFor(entry)
+    readonly property string evidenceLine: evidenceLineFor(entry)
+    readonly property int waveformHeight: Math.max(62,
+        Math.round(displayHeight * 0.35))
 
     implicitWidth: 286
     implicitHeight: displayHeight
@@ -89,6 +92,17 @@ Rectangle {
         return parts.join(" · ")
     }
 
+    function evidenceLineFor(asset: var) : string {
+        const parts = []
+        if (asset.eventType.length > 0) {
+            parts.push(asset.eventType)
+        }
+        if (sourceLine.length > 0) {
+            parts.push(sourceLine)
+        }
+        return parts.join(" · ")
+    }
+
     function formatDuration(millis: double) : string {
         if (!millis || millis <= 0) {
             return "—"
@@ -109,6 +123,37 @@ Rectangle {
             return qsTr("Unknown date")
         }
         return new Date(millis).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+    }
+
+    function toneFor(recordedAtMillis: double, dark: bool) : var {
+        const palettes = dark ? {
+            dawn: { start: "#293336", end: "#3c4140" },
+            day: { start: "#26343a", end: "#35464a" },
+            dusk: { start: "#332f37", end: "#493b41" },
+            night: { start: "#202832", end: "#2d3742" },
+            unknown: { start: "#292e33", end: "#383f45" }
+        } : {
+            dawn: { start: "#e9eeed", end: "#f2eee8" },
+            day: { start: "#e5ecee", end: "#eff3f3" },
+            dusk: { start: "#eee8ec", end: "#f3ece9" },
+            night: { start: "#e4e9ef", end: "#edf0f4" },
+            unknown: { start: "#e9ecef", end: "#f1f3f5" }
+        }
+        if (!recordedAtMillis || recordedAtMillis <= 0) {
+            return palettes.unknown
+        }
+
+        const hour = new Date(recordedAtMillis).getHours()
+        if (hour >= 5 && hour < 9) {
+            return palettes.dawn
+        }
+        if (hour >= 9 && hour < 17) {
+            return palettes.day
+        }
+        if (hour >= 17 && hour < 21) {
+            return palettes.dusk
+        }
+        return palettes.night
     }
 
     function loadWaveform() : void {
@@ -150,7 +195,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: card.overview ? 98 : card.rich ? 158 : 125
+        height: card.waveformHeight
         z: 1
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -167,7 +212,7 @@ Rectangle {
                     / (card.overview ? 5 : card.rich ? 17 : 11)
                 width: 1
                 height: soundVisual.height
-                color: "#20ffffff"
+                color: Theme.effectiveDark ? "#20ffffff" : "#14000000"
             }
         }
 
@@ -175,11 +220,11 @@ Rectangle {
             anchors.fill: parent
             anchors.leftMargin: card.rich ? 14 : 10
             anchors.rightMargin: card.rich ? 14 : 10
-            anchors.topMargin: 14
-            anchors.bottomMargin: 17
+            anchors.topMargin: card.overview ? 8 : 10
+            anchors.bottomMargin: card.overview ? 11 : 13
             levels: card.waveformLevels
-            fillColor: "#d9f4f8"
-            progressColor: "#ffffff"
+            fillColor: Theme.effectiveDark ? "#d9f4f8" : "#52646b"
+            progressColor: Theme.effectiveDark ? "#ffffff" : "#2f424a"
             progress: 0
         }
 
@@ -187,17 +232,17 @@ Rectangle {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.rightMargin: 8
-            anchors.bottomMargin: 7
+            anchors.bottomMargin: 6
             width: durationText.implicitWidth + 10
-            height: 20
+            height: 18
             radius: 5
-            color: "#66081319"
+            color: Theme.effectiveDark ? "#66081319" : "#ccffffff"
 
             Text {
                 id: durationText
                 anchors.centerIn: parent
                 text: card.formatDuration(card.entry.durationMillis)
-                color: "#f4f8fa"
+                color: Theme.effectiveDark ? "#f4f8fa" : "#324148"
                 font.pixelSize: 9
             }
         }
@@ -207,7 +252,7 @@ Rectangle {
             visible: card.waveformLevels.length === 0
             text: card.entry.pathStatus === "missing" ? qsTr("Original missing")
                                                       : qsTr("Preparing waveform…")
-            color: "#d0e0e5"
+            color: Theme.effectiveDark ? "#d0e0e5" : "#52636a"
             font.pixelSize: Theme.fontMeta
         }
     }
@@ -300,23 +345,26 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            Layout.fillHeight: card.rich
-            visible: card.rich && card.entry.textPreview.length > 0
-            text: card.compactText(card.entry.textPreview, 150)
+            visible: !card.overview && card.entry.textPreview.length > 0
+            text: card.compactText(card.entry.textPreview, card.rich ? 150 : 90)
             color: Theme.textSecondary
             font.pixelSize: Theme.fontBody
-            maximumLineCount: 2
+            maximumLineCount: card.rich ? 3 : 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
         }
 
         Text {
             Layout.fillWidth: true
-            visible: card.rich && card.sourceLine.length > 0
-            text: card.sourceLine
+            visible: !card.overview && card.evidenceLine.length > 0
+            text: card.evidenceLine
             color: Theme.textDisabled
             font.pixelSize: 9
             elide: Text.ElideRight
+        }
+
+        Item {
+            Layout.fillHeight: true
         }
 
         RowLayout {

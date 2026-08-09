@@ -52,34 +52,22 @@ const fn job_state_text(state: echo_catalog::JobState) -> &'static str {
 }
 
 fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire {
-    let (sound_caption, summary, event_type, mood, keywords) = asset
+    let (sound_caption, summary) = asset
         .contextual
         .as_ref()
         .and_then(|value| {
             serde_json::from_value::<echo_core::ContextualPayload>(value.clone()).ok()
         })
-        .map_or(
+        .map_or((String::new(), String::new()), |payload| {
             (
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                Vec::new(),
-            ),
-            |payload| {
-                (
-                    if payload.is_current() {
-                        payload.sound_caption
-                    } else {
-                        String::new()
-                    },
-                    payload.summary,
-                    payload.event_type.unwrap_or_default(),
-                    payload.mood.unwrap_or_default(),
-                    payload.keywords,
-                )
-            },
-        );
+                if payload.is_current() {
+                    payload.sound_caption
+                } else {
+                    String::new()
+                },
+                payload.summary,
+            )
+        });
     let text_preview = asset
         .transcript
         .as_ref()
@@ -130,9 +118,9 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         path_status: asset.path_status,
         sound_caption,
         summary,
-        event_type,
-        mood,
-        keywords,
+        event_type: asset.contextual_event_type.unwrap_or_default(),
+        mood: asset.contextual_mood.unwrap_or_default(),
+        keywords: asset.contextual_keywords,
         text_preview,
         liked: asset.liked,
         rating: asset.rating,

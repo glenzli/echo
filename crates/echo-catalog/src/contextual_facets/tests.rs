@@ -6,7 +6,7 @@ use super::*;
 use crate::{AssetRegistrationInput, RegisterAsset, open_catalog, register_asset};
 
 #[test]
-fn facets_aggregate_normalized_keywords_from_only_latest_contextual_evidence() {
+fn facets_aggregate_normalized_keywords_from_latest_positive_evidence() {
     let root = std::env::temp_dir().join(format!("echo-contextual-facets-{}", std::process::id()));
     let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
     let (first, second) = catalog
@@ -47,6 +47,22 @@ fn facets_aggregate_normalized_keywords_from_only_latest_contextual_evidence() {
         [("rain", 1), ("train", 1)]
     );
     assert!(facets.iter().all(|facet| facet.count <= 2));
+
+    catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            append(transaction, first, 13, &[])
+        })
+        .expect("empty refresh appends");
+    let facets = catalog
+        .with_transaction(list_contextual_keyword_facets)
+        .expect("latest positive facets read");
+    assert_eq!(
+        facets
+            .iter()
+            .map(|facet| (facet.key.as_str(), facet.count))
+            .collect::<Vec<_>>(),
+        [("rain", 1), ("train", 1)]
+    );
     assert_ne!(first, second);
     let _ = std::fs::remove_dir_all(root);
 }

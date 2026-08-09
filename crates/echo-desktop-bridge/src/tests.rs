@@ -20,7 +20,7 @@ fn record_current_contextual_fixture(
 ) {
     let keywords = vec!["Rain".to_owned(), "Train platform".to_owned()];
     catalog
-        .with_transaction(|transaction| {
+        .with_transaction(|transaction| -> Result<(), echo_catalog::CatalogError> {
             echo_catalog::record_contextual_analysis(
                 transaction,
                 &echo_catalog::AppendContextualAnalysis {
@@ -33,14 +33,38 @@ fn record_current_contextual_fixture(
                                 "sound_caption":"Rain across a station platform",
                                 "summary":"",
                                 "keywords":keywords,
-                                "mood":null,
+                                "mood":"calm",
                                 "place_hint":null,
-                                "event_type":null,
+                                "event_type":"rainfall",
                                 "people_hints":[]
                             }),
                             echo_domain::ModelIdentity::new("qwen".into(), "build".into()),
                             None,
                             2,
+                        ),
+                    },
+                },
+            )?;
+            echo_catalog::record_contextual_analysis(
+                transaction,
+                &echo_catalog::AppendContextualAnalysis {
+                    analysis: echo_catalog::AppendAnalysisRecord {
+                        asset_id,
+                        record: echo_domain::AnalysisRecord::new(
+                            echo_domain::AnalysisKind::Contextual,
+                            serde_json::json!({
+                                "schema_version":3,
+                                "sound_caption":"Rain across a station platform",
+                                "summary":"",
+                                "keywords":[],
+                                "mood":null,
+                                "place_hint":null,
+                                "event_type":null,
+                                "people_hints":[]
+                            }),
+                            echo_domain::ModelIdentity::new("qwen".into(), "new-build".into()),
+                            None,
+                            3,
                         ),
                     },
                 },
@@ -235,6 +259,9 @@ fn contextual_stage_and_keyword_facets_project_through_the_live_session() {
     assert_eq!(assets.len(), 1);
     assert_eq!(assets[0].sound_caption, "Rain across a station platform");
     assert!(assets[0].summary.is_empty());
+    assert_eq!(assets[0].keywords, ["Rain", "Train platform"]);
+    assert_eq!(assets[0].mood, "calm");
+    assert_eq!(assets[0].event_type, "rainfall");
     let facets = session.keyword_facets().expect("facets project");
     assert_eq!(facets.len(), 2);
     assert_eq!(facets[0].count, 1);

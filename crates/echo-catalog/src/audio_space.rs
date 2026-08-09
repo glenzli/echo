@@ -1,6 +1,5 @@
 //! Audio Space projection: assets joined with their newest contextual
-//! evidence (summary, keywords, mood, place, event) for the sound-album
-//! surface.
+//! presentation and latest positive browse facets for the sound-album surface.
 
 use rusqlite::Transaction;
 
@@ -21,6 +20,12 @@ pub struct AudioSpaceAsset {
     pub rating: u8,
     /// Latest contextual payload JSON (absent when not analyzed yet).
     pub contextual: Option<serde_json::Value>,
+    /// Keywords from the newest contextual record that emitted keywords.
+    pub contextual_keywords: Vec<String>,
+    /// Mood from the newest contextual record that emitted a mood.
+    pub contextual_mood: Option<String>,
+    /// Event from the newest contextual record that emitted an event.
+    pub contextual_event_type: Option<String>,
     /// Latest model-extracted text payload JSON.
     pub transcript: Option<serde_json::Value>,
     /// Metadata extracted from the immutable source container.
@@ -47,6 +52,21 @@ pub fn list_audio_space(
          (SELECT max_level FROM asset_levels WHERE asset_id = a.id), \
          (SELECT value FROM analysis_records r WHERE r.asset_id = a.id \
           AND r.kind = 'contextual' ORDER BY r.id DESC LIMIT 1), \
+         COALESCE((SELECT json_group_array(display_value) FROM (\
+             SELECT f.display_value FROM contextual_browse_facets f \
+             WHERE f.asset_id = a.id AND f.facet_kind = 'keyword' \
+               AND f.analysis_record_id = (\
+                   SELECT MAX(latest.analysis_record_id) \
+                   FROM contextual_browse_facets latest \
+                   WHERE latest.asset_id = a.id AND latest.facet_kind = 'keyword'\
+               ) ORDER BY f.normalized_value\
+         )), '[]'), \
+         (SELECT f.display_value FROM contextual_browse_facets f \
+          WHERE f.asset_id = a.id AND f.facet_kind = 'mood' \
+          ORDER BY f.analysis_record_id DESC LIMIT 1), \
+         (SELECT f.display_value FROM contextual_browse_facets f \
+          WHERE f.asset_id = a.id AND f.facet_kind = 'event' \
+          ORDER BY f.analysis_record_id DESC LIMIT 1), \
          (SELECT value FROM analysis_records r WHERE r.asset_id = a.id \
           AND r.kind = 'transcript' ORDER BY r.id DESC LIMIT 1), \
          COALESCE(u.liked, 0), COALESCE(u.rating, 0), \
@@ -70,20 +90,24 @@ pub fn list_audio_space(
             contextual: row
                 .get::<_, Option<String>>(8)?
                 .map(|json| serde_json::from_str(&json).expect("contextual payload parses")),
+            contextual_keywords: serde_json::from_str(&row.get::<_, String>(9)?)
+                .expect("contextual keywords parse"),
+            contextual_mood: row.get(10)?,
+            contextual_event_type: row.get(11)?,
             transcript: row
-                .get::<_, Option<String>>(9)?
+                .get::<_, Option<String>>(12)?
                 .map(|json| serde_json::from_str(&json).expect("transcript payload parses")),
-            liked: row.get::<_, i64>(10)? != 0,
-            rating: u8::try_from(row.get::<_, i64>(11)?)
+            liked: row.get::<_, i64>(13)? != 0,
+            rating: u8::try_from(row.get::<_, i64>(14)?)
                 .expect("stored rating is between zero and five"),
-            source_metadata: match row.get::<_, Option<String>>(12)? {
+            source_metadata: match row.get::<_, Option<String>>(15)? {
                 Some(container_format) => Some(crate::SourceMetadata {
                     container_format,
-                    sample_rate: u32::try_from(row.get::<_, i64>(13)?)
+                    sample_rate: u32::try_from(row.get::<_, i64>(16)?)
                         .expect("stored sample rate is non-negative"),
-                    channel_count: u32::try_from(row.get::<_, i64>(14)?)
+                    channel_count: u32::try_from(row.get::<_, i64>(17)?)
                         .expect("stored channel count is non-negative"),
-                    entries: serde_json::from_str(&row.get::<_, String>(15)?)
+                    entries: serde_json::from_str(&row.get::<_, String>(18)?)
                         .expect("source metadata entries parse"),
                 }),
                 None => None,

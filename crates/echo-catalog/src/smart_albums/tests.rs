@@ -60,6 +60,27 @@ fn candidates_require_two_members_and_follow_newest_evidence() {
     );
 
     catalog
+        .with_transaction(|transaction| append_empty_contextual(transaction, first, 13))
+        .expect("empty contextual refresh appends");
+    let candidates = catalog
+        .with_transaction(list_smart_album_candidates)
+        .expect("latest positive candidates read");
+    assert_candidate(
+        &candidates,
+        "ai:event:family breakfast",
+        SmartAlbumEvidence::Ai,
+        SmartAlbumFacet::Event,
+        &[first, second],
+    );
+    assert_candidate(
+        &candidates,
+        "ai:place:kitchen",
+        SmartAlbumEvidence::Ai,
+        SmartAlbumFacet::Place,
+        &[first, second],
+    );
+
+    catalog
         .with_transaction(|transaction| {
             append_contextual(
                 transaction,
@@ -230,6 +251,35 @@ fn append_contextual(
                         "place_hint": place,
                         "event_type": event,
                         "people_hints": [person],
+                    }),
+                    ModelIdentity::new("test".into(), "1".into()),
+                    None,
+                    recorded_at_millis,
+                ),
+            },
+        },
+    )
+}
+
+fn append_empty_contextual(
+    transaction: &Transaction<'_>,
+    asset_id: echo_domain::AssetId,
+    recorded_at_millis: i64,
+) -> Result<(), CatalogError> {
+    record_contextual_analysis(
+        transaction,
+        &AppendContextualAnalysis {
+            analysis: AppendAnalysisRecord {
+                asset_id,
+                record: AnalysisRecord::new(
+                    AnalysisKind::Contextual,
+                    serde_json::json!({
+                        "summary": "fixture",
+                        "keywords": [],
+                        "mood": null,
+                        "place_hint": null,
+                        "event_type": null,
+                        "people_hints": [],
                     }),
                     ModelIdentity::new("test".into(), "1".into()),
                     None,

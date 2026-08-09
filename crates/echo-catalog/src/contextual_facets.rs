@@ -83,8 +83,9 @@ pub fn record_contextual_analysis(
     )
 }
 
-/// Lists keyword counts using only the newest contextual record for each
-/// asset, so re-analysis cannot leave stale browse membership visible.
+/// Lists keyword counts using the newest record that emitted keywords for
+/// each asset. An empty refresh is absence of new evidence, not a negation;
+/// a later non-empty keyword set supersedes the earlier set.
 ///
 /// # Errors
 ///
@@ -96,8 +97,10 @@ pub fn list_contextual_keyword_facets(
         "SELECT f.normalized_value, MIN(f.display_value), COUNT(DISTINCT f.asset_id) \
          FROM contextual_browse_facets f \
          WHERE f.facet_kind = 'keyword' AND f.analysis_record_id = (\
-             SELECT MAX(r.id) FROM analysis_records r \
-             WHERE r.asset_id = f.asset_id AND r.kind = 'contextual'\
+             SELECT MAX(latest.analysis_record_id) \
+             FROM contextual_browse_facets latest \
+             WHERE latest.asset_id = f.asset_id \
+               AND latest.facet_kind = f.facet_kind\
          ) GROUP BY f.normalized_value \
          ORDER BY COUNT(DISTINCT f.asset_id) DESC, f.normalized_value ASC",
     )?;

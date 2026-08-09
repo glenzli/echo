@@ -132,8 +132,10 @@ fn collect_contextual_groups(
         "SELECT f.facet_kind, f.normalized_value, f.display_value, f.asset_id \
          FROM contextual_browse_facets f \
          WHERE f.facet_kind IN ('place', 'event', 'person') AND f.analysis_record_id = (\
-             SELECT MAX(r.id) FROM analysis_records r \
-             WHERE r.asset_id = f.asset_id AND r.kind = 'contextual'\
+             SELECT MAX(latest.analysis_record_id) \
+             FROM contextual_browse_facets latest \
+             WHERE latest.asset_id = f.asset_id \
+               AND latest.facet_kind = f.facet_kind\
          ) ORDER BY f.facet_kind, f.normalized_value, f.asset_id",
     )?;
     let rows = statement.query_map([], |row| {
