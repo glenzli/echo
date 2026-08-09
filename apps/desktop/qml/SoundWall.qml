@@ -16,7 +16,7 @@ Rectangle {
     required property string density
 
     readonly property int cardHeight: density === "overview"
-        ? 148 : density === "rich" ? 278 : 202
+        ? 184 : density === "rich" ? 292 : 228
 
     signal assetSelected(var asset)
     signal assetOpened(var asset)

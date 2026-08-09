@@ -55,7 +55,7 @@ Rectangle {
     }
 
     function titleFor(asset: var) : string {
-        const maximum = rich ? 58 : overview ? 28 : 34
+        const maximum = rich ? 96 : overview ? 56 : 76
         if (asset.soundCaption.length > 0) {
             return compactText(asset.soundCaption, maximum)
         }
@@ -230,14 +230,18 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
                 text: card.displayTitle
                 color: Theme.textPrimary
                 font.pixelSize: card.rich ? 13 : 12
                 font.bold: true
+                maximumLineCount: 2
+                wrapMode: Text.WordWrap
                 elide: Text.ElideRight
             }
 
             Text {
+                Layout.alignment: Qt.AlignTop
                 visible: card.entry.liked
                 text: "♥"
                 color: "#dc4b6b"
@@ -245,6 +249,7 @@ Rectangle {
             }
 
             Text {
+                Layout.alignment: Qt.AlignTop
                 visible: card.entry.rating > 0
                 text: "★ " + card.entry.rating
                 color: "#d89a16"
@@ -254,8 +259,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            visible: !card.overview
-                && (card.entry.mood.length > 0 || card.keywordLine.length > 0)
+            visible: card.entry.mood.length > 0 || card.keywordLine.length > 0
             spacing: 6
 
             Rectangle {
@@ -317,7 +321,6 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            visible: !card.overview
             spacing: 5
 
             Text {
