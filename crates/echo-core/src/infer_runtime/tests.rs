@@ -41,6 +41,67 @@ fn transcription_requires_contract_and_job_provenance() {
 }
 
 #[test]
+fn transcription_accepts_null_segments_from_runtime() {
+    let (base_url, server) = serve(vec![
+        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(
+            r#"{"id":"job-echo-null-segments","model":"audio.transcribe","language":"zh","text":"fixture text","segments":null,"usage":{"total_tokens":1}}"#,
+        ),
+        json_response(
+            r#"{"id":"job-echo-null-segments","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
+        ),
+    ]);
+    let source = audio_fixture();
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let payload = client
+        .transcribe(&source, &TranscriptionIntent::default())
+        .expect("Runtime result with null segments is accepted");
+
+    assert_eq!(payload.text, "fixture text");
+    assert!(payload.segments.is_empty());
+    assert_eq!(
+        payload.runtime.expect("provenance is attached").job.id,
+        "job-echo-null-segments"
+    );
+
+    std::fs::remove_file(source).expect("fixture removes");
+    server.join().expect("server exits");
+}
+
+#[test]
+fn transcription_keeps_recognized_items_from_openapi_extensions() {
+    let (base_url, server) = serve(vec![
+        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(
+            r#"{"id":"job-echo-extension","model":"audio.transcribe","language":{"label":"Chinese"},"text":"fixture text","segments":[{"text":"provider-specific untimed item"},{"text":"timed fixture","start":0.2,"end":0.9}],"usage":{"total_tokens":1}}"#,
+        ),
+        json_response(
+            r#"{"id":"job-echo-extension","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
+        ),
+    ]);
+    let source = audio_fixture();
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let payload = client
+        .transcribe(&source, &TranscriptionIntent::default())
+        .expect("recognized Runtime extensions are projected");
+
+    assert_eq!(payload.language, None);
+    assert_eq!(payload.segments.len(), 1);
+    assert_eq!(payload.segments[0].text, "timed fixture");
+
+    std::fs::remove_file(source).expect("fixture removes");
+    server.join().expect("server exits");
+}
+
+#[test]
 fn stable_runtime_error_ignores_provider_message() {
     let (base_url, server) = serve(vec![
         json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),

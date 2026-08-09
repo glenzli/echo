@@ -7,10 +7,11 @@
 
 use std::{collections::BTreeMap, fmt, path::Path, time::Duration};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_json::Value;
 use ureq::unversioned::multipart::Form;
 
-use crate::{TranscriptPayload, TranscriptSegment};
+use crate::TranscriptPayload;
 
 pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.1";
 pub const TRANSCRIPTION_INTENT: &str = "audio.transcribe";
@@ -272,7 +273,7 @@ impl InferRuntimeClient {
             form = form.text("temperature", temperature);
         }
         let body = self.post_form("/v1/audio/transcriptions", form)?;
-        let response: TranscriptionResponse = serde_json::from_str(&body).map_err(|_| {
+        let response: AudioJsonResponse = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
                 InferRuntimeErrorKind::Protocol,
                 "invalid_transcription_response",
@@ -290,9 +291,9 @@ impl InferRuntimeClient {
         validate_succeeded_job(&job, TRANSCRIPTION_INTENT)?;
         Ok(TranscriptPayload {
             model: response.model,
-            language: response.language,
-            text: response.text,
-            segments: response.segments,
+            language: extension_string(&response.extensions, "language"),
+            text: extension_string(&response.extensions, "text").unwrap_or_default(),
+            segments: extension_items(&response.extensions, "segments"),
             runtime: Some(RuntimeProvenance {
                 contract_version,
                 job,
@@ -334,7 +335,7 @@ impl InferRuntimeClient {
             form = form.text("language", language);
         }
         let body = self.post_form("/v1/audio/alignments", form)?;
-        let response: AlignmentResponse = serde_json::from_str(&body).map_err(|_| {
+        let response: AudioJsonResponse = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
                 InferRuntimeErrorKind::Protocol,
                 "invalid_alignment_response",
@@ -351,9 +352,9 @@ impl InferRuntimeClient {
         let job = self.job_snapshot(&response.id)?;
         validate_succeeded_job(&job, ALIGNMENT_INTENT)?;
         Ok(AlignmentPayload {
-            text: response.text,
-            language: response.language,
-            items: response.items,
+            text: extension_string(&response.extensions, "text").unwrap_or_default(),
+            language: extension_string(&response.extensions, "language"),
+            items: extension_items(&response.extensions, "items"),
             runtime: RuntimeProvenance {
                 contract_version,
                 job,
@@ -566,27 +567,31 @@ struct ErrorBody {
 }
 
 #[derive(Debug, Deserialize)]
-struct TranscriptionResponse {
+struct AudioJsonResponse {
     id: String,
     model: String,
-    #[serde(default)]
-    language: Option<String>,
-    #[serde(default)]
-    text: String,
-    #[serde(default)]
-    segments: Vec<TranscriptSegment>,
+    #[serde(flatten)]
+    extensions: BTreeMap<String, Value>,
 }
 
-#[derive(Debug, Deserialize)]
-struct AlignmentResponse {
-    id: String,
-    model: String,
-    #[serde(default)]
-    text: String,
-    #[serde(default)]
-    language: Option<String>,
-    #[serde(default)]
-    items: Vec<AlignmentItem>,
+fn extension_string(extensions: &BTreeMap<String, Value>, field: &str) -> Option<String> {
+    extensions
+        .get(field)
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+}
+
+fn extension_items<T: DeserializeOwned>(
+    extensions: &BTreeMap<String, Value>,
+    field: &str,
+) -> Vec<T> {
+    extensions
+        .get(field)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| serde_json::from_value(item.clone()).ok())
+        .collect()
 }
 
 #[cfg(test)]
