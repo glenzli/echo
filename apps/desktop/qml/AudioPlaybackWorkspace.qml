@@ -148,11 +148,10 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: preview.asset !== null && preview.asset.summary.length > 0
-                        ? preview.asset.summary : qsTr("Original recording")
+                    text: preview.asset !== null ? preview.asset.path : ""
                     color: Theme.textSecondary
-                    font.pixelSize: Theme.fontBody
-                    elide: Text.ElideRight
+                    font.pixelSize: Theme.fontMeta
+                    elide: Text.ElideMiddle
                 }
             }
 
@@ -175,10 +174,16 @@ Rectangle {
             }
         }
 
+        AudioMetadataBar {
+            Layout.fillWidth: true
+            Layout.preferredHeight: implicitHeight
+            asset: preview.asset
+        }
+
         Rectangle {
             Layout.fillWidth: true
             Layout.minimumHeight: 220
-            Layout.preferredHeight: Math.max(250, Math.min(360, preview.height * 0.42))
+            Layout.preferredHeight: Math.max(260, Math.min(380, preview.height * 0.43))
             radius: 12
             color: Theme.waveformSurface
             border.color: Theme.borderStrong

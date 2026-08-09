@@ -124,7 +124,7 @@ qt_add_qml_module(
     VERSION 0.1
     QML_FILES
         qml/Main.qml
-        qml/AudioInspectorPane.qml
+        qml/AudioMetadataBar.qml
         qml/AudioPlaybackWorkspace.qml
         qml/AudioSpaceWorkspace.qml
         qml/EchoButton.qml

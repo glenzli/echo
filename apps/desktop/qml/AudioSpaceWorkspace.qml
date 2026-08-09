@@ -163,9 +163,9 @@ Item {
         spacing: 12
 
         Rectangle {
-            Layout.preferredWidth: 276
-            Layout.minimumWidth: 260
-            Layout.maximumWidth: 300
+            Layout.preferredWidth: 340
+            Layout.minimumWidth: 320
+            Layout.maximumWidth: 380
             Layout.fillHeight: true
             color: Theme.panel
             radius: Theme.panelRadius
@@ -214,6 +214,12 @@ Item {
                             color: Theme.warningText
                             font.pixelSize: Theme.fontMeta
                         }
+                    }
+
+                    EchoIconButton {
+                        source: "qrc:/EchoDesktop/icons/folder.svg"
+                        toolTipText: qsTr("Manage library")
+                        onClicked: workspace.openLibraryRequested()
                     }
                 }
 
@@ -551,15 +557,7 @@ Item {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 580
-            asset: workspace.selectedAsset
-        }
-
-        AudioInspectorPane {
-            Layout.preferredWidth: 284
-            Layout.minimumWidth: 270
-            Layout.maximumWidth: 310
-            Layout.fillHeight: true
+            Layout.minimumWidth: 720
             asset: workspace.selectedAsset
         }
     }

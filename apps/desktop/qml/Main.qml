@@ -50,16 +50,23 @@ ApplicationWindow {
             color: Theme.border
         }
 
+        DragHandler {
+            acceptedButtons: Qt.LeftButton
+            target: null
+            onActiveChanged: {
+                if (active) {
+                    window.startSystemMove()
+                }
+            }
+        }
+
         RowLayout {
-            anchors.fill: parent
+            anchors.left: parent.left
             anchors.leftMargin: Math.max(
                 SafeArea.margins.left,
                 Qt.platform.os === "osx" && window.visibility !== Window.FullScreen ? 96 : 16
             )
-            anchors.rightMargin: Math.max(
-                SafeArea.margins.right,
-                Qt.platform.os === "windows" ? 152 : 16
-            )
+            anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
             Rectangle {
@@ -82,32 +89,23 @@ ApplicationWindow {
                 font.pixelSize: 14
                 font.bold: true
             }
+        }
 
-            Text {
-                text: "·"
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontBody
-            }
+        EchoIconButton {
+            anchors.centerIn: parent
+            source: "qrc:/EchoDesktop/icons/waveform.svg"
+            toolTipText: qsTr("Audio Space")
+            selected: true
+        }
 
-            Text {
-                text: qsTr("Audio Space")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontBody
-            }
-
-            Item {
-                Layout.fillWidth: true
-
-                DragHandler {
-                    acceptedButtons: Qt.LeftButton
-                    target: null
-                    onActiveChanged: {
-                        if (active) {
-                            window.startSystemMove()
-                        }
-                    }
-                }
-            }
+        RowLayout {
+            anchors.right: parent.right
+            anchors.rightMargin: Math.max(
+                SafeArea.margins.right,
+                Qt.platform.os === "windows" ? 152 : 16
+            )
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 8
 
             Rectangle {
                 visible: window.jobsActive
@@ -124,18 +122,6 @@ ApplicationWindow {
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
                 }
-            }
-
-            EchoIconButton {
-                source: "qrc:/EchoDesktop/icons/waveform.svg"
-                toolTipText: qsTr("Audio Space")
-                selected: true
-            }
-
-            EchoIconButton {
-                source: "qrc:/EchoDesktop/icons/folder.svg"
-                toolTipText: qsTr("Manage library")
-                onClicked: libraryDialog.open()
             }
 
             EchoIconButton {
