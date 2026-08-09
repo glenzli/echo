@@ -1,6 +1,5 @@
-//! Selected recording detail: waveform, playback, metadata, and transcript
-//! evidence. The pane remains present as an empty-state anchor so the Audio
-//! Space layout does not jump when selection changes.
+//! Primary selected-recording workspace. Waveform, transport, and transcript
+//! evidence stay together because they share playback and asset lifecycle.
 
 import QtQuick
 import QtQuick.Controls
@@ -8,13 +7,13 @@ import QtQuick.Layouts
 import EchoDesktop
 
 Rectangle {
-    id: detail
+    id: preview
 
     property var asset: null
     property var waveformLevels: []
     property string loadedPath: ""
 
-    color: Theme.panel
+    color: Theme.panelRaised
     radius: Theme.panelRadius
     border.color: Theme.border
 
@@ -25,7 +24,7 @@ Rectangle {
 
     function formatDuration(millis: int) : string {
         if (!millis || millis <= 0) {
-            return qsTr("Unknown length")
+            return "0:00"
         }
         const totalSeconds = Math.floor(millis / 1000)
         const minutes = Math.floor(totalSeconds / 60)
@@ -71,8 +70,8 @@ Rectangle {
         target: backend
 
         function onTranscriptionFinished(assetId: string, ok: bool, message: string) : void {
-            if (ok && detail.asset !== null && assetId === detail.asset.id) {
-                detail.refreshAsset()
+            if (ok && preview.asset !== null && assetId === preview.asset.id) {
+                preview.refreshAsset()
             }
             if (!ok) {
                 console.warn("transcription failed: " + message)
@@ -86,21 +85,21 @@ Rectangle {
 
     ColumnLayout {
         anchors.centerIn: parent
-        width: Math.min(parent.width - 48, 240)
-        spacing: 10
-        visible: detail.asset === null
+        width: Math.min(parent.width - 80, 380)
+        spacing: 12
+        visible: preview.asset === null
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 52
-            Layout.preferredHeight: 52
-            radius: 16
+            Layout.preferredWidth: 68
+            Layout.preferredHeight: 68
+            radius: 22
             color: Theme.surfaceSubtle
 
             EchoIcon {
                 anchors.centerIn: parent
                 source: "qrc:/EchoDesktop/icons/waveform.svg"
-                size: 24
+                size: 30
                 color: Theme.textDisabled
             }
         }
@@ -109,14 +108,14 @@ Rectangle {
             Layout.fillWidth: true
             text: qsTr("Select a recording")
             color: Theme.textPrimary
-            font.pixelSize: 15
+            font.pixelSize: 18
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
         }
 
         Text {
             Layout.fillWidth: true
-            text: qsTr("Its waveform, playback controls, and transcript will appear here.")
+            text: qsTr("The waveform, playback controls, and transcript will stay at the center of your workspace.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontBody
             wrapMode: Text.WordWrap
@@ -126,105 +125,84 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
+        anchors.margins: 20
         spacing: 12
-        visible: detail.asset !== null
+        visible: preview.asset !== null
 
-        ColumnLayout {
+        RowLayout {
             Layout.fillWidth: true
-            spacing: 3
+            spacing: 10
 
-            RowLayout {
+            ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 3
 
                 Text {
                     Layout.fillWidth: true
-                    text: detail.asset !== null ? detail.fileName(detail.asset.path) : ""
+                    text: preview.asset !== null ? preview.fileName(preview.asset.path) : ""
                     color: Theme.textPrimary
-                    font.pixelSize: 16
+                    font.pixelSize: 20
                     font.bold: true
                     elide: Text.ElideRight
                 }
 
-                Rectangle {
-                    visible: detail.asset !== null && detail.asset.pathStatus === "missing"
-                    Layout.preferredWidth: missingLabel.implicitWidth + 14
-                    Layout.preferredHeight: 20
-                    radius: 10
-                    color: Theme.warningSurface
-
-                    Text {
-                        id: missingLabel
-                        anchors.centerIn: parent
-                        text: qsTr("Missing")
-                        color: Theme.warningText
-                        font.pixelSize: Theme.fontMeta
-                    }
+                Text {
+                    Layout.fillWidth: true
+                    text: preview.asset !== null && preview.asset.summary.length > 0
+                        ? preview.asset.summary : qsTr("Original recording")
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontBody
+                    elide: Text.ElideRight
                 }
             }
 
-            Text {
-                Layout.fillWidth: true
-                text: detail.asset !== null ? detail.asset.path : ""
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-                elide: Text.ElideMiddle
-            }
-        }
+            Rectangle {
+                Layout.preferredWidth: statusText.implicitWidth + 16
+                Layout.preferredHeight: 24
+                radius: 12
+                color: preview.asset !== null && preview.asset.pathStatus === "missing"
+                    ? Theme.warningSurface : Theme.accentSurfaceQuiet
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 6
-
-            Repeater {
-                model: detail.asset !== null ? [
-                    detail.asset.codec ? detail.asset.codec.toUpperCase() : qsTr("Audio"),
-                    detail.formatDuration(detail.asset.durationMillis),
-                    detail.asset.maxLevel > 0
-                        ? qsTr("Evidence L%1").arg(detail.asset.maxLevel)
-                        : qsTr("Original")
-                ] : []
-
-                delegate: Rectangle {
-                    required property var modelData
-
-                    Layout.preferredWidth: chipText.implicitWidth + 14
-                    Layout.preferredHeight: 22
-                    radius: 11
-                    color: Theme.surfaceSubtle
-
-                    Text {
-                        id: chipText
-                        anchors.centerIn: parent
-                        text: modelData
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontMeta
-                    }
+                Text {
+                    id: statusText
+                    anchors.centerIn: parent
+                    text: preview.asset !== null && preview.asset.pathStatus === "missing"
+                        ? qsTr("Missing") : qsTr("Original preserved")
+                    color: preview.asset !== null && preview.asset.pathStatus === "missing"
+                        ? Theme.warningText : Theme.accentSelectionText
+                    font.pixelSize: Theme.fontMeta
                 }
             }
-
-            Item { Layout.fillWidth: true }
         }
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 150
-            radius: Theme.controlRadius
+            Layout.minimumHeight: 220
+            Layout.preferredHeight: Math.max(250, Math.min(360, preview.height * 0.42))
+            radius: 12
             color: Theme.waveformSurface
-            border.color: Theme.border
+            border.color: Theme.borderStrong
 
             WaveformView {
                 anchors.fill: parent
-                anchors.margins: 10
-                levels: detail.waveformLevels
+                anchors.margins: 18
+                levels: preview.waveformLevels
                 progress: player.duration > 0 ? player.position / player.duration : 0
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: player.duration > 0 && preview.loadedPath === preview.asset.path
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: function(mouse) {
+                    player.seek(Math.round(mouse.x / width * player.duration))
+                }
             }
 
             Text {
                 anchors.centerIn: parent
-                visible: detail.waveformLevels.length === 0
-                text: detail.asset !== null && detail.asset.pathStatus === "missing"
+                visible: preview.waveformLevels.length === 0
+                text: preview.asset !== null && preview.asset.pathStatus === "missing"
                     ? qsTr("Original file is unavailable") : qsTr("Preparing waveform…")
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontBody
@@ -233,28 +211,37 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 10
 
             EchoIconButton {
-                source: player.isPlaying && detail.loadedPath === detail.asset.path
+                source: player.isPlaying && preview.loadedPath === preview.asset.path
                     ? "qrc:/EchoDesktop/icons/pause.svg"
                     : "qrc:/EchoDesktop/icons/play.svg"
                 toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Play")
-                enabled: detail.asset !== null && detail.asset.pathStatus !== "missing"
-                buttonSize: 36
-                iconSize: 18
+                enabled: preview.asset !== null && preview.asset.pathStatus !== "missing"
+                buttonSize: 38
+                iconSize: 19
                 onClicked: {
-                    if (detail.loadedPath !== detail.asset.path) {
-                        detail.playFrom(0)
+                    if (preview.loadedPath !== preview.asset.path) {
+                        preview.playFrom(0)
                     } else {
                         player.togglePause()
                     }
                 }
             }
 
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/stop.svg"
+                toolTipText: qsTr("Stop")
+                enabled: preview.loadedPath === preview.asset.path
+                buttonSize: 34
+                iconSize: 16
+                onClicked: player.stop()
+            }
+
             Text {
-                text: detail.formatDuration(player.position) + " / "
-                    + detail.formatDuration(player.duration)
+                text: preview.formatDuration(player.position) + " / "
+                    + preview.formatDuration(player.duration)
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
             }
@@ -264,7 +251,7 @@ Rectangle {
                 from: 0
                 to: Math.max(1, player.duration)
                 value: player.duration > 0 ? player.position : 0
-                enabled: player.duration > 0 && detail.loadedPath === detail.asset.path
+                enabled: player.duration > 0 && preview.loadedPath === preview.asset.path
                 onMoved: player.seek(value)
             }
         }
@@ -284,11 +271,11 @@ Rectangle {
             EchoButton {
                 visible: transcriptModel.count === 0
                 text: backend.transcribing ? qsTr("Analyzing…") : qsTr("Analyze (prototype)")
-                enabled: !backend.transcribing && detail.asset !== null
-                    && detail.asset.pathStatus !== "missing"
+                enabled: !backend.transcribing && preview.asset !== null
+                    && preview.asset.pathStatus !== "missing"
                 ghost: true
                 onClicked: backend.transcribeAsset(
-                    detail.asset.id, modelPrefs.modelRoot,
+                    preview.asset.id, modelPrefs.modelRoot,
                     modelPrefs.python, modelPrefs.workerScript)
             }
         }
@@ -296,16 +283,16 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 110
+            Layout.minimumHeight: 120
             radius: Theme.controlRadius
             color: Theme.surfaceSubtle
             border.color: Theme.border
 
             Text {
                 anchors.centerIn: parent
-                width: parent.width - 32
+                width: parent.width - 48
                 visible: transcriptModel.count === 0
-                text: qsTr("Transcription is optional. The direct local worker is a temporary compatibility path until Infer Build integration.")
+                text: qsTr("Transcription is optional. The direct local worker remains a temporary compatibility path until Infer Build integration.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap
@@ -316,7 +303,7 @@ Rectangle {
                 id: transcriptList
 
                 anchors.fill: parent
-                anchors.margins: 6
+                anchors.margins: 7
                 visible: transcriptModel.count > 0
                 spacing: 3
                 clip: true
@@ -337,8 +324,8 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (detail.loadedPath !== detail.asset.path) {
-                                detail.playFrom(modelData.start * 1000)
+                            if (preview.loadedPath !== preview.asset.path) {
+                                preview.playFrom(modelData.start * 1000)
                             } else {
                                 player.seek(modelData.start * 1000)
                             }
@@ -347,12 +334,12 @@ Rectangle {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
-                        spacing: 10
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 12
 
                         Text {
-                            text: detail.formatTimestamp(modelData.start)
+                            text: preview.formatTimestamp(modelData.start)
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontMeta
                             Layout.alignment: Qt.AlignTop

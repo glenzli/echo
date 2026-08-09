@@ -1,5 +1,6 @@
 //! Echo application shell. Workspace chrome and process-level lifecycle live
-//! here; Audio Space and asset detail own their presentation internally.
+//! here; Audio Space, playback, and inspection own their presentation
+//! internally. Library management is a transient toolbar surface.
 
 import QtQuick
 import QtQuick.Controls
@@ -10,16 +11,15 @@ import EchoDesktop
 ApplicationWindow {
     id: window
 
-    width: 1180
-    height: 760
-    minimumWidth: 900
-    minimumHeight: 560
+    width: 1500
+    height: 900
+    minimumWidth: 1240
+    minimumHeight: 720
     visible: true
     title: Qt.platform.os === "osx" ? "" : qsTr("Echo")
     flags: Qt.Window | Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
     color: Theme.window
 
-    property int workspaceIndex: 0
     property var jobSnapshot: ({ pending: 0, running: 0, done: 0, failed: 0 })
     property bool jobsWereActive: false
 
@@ -29,13 +29,17 @@ ApplicationWindow {
         id: settingsDialog
     }
 
+    LibraryDialog {
+        id: libraryDialog
+    }
+
     Rectangle {
         id: titleBar
 
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 44
-        y: window.visibility === Window.FullScreen ? 0 : -32
+        height: 48
+        y: 0
         color: Theme.chrome
 
         Rectangle {
@@ -86,7 +90,7 @@ ApplicationWindow {
             }
 
             Text {
-                text: window.workspaceIndex === 0 ? qsTr("Audio Space") : qsTr("Library")
+                text: qsTr("Audio Space")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
             }
@@ -125,19 +129,13 @@ ApplicationWindow {
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/waveform.svg"
                 toolTipText: qsTr("Audio Space")
-                selected: window.workspaceIndex === 0
-                checkable: true
-                checked: window.workspaceIndex === 0
-                onClicked: window.workspaceIndex = 0
+                selected: true
             }
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/folder.svg"
-                toolTipText: qsTr("Library")
-                selected: window.workspaceIndex === 1
-                checkable: true
-                checked: window.workspaceIndex === 1
-                onClicked: window.workspaceIndex = 1
+                toolTipText: qsTr("Manage library")
+                onClicked: libraryDialog.open()
             }
 
             EchoIconButton {
@@ -158,16 +156,9 @@ ApplicationWindow {
             id: audioSpace
 
             anchors.fill: parent
-            anchors.margins: 20
-            visible: window.workspaceIndex === 0
+            anchors.margins: 14
             jobStats: window.jobSnapshot
-            onOpenLibraryRequested: window.workspaceIndex = 1
-        }
-
-        LibraryPanel {
-            anchors.fill: parent
-            anchors.margins: 24
-            visible: window.workspaceIndex === 1
+            onOpenLibraryRequested: libraryDialog.open()
         }
     }
 

@@ -124,7 +124,8 @@ qt_add_qml_module(
     VERSION 0.1
     QML_FILES
         qml/Main.qml
-        qml/AudioDetailPane.qml
+        qml/AudioInspectorPane.qml
+        qml/AudioPlaybackWorkspace.qml
         qml/AudioSpaceWorkspace.qml
         qml/EchoButton.qml
         qml/EchoIcon.qml
@@ -133,6 +134,7 @@ qt_add_qml_module(
         qml/EchoSettingsDialog.qml
         qml/EchoTextField.qml
         qml/LibraryPanel.qml
+        qml/LibraryDialog.qml
         qml/Theme.qml
         qml/WaveformView.qml
     RESOURCES

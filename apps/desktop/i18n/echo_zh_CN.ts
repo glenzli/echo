@@ -2,209 +2,315 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN">
 <context>
-    <name>AudioDetailPane</name>
+    <name>AudioInspectorPane</name>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="28"/>
-        <source>Unknown length</source>
-        <translation>未知时长</translation>
+        <location filename="../qml/AudioInspectorPane.qml" line="24"/>
+        <location filename="../qml/AudioInspectorPane.qml" line="34"/>
+        <source>Unknown</source>
+        <translation>未知</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="110"/>
-        <source>Select a recording</source>
-        <translation>选择一段录音</translation>
+        <location filename="../qml/AudioInspectorPane.qml" line="47"/>
+        <source>Recording details</source>
+        <translation>录音详情</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="119"/>
-        <source>Its waveform, playback controls, and transcript will appear here.</source>
-        <translation>这里会显示它的波形、播放控制和转写内容。</translation>
+        <location filename="../qml/AudioInspectorPane.qml" line="56"/>
+        <source>Select a sound to inspect its original and understanding evidence.</source>
+        <translation>选择一个声音，查看其原始文件与理解证据。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="160"/>
-        <source>Missing</source>
-        <translation>缺失</translation>
+        <location filename="../qml/AudioInspectorPane.qml" line="79"/>
+        <source>Recording</source>
+        <translation>录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="182"/>
+        <location filename="../qml/AudioInspectorPane.qml" line="80"/>
+        <source>Immutable original</source>
+        <translation>不可变原始文件</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="108"/>
+        <source>Properties</source>
+        <translation>属性</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="117"/>
+        <source>Format</source>
+        <translation>格式</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="121"/>
         <source>Audio</source>
         <translation>音频</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="185"/>
-        <source>Evidence L%1</source>
-        <translation>证据 L%1</translation>
+        <location filename="../qml/AudioInspectorPane.qml" line="128"/>
+        <source>Duration</source>
+        <translation>时长</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="186"/>
-        <source>Original</source>
+        <location filename="../qml/AudioInspectorPane.qml" line="138"/>
+        <source>Recorded</source>
+        <translation>录制时间</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="151"/>
+        <source>Evidence</source>
+        <translation>证据</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="155"/>
+        <source>Level %1</source>
+        <translation>第 %1 层</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="156"/>
+        <source>Original only</source>
+        <translation>仅原始文件</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="162"/>
+        <source>Availability</source>
+        <translation>可用状态</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="166"/>
+        <source>File missing</source>
+        <translation>文件缺失</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="166"/>
+        <source>Available</source>
+        <translation>可用</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="182"/>
+        <source>Understanding</source>
+        <translation>声音理解</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="184"/>
+        <source>Derived evidence</source>
+        <translation>衍生证据</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="184"/>
+        <source>Not analyzed yet</source>
+        <translation>尚未分析</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="191"/>
+        <source>No contextual understanding evidence is available for this recording.</source>
+        <translation>这段录音还没有可用的语境理解证据。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="207"/>
+        <source>Event</source>
+        <translation>事件</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioInspectorPane.qml" line="215"/>
+        <source>Mood</source>
+        <translation>情绪</translation>
+    </message>
+</context>
+<context>
+    <name>AudioPlaybackWorkspace</name>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="109"/>
+        <source>Select a recording</source>
+        <translation>选择一段录音</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="118"/>
+        <source>The waveform, playback controls, and transcript will stay at the center of your workspace.</source>
+        <translation>波形、播放控制和转写将始终位于工作区中央。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="152"/>
+        <source>Original recording</source>
         <translation>原始录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="228"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="170"/>
+        <source>Missing</source>
+        <translation>缺失</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="170"/>
+        <source>Original preserved</source>
+        <translation>原始文件已保留</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="206"/>
         <source>Original file is unavailable</source>
         <translation>原始文件当前不可用</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="228"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="206"/>
         <source>Preparing waveform…</source>
         <translation>正在准备波形…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="242"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="220"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="242"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="220"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="278"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="235"/>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="265"/>
         <source>Transcript</source>
         <translation>转写</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="280"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="267"/>
         <source>Click a segment to seek</source>
         <translation>点击片段即可定位</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="281"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="268"/>
         <source>No transcript evidence yet</source>
         <translation>还没有转写证据</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="286"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="273"/>
         <source>Analyzing…</source>
         <translation>分析中…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="286"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="273"/>
         <source>Analyze (prototype)</source>
         <translation>分析（原型）</translation>
     </message>
     <message>
-        <location filename="../qml/AudioDetailPane.qml" line="308"/>
-        <source>Transcription is optional. The direct local worker is a temporary compatibility path until Infer Build integration.</source>
-        <translation>转写是可选的。在接入 Infer Build 前，直接本地工作进程只是一条临时兼容路径。</translation>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="295"/>
+        <source>Transcription is optional. The direct local worker remains a temporary compatibility path until Infer Build integration.</source>
+        <translation>转写是可选能力。直接调用本地工作进程仍只是接入 Infer Build 前的临时兼容路径。</translation>
     </message>
 </context>
 <context>
     <name>AudioSpaceWorkspace</name>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="25"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="27"/>
         <source>Unknown length</source>
         <translation>未知时长</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="37"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="39"/>
         <source>Today</source>
         <translation>今天</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="40"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="42"/>
         <source>This week</source>
         <translation>本周</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="43"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="45"/>
         <source>This month</source>
         <translation>本月</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="46"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="48"/>
         <source>This year</source>
         <translation>今年</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="76"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="82"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="255"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="257"/>
         <source>Library</source>
         <translation>资料库</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="77"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="83"/>
         <source>All recordings</source>
         <translation>全部录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="91"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="97"/>
         <source>Sound memories</source>
         <translation>声音记忆</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="97"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="103"/>
         <source>Mood</source>
         <translation>情绪</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="178"/>
-        <source>Collections</source>
-        <translation>收藏集</translation>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="197"/>
+        <source>%1 recordings</source>
+        <translation>%1 段录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="185"/>
-        <source>Ways back into your sounds</source>
-        <translation>回到声音的不同路径</translation>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="224"/>
+        <source>Search spoken words…</source>
+        <translation>搜索录音中的话语…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="262"/>
-        <source>Manage library</source>
-        <translation>管理资料库</translation>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="237"/>
+        <source>COLLECTIONS</source>
+        <translation>分类</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="284"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="321"/>
+        <source>SEARCH RESULTS</source>
+        <translation>搜索结果</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="321"/>
+        <source>RECORDINGS</source>
+        <translation>录音</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="530"/>
+        <source>Use the library button in the toolbar to add recordings.</source>
+        <translation>使用工具栏中的资料库按钮添加录音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="540"/>
+        <source>Open library</source>
+        <translation>打开资料库</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="190"/>
         <source>Audio Space</source>
         <translation>声音空间</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="292"/>
-        <source>A quiet place for the sounds you keep</source>
-        <translation>安静收纳珍贵声音的地方</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="293"/>
-        <source>%1 recordings · originals stay untouched</source>
-        <translation>%1 段录音 · 原始文件始终不变</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="310"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="213"/>
         <source>%1 failed</source>
         <translation>%1 个任务失败</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="321"/>
-        <source>Search words spoken in recordings…</source>
-        <translation>搜索录音中说过的话…</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="451"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="447"/>
         <source>Missing</source>
         <translation>缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="542"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="519"/>
         <source>No spoken words found</source>
         <translation>没有找到相关话语</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="542"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="519"/>
         <source>Your Audio Space is empty</source>
         <translation>你的声音空间还是空的</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="552"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="529"/>
         <source>Try a shorter phrase or analyze a recording first.</source>
         <translation>试试更短的短语，或先分析一段录音。</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="553"/>
-        <source>Add a folder to begin preserving and revisiting your recordings.</source>
-        <translation>添加文件夹，开始保存并重温你的录音。</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="563"/>
-        <source>Add recordings</source>
-        <translation>添加录音</translation>
     </message>
 </context>
 <context>
@@ -307,11 +413,34 @@
     </message>
 </context>
 <context>
+    <name>LibraryDialog</name>
+    <message>
+        <location filename="../qml/LibraryDialog.qml" line="12"/>
+        <source>Library</source>
+        <translation>资料库</translation>
+    </message>
+    <message>
+        <location filename="../qml/LibraryDialog.qml" line="34"/>
+        <source>Audio library</source>
+        <translation>音频资料库</translation>
+    </message>
+    <message>
+        <location filename="../qml/LibraryDialog.qml" line="59"/>
+        <source>Changes are applied immediately</source>
+        <translation>更改会立即生效</translation>
+    </message>
+    <message>
+        <location filename="../qml/LibraryDialog.qml" line="67"/>
+        <source>Done</source>
+        <translation>完成</translation>
+    </message>
+</context>
+<context>
     <name>LibraryPanel</name>
     <message>
         <location filename="../qml/LibraryPanel.qml" line="18"/>
         <source>Library</source>
-        <translation>图库</translation>
+        <translation>资料库</translation>
     </message>
     <message>
         <location filename="../qml/LibraryPanel.qml" line="25"/>
@@ -321,7 +450,7 @@
     <message>
         <location filename="../qml/LibraryPanel.qml" line="34"/>
         <source>Refresh library</source>
-        <translation>刷新图库</translation>
+        <translation>刷新资料库</translation>
     </message>
     <message>
         <location filename="../qml/LibraryPanel.qml" line="45"/>
@@ -356,7 +485,7 @@
     <message>
         <location filename="../qml/LibraryPanel.qml" line="125"/>
         <source>Evidence stays in the library; the file re-links automatically when it returns.</source>
-        <translation>分析证据会保留在图库中；文件回归时会自动重新链接。</translation>
+        <translation>分析证据会保留在资料库中；文件回归时会自动重新链接。</translation>
     </message>
     <message>
         <location filename="../qml/LibraryPanel.qml" line="165"/>
@@ -382,30 +511,29 @@
 <context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="18"/>
-        <location filename="../qml/Main.qml" line="76"/>
+        <location filename="../qml/Main.qml" line="19"/>
+        <location filename="../qml/Main.qml" line="80"/>
         <source>Echo</source>
         <translation>Echo</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="89"/>
-        <location filename="../qml/Main.qml" line="127"/>
+        <location filename="../qml/Main.qml" line="93"/>
+        <location filename="../qml/Main.qml" line="131"/>
         <source>Audio Space</source>
         <translation>声音空间</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="89"/>
-        <location filename="../qml/Main.qml" line="136"/>
-        <source>Library</source>
-        <translation>图库</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="118"/>
+        <location filename="../qml/Main.qml" line="122"/>
         <source>Indexing %1</source>
         <translation>正在索引 %1 项</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="145"/>
+        <location filename="../qml/Main.qml" line="137"/>
+        <source>Manage library</source>
+        <translation>管理资料库</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="143"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>

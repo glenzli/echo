@@ -1,5 +1,6 @@
 //! Audio Space owns collection filtering, transcript search, asset selection,
-//! and live reconciliation when background imports complete.
+//! and live reconciliation. Presentation is arranged as navigation, primary
+//! playback workspace, and contextual inspector.
 
 import QtQuick
 import QtQuick.Controls
@@ -11,6 +12,7 @@ Item {
 
     property var selectedAsset: null
     property string selectedTag: "all"
+    property int totalAssetCount: 0
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
 
     signal openLibraryRequested()
@@ -51,6 +53,7 @@ Item {
     function refreshAssets() : void {
         const selectedId = selectedAsset !== null ? selectedAsset.id : ""
         const assets = backend.listAssets()
+        totalAssetCount = assets.length
         assetModel.allAssets = []
         let reconciled = null
         for (const asset of assets) {
@@ -112,7 +115,7 @@ Item {
             }
         }
         selectedAsset = fullAsset !== null ? fullAsset : hit
-        Qt.callLater(() => detailPane.playFrom(hit.startMillis))
+        Qt.callLater(() => previewPane.playFrom(hit.startMillis))
     }
 
     Connections {
@@ -157,10 +160,12 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        spacing: 14
+        spacing: 12
 
         Rectangle {
-            Layout.preferredWidth: 180
+            Layout.preferredWidth: 276
+            Layout.minimumWidth: 260
+            Layout.maximumWidth: 300
             Layout.fillHeight: true
             color: Theme.panel
             radius: Theme.panelRadius
@@ -171,31 +176,75 @@ Item {
                 anchors.margins: 10
                 spacing: 10
 
-                ColumnLayout {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 6
-                    Layout.rightMargin: 6
-                    spacing: 2
+                    Layout.leftMargin: 4
+                    Layout.rightMargin: 4
+                    spacing: 8
 
-                    Text {
-                        text: qsTr("Collections")
-                        color: Theme.textPrimary
-                        font.pixelSize: 14
-                        font.bold: true
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+
+                        Text {
+                            text: qsTr("Audio Space")
+                            color: Theme.textPrimary
+                            font.pixelSize: 17
+                            font.bold: true
+                        }
+
+                        Text {
+                            text: qsTr("%1 recordings").arg(workspace.totalAssetCount)
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontMeta
+                        }
                     }
 
-                    Text {
-                        text: qsTr("Ways back into your sounds")
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontMeta
+                    Rectangle {
+                        visible: workspace.jobStats.failed > 0
+                        Layout.preferredWidth: failedText.implicitWidth + 14
+                        Layout.preferredHeight: 22
+                        radius: 11
+                        color: Theme.warningSurface
+
+                        Text {
+                            id: failedText
+                            anchors.centerIn: parent
+                            text: qsTr("%1 failed").arg(workspace.jobStats.failed)
+                            color: Theme.warningText
+                            font.pixelSize: Theme.fontMeta
+                        }
                     }
+                }
+
+                EchoTextField {
+                    id: searchField
+
+                    Layout.fillWidth: true
+                    placeholderText: qsTr("Search spoken words…")
+                    onTextChanged: {
+                        if (text.trim().length > 0) {
+                            searchModel.refresh()
+                        } else {
+                            searchModel.clear()
+                        }
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 5
+                    text: qsTr("COLLECTIONS")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    font.letterSpacing: 0.6
                 }
 
                 ListView {
                     id: collectionList
 
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
+                    Layout.preferredHeight: Math.min(176, Math.max(40, contentHeight))
                     clip: true
                     model: collectionModel
                     spacing: 2
@@ -203,12 +252,11 @@ Item {
                     section.property: "group"
                     section.delegate: Text {
                         width: collectionList.width
-                        height: 28
+                        height: section === qsTr("Library") ? 0 : 24
                         leftPadding: 6
-                        text: section.toUpperCase()
+                        text: section === qsTr("Library") ? "" : section.toUpperCase()
                         color: Theme.textDisabled
                         font.pixelSize: Theme.fontMeta
-                        font.letterSpacing: 0.6
                         verticalAlignment: Text.AlignBottom
                     }
 
@@ -216,10 +264,13 @@ Item {
                         required property var modelData
 
                         width: collectionList.width
-                        height: 34
+                        height: 32
                         radius: Theme.compactControlRadius
                         color: workspace.selectedTag === modelData.key
-                            ? Theme.accentSurfaceQuiet : Theme.transparent
+                            ? Theme.accentSurfaceQuiet : collectionHover.hovered
+                                ? Theme.surfaceSubtle : Theme.transparent
+
+                        HoverHandler { id: collectionHover }
 
                         MouseArea {
                             anchors.fill: parent
@@ -260,197 +311,139 @@ Item {
                     color: Theme.border
                 }
 
-                EchoButton {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: qsTr("Manage library")
-                    ghost: true
-                    onClicked: workspace.openLibraryRequested()
-                }
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumWidth: 280
-            spacing: 12
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
+                    Layout.leftMargin: 5
+                    Layout.rightMargin: 5
 
                     Text {
-                        text: qsTr("Audio Space")
-                        color: Theme.textPrimary
-                        font.pixelSize: 24
-                        font.bold: true
+                        text: searchField.text.trim().length > 0
+                            ? qsTr("SEARCH RESULTS") : qsTr("RECORDINGS")
+                        color: Theme.textDisabled
+                        font.pixelSize: Theme.fontMeta
+                        font.letterSpacing: 0.6
                     }
 
+                    Item { Layout.fillWidth: true }
+
                     Text {
-                        text: assetModel.allAssets.length === 0
-                            ? qsTr("A quiet place for the sounds you keep")
-                            : qsTr("%1 recordings · originals stay untouched")
-                                .arg(assetModel.allAssets.length)
+                        text: String(searchField.text.trim().length > 0
+                            ? searchModel.count : assetModel.count)
                         color: Theme.textSecondary
-                        font.pixelSize: Theme.fontBody
+                        font.pixelSize: Theme.fontMeta
                     }
                 }
 
                 Rectangle {
-                    visible: workspace.jobStats.failed > 0
-                    Layout.preferredWidth: failedText.implicitWidth + 16
-                    Layout.preferredHeight: 26
-                    radius: 13
-                    color: Theme.warningSurface
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: Theme.transparent
 
-                    Text {
-                        id: failedText
-                        anchors.centerIn: parent
-                        text: qsTr("%1 failed").arg(workspace.jobStats.failed)
-                        color: Theme.warningText
-                        font.pixelSize: Theme.fontMeta
-                    }
-                }
-            }
+                    ListView {
+                        id: assetList
 
-            EchoTextField {
-                id: searchField
+                        anchors.fill: parent
+                        visible: searchField.text.trim().length === 0 && assetModel.count > 0
+                        spacing: 3
+                        clip: true
+                        model: assetModel
 
-                Layout.fillWidth: true
-                placeholderText: qsTr("Search words spoken in recordings…")
-                onTextChanged: {
-                    if (text.trim().length > 0) {
-                        searchModel.refresh()
-                    } else {
-                        searchModel.clear()
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: Theme.panel
-                radius: Theme.panelRadius
-                border.color: Theme.border
-
-                ListView {
-                    id: assetList
-
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    visible: searchField.text.trim().length === 0 && assetModel.count > 0
-                    spacing: 4
-                    clip: true
-                    model: assetModel
-
-                    section.property: "timeBucket"
-                    section.delegate: Text {
-                        width: assetList.width
-                        height: 30
-                        leftPadding: 6
-                        text: section
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontSection
-                        font.bold: true
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    delegate: Rectangle {
-                        required property var modelData
-
-                        width: assetList.width
-                        height: 72
-                        radius: Theme.controlRadius
-                        color: workspace.selectedAsset !== null
-                            && workspace.selectedAsset.id === modelData.id
-                            ? Theme.surfaceSelected : hovered.hovered
-                                ? Theme.surfaceSubtle : Theme.transparent
-
-                        HoverHandler { id: hovered }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: workspace.selectedAsset = modelData
-                            onDoubleClicked: {
-                                workspace.selectedAsset = modelData
-                                Qt.callLater(() => detailPane.playFrom(0))
-                            }
+                        section.property: "timeBucket"
+                        section.delegate: Text {
+                            width: assetList.width
+                            height: 25
+                            leftPadding: 6
+                            text: section
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontMeta
+                            font.bold: true
+                            verticalAlignment: Text.AlignVCenter
                         }
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 10
-                            anchors.rightMargin: 10
-                            spacing: 11
+                        delegate: Rectangle {
+                            required property var modelData
 
-                            Rectangle {
-                                Layout.preferredWidth: 38
-                                Layout.preferredHeight: 38
-                                radius: 11
-                                color: workspace.selectedAsset !== null
-                                    && workspace.selectedAsset.id === modelData.id
-                                    ? Theme.accentSurface : Theme.surfaceSubtle
+                            width: assetList.width
+                            height: 60
+                            radius: Theme.controlRadius
+                            color: workspace.selectedAsset !== null
+                                && workspace.selectedAsset.id === modelData.id
+                                ? Theme.surfaceSelected : assetHover.hovered
+                                    ? Theme.surfaceSubtle : Theme.transparent
 
-                                EchoIcon {
-                                    anchors.centerIn: parent
-                                    source: "qrc:/EchoDesktop/icons/waveform.svg"
-                                    size: 18
-                                    color: workspace.selectedAsset !== null
-                                        && workspace.selectedAsset.id === modelData.id
-                                        ? Theme.accentSelectionText : Theme.textSecondary
+                            HoverHandler { id: assetHover }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: workspace.selectedAsset = modelData
+                                onDoubleClicked: {
+                                    workspace.selectedAsset = modelData
+                                    Qt.callLater(() => previewPane.playFrom(0))
                                 }
                             }
 
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 4
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                spacing: 9
 
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: modelData.summary.length > 0
-                                        ? modelData.summary : workspace.fileName(modelData.path)
-                                    color: Theme.textPrimary
-                                    font.pixelSize: 13
-                                    font.bold: modelData.summary.length > 0
-                                    elide: Text.ElideRight
+                                Rectangle {
+                                    Layout.preferredWidth: 34
+                                    Layout.preferredHeight: 34
+                                    radius: 10
+                                    color: workspace.selectedAsset !== null
+                                        && workspace.selectedAsset.id === modelData.id
+                                        ? Theme.accentSurface : Theme.surfaceSubtle
+
+                                    EchoIcon {
+                                        anchors.centerIn: parent
+                                        source: "qrc:/EchoDesktop/icons/waveform.svg"
+                                        size: 16
+                                        color: workspace.selectedAsset !== null
+                                            && workspace.selectedAsset.id === modelData.id
+                                            ? Theme.accentSelectionText : Theme.textSecondary
+                                    }
                                 }
 
-                                RowLayout {
+                                ColumnLayout {
                                     Layout.fillWidth: true
-                                    spacing: 7
+                                    spacing: 3
 
                                     Text {
                                         Layout.fillWidth: true
                                         text: modelData.summary.length > 0
-                                            ? workspace.fileName(modelData.path)
-                                            : modelData.path
-                                        color: Theme.textSecondary
-                                        font.pixelSize: Theme.fontMeta
-                                        elide: Text.ElideMiddle
+                                            ? modelData.summary : workspace.fileName(modelData.path)
+                                        color: Theme.textPrimary
+                                        font.pixelSize: Theme.fontBody
+                                        font.bold: modelData.summary.length > 0
+                                        elide: Text.ElideRight
                                     }
 
-                                    Text {
-                                        text: workspace.formatDuration(modelData.durationMillis)
-                                        color: Theme.textSecondary
-                                        font.pixelSize: Theme.fontMeta
-                                    }
-
-                                    Rectangle {
-                                        visible: modelData.pathStatus === "missing"
-                                        Layout.preferredWidth: missingText.implicitWidth + 12
-                                        Layout.preferredHeight: 18
-                                        radius: 9
-                                        color: Theme.warningSurface
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 5
 
                                         Text {
-                                            id: missingText
-                                            anchors.centerIn: parent
+                                            Layout.fillWidth: true
+                                            text: modelData.summary.length > 0
+                                                ? workspace.fileName(modelData.path)
+                                                : workspace.formatDuration(modelData.durationMillis)
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontMeta
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Text {
+                                            visible: modelData.summary.length > 0
+                                            text: workspace.formatDuration(modelData.durationMillis)
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontMeta
+                                        }
+
+                                        Text {
+                                            visible: modelData.pathStatus === "missing"
                                             text: qsTr("Missing")
                                             color: Theme.warningText
                                             font.pixelSize: Theme.fontMeta
@@ -459,121 +452,113 @@ Item {
                                 }
                             }
                         }
+
+                        ScrollBar.vertical: ScrollBar {}
                     }
 
-                    ScrollBar.vertical: ScrollBar {}
-                }
+                    ListView {
+                        id: searchList
 
-                ListView {
-                    id: searchList
+                        anchors.fill: parent
+                        visible: searchField.text.trim().length > 0 && searchModel.count > 0
+                        spacing: 3
+                        clip: true
+                        model: searchModel
 
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    visible: searchField.text.trim().length > 0 && searchModel.count > 0
-                    spacing: 4
-                    clip: true
-                    model: searchModel
+                        delegate: Rectangle {
+                            required property var modelData
 
-                    delegate: Rectangle {
-                        required property var modelData
+                            width: searchList.width
+                            height: 58
+                            radius: Theme.controlRadius
+                            color: searchHover.hovered ? Theme.surfaceSubtle : Theme.transparent
 
-                        width: searchList.width
-                        height: 68
-                        radius: Theme.controlRadius
-                        color: searchHover.hovered ? Theme.surfaceSubtle : Theme.transparent
+                            HoverHandler { id: searchHover }
 
-                        HoverHandler { id: searchHover }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: workspace.selectSearchHit(modelData)
-                        }
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 4
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: modelData.snippet.replace(/ /g, "")
-                                color: Theme.textPrimary
-                                font.pixelSize: 13
-                                elide: Text.ElideRight
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: workspace.selectSearchHit(modelData)
                             }
 
-                            Text {
-                                Layout.fillWidth: true
-                                text: workspace.fileName(modelData.path)
-                                    + " · " + workspace.formatDuration(modelData.startMillis)
-                                color: Theme.textSecondary
-                                font.pixelSize: Theme.fontMeta
-                                elide: Text.ElideMiddle
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 3
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.snippet.replace(/ /g, "")
+                                    color: Theme.textPrimary
+                                    font.pixelSize: Theme.fontBody
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: workspace.fileName(modelData.path)
+                                        + " · " + workspace.formatDuration(modelData.startMillis)
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontMeta
+                                    elide: Text.ElideMiddle
+                                }
                             }
                         }
                     }
-                }
 
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    width: Math.min(parent.width - 48, 300)
-                    spacing: 10
-                    visible: (searchField.text.trim().length === 0 && assetModel.count === 0)
-                        || (searchField.text.trim().length > 0 && searchModel.count === 0)
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        width: Math.min(parent.width - 30, 220)
+                        spacing: 8
+                        visible: (searchField.text.trim().length === 0 && assetModel.count === 0)
+                            || (searchField.text.trim().length > 0 && searchModel.count === 0)
 
-                    Rectangle {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 54
-                        Layout.preferredHeight: 54
-                        radius: 17
-                        color: Theme.surfaceSubtle
-
-                        EchoIcon {
-                            anchors.centerIn: parent
-                            source: searchField.text.trim().length > 0
-                                ? "qrc:/EchoDesktop/icons/tune.svg"
-                                : "qrc:/EchoDesktop/icons/waveform.svg"
-                            size: 24
-                            color: Theme.textDisabled
+                        Text {
+                            Layout.fillWidth: true
+                            text: searchField.text.trim().length > 0
+                                ? qsTr("No spoken words found") : qsTr("Your Audio Space is empty")
+                            color: Theme.textPrimary
+                            font.pixelSize: 14
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
                         }
-                    }
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: searchField.text.trim().length > 0
-                            ? qsTr("No spoken words found") : qsTr("Your Audio Space is empty")
-                        color: Theme.textPrimary
-                        font.pixelSize: 15
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                    }
+                        Text {
+                            Layout.fillWidth: true
+                            text: searchField.text.trim().length > 0
+                                ? qsTr("Try a shorter phrase or analyze a recording first.")
+                                : qsTr("Use the library button in the toolbar to add recordings.")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontBody
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                        }
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: searchField.text.trim().length > 0
-                            ? qsTr("Try a shorter phrase or analyze a recording first.")
-                            : qsTr("Add a folder to begin preserving and revisiting your recordings.")
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontBody
-                        wrapMode: Text.WordWrap
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-
-                    EchoButton {
-                        visible: searchField.text.trim().length === 0
-                        Layout.alignment: Qt.AlignHCenter
-                        text: qsTr("Add recordings")
-                        onClicked: workspace.openLibraryRequested()
+                        EchoButton {
+                            visible: searchField.text.trim().length === 0
+                            Layout.alignment: Qt.AlignHCenter
+                            text: qsTr("Open library")
+                            ghost: true
+                            onClicked: workspace.openLibraryRequested()
+                        }
                     }
                 }
             }
         }
 
-        AudioDetailPane {
-            id: detailPane
+        AudioPlaybackWorkspace {
+            id: previewPane
 
-            Layout.preferredWidth: 340
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumWidth: 580
+            asset: workspace.selectedAsset
+        }
+
+        AudioInspectorPane {
+            Layout.preferredWidth: 284
+            Layout.minimumWidth: 270
+            Layout.maximumWidth: 310
             Layout.fillHeight: true
             asset: workspace.selectedAsset
         }
