@@ -125,40 +125,6 @@ pub fn list_contextual_keyword_facets(
     Ok(facets)
 }
 
-pub(crate) fn rebuild_contextual_browse_facets(
-    transaction: &Transaction<'_>,
-) -> Result<(), CatalogError> {
-    transaction.execute("DELETE FROM contextual_browse_facets", [])?;
-    let mut statement = transaction.prepare(
-        "SELECT id, asset_id, value FROM analysis_records \
-         WHERE kind = 'contextual' ORDER BY id ASC",
-    )?;
-    let rows = statement.query_map([], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-        ))
-    })?;
-    for row in rows {
-        let (analysis_record_id, asset_id, value) = row?;
-        let asset_id = asset_id.parse::<AssetId>().map_err(|error| {
-            CatalogError::new(
-                crate::CatalogErrorKind::Other,
-                format!("invalid stored asset id during facet rebuild: {error}"),
-            )
-        })?;
-        let value = serde_json::from_str(&value).map_err(|error| {
-            CatalogError::new(
-                crate::CatalogErrorKind::Other,
-                format!("invalid contextual evidence during facet rebuild: {error}"),
-            )
-        })?;
-        insert_contextual_rows(transaction, analysis_record_id, asset_id, &value)?;
-    }
-    Ok(())
-}
-
 fn insert_contextual_rows(
     transaction: &Transaction<'_>,
     analysis_record_id: i64,

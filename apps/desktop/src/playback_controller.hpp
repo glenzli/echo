@@ -30,6 +30,14 @@ class PlaybackController : public QObject {
     ~PlaybackController() override;
 
     Q_INVOKABLE void play(const QString& path);
+    Q_INVOKABLE void playAdjusted(
+        const QString& path,
+        qint64 trimStartMillis,
+        qint64 trimEndMillis,
+        qint64 fadeInMillis,
+        qint64 fadeOutMillis,
+        int gainCentibels
+    );
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 millis);
@@ -47,6 +55,7 @@ class PlaybackController : public QObject {
     void volumeChanged();
 
   private:
+    void startSession(const QString& path, const echo::audio::PlaybackAdjustment& adjustment);
     void pumpPosition();
     void fillBuffer(QSpan<float> buffer);
 

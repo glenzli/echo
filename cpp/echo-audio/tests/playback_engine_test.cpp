@@ -73,7 +73,7 @@ std::size_t pull_until(
     std::size_t total = 0;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     while (total < target && std::chrono::steady_clock::now() < deadline) {
-        total += session.read(buffer + total, chunk);
+        total += session.read(buffer + total * session.channel_count(), chunk);
         if (total == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
     echo::audio::PlaybackSession session(path.string());
     if (argc > 1) {
         // Standalone smoke: pull for up to two seconds and report.
-        std::vector<float> buffer(4800, 0.0F);
+        std::vector<float> buffer(9600, 0.0F);
         std::size_t total = 0;
         std::uint64_t last_position = 0;
         bool nonzero = false;
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
         }
         for (int attempt = 0; attempt < 40; ++attempt) {
             const std::size_t pulled = session.read(buffer.data(), 4800);
-            for (std::size_t index = 0; index < pulled; ++index) {
+            for (std::size_t index = 0; index < pulled * session.channel_count(); ++index) {
                 nonzero = nonzero || buffer[index] != 0.0F;
                 if (want_dump) {
                     dumped.push_back(buffer[index]);
@@ -147,8 +147,6 @@ int main(int argc, char* argv[]) {
         );
         return total > 0 && nonzero ? 0 : 1;
     }
-    std::remove(path.c_str());
-
     expect(session.sample_rate() == 48000, "canonical 48 kHz playback");
     expect(session.channel_count() == 2, "playback always drives a stereo sink");
     expect(
@@ -158,12 +156,12 @@ int main(int argc, char* argv[]) {
     expect(!session.is_ended(), "session not ended before reads");
 
     // Realtime path: pull a bounded chunk and verify nonzero audio arrives.
-    std::vector<float> buffer(4800, 0.0F);
+    std::vector<float> buffer(9600, 0.0F);
     const std::size_t first = pull_until(session, buffer.data(), 1000, 100);
     expect(first >= 100, "first reads return frames");
     {
         bool nonzero = false;
-        for (std::size_t index = 0; index < first; ++index) {
+        for (std::size_t index = 0; index < first * session.channel_count(); ++index) {
             nonzero = nonzero || buffer[index] != 0.0F;
         }
         expect(nonzero, "decoded audio is not silence");
@@ -234,11 +232,11 @@ int main(int argc, char* argv[]) {
             file.write(wav.data(), static_cast<std::streamsize>(wav.size()));
         }
         echo::audio::PlaybackSession upsample(upsample_path.string());
-        std::vector<float> check(4800, 0.0F);
+        std::vector<float> check(9600, 0.0F);
         const std::size_t pulled = pull_until(upsample, check.data(), 1000, 100);
         expect(pulled >= 100, "24 kHz source decodes");
         bool sane = true;
-        for (std::size_t index = 0; index < pulled; ++index) {
+        for (std::size_t index = 0; index < pulled * upsample.channel_count(); ++index) {
             const float value = check[index];
             sane = sane && !std::isnan(value) && value >= -1.0F && value <= 1.0F;
         }
@@ -247,10 +245,37 @@ int main(int argc, char* argv[]) {
         std::remove(upsample_path.c_str());
     }
 
+    // The authored graph is applied by the producer: playback begins at the
+    // selected range, stops at its end, and gain is audible without adding
+    // work to the realtime read callback.
+    {
+        const echo::audio::PlaybackAdjustment adjustment{
+            .trim_start_millis = 500,
+            .trim_end_millis = 1000,
+            .fade_in_millis = 100,
+            .fade_out_millis = 100,
+            .gain_centibels = -600,
+        };
+        echo::audio::PlaybackSession adjusted(path.string(), adjustment);
+        std::vector<float> adjusted_buffer(48'000, 0.0F);
+        const std::size_t pulled = pull_until(adjusted, adjusted_buffer.data(), 12'000, 1'000);
+        expect(pulled > 1'000, "adjusted range returns audio");
+        expect(adjusted.position_millis() >= 500, "adjusted playback begins at trim start");
+        float peak = 0.0F;
+        for (std::size_t index = 0; index < pulled * adjusted.channel_count(); ++index) {
+            peak = std::max(peak, std::abs(adjusted_buffer[index]));
+        }
+        expect(peak > 0.05F && peak < 0.22F, "adjusted gain changes decoded amplitude");
+        adjusted.seek(0);
+        expect(adjusted.position_millis() >= 500, "adjusted seek clamps to trim start");
+        adjusted.stop();
+    }
+
     // Stop: reads return zero immediately.
     session.stop();
     expect(session.is_stopped(), "stop is observable");
     expect(session.read(buffer.data(), 100) == 0, "read after stop returns zero");
+    std::remove(path.c_str());
 
     if (failures == 0) {
         std::printf("playback engine test: ok\n");

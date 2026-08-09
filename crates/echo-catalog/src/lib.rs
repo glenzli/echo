@@ -6,8 +6,10 @@
 //! Start with [`catalog`] for connection lifecycle and schema ownership,
 //! [`asset_registration`] for idempotent source registration, [`analysis`]
 //! for append-only analysis evidence, [`job_queue`] for the persistent
-//! background work queue, and [`scan_root`] for the directories Echo watches.
+//! background work queue, [`adjustment_graph`] for authored non-destructive
+//! revisions, and [`scan_root`] for the directories Echo watches.
 
+mod adjustment_graph;
 mod analysis;
 mod asset_affinity;
 mod asset_path;
@@ -26,6 +28,9 @@ mod search;
 mod smart_albums;
 mod source_metadata;
 
+pub use adjustment_graph::{
+    AssetAdjustmentRevision, latest_adjustment_graph, record_adjustment_graph,
+};
 pub use analysis::{
     AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis,
     list_assets_with_alignment_missing_current_contextual,

@@ -5,8 +5,8 @@ use echo_domain::{AnalysisKind, AnalysisRecord, ContentHash, ModelIdentity};
 use super::*;
 use crate::{
     AppendAnalysisRecord, AppendContextualAnalysis, AssetAffinity, AssetRegistrationInput,
-    RegisterAsset, open_catalog, record_analysis, record_contextual_analysis, register_asset,
-    set_asset_affinity,
+    RegisterAsset, open_catalog, record_adjustment_graph, record_analysis,
+    record_contextual_analysis, register_asset, set_asset_affinity,
 };
 
 #[test]
@@ -52,6 +52,13 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
                 },
                 30,
             )?;
+            record_adjustment_graph(
+                transaction,
+                asset_id,
+                echo_domain::AdjustmentGraph::new(1_000, 100, 900, 50, 100, -200)
+                    .expect("adjustment validates"),
+                31,
+            )?;
             Ok(asset_id)
         })
         .expect("fixture writes");
@@ -65,6 +72,9 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
         .expect("asset projects");
     assert!(projected.liked);
     assert_eq!(projected.rating, 5);
+    let adjustment = projected.adjustment.expect("adjustment projects");
+    assert_eq!(adjustment.graph.trim_start_millis(), 100);
+    assert_eq!(adjustment.graph.trim_end_millis(), 900);
     assert_eq!(
         projected.transcript.expect("text evidence")["text"],
         "旧房子的窗户朝南"

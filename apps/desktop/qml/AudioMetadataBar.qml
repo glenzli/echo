@@ -78,12 +78,6 @@ Rectangle {
                         value: metadata.formatDate(metadata.asset.recordedAtMillis > 0
                             ? metadata.asset.recordedAtMillis
                             : metadata.asset.importedAtMillis)
-                    },
-                    {
-                        label: qsTr("Evidence"),
-                        value: metadata.asset.maxLevel > 0
-                            ? qsTr("Level %1").arg(metadata.asset.maxLevel)
-                            : qsTr("Original only")
                     }
                 ] : []
 

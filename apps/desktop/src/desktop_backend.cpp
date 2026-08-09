@@ -66,6 +66,24 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("liked"), asset.liked);
         entry.insert(QStringLiteral("rating"), static_cast<int>(asset.rating));
         entry.insert(
+            QStringLiteral("adjustmentRevision"),
+            static_cast<qlonglong>(asset.adjustment_revision)
+        );
+        entry.insert(
+            QStringLiteral("trimStartMillis"),
+            static_cast<qlonglong>(asset.trim_start_millis)
+        );
+        entry.insert(
+            QStringLiteral("trimEndMillis"),
+            static_cast<qlonglong>(asset.trim_end_millis)
+        );
+        entry.insert(QStringLiteral("fadeInMillis"), static_cast<qlonglong>(asset.fade_in_millis));
+        entry.insert(
+            QStringLiteral("fadeOutMillis"),
+            static_cast<qlonglong>(asset.fade_out_millis)
+        );
+        entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
+        entry.insert(
             QStringLiteral("containerFormat"),
             QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
         );
@@ -167,6 +185,36 @@ bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating)
         return true;
     } catch (const rust::Error& error) {
         qWarning("cannot update affinity for %s: %s", qPrintable(id), error.what());
+        return false;
+    }
+}
+
+bool DesktopBackend::setAssetAdjustment(
+    const QString& id,
+    qlonglong trimStartMillis,
+    qlonglong trimEndMillis,
+    qlonglong fadeInMillis,
+    qlonglong fadeOutMillis,
+    int gainCentibels
+) {
+    if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
+        || gainCentibels < -2400 || gainCentibels > 1200) {
+        qWarning("sound adjustment is outside the supported range");
+        return false;
+    }
+    try {
+        session_->session_set_asset_adjustment(
+            id.toStdString(),
+            static_cast<std::uint64_t>(trimStartMillis),
+            static_cast<std::uint64_t>(trimEndMillis),
+            static_cast<std::uint64_t>(fadeInMillis),
+            static_cast<std::uint64_t>(fadeOutMillis),
+            static_cast<std::int16_t>(gainCentibels)
+        );
+        emit assetsChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot update adjustment for %s: %s", qPrintable(id), error.what());
         return false;
     }
 }

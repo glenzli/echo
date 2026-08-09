@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 
+#include "echo/audio/adjustment.hpp"
+
 namespace echo::audio {
 
 /// Streaming playback session over one source.
@@ -21,7 +23,10 @@ class PlaybackSession {
     /// Opens (and begins decoding immediately) the source.
     ///
     /// @throws std::runtime_error when the source cannot be opened.
-    explicit PlaybackSession(const std::string& path);
+    explicit PlaybackSession(
+        const std::string& path,
+        PlaybackAdjustment adjustment = PlaybackAdjustment{}
+    );
     ~PlaybackSession();
 
     PlaybackSession(const PlaybackSession&) = delete;

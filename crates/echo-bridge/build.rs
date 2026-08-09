@@ -12,12 +12,14 @@ use std::{
 
 const ENGINE_SOURCES: &[&str] = &[
     "src/bridge/cxx_bridge.cpp",
+    "src/adjustment.cpp",
     "src/decode.cpp",
     "src/playback.cpp",
     "src/waveform.cpp",
 ];
 
 const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
+    "include/echo/audio/adjustment.hpp",
     "include/echo/audio/decode.hpp",
     "include/echo/audio/playback.hpp",
     "include/echo/audio/waveform.hpp",

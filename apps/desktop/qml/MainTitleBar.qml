@@ -1,6 +1,6 @@
-//! Echo's one window-chrome owner. Brand, search, Sound Wall navigation,
+//! Echo's one window-chrome owner. Brand, primary workspace navigation,
 //! settings, native safe areas, and the system-move gesture share one toolbar,
-//! mirroring Shadow's MainTitleBar boundary. Browse controls live at the bottom.
+//! mirroring Shadow's MainTitleBar boundary.
 
 import QtQuick
 import QtQuick.Controls
@@ -13,13 +13,13 @@ ToolBar {
 
     required property var hostWindow
     required property int workspaceIndex
-    required property string searchText
+    required property bool editorAvailable
     required property bool jobsActive
     required property int activeJobCount
 
     signal soundWallRequested()
+    signal soundEditorRequested()
     signal settingsRequested()
-    signal searchRequested(string text)
 
     objectName: "titleToolBar"
     Accessible.name: qsTr("Echo toolbar")
@@ -86,44 +86,63 @@ ToolBar {
             }
         }
 
-        RowLayout {
-            anchors.left: brandRow.right
-            anchors.leftMargin: 14
-            anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(300, parent.width * 0.3)
-            visible: titleBar.workspaceIndex === 0
-
-            EchoTextField {
-                Layout.fillWidth: true
-                Layout.maximumWidth: 280
-                implicitHeight: Theme.compactControlHeight
-                text: titleBar.searchText
-                placeholderText: qsTr("Search text, events, or filenames…")
-                onTextEdited: titleBar.searchRequested(text)
-            }
-        }
-
-        EchoIconButton {
-            id: soundWallButton
-
+        Row {
+            id: workspaceNavigation
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            buttonSize: 38
-            iconSize: 18
-            source: "qrc:/EchoDesktop/icons/waveform.svg"
-            toolTipText: qsTr("Sound Wall")
-            selected: titleBar.workspaceIndex === 0
-            onClicked: titleBar.soundWallRequested()
-        }
-
-        Rectangle {
-            anchors.horizontalCenter: soundWallButton.horizontalCenter
+            anchors.top: parent.top
             anchors.bottom: parent.bottom
-            width: 28
-            height: 2
-            radius: 1
-            visible: titleBar.workspaceIndex === 0
-            color: Theme.accent
+            spacing: 6
+
+            Item {
+                width: 44
+                height: parent.height
+
+                EchoIconButton {
+                    anchors.centerIn: parent
+                    buttonSize: 38
+                    iconSize: 18
+                    source: "qrc:/EchoDesktop/icons/waveform.svg"
+                    toolTipText: qsTr("Audio Space")
+                    selected: titleBar.workspaceIndex === 0
+                    onClicked: titleBar.soundWallRequested()
+                }
+
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    width: 28
+                    height: 2
+                    radius: 1
+                    visible: titleBar.workspaceIndex === 0
+                    color: Theme.accent
+                }
+            }
+
+            Item {
+                width: 44
+                height: parent.height
+
+                EchoIconButton {
+                    anchors.centerIn: parent
+                    buttonSize: 38
+                    iconSize: 18
+                    source: "qrc:/EchoDesktop/icons/edit.svg"
+                    toolTipText: qsTr("Sound Adjustments")
+                    enabled: titleBar.editorAvailable
+                    selected: titleBar.workspaceIndex === 1
+                    onClicked: titleBar.soundEditorRequested()
+                }
+
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    width: 28
+                    height: 2
+                    radius: 1
+                    visible: titleBar.workspaceIndex === 1
+                    color: Theme.accent
+                }
+            }
         }
 
         RowLayout {

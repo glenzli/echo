@@ -1,5 +1,6 @@
-//! Primary selected-recording workspace. Waveform, transport, and transcript
-//! evidence stay together because they share playback and asset lifecycle.
+//! Listening owner for a selected catalog recording. This workspace presents
+//! waveform, transport, and transcript evidence; authored adjustment drafts
+//! live exclusively in SoundEditingWorkspace.
 
 import QtQuick
 import QtQuick.Controls
@@ -12,6 +13,7 @@ Rectangle {
     property var asset: null
     property var waveformLevels: []
     property string loadedPath: ""
+    property string loadedAdjustmentKey: ""
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
     property var analysisStatus: ({ stage: "text", state: "missing",
                                     errorCode: "", runtimeJobId: "",
@@ -22,9 +24,17 @@ Rectangle {
         || analysisStatus.state === "running"
     readonly property bool analysisFailed: analysisStatus.state === "failed"
         || analysisStatus.state === "cancelled"
+    readonly property int sourceDurationMillis: hasAsset
+        ? Number(asset.durationMillis) : 0
+    readonly property int trimStartMillis: hasAsset
+        ? Number(asset.trimStartMillis) : 0
+    readonly property int trimEndMillis: hasAsset && Number(asset.trimEndMillis) > 0
+        ? Number(asset.trimEndMillis) : sourceDurationMillis
+    readonly property int fadeInMillis: hasAsset ? Number(asset.fadeInMillis) : 0
+    readonly property int fadeOutMillis: hasAsset ? Number(asset.fadeOutMillis) : 0
+    readonly property int gainCentibels: hasAsset ? Number(asset.gainCentibels) : 0
 
     color: Theme.panelRaised
-    radius: 0
     border.color: Theme.border
 
     function fileName(path: string) : string {
@@ -67,18 +77,33 @@ Rectangle {
         }
     }
 
+    function adjustmentKey() : string {
+        return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis
+            + ":" + fadeOutMillis + ":" + gainCentibels
+    }
+
     function playFrom(millis: int) : void {
         if (!asset || asset.pathStatus === "missing") {
             return
         }
-        player.play(asset.path)
+        player.playAdjusted(asset.path, trimStartMillis, trimEndMillis,
+                            fadeInMillis, fadeOutMillis, gainCentibels)
         loadedPath = asset.path
-        if (millis > 0) {
-            player.seek(millis)
+        loadedAdjustmentKey = adjustmentKey()
+        const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis))
+        if (start > trimStartMillis) {
+            player.seek(start)
         }
     }
 
-    onAssetChanged: Qt.callLater(refreshAsset)
+    onAssetChanged: {
+        if (asset && loadedPath.length > 0 && loadedPath !== asset.path) {
+            player.stop()
+            loadedPath = ""
+            loadedAdjustmentKey = ""
+        }
+        Qt.callLater(refreshAsset)
+    }
 
     Connections {
         target: backend
@@ -181,7 +206,9 @@ Rectangle {
                     id: statusText
                     anchors.centerIn: parent
                     text: preview.hasAsset && preview.asset.pathStatus === "missing"
-                        ? qsTr("Missing") : qsTr("Original preserved")
+                        ? qsTr("Missing")
+                        : preview.hasAsset && Number(preview.asset.adjustmentRevision) > 0
+                            ? qsTr("Saved version") : qsTr("Original preserved")
                     color: preview.hasAsset && preview.asset.pathStatus === "missing"
                         ? Theme.warningText : Theme.accentSelectionText
                     font.pixelSize: Theme.fontMeta
@@ -197,8 +224,8 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.minimumHeight: 220
-            Layout.preferredHeight: Math.max(260, Math.min(380, preview.height * 0.43))
+            Layout.minimumHeight: 150
+            Layout.preferredHeight: Math.max(170, Math.min(250, preview.height * 0.28))
             radius: 12
             color: Theme.waveformSurface
             border.color: Theme.borderStrong
@@ -207,7 +234,9 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: 18
                 levels: preview.waveformLevels
-                progress: player.duration > 0 ? player.position / player.duration : 0
+                progress: preview.hasAsset && preview.loadedPath === preview.asset.path
+                        && player.duration > 0
+                    ? player.position / player.duration : 0
             }
 
             MouseArea {
@@ -216,7 +245,9 @@ Rectangle {
                     && preview.loadedPath === preview.asset.path
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: function(mouse) {
-                    player.seek(Math.round(mouse.x / width * player.duration))
+                    const target = Math.round(mouse.x / width * player.duration)
+                    player.seek(Math.max(preview.trimStartMillis,
+                        Math.min(target, preview.trimEndMillis)))
                 }
             }
 
@@ -236,7 +267,7 @@ Rectangle {
 
             EchoIconButton {
                 source: preview.hasAsset && player.isPlaying
-                    && preview.loadedPath === preview.asset.path
+                        && preview.loadedPath === preview.asset.path
                     ? "qrc:/EchoDesktop/icons/pause.svg"
                     : "qrc:/EchoDesktop/icons/play.svg"
                 toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Play")
@@ -244,8 +275,9 @@ Rectangle {
                 buttonSize: 38
                 iconSize: 19
                 onClicked: {
-                    if (preview.loadedPath !== preview.asset.path) {
-                        preview.playFrom(0)
+                    if (preview.loadedPath !== preview.asset.path
+                            || preview.loadedAdjustmentKey !== preview.adjustmentKey()) {
+                        preview.playFrom(preview.trimStartMillis)
                     } else {
                         player.togglePause()
                     }
@@ -270,8 +302,8 @@ Rectangle {
 
             Slider {
                 Layout.fillWidth: true
-                from: 0
-                to: Math.max(1, player.duration)
+                from: preview.trimStartMillis
+                to: Math.max(preview.trimStartMillis + 1, preview.trimEndMillis)
                 value: player.duration > 0 ? player.position : 0
                 enabled: preview.hasAsset && player.duration > 0
                     && preview.loadedPath === preview.asset.path
@@ -314,8 +346,7 @@ Rectangle {
                     ? qsTr("Retry sound understanding")
                     : preview.analysisStatus.stage === "alignment"
                         ? qsTr("Retry timing analysis") : qsTr("Retry text extraction")
-                enabled: preview.hasAsset
-                    && preview.asset.pathStatus !== "missing"
+                enabled: preview.hasAsset && preview.asset.pathStatus !== "missing"
                 ghost: true
                 onClicked: {
                     if (backend.retryAnalysis(preview.asset.id)) {
@@ -373,7 +404,8 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (preview.loadedPath !== preview.asset.path) {
+                            if (preview.loadedPath !== preview.asset.path
+                                    || preview.loadedAdjustmentKey !== preview.adjustmentKey()) {
                                 preview.playFrom(modelData.start * 1000)
                             } else {
                                 player.seek(modelData.start * 1000)

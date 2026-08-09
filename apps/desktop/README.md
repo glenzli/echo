@@ -17,6 +17,15 @@ API over the C++ engine's SPSC ring) and renders its cached waveform pyramid
 disposing CoreAudio units on replay crashes Qt 6.11.1 — so the engine always
 drives a stereo 48 kHz float device format.
 
+Sound editing is a peer workspace rather than a mode hidden inside the library.
+Audio Space owns browsing, listening, and evidence inspection; Sound
+Adjustments inherits the current selection and owns the first non-destructive
+editing surface. Trim range, fades, and output gain remain a draft until
+explicitly saved as an append-only catalog revision. Preview compiles those
+authored units into the C++ producer path; the Qt audio callback still only
+copies prepared frames. Audio Space playback consumes the saved revision and
+never mutates adjustment parameters.
+
 QML never opens SQLite, calls FFmpeg, or interprets cache paths. Theme tokens
 live in [`qml/Theme.qml`](qml/Theme.qml); components follow the series naming
 convention (`EchoButton`, ...) shared with Shadow.

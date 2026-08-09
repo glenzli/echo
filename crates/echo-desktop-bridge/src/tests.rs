@@ -133,6 +133,49 @@ fn transcripts_round_trip_through_a_live_catalog() {
 }
 
 #[test]
+fn adjustment_revision_round_trips_through_the_live_session() {
+    let root = fixture_catalog();
+    let session = open_session(
+        root.join("catalog.sqlite").to_str().expect("utf8"),
+        root.join("cache").to_str().expect("utf8"),
+    )
+    .expect("session opens");
+    let asset = session
+        .catalog()
+        .with_transaction(|transaction| {
+            echo_catalog::register_asset(
+                transaction,
+                &echo_catalog::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([41; 32]),
+                    path: &root.join("adjust.wav"),
+                    size_bytes: 1024,
+                    codec: Some("pcm"),
+                    duration_millis: Some(10_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 0,
+                },
+            )
+        })
+        .expect("registration");
+    let echo_catalog::RegisterAsset::Created(asset) = asset else {
+        panic!("fixture must create")
+    };
+
+    session
+        .set_asset_adjustment(&asset.id.to_string(), 1_000, 9_000, 250, 500, -350)
+        .expect("adjustment saves");
+    let projected = session.list_assets().expect("assets project");
+    assert_eq!(projected.len(), 1);
+    assert!(projected[0].adjustment_revision > 0);
+    assert_eq!(projected[0].trim_start_millis, 1_000);
+    assert_eq!(projected[0].trim_end_millis, 9_000);
+    assert_eq!(projected[0].fade_in_millis, 250);
+    assert_eq!(projected[0].fade_out_millis, 500);
+    assert_eq!(projected[0].gain_centibels, -350);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn alignment_refines_matching_segment_boundaries_without_mutating_text() {
     let transcript = echo_core::TranscriptPayload {
         model: "audio.transcribe".to_owned(),

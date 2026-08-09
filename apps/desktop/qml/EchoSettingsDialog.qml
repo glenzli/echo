@@ -304,7 +304,7 @@ Dialog {
                         EchoSectionLabel {
                             Layout.fillWidth: true
                             text: qsTr("Infer Runtime")
-                            hint: qsTr("Echo submits audio understanding intents; Runtime schedules execution and records audit evidence.")
+                            hint: qsTr("Echo submits audio understanding intents; Runtime schedules execution and records run history.")
                         }
 
                         ColumnLayout {

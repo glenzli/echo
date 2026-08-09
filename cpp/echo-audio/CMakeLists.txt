@@ -4,6 +4,7 @@ pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavut
 
 add_library(
     echo-audio STATIC
+    src/adjustment.cpp
     src/decode.cpp
     src/playback.cpp
     src/waveform.cpp
@@ -35,6 +36,14 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(
+        echo-adjustment-engine-test
+        tests/adjustment_engine_test.cpp
+    )
+    target_link_libraries(echo-adjustment-engine-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-adjustment-engine-test)
+    add_test(NAME echo-adjustment-engine-test COMMAND echo-adjustment-engine-test)
+
     add_executable(
         echo-waveform-engine-test
         tests/waveform_engine_test.cpp

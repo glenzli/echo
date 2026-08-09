@@ -283,7 +283,7 @@ Item {
                                     backend.removeRoot(modelData.id)
                                     rootModel.refresh()
                                     workspace.actionFailed = false
-                                    workspace.actionMessage = qsTr("Folder removed. Imported evidence is preserved.")
+                                    workspace.actionMessage = qsTr("Folder removed. Imported information is preserved.")
                                 }
                             }
                         }
@@ -384,7 +384,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Echo preserves analysis evidence when a recording is offline and reconnects it when the original returns.")
+                text: qsTr("Echo keeps analysis results while a recording is offline and reconnects them when the original returns.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
                 wrapMode: Text.WordWrap

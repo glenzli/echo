@@ -19,29 +19,14 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                     imported_at_millis: 1,
                 },
             )?;
-            let asset_id = match registered {
+            let _asset_id = match registered {
                 crate::RegisterAsset::Created(asset) | crate::RegisterAsset::Existed(asset) => {
                     asset.id
                 }
             };
+            transaction.execute("DROP TABLE asset_adjustment_revisions", [])?;
             transaction.execute(
-                "INSERT INTO analysis_records (asset_id, kind, value, model, model_version, \
-                 recorded_at_millis) VALUES (?1, 'contextual', \
-                 '{\"summary\":\"Rain\",\"keywords\":[\"Rain\"]}', 'test', '1', 2)",
-                [asset_id.to_string()],
-            )?;
-            transaction.execute("DROP TABLE contextual_browse_facets", [])?;
-            transaction.execute_batch(
-                "CREATE TABLE contextual_keyword_facets (
-                    analysis_record_id INTEGER NOT NULL,
-                    asset_id TEXT NOT NULL,
-                    normalized_keyword TEXT NOT NULL,
-                    display_keyword TEXT NOT NULL,
-                    PRIMARY KEY (analysis_record_id, normalized_keyword)
-                );",
-            )?;
-            transaction.execute(
-                "UPDATE catalog_meta SET value = '20260809.5' WHERE key = 'schema_version'",
+                "UPDATE catalog_meta SET value = '20260809.6' WHERE key = 'schema_version'",
                 [],
             )?;
             Ok(())
@@ -50,7 +35,7 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
     drop(catalog);
 
     let migrated = open_catalog(&path).expect("previous revision migrates");
-    let (version, asset_count, facet_count): (String, i64, i64) = migrated
+    let (version, asset_count, adjustment_table_count): (String, i64, i64) = migrated
         .with_transaction(|transaction| -> Result<_, CatalogError> {
             Ok((
                 transaction.query_row(
@@ -60,15 +45,16 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                 )?,
                 transaction.query_row("SELECT COUNT(*) FROM assets", [], |row| row.get(0))?,
                 transaction.query_row(
-                    "SELECT COUNT(*) FROM contextual_browse_facets",
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' \
+                     AND name = 'asset_adjustment_revisions'",
                     [],
                     |row| row.get(0),
                 )?,
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260809.6");
+    assert_eq!(version, "20260810.1");
     assert_eq!(asset_count, 1);
-    assert_eq!(facet_count, 1);
+    assert_eq!(adjustment_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }

@@ -4,6 +4,7 @@
 //!
 //! - `ids` owns strongly typed persistent identifiers;
 //! - `original` owns the immutable original reference and content identity;
+//! - `adjustment` owns validated non-destructive restoration intent;
 //! - `analysis` owns progressive analysis levels and evidence contracts
 //!   (`value + model + model_version + confidence + timestamp` — analysis is
 //!   never treated as fact);
@@ -12,11 +13,15 @@
 //! Follow each entry module for its responsibility map; substantive behavior
 //! belongs there rather than in this facade.
 
+mod adjustment;
 mod analysis;
 mod audio_asset;
 mod ids;
 mod original;
 
+pub use adjustment::{
+    AdjustmentGraph, AdjustmentGraphError, MAX_GAIN_CENTIBELS, MIN_GAIN_CENTIBELS,
+};
 pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,
 };

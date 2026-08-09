@@ -32,7 +32,7 @@ Rectangle {
         if (album.facet === "person") {
             return qsTr("Shared AI people hint")
         }
-        return qsTr("Shared AI evidence")
+        return qsTr("Related by AI")
     }
 
     function countFor(key: string) : int {
@@ -180,7 +180,7 @@ Rectangle {
                     Layout.leftMargin: 8
                     Layout.rightMargin: 8
                     visible: sidebar.smartAlbums.length === 0
-                    text: qsTr("Album suggestions will appear when at least two sounds share time, place, event, or people evidence.")
+                    text: qsTr("Album suggestions will appear when at least two sounds share time, place, event, or people.")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     wrapMode: Text.WordWrap

@@ -29,9 +29,39 @@ PlaybackController::~PlaybackController() {
 }
 
 void PlaybackController::play(const QString& path) {
+    startSession(path, {});
+}
+
+void PlaybackController::playAdjusted(
+    const QString& path,
+    qint64 trimStartMillis,
+    qint64 trimEndMillis,
+    qint64 fadeInMillis,
+    qint64 fadeOutMillis,
+    int gainCentibels
+) {
+    if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
+        || fadeOutMillis < 0 || gainCentibels < -2400 || gainCentibels > 1200) {
+        qWarning("invalid playback adjustment");
+        return;
+    }
+    const echo::audio::PlaybackAdjustment adjustment{
+        .trim_start_millis = static_cast<std::uint64_t>(trimStartMillis),
+        .trim_end_millis = static_cast<std::uint64_t>(trimEndMillis),
+        .fade_in_millis = static_cast<std::uint64_t>(fadeInMillis),
+        .fade_out_millis = static_cast<std::uint64_t>(fadeOutMillis),
+        .gain_centibels = static_cast<std::int16_t>(gainCentibels),
+    };
+    startSession(path, adjustment);
+}
+
+void PlaybackController::startSession(
+    const QString& path,
+    const echo::audio::PlaybackAdjustment& adjustment
+) {
     std::shared_ptr<echo::audio::PlaybackSession> session;
     try {
-        session = std::make_shared<echo::audio::PlaybackSession>(path.toStdString());
+        session = std::make_shared<echo::audio::PlaybackSession>(path.toStdString(), adjustment);
     } catch (const std::exception& error) {
         qWarning("cannot open %s: %s", qPrintable(path), error.what());
         return;

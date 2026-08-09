@@ -98,29 +98,26 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_809, 5);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 6);
+    CatalogSchemaRevision::new(20_260_809, 6);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 1);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.6-contextual-browse-facets";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.1-adjustment-revisions";
 
-pub(crate) const CONTEXTUAL_FACET_SCHEMA_SQL: &str = "
-CREATE TABLE IF NOT EXISTS contextual_browse_facets (
-    analysis_record_id  INTEGER NOT NULL REFERENCES analysis_records(id) ON DELETE CASCADE,
-    asset_id            TEXT NOT NULL REFERENCES assets(id),
-    facet_kind          TEXT NOT NULL CHECK (
-                        facet_kind IN ('keyword', 'mood', 'place', 'event', 'person')),
-    normalized_value    TEXT NOT NULL,
-    display_value       TEXT NOT NULL,
-    PRIMARY KEY (analysis_record_id, facet_kind, normalized_value)
+pub(crate) const ADJUSTMENT_SCHEMA_SQL: &str = "
+CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id              TEXT NOT NULL REFERENCES assets(id),
+    trim_start_millis     INTEGER NOT NULL CHECK (trim_start_millis >= 0),
+    trim_end_millis       INTEGER NOT NULL CHECK (trim_end_millis > trim_start_millis),
+    fade_in_millis        INTEGER NOT NULL CHECK (fade_in_millis >= 0),
+    fade_out_millis       INTEGER NOT NULL CHECK (fade_out_millis >= 0),
+    gain_centibels        INTEGER NOT NULL CHECK (gain_centibels BETWEEN -2400 AND 1200),
+    created_at_millis     INTEGER NOT NULL,
+    CHECK (fade_in_millis + fade_out_millis <= trim_end_millis - trim_start_millis)
 );
 
-CREATE INDEX IF NOT EXISTS contextual_browse_facets_lookup
-    ON contextual_browse_facets (facet_kind, normalized_value, asset_id);
-
-CREATE INDEX IF NOT EXISTS contextual_browse_facets_latest
-    ON contextual_browse_facets (asset_id, analysis_record_id DESC);
-
-DROP TABLE IF EXISTS contextual_keyword_facets;
+CREATE INDEX IF NOT EXISTS asset_adjustment_revisions_latest
+    ON asset_adjustment_revisions (asset_id, id DESC);
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -228,6 +225,21 @@ CREATE TABLE IF NOT EXISTS asset_user_state (
     rating             INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
     updated_at_millis  INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id              TEXT NOT NULL REFERENCES assets(id),
+    trim_start_millis     INTEGER NOT NULL CHECK (trim_start_millis >= 0),
+    trim_end_millis       INTEGER NOT NULL CHECK (trim_end_millis > trim_start_millis),
+    fade_in_millis        INTEGER NOT NULL CHECK (fade_in_millis >= 0),
+    fade_out_millis       INTEGER NOT NULL CHECK (fade_out_millis >= 0),
+    gain_centibels        INTEGER NOT NULL CHECK (gain_centibels BETWEEN -2400 AND 1200),
+    created_at_millis     INTEGER NOT NULL,
+    CHECK (fade_in_millis + fade_out_millis <= trim_end_millis - trim_start_millis)
+);
+
+CREATE INDEX IF NOT EXISTS asset_adjustment_revisions_latest
+    ON asset_adjustment_revisions (asset_id, id DESC);
 
 CREATE TABLE IF NOT EXISTS asset_source_metadata (
     asset_id           TEXT PRIMARY KEY REFERENCES assets(id),

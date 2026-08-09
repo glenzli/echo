@@ -2,8 +2,8 @@
 //! progressive-level order that job planning depends on.
 
 use crate::{
-    ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, AssetId, ContentHash,
-    ModelIdentity, OriginalRef,
+    ALL_ANALYSIS_LEVELS, AdjustmentGraph, AnalysisKind, AnalysisLevel, AnalysisRecord, AssetId,
+    ContentHash, ModelIdentity, OriginalRef,
 };
 use std::str::FromStr;
 
@@ -12,6 +12,13 @@ fn asset_id_round_trips_through_string() {
     let id = AssetId::new();
     let parsed = AssetId::from_str(&id.to_string()).expect("own serialized id parses");
     assert_eq!(parsed, id);
+}
+
+#[test]
+fn identity_adjustment_covers_the_immutable_original() {
+    let graph = AdjustmentGraph::identity(4_200).expect("known duration has an identity graph");
+    assert_eq!(graph.trim_start_millis(), 0);
+    assert_eq!(graph.trim_end_millis(), 4_200);
 }
 
 #[test]

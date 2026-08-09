@@ -51,7 +51,41 @@ const fn job_state_text(state: echo_catalog::JobState) -> &'static str {
     }
 }
 
+struct AdjustmentWireFields {
+    revision: i64,
+    trim_start_millis: u64,
+    trim_end_millis: u64,
+    fade_in_millis: u64,
+    fade_out_millis: u64,
+    gain_centibels: i16,
+}
+
+fn adjustment_wire_fields(
+    adjustment: Option<echo_catalog::AssetAdjustmentRevision>,
+    source_duration_millis: Option<u64>,
+) -> AdjustmentWireFields {
+    adjustment.map_or_else(
+        || AdjustmentWireFields {
+            revision: 0,
+            trim_start_millis: 0,
+            trim_end_millis: source_duration_millis.unwrap_or(0),
+            fade_in_millis: 0,
+            fade_out_millis: 0,
+            gain_centibels: 0,
+        },
+        |revision| AdjustmentWireFields {
+            revision: revision.revision_id,
+            trim_start_millis: revision.graph.trim_start_millis(),
+            trim_end_millis: revision.graph.trim_end_millis(),
+            fade_in_millis: revision.graph.fade_in_millis(),
+            fade_out_millis: revision.graph.fade_out_millis(),
+            gain_centibels: revision.graph.gain_centibels(),
+        },
+    )
+}
+
 fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire {
+    let adjustment = adjustment_wire_fields(asset.adjustment, asset.duration_millis);
     let (sound_caption, summary) = asset
         .contextual
         .as_ref()
@@ -124,6 +158,12 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         text_preview,
         liked: asset.liked,
         rating: asset.rating,
+        adjustment_revision: adjustment.revision,
+        trim_start_millis: adjustment.trim_start_millis,
+        trim_end_millis: adjustment.trim_end_millis,
+        fade_in_millis: adjustment.fade_in_millis,
+        fade_out_millis: adjustment.fade_out_millis,
+        gain_centibels: adjustment.gain_centibels,
         container_format,
         sample_rate,
         channel_count,
@@ -279,6 +319,58 @@ impl LibrarySession {
                     now_millis(),
                 )
             })
+            .map_err(SessionError::from)
+    }
+
+    /// Appends one validated, non-destructive adjustment graph.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the asset is unknown, lacks a duration,
+    /// or the authored range, fades, or gain violate the product contract.
+    pub fn set_asset_adjustment(
+        &self,
+        asset_id: &str,
+        trim_start_millis: u64,
+        trim_end_millis: u64,
+        fade_in_millis: u64,
+        fade_out_millis: u64,
+        gain_centibels: i16,
+    ) -> Result<(), SessionError> {
+        let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid asset id {asset_id}: {error}"),
+        })?;
+        let duration = self.catalog.with_transaction(|transaction| {
+            match find_by_id(transaction, asset_id) {
+                Ok(AssetLookup::Found(asset)) => {
+                    asset.original.duration_millis.ok_or_else(|| SessionError {
+                        message: "asset duration is not available".to_owned(),
+                    })
+                }
+                Ok(AssetLookup::NotFound) => Err(SessionError {
+                    message: format!("asset {asset_id} not found"),
+                }),
+                Err(error) => Err(SessionError {
+                    message: error.to_string(),
+                }),
+            }
+        })?;
+        let graph = echo_domain::AdjustmentGraph::new(
+            duration,
+            trim_start_millis,
+            trim_end_millis,
+            fade_in_millis,
+            fade_out_millis,
+            gain_centibels,
+        )
+        .map_err(|error| SessionError {
+            message: error.to_string(),
+        })?;
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::record_adjustment_graph(transaction, asset_id, graph, now_millis())
+            })
+            .map(|_| ())
             .map_err(SessionError::from)
     }
 

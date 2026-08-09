@@ -1,6 +1,6 @@
 //! Shadow-series presentation controls for the Audio Space center surface.
-//! Collection identity and presentation scale live above the content they
-//! affect; sorting and evidence filters remain in the bottom browse bar.
+//! Collection identity, content search and presentation scale live above the
+//! surface they affect; sorting and evidence filters remain in the bottom bar.
 
 import QtQuick
 import QtQuick.Controls
@@ -14,7 +14,9 @@ ToolBar {
     required property int visibleCount
     required property string viewMode
     required property real cardWidth
+    required property string searchText
 
+    signal searchRequested(string text)
     signal viewModeRequested(string mode)
     signal cardWidthRequested(real width)
 
@@ -52,6 +54,17 @@ ToolBar {
             text: qsTr("%1 visible").arg(toolbar.visibleCount)
             color: Theme.textPrimary
             font.pixelSize: Theme.fontMeta
+        }
+
+        EchoTextField {
+            Layout.leftMargin: 8
+            Layout.minimumWidth: 140
+            Layout.preferredWidth: 230
+            Layout.maximumWidth: 280
+            implicitHeight: Theme.compactControlHeight
+            text: toolbar.searchText
+            placeholderText: qsTr("Search text, events, or filenames…")
+            onTextEdited: toolbar.searchRequested(text)
         }
 
         Item { Layout.fillWidth: true }

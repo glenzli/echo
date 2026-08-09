@@ -30,6 +30,14 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList waveformForAsset(const QString& id) const;
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
     Q_INVOKABLE bool setAssetAffinity(const QString& id, bool liked, int rating);
+    Q_INVOKABLE bool setAssetAdjustment(
+        const QString& id,
+        qlonglong trimStartMillis,
+        qlonglong trimEndMillis,
+        qlonglong fadeInMillis,
+        qlonglong fadeOutMillis,
+        int gainCentibels
+    );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;
     Q_INVOKABLE bool retryAnalysis(const QString& id);

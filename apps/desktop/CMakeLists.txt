@@ -146,6 +146,8 @@ qt_add_qml_module(
         qml/InspectorSection.qml
         qml/MainTitleBar.qml
         qml/SoundAdvancedFilterPopup.qml
+        qml/SoundAdjustmentEditor.qml
+        qml/SoundEditingWorkspace.qml
         qml/SoundCard.qml
         qml/SoundFilmstripItem.qml
         qml/SoundFilterState.qml
@@ -171,6 +173,7 @@ qt_add_qml_module(
         icons/filmstrip.svg
         icons/filter.svg
         icons/filter-off.svg
+        icons/edit.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

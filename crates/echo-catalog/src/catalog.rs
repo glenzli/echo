@@ -10,8 +10,8 @@ use rusqlite::{Connection, OptionalExtension};
 use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
-        CONTEXTUAL_FACET_SCHEMA_SQL, CatalogSchemaRevision, PREVIOUS_SCHEMA_VERSION,
-        SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
+        ADJUSTMENT_SCHEMA_SQL, CatalogSchemaRevision, PREVIOUS_SCHEMA_VERSION, SCHEMA_IDENTITY,
+        SCHEMA_SQL, SCHEMA_VERSION,
     },
 };
 
@@ -92,7 +92,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_contextual_browse_schema(connection)?;
+            migrate_adjustment_schema(connection)?;
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -108,10 +108,9 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
-fn migrate_contextual_browse_schema(connection: &Connection) -> Result<(), CatalogError> {
+fn migrate_adjustment_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
-    transaction.execute_batch(CONTEXTUAL_FACET_SCHEMA_SQL)?;
-    crate::contextual_facets::rebuild_contextual_browse_facets(&transaction)?;
+    transaction.execute_batch(ADJUSTMENT_SCHEMA_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

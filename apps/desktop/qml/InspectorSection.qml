@@ -1,4 +1,4 @@
-//! Compact detail-inspector section with explicit evidence provenance.
+//! Compact detail-inspector section with a consistent heading and body rhythm.
 
 import QtQuick
 import QtQuick.Layouts
@@ -8,7 +8,6 @@ ColumnLayout {
     id: section
 
     required property string title
-    property string evidence: ""
     default property alias content: body.data
 
     spacing: 8
@@ -35,12 +34,6 @@ ColumnLayout {
             font.letterSpacing: 1.0
         }
 
-        Text {
-            visible: section.evidence.length > 0
-            text: section.evidence
-            color: Theme.accentSelectionText
-            font.pixelSize: 9
-        }
     }
 
     ColumnLayout {

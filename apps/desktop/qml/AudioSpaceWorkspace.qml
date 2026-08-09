@@ -284,6 +284,8 @@ Item {
                     visibleCount: workspace.visibleAssetCount
                     viewMode: workspace.viewMode
                     cardWidth: workspace.preferredCardWidth
+                    searchText: workspace.searchText
+                    onSearchRequested: text => workspace.setSearchText(text)
                     onViewModeRequested: mode => workspace.viewMode = mode
                     onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
                 }

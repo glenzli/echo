@@ -172,7 +172,7 @@ class FrameRing {
 
 class PlaybackSession::Impl {
   public:
-    explicit Impl(const std::string& path) : path_(path) {
+    Impl(const std::string& path, PlaybackAdjustment adjustment) : path_(path) {
         AVFormatContext** format_slot = format_.slot();
         int result = avformat_open_input(format_slot, path.c_str(), nullptr, nullptr);
         if (result < 0) {
@@ -190,6 +190,11 @@ class PlaybackSession::Impl {
         const AVCodecParameters* codecpar = stream->codecpar;
         duration_millis_ = static_cast<std::uint64_t>(
             av_rescale_q(stream->duration, stream->time_base, AVRational{1, 1000})
+        );
+        adjustment_ = std::make_unique<PreparedAdjustment>(
+            adjustment,
+            duration_millis_,
+            kCanonicalSampleRate
         );
 
         const AVCodec* decoder = avcodec_find_decoder(codecpar->codec_id);
@@ -247,6 +252,7 @@ class PlaybackSession::Impl {
         if (packet_ == nullptr || frame_ == nullptr) {
             fail("cannot allocate decode buffers");
         }
+        perform_seek(adjustment_->trim_start_millis());
     }
 
     ~Impl() {
@@ -289,9 +295,10 @@ class PlaybackSession::Impl {
     }
 
     void seek(std::uint64_t millis) {
+        const std::uint64_t clamped = adjustment_->clamp_seek_millis(millis);
         {
             std::lock_guard<std::mutex> lock(control_mutex_);
-            pending_seek_millis_ = millis;
+            pending_seek_millis_ = clamped;
             seek_requested_ = true;
             control_cv_.notify_one();
         }
@@ -360,7 +367,12 @@ class PlaybackSession::Impl {
             av_seek_frame(format_.get(), stream_index_, timestamp, AVSEEK_FLAG_BACKWARD);
         if (result >= 0) {
             avcodec_flush_buffers(codec_.get());
+            swr_close(swr_.get());
+            if (swr_init(swr_.get()) < 0) {
+                fail("cannot reset resampler after seek");
+            }
             consumed_frames_.store(millis * kCanonicalSampleRate / 1000, std::memory_order_relaxed);
+            decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
         }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
         while (ring_->available() > 0 && std::chrono::steady_clock::now() < deadline) {
@@ -369,7 +381,7 @@ class PlaybackSession::Impl {
         ring_->reset();
     }
 
-    void decode_and_feed(float* scratch, std::size_t scratch_frames) {
+    bool decode_and_feed(float* scratch, std::size_t scratch_frames) {
         while (avcodec_receive_frame(codec_.get(), frame_.get()) == 0) {
             // Upsampling (e.g. 24 kHz TTS -> 48 kHz) needs MORE output
             // samples than input frames; sizing by the input count overflows
@@ -398,14 +410,44 @@ class PlaybackSession::Impl {
             );
             if (sample_count > 0) {
                 const float* const* planes = reinterpret_cast<const float* const*>(output_data);
+                const AVStream* stream = format_.get()->streams[stream_index_];
+                std::uint64_t frame_start = decoded_frame_cursor_;
+                if (frame_->best_effort_timestamp != AV_NOPTS_VALUE) {
+                    const std::int64_t rescaled = av_rescale_q(
+                        frame_->best_effort_timestamp,
+                        stream->time_base,
+                        AVRational{1, kCanonicalSampleRate}
+                    );
+                    if (rescaled >= 0) {
+                        frame_start = static_cast<std::uint64_t>(rescaled);
+                    }
+                }
+                const std::uint64_t frame_end =
+                    frame_start + static_cast<std::uint64_t>(sample_count);
+                decoded_frame_cursor_ = frame_end;
+                const std::uint64_t selected_start =
+                    std::max(frame_start, adjustment_->start_frame());
+                const std::uint64_t selected_end = std::min(frame_end, adjustment_->end_frame());
+                const std::size_t input_offset =
+                    selected_start < selected_end
+                        ? static_cast<std::size_t>(selected_start - frame_start)
+                        : 0;
+                const std::size_t selected_count =
+                    selected_start < selected_end
+                        ? static_cast<std::size_t>(selected_end - selected_start)
+                        : 0;
                 std::size_t written = 0;
-                while (written < static_cast<std::size_t>(sample_count)) {
-                    const std::size_t chunk =
-                        std::min(static_cast<std::size_t>(sample_count) - written, scratch_frames);
+                while (written < selected_count) {
+                    const std::size_t chunk = std::min(selected_count - written, scratch_frames);
                     for (std::size_t index = 0; index < chunk; ++index) {
+                        const std::uint64_t source_frame =
+                            selected_start + static_cast<std::uint64_t>(written + index);
+                        const float amplitude = adjustment_->amplitude_at(source_frame);
                         for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                            const float sample =
+                                planes[channel][input_offset + written + index] * amplitude;
                             scratch[index * channel_count_ + channel] =
-                                planes[channel][written + index];
+                                std::clamp(sample, -1.0F, 1.0F);
                         }
                     }
                     const std::size_t pushed = ring_->write(scratch, chunk);
@@ -420,16 +462,22 @@ class PlaybackSession::Impl {
                         if (stopped_) {
                             av_freep(&output_data[0]);
                             av_frame_unref(frame_.get());
-                            return;
+                            return false;
                         }
                         continue;
                     }
                     written += pushed;
                 }
+                if (frame_end >= adjustment_->end_frame()) {
+                    av_freep(&output_data[0]);
+                    av_frame_unref(frame_.get());
+                    return true;
+                }
             }
             av_freep(&output_data[0]);
         }
         av_frame_unref(frame_.get());
+        return false;
     }
 
     void producer_loop() {
@@ -475,7 +523,9 @@ class PlaybackSession::Impl {
             }
             if (packet_->stream_index == stream_index_) {
                 if (avcodec_send_packet(codec_.get(), packet_.get()) == 0) {
-                    decode_and_feed(scratch.data(), scratch.size() / channel_count_);
+                    if (decode_and_feed(scratch.data(), scratch.size() / channel_count_)) {
+                        ended_.store(true, std::memory_order_release);
+                    }
                 }
             }
             av_packet_unref(packet_.get());
@@ -492,6 +542,8 @@ class PlaybackSession::Impl {
     std::unique_ptr<AVPacket, PacketDeleter> packet_;
     std::unique_ptr<AVFrame, FrameDeleter> frame_;
     std::unique_ptr<FrameRing> ring_;
+    std::unique_ptr<PreparedAdjustment> adjustment_;
+    std::uint64_t decoded_frame_cursor_ = 0;
 
     std::thread thread_;
     std::mutex control_mutex_;
@@ -506,7 +558,8 @@ class PlaybackSession::Impl {
     std::atomic<std::uint64_t> consumed_frames_{0};
 };
 
-PlaybackSession::PlaybackSession(const std::string& path) : impl_(std::make_unique<Impl>(path)) {
+PlaybackSession::PlaybackSession(const std::string& path, PlaybackAdjustment adjustment) :
+    impl_(std::make_unique<Impl>(path, adjustment)) {
     impl_->start();
 }
 

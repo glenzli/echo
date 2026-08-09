@@ -134,7 +134,7 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            text: qsTr("Its waveform, text, source metadata, and AI evidence will appear here.")
+            text: qsTr("Its waveform, text, source metadata, and AI analysis will appear here.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontBody
             wrapMode: Text.WordWrap
@@ -314,7 +314,6 @@ Rectangle {
                 InspectorSection {
                     Layout.fillWidth: true
                     title: qsTr("SOUND ATTRIBUTES")
-                    evidence: qsTr("Model evidence")
 
                     GridLayout {
                         Layout.fillWidth: true
@@ -325,9 +324,9 @@ Rectangle {
                         Text { text: qsTr("Event"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.asset.eventType.length > 0
+                            text: inspector.hasAsset && inspector.asset.eventType.length > 0
                                 ? inspector.asset.eventType : qsTr("Not inferred")
-                            color: inspector.asset.eventType.length > 0
+                            color: inspector.hasAsset && inspector.asset.eventType.length > 0
                                 ? Theme.textPrimary : Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
@@ -336,9 +335,9 @@ Rectangle {
                         Text { text: qsTr("Mood"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.asset.mood.length > 0
+                            text: inspector.hasAsset && inspector.asset.mood.length > 0
                                 ? inspector.asset.mood : qsTr("Not inferred")
-                            color: inspector.asset.mood.length > 0
+                            color: inspector.hasAsset && inspector.asset.mood.length > 0
                                 ? Theme.textPrimary : Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
@@ -349,7 +348,6 @@ Rectangle {
                 InspectorSection {
                     Layout.fillWidth: true
                     title: qsTr("AI KEYWORDS")
-                    evidence: qsTr("Model evidence")
 
                     Flow {
                         Layout.fillWidth: true
@@ -378,7 +376,7 @@ Rectangle {
 
                     Text {
                         Layout.fillWidth: true
-                        visible: inspector.asset.keywords.length === 0
+                        visible: inspector.hasAsset && inspector.asset.keywords.length === 0
                         text: qsTr("No keywords have been extracted yet.")
                         color: Theme.textDisabled
                         font.pixelSize: Theme.fontBody
@@ -389,8 +387,6 @@ Rectangle {
                 InspectorSection {
                     Layout.fillWidth: true
                     title: qsTr("TEXT")
-                    evidence: inspector.textRecords.length > 0
-                        ? qsTr("Model evidence") : ""
 
                     Text {
                         Layout.fillWidth: true
@@ -412,7 +408,6 @@ Rectangle {
                 InspectorSection {
                     Layout.fillWidth: true
                     title: qsTr("SOURCE METADATA")
-                    evidence: qsTr("Original evidence")
 
                     GridLayout {
                         Layout.fillWidth: true

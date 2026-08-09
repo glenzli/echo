@@ -1,6 +1,6 @@
 //! Echo application shell. Workspace chrome, page routing, and process-level
-//! lifecycle live here; Audio Space and Audio Library own their presentation
-//! and interaction internally.
+//! lifecycle live here; Audio Space, Sound Adjustments, and Audio Library own
+//! their presentation and interaction internally.
 
 import QtQuick
 import QtQuick.Controls
@@ -31,13 +31,21 @@ ApplicationWindow {
     }
 
     function openLibrary() : void {
-        workspaceIndex = 1
+        workspaceIndex = 2
         audioLibrary.refresh()
     }
 
     function showAudioSpace() : void {
         workspaceIndex = 0
     }
+
+    function showSoundEditor() : void {
+        if (audioSpace.selectedAsset !== null) {
+            workspaceIndex = 1
+        }
+    }
+
+    onWorkspaceIndexChanged: player.stop()
 
     EchoSettingsDialog {
         id: settingsDialog
@@ -46,12 +54,12 @@ ApplicationWindow {
     header: MainTitleBar {
         hostWindow: window
         workspaceIndex: window.workspaceIndex
-        searchText: audioSpace.searchText
+        editorAvailable: audioSpace.selectedAsset !== null
         jobsActive: window.jobsActive
         activeJobCount: window.jobSnapshot.pending + window.jobSnapshot.running
         onSoundWallRequested: window.showAudioSpace()
+        onSoundEditorRequested: window.showSoundEditor()
         onSettingsRequested: window.openSettings()
-        onSearchRequested: text => audioSpace.setSearchText(text)
     }
 
     StackLayout {
@@ -67,6 +75,14 @@ ApplicationWindow {
             onOpenLibraryRequested: window.openLibrary()
         }
 
+        SoundEditingWorkspace {
+            id: soundEditor
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            asset: audioSpace.selectedAsset
+        }
+
         AudioLibraryWorkspace {
             id: audioLibrary
 
@@ -74,6 +90,16 @@ ApplicationWindow {
             Layout.fillHeight: true
             jobStats: window.jobSnapshot
             onCloseRequested: window.showAudioSpace()
+        }
+    }
+
+    Connections {
+        target: audioSpace
+
+        function onSelectedAssetChanged() : void {
+            if (window.workspaceIndex === 1 && audioSpace.selectedAsset === null) {
+                window.showAudioSpace()
+            }
         }
     }
 

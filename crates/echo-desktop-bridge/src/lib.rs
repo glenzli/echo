@@ -29,6 +29,12 @@ mod ffi {
         text_preview: String,
         liked: bool,
         rating: u8,
+        adjustment_revision: i64,
+        trim_start_millis: u64,
+        trim_end_millis: u64,
+        fade_in_millis: u64,
+        fade_out_millis: u64,
+        gain_centibels: i16,
         container_format: String,
         sample_rate: u32,
         channel_count: u32,
@@ -165,6 +171,16 @@ mod ffi {
             liked: bool,
             rating: u8,
         ) -> Result<()>;
+        /// Appends a validated non-destructive adjustment revision.
+        fn session_set_asset_adjustment(
+            self: &LibrarySession,
+            asset_id: &str,
+            trim_start_millis: u64,
+            trim_end_millis: u64,
+            fade_in_millis: u64,
+            fade_out_millis: u64,
+            gain_centibels: i16,
+        ) -> Result<()>;
         /// Starts the background worker pool (idempotent).
         fn session_start_workers(self: &LibrarySession, runtime_endpoint: &str) -> Result<()>;
         /// Returns the current analysis stage for one asset.
@@ -282,6 +298,32 @@ impl LibrarySession {
     ) -> Result<(), String> {
         self.set_asset_affinity(asset_id, liked, rating)
             .map_err(|error| error.message)
+    }
+
+    /// Appends one non-destructive adjustment revision.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the graph or asset identity is
+    /// invalid.
+    fn session_set_asset_adjustment(
+        &self,
+        asset_id: &str,
+        trim_start_millis: u64,
+        trim_end_millis: u64,
+        fade_in_millis: u64,
+        fade_out_millis: u64,
+        gain_centibels: i16,
+    ) -> Result<(), String> {
+        self.set_asset_adjustment(
+            asset_id,
+            trim_start_millis,
+            trim_end_millis,
+            fade_in_millis,
+            fade_out_millis,
+            gain_centibels,
+        )
+        .map_err(|error| error.message)
     }
 }
 
