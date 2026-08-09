@@ -70,6 +70,7 @@ impl WorkerPool {
         analysis_queue::enqueue_missing_transcriptions(catalog, now)?;
         analysis_queue::settle_empty_transcript_alignments(catalog, now)?;
         analysis_queue::enqueue_missing_alignments(catalog, now)?;
+        analysis_queue::enqueue_missing_contextual(catalog, now)?;
 
         let stop = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -127,6 +128,7 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             metadata_queue::enqueue_missing_source_metadata(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_transcriptions(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_alignments(catalog, crate::util::now_millis())?;
+            analysis_queue::enqueue_missing_contextual(catalog, crate::util::now_millis())?;
             Ok(())
         }
         JobKind::ImportFile => {
@@ -186,79 +188,113 @@ fn dispatch_analysis(
     job: &ClaimedJob,
 ) -> Result<(), CoreError> {
     match job.kind {
-        JobKind::Transcribe => {
-            let asset_id = asset_id_of(&job.payload)?;
-            let source = source_path_of(catalog, &asset_id)?;
-            record_inference_submitting(catalog, job, asset_id, crate::TRANSCRIPTION_INTENT)?;
-            let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
-            let payload = match client.transcribe(&source, &crate::TranscriptionIntent::default()) {
-                Ok(payload) => payload,
-                Err(error) => {
-                    record_inference_failure(
-                        catalog,
-                        job,
-                        asset_id,
-                        crate::TRANSCRIPTION_INTENT,
-                        &error,
-                    )?;
-                    return Err(error.into());
-                }
-            };
-            let provenance = payload.runtime.as_ref().ok_or_else(|| {
-                CoreError::new(
-                    CoreErrorKind::InferenceRejected,
-                    "Runtime transcript lacks accepted Job provenance",
-                )
-            })?;
-            record_inference_success(catalog, job, asset_id, provenance)?;
-            crate::record_runtime_transcript(catalog, asset_id, &payload)?;
-            if !payload.text.trim().is_empty() {
-                catalog.with_transaction(|transaction| {
-                    analysis_queue::enqueue_alignment(
-                        transaction,
-                        asset_id,
-                        crate::util::now_millis(),
-                    )
-                    .map_err(CoreError::from)
-                })?;
-            }
-            Ok(())
-        }
-        JobKind::Align => {
-            let asset_id = asset_id_of(&job.payload)?;
-            let source = source_path_of(catalog, &asset_id)?;
-            let transcript = newest_transcript(catalog, asset_id)?;
-            record_inference_submitting(catalog, job, asset_id, crate::ALIGNMENT_INTENT)?;
-            let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
-            let intent = crate::AlignmentIntent {
-                language: transcript.language.clone(),
-                ..crate::AlignmentIntent::default()
-            };
-            let payload = match client.align(&source, &transcript.text, &intent) {
-                Ok(payload) => payload,
-                Err(error) => {
-                    record_inference_failure(
-                        catalog,
-                        job,
-                        asset_id,
-                        crate::ALIGNMENT_INTENT,
-                        &error,
-                    )?;
-                    return Err(error.into());
-                }
-            };
-            record_inference_success(catalog, job, asset_id, &payload.runtime)?;
-            crate::record_alignment(catalog, asset_id, &payload)
-        }
-        JobKind::Contextual => Err(CoreError::new(
-            CoreErrorKind::InferenceRejected,
-            "contextual analysis is not available in the frozen Runtime contract",
-        )),
+        JobKind::Transcribe => dispatch_transcription(catalog, config, job),
+        JobKind::Align => dispatch_alignment(catalog, config, job),
+        JobKind::Contextual => dispatch_contextual(catalog, config, job),
         JobKind::ScanRoot
         | JobKind::ImportFile
         | JobKind::ExtractMetadata
         | JobKind::AnalyzeWaveform => unreachable!("structural jobs use dispatch"),
     }
+}
+
+fn dispatch_transcription(
+    catalog: &Catalog,
+    config: &WorkerConfig,
+    job: &ClaimedJob,
+) -> Result<(), CoreError> {
+    let asset_id = asset_id_of(&job.payload)?;
+    let source = source_path_of(catalog, &asset_id)?;
+    record_inference_submitting(catalog, job, asset_id, crate::TRANSCRIPTION_INTENT)?;
+    let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
+    let payload = match client.transcribe(&source, &crate::TranscriptionIntent::default()) {
+        Ok(payload) => payload,
+        Err(error) => {
+            record_inference_failure(catalog, job, asset_id, crate::TRANSCRIPTION_INTENT, &error)?;
+            return Err(error.into());
+        }
+    };
+    let provenance = payload.runtime.as_ref().ok_or_else(|| {
+        CoreError::new(
+            CoreErrorKind::InferenceRejected,
+            "Runtime transcript lacks accepted Job provenance",
+        )
+    })?;
+    record_inference_success(catalog, job, asset_id, provenance)?;
+    crate::record_runtime_transcript(catalog, asset_id, &payload)?;
+    if !payload.text.trim().is_empty() {
+        catalog.with_transaction(|transaction| {
+            analysis_queue::enqueue_alignment(transaction, asset_id, crate::util::now_millis())
+                .map_err(CoreError::from)
+        })?;
+    }
+    Ok(())
+}
+
+fn dispatch_alignment(
+    catalog: &Catalog,
+    config: &WorkerConfig,
+    job: &ClaimedJob,
+) -> Result<(), CoreError> {
+    let asset_id = asset_id_of(&job.payload)?;
+    let source = source_path_of(catalog, &asset_id)?;
+    let transcript = newest_transcript(catalog, asset_id)?;
+    record_inference_submitting(catalog, job, asset_id, crate::ALIGNMENT_INTENT)?;
+    let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
+    let intent = crate::AlignmentIntent {
+        language: transcript.language.clone(),
+        ..crate::AlignmentIntent::default()
+    };
+    let payload = match client.align(&source, &transcript.text, &intent) {
+        Ok(payload) => payload,
+        Err(error) => {
+            record_inference_failure(catalog, job, asset_id, crate::ALIGNMENT_INTENT, &error)?;
+            return Err(error.into());
+        }
+    };
+    record_inference_success(catalog, job, asset_id, &payload.runtime)?;
+    crate::record_alignment(catalog, asset_id, &payload)?;
+    catalog.with_transaction(|transaction| {
+        analysis_queue::enqueue_contextual(transaction, asset_id, crate::util::now_millis())
+            .map_err(CoreError::from)
+    })
+}
+
+fn dispatch_contextual(
+    catalog: &Catalog,
+    config: &WorkerConfig,
+    job: &ClaimedJob,
+) -> Result<(), CoreError> {
+    let asset_id = asset_id_of(&job.payload)?;
+    let transcript = newest_transcript(catalog, asset_id)?;
+    record_inference_submitting(catalog, job, asset_id, crate::CONTEXTUAL_INTENT)?;
+    let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
+    let response = match client.contextualize(&transcript.text, &crate::ContextualIntent::default())
+    {
+        Ok(response) => response,
+        Err(error) => {
+            record_inference_failure(catalog, job, asset_id, crate::CONTEXTUAL_INTENT, &error)?;
+            return Err(error.into());
+        }
+    };
+    let payload = match crate::contextual::decode_contextual_output(&response.output_text) {
+        Ok(payload) => payload,
+        Err(error) => {
+            record_inference_ingestion_failure(
+                catalog,
+                job,
+                asset_id,
+                &response.runtime,
+                error.code,
+            )?;
+            return Err(CoreError::new(
+                CoreErrorKind::InferenceRejected,
+                error.to_string(),
+            ));
+        }
+    };
+    record_inference_success(catalog, job, asset_id, &response.runtime)?;
+    crate::record_contextual(catalog, asset_id, &payload, &response.runtime)
 }
 
 /// Imports one discovered file: hash, relink or register, probe, journal.
@@ -487,6 +523,41 @@ fn record_inference_failure(
                     http_status: error.http_status,
                     error_code: Some(&error.code),
                     snapshot: None,
+                    updated_at_millis: crate::util::now_millis(),
+                },
+            )
+        })
+        .map_err(CoreError::from)
+}
+
+fn record_inference_ingestion_failure(
+    catalog: &Catalog,
+    job: &ClaimedJob,
+    asset_id: echo_domain::AssetId,
+    provenance: &crate::RuntimeProvenance,
+    validation_code: &str,
+) -> Result<(), CoreError> {
+    let snapshot = serde_json::to_value(&provenance.job).map_err(|error| {
+        CoreError::new(
+            CoreErrorKind::Other,
+            format!("cannot encode Runtime provenance: {error}"),
+        )
+    })?;
+    let error_code = format!("contextual_{validation_code}");
+    catalog
+        .with_transaction(|transaction| {
+            upsert_inference_run(
+                transaction,
+                &UpsertInferenceRun {
+                    local_job_id: &job.id,
+                    asset_id,
+                    intent: &provenance.job.intent,
+                    runtime_job_id: Some(&provenance.job.id),
+                    contract_version: &provenance.contract_version,
+                    state: InferenceRunState::Failed,
+                    http_status: Some(200),
+                    error_code: Some(&error_code),
+                    snapshot: Some(&snapshot),
                     updated_at_millis: crate::util::now_millis(),
                 },
             )

@@ -102,6 +102,13 @@ bearer token；明文不跨 Rust/C++/QML 边界，也不写入设置、通用日
 Echo 的后台 worker 只提交产品 Intent、记录本地任务状态并把 Runtime 的 Job／Attempt／
 模型构建证据写入 Catalog。Runtime 不可用不得阻断扫描、波形、播放或 Library 浏览。
 
+文本理解沿用同一个受管 Consumer 身份，但由独立的 Responses 协议 owner 负责。首个产品动作
+固定映射到 `text.summarize`：`audio.align` 成功后，Echo 的后台队列提交有界文字与产品指令，
+要求模型返回 contextual JSON，再由 Echo 做结构、数量和长度校验。Runtime 当前未冻结 JSON
+Schema structured-output 合同，因此格式不合格必须作为稳定的派生元数据失败记录，不得猜测、
+修补正文或回退为裸 Ollama／MLX 调用。成功结果与音频结果一样，必须先核验 App-scoped Job、
+local-first／local_only／background／no fallback 约束，再写入分析证据。
+
 ## 4. 音频底层
 
 - 不自己重写 codec，直接用 FFmpeg / libavfilter。
@@ -133,8 +140,10 @@ Level 5  LLM contextual understanding / memory association
 ```
 
 首次 import 很快可浏览；ASR 作为默认的后台派生元数据持久入队，但绝不阻塞导入、浏览或
-播放。其余理解层仍由能力、资源和用户需要渐进触发；正式接入后由 Infer Build 负责准入、
-空闲调度和资源仲裁，而不是让 Echo 在导入事务里同步运行模型。
+播放。首个 Level 5 contextual 切片只在非空文字完成对齐后持久入队，作为摘要、关键词和
+情境提示的可重建派生元数据；历史录音在启动时做幂等回填。其余理解层仍由能力、资源和
+用户需要渐进触发；正式接入后由 Infer Build 负责准入、空闲调度和资源仲裁，而不是让 Echo
+在导入事务里同步运行模型。
 
 ## 7. 推理能力与模型参考
 
@@ -203,8 +212,9 @@ InferenceBackend
   - 默认分析策略（2026-08-09 校准）：新录音完成注册后持久入队 waveform 与
     `audio.transcribe`；应用启动时为已有但缺少 transcript 证据的在线录音做幂等回填。
     结构性扫描、导入和 waveform 优先于 ASR；ASR 失败不得影响 Original、播放或浏览。
-    手动分析只作为失败重试/调试入口，不是正常产品路径。该默认不扩张到 SenseVoice、
-    diarization、embedding、LLM contextual understanding 或 TTS。
+    手动分析只作为失败重试/调试入口，不是正常产品路径。非空文字完成 `audio.align` 后，
+    继续以最低队列优先级提交 `text.summarize` contextual 元数据；该默认仍不扩张到
+    SenseVoice、diarization、embedding 或 TTS。
   - 冻结项：不再增强 Echo 内的物理模型注册、Ollama worker 或裸 Python 路由。
   - 正式 Runtime 接入边界（2026-08-09）：`audio.transcribe` 成功后读取 App-scoped
     Job snapshot，再以 `audio.align` 细化文字时间；Echo 持久化 Runtime job id、合同版本、
@@ -220,19 +230,23 @@ InferenceBackend
     文件时间/格式和已有 AI 文字证据；FFmpeg probe 开始保存容器、采样率、声道和嵌入标签；
     窗口 chrome 收敛为与 Shadow 同构、可拖动的单一融合标题工具栏；全局浏览控制下沉到底栏，
     所选声音的用户事实操作进入浮动工具栏，卡片密度开始驱动波形分辨率与渐进信息呈现。
+  - 首个 AI 聚合切片（2026-08-09）：contextual 证据中的关键词进入可重建的 Catalog Facet
+    索引；原始模型输出仍保留在 append-only Analysis 中，Facet 只保存规范化检索键与展示值。
+    资料库以关键词和计数形成 AI 发现入口，选择后筛选声音墙；不做未经证据支持的同义词合并，
+    也不把关键词提升为用户确认事实。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 
 ### 当前状态校准（2026-08-09）
 
-Echo 处于 **M0 收口、M1 默认 Intent admission 已开始但正式 Infer Build 执行尚未接入**
-的阶段。Audio Space 已经形成首个可用垂直界面，但人物、地点、声音类型仍是展示维度，
-不应被描述为已经具备完整识别和关系系统。M4 表示声音相册体验成熟，而不是首次出现
-Audio Space 页面。
+Echo 处于 **M0 已收口、M1 Runtime 音频证据链完成并开始接入 contextual、M2 声音墙进入
+AI 聚合首切片** 的阶段。Audio Space 已经形成首个可用垂直界面，但人物、地点、声音类型
+仍是模型提示或展示维度，不应被描述为已经具备完整识别和关系系统。M4 表示声音相册体验
+成熟，而不是首次出现 Audio Space 页面。
 
-在 M1 的 Infer Build 任务切片完成前，不把直接模型调用的数量当作里程碑进度；在 M2 前，
-不把 transcript 包含匹配描述成语义搜索；在 M3 前，不在实时播放路径加入任何 AI effect。
+不把直接模型调用的数量当作里程碑进度；在 embedding／语义索引落地前，不把 transcript
+包含匹配或关键词 Facet 描述成语义搜索；在 M3 前，不在实时播放路径加入任何 AI effect。
 
 ## 10. 垂直切片（判断 Echo 是否成立的标准）
 

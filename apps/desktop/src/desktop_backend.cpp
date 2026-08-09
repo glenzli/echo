@@ -89,6 +89,29 @@ QVariantList DesktopBackend::listAssets() const {
     return list;
 }
 
+QVariantList DesktopBackend::listKeywordFacets() const {
+    QVariantList list;
+    try {
+        const auto facets = session_->session_keyword_facets();
+        for (const auto& facet : facets) {
+            QVariantMap entry;
+            entry.insert(
+                QStringLiteral("key"),
+                QString::fromUtf8(facet.key.data(), facet.key.size())
+            );
+            entry.insert(
+                QStringLiteral("label"),
+                QString::fromUtf8(facet.label.data(), facet.label.size())
+            );
+            entry.insert(QStringLiteral("count"), static_cast<qulonglong>(facet.count));
+            list.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list contextual keyword facets: %s", error.what());
+    }
+    return list;
+}
+
 bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating) {
     if (rating < 0 || rating > 5) {
         qWarning("asset rating is outside zero to five");

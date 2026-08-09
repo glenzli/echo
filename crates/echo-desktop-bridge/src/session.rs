@@ -11,8 +11,8 @@ use echo_core::load_or_build_waveform;
 use echo_domain::AssetId;
 
 use crate::ffi::{
-    AnalysisStatusWire, AssetSummaryWire, JobStatsWire, ScanRootWire, SearchHitWire,
-    TranscriptSegmentWire, TranscriptWire, WaveformArtifactWire, WaveformLevelWire,
+    AnalysisStatusWire, AssetSummaryWire, JobStatsWire, KeywordFacetWire, ScanRootWire,
+    SearchHitWire, TranscriptSegmentWire, TranscriptWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 fn now_millis() -> i64 {
@@ -207,6 +207,27 @@ impl LibrarySession {
             .collect())
     }
 
+    /// Lists contextual keyword facets using the Catalog's latest-evidence
+    /// projection rather than aggregating model strings in QML.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the aggregate query fails.
+    pub fn keyword_facets(&self) -> Result<Vec<KeywordFacetWire>, SessionError> {
+        let facets = self
+            .catalog
+            .with_transaction(echo_catalog::list_contextual_keyword_facets)
+            .map_err(SessionError::from)?;
+        Ok(facets
+            .into_iter()
+            .map(|facet| KeywordFacetWire {
+                key: facet.key,
+                label: facet.label,
+                count: facet.count,
+            })
+            .collect())
+    }
+
     /// Stores user-owned Like and rating state for one sound.
     ///
     /// # Errors
@@ -383,8 +404,15 @@ impl LibrarySession {
             let has_alignment = records
                 .iter()
                 .any(|record| record.kind == echo_domain::AnalysisKind::Alignment);
-            let (stage, job_id) = if has_alignment || latest_transcript_is_empty {
+            let has_contextual = records
+                .iter()
+                .any(|record| record.kind == echo_domain::AnalysisKind::Contextual);
+            let (stage, job_id) = if latest_transcript_is_empty {
                 ("complete", format!("align-{asset_id}"))
+            } else if has_contextual {
+                ("complete", format!("contextual-{asset_id}"))
+            } else if has_alignment {
+                ("contextual", format!("contextual-{asset_id}"))
             } else if has_transcript {
                 ("alignment", format!("align-{asset_id}"))
             } else {
@@ -395,7 +423,14 @@ impl LibrarySession {
             Ok(AnalysisStatusWire {
                 stage: stage.to_owned(),
                 state: job.as_ref().map_or_else(
-                    || if has_alignment { "done" } else { "missing" }.to_owned(),
+                    || {
+                        if has_contextual || latest_transcript_is_empty {
+                            "done"
+                        } else {
+                            "missing"
+                        }
+                        .to_owned()
+                    },
                     |job| job_state_text(job.state).to_owned(),
                 ),
                 error_code: run
@@ -423,10 +458,10 @@ impl LibrarySession {
         let id = AssetId::from_str(asset_id).map_err(|error| SessionError {
             message: format!("invalid asset id {asset_id}: {error}"),
         })?;
-        let job_id = if status.stage == "alignment" {
-            format!("align-{id}")
-        } else {
-            format!("transcribe-{id}")
+        let job_id = match status.stage.as_str() {
+            "contextual" => format!("contextual-{id}"),
+            "alignment" => format!("align-{id}"),
+            _ => format!("transcribe-{id}"),
         };
         let retried = self
             .catalog

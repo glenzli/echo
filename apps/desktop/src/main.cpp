@@ -70,6 +70,9 @@ int main(int argc, char* argv[]) {
         backend.startWorkers(inference_prefs.runtimeEndpoint());
 
         QQmlApplicationEngine engine;
+        // Qt 6.11's default import paths start at qrc:/qt/qml, while Echo's
+        // executable module keeps its generated qmldir at qrc:/EchoDesktop.
+        engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);

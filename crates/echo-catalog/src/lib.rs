@@ -14,6 +14,7 @@ mod asset_path;
 mod asset_registration;
 mod audio_space;
 mod catalog;
+mod contextual_facets;
 mod derived_artifact;
 mod error;
 mod inference_run;
@@ -26,7 +27,7 @@ mod source_metadata;
 
 pub use analysis::{
     AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis,
-    list_assets_with_empty_latest_transcript,
+    list_assets_with_alignment_missing_contextual, list_assets_with_empty_latest_transcript,
     list_assets_with_nonempty_transcript_missing_alignment, query_analysis, record_analysis,
 };
 pub use asset_affinity::{AssetAffinity, asset_affinity, set_asset_affinity};
@@ -37,6 +38,10 @@ pub use asset_registration::{
 };
 pub use audio_space::{AudioSpaceAsset, list_audio_space};
 pub use catalog::{Catalog, CatalogStats, open_catalog};
+pub use contextual_facets::{
+    AppendContextualAnalysis, ContextualKeywordFacet, list_contextual_keyword_facets,
+    record_contextual_analysis,
+};
 pub use derived_artifact::{
     DerivedArtifactKind, DerivedArtifactRecord, find_derived_artifact, remove_derived_artifact,
     upsert_derived_artifact,

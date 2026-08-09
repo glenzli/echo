@@ -186,6 +186,33 @@ pub fn list_assets_with_nonempty_transcript_missing_alignment(
     parse_asset_ids(rows)
 }
 
+/// Lists present assets with alignment evidence and non-empty text but no
+/// contextual evidence.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the query or a stored asset identity is
+/// invalid.
+pub fn list_assets_with_alignment_missing_contextual(
+    transaction: &Transaction<'_>,
+) -> Result<Vec<AssetId>, CatalogError> {
+    let mut statement = transaction.prepare(
+        "SELECT a.id FROM assets a WHERE a.path_status = 'present' \
+         AND EXISTS (SELECT 1 FROM analysis_records aligned \
+             WHERE aligned.asset_id = a.id AND aligned.kind = 'alignment') \
+         AND TRIM(COALESCE(json_extract((\
+             SELECT transcript.value FROM analysis_records transcript \
+             WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript' \
+             ORDER BY transcript.id DESC LIMIT 1\
+         ), '$.text'), '')) <> '' AND NOT EXISTS (\
+             SELECT 1 FROM analysis_records contextual \
+             WHERE contextual.asset_id = a.id AND contextual.kind = 'contextual'\
+         ) ORDER BY a.imported_at_millis ASC, a.id ASC",
+    )?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    parse_asset_ids(rows)
+}
+
 /// Lists assets whose latest transcript is a valid empty-text observation.
 ///
 /// # Errors

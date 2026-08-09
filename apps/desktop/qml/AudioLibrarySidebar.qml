@@ -11,6 +11,7 @@ Rectangle {
 
     required property var assets
     required property var smartAlbums
+    required property var keywordFacets
     required property string selectedFilter
 
     signal filterRequested(string key)
@@ -114,15 +115,6 @@ Rectangle {
 
         Item { Layout.preferredHeight: 9 }
 
-        Text {
-            Layout.leftMargin: 7
-            text: qsTr("SOUND ALBUMS")
-            color: Theme.textDisabled
-            font.pixelSize: Theme.fontMeta
-            font.bold: true
-            font.letterSpacing: 1.3
-        }
-
         ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -133,6 +125,45 @@ Rectangle {
             ColumnLayout {
                 width: parent.width
                 spacing: 2
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 7
+                    Layout.topMargin: 2
+                    Layout.bottomMargin: 4
+                    text: qsTr("AI KEYWORDS")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    font.bold: true
+                    font.letterSpacing: 1.3
+                }
+
+                Repeater {
+                    model: sidebar.keywordFacets
+
+                    delegate: SoundLibraryRow {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        label: modelData.label
+                        glyph: "✦"
+                        count: modelData.count
+                        selected: sidebar.selectedFilter === "keyword:" + modelData.key
+                        onActivated: sidebar.filterRequested("keyword:" + modelData.key)
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 7
+                    Layout.topMargin: 10
+                    Layout.bottomMargin: 4
+                    text: qsTr("SOUND ALBUMS")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    font.bold: true
+                    font.letterSpacing: 1.3
+                }
 
                 Repeater {
                     model: sidebar.smartAlbums

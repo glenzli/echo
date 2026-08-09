@@ -5,6 +5,12 @@
 //! response normalization and App-scoped Job provenance. It never opens the
 //! catalog and never knows how Echo schedules or presents analysis work.
 
+mod responses;
+
+pub use responses::{
+    CONTEXTUAL_INTENT, ContextualIntent, ContextualResponse, MAX_CONTEXTUAL_INPUT_BYTES,
+};
+
 use std::{collections::BTreeMap, fmt, path::Path, time::Duration};
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -85,8 +91,12 @@ fn default_background_constraints() -> BTreeMap<String, String> {
         ("infer.policy".to_owned(), "local-first".to_owned()),
         ("infer.priority".to_owned(), "background".to_owned()),
         ("infer.placement".to_owned(), "local_only".to_owned()),
+        ("infer.prefer".to_owned(), "local".to_owned()),
         ("infer.offline_required".to_owned(), "true".to_owned()),
+        ("infer.quality_floor".to_owned(), "basic".to_owned()),
+        ("infer.latency".to_owned(), "throughput".to_owned()),
         ("infer.fallback".to_owned(), "none".to_owned()),
+        ("infer.max_cost_usd".to_owned(), "0".to_owned()),
     ])
 }
 
@@ -118,7 +128,7 @@ pub struct RuntimeProvenance {
 }
 
 /// App-scoped Job fields Echo can safely persist and diagnose.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RuntimeJobSnapshot {
     pub id: String,
     pub app_id: String,
@@ -129,11 +139,67 @@ pub struct RuntimeJobSnapshot {
     pub model_build: String,
     pub physical_model: String,
     pub placement: String,
+    #[serde(default)]
+    pub quality_grade: String,
+    #[serde(default)]
+    pub rating_status: String,
+    #[serde(default)]
+    pub resource_class: String,
     pub state: String,
     pub policy: String,
     pub priority: String,
     #[serde(default)]
+    pub constraints: RuntimeJobConstraints,
+    #[serde(default)]
+    pub routing: RuntimeRoutingDecision,
+    #[serde(default)]
     pub attempts: Vec<RuntimeAttempt>,
+}
+
+/// Sanitized admission constraints retained with each Runtime result.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RuntimeJobConstraints {
+    #[serde(default)]
+    pub policy: Option<String>,
+    #[serde(default)]
+    pub priority: Option<String>,
+    #[serde(default)]
+    pub placement: Option<String>,
+    #[serde(default)]
+    pub prefer: Option<String>,
+    #[serde(default)]
+    pub offline_required: Option<bool>,
+    #[serde(default)]
+    pub quality_floor: Option<String>,
+    #[serde(default)]
+    pub latency: Option<String>,
+    #[serde(default)]
+    pub max_cost_usd: Option<f64>,
+    #[serde(default)]
+    pub fallback: Option<String>,
+    #[serde(default)]
+    pub deadline_ms: Option<u64>,
+}
+
+/// Immutable admission-time routing evidence retained without provider errors.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeRoutingDecision {
+    #[serde(default)]
+    pub quality_floor: String,
+    #[serde(default)]
+    pub candidates: Vec<RuntimeCandidateDecision>,
+}
+
+/// One sanitized Runtime routing candidate.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeCandidateDecision {
+    pub deployment: String,
+    pub provider: String,
+    pub status: String,
+    #[serde(default)]
+    pub rank: Option<usize>,
+    #[serde(default)]
+    pub reason_codes: Vec<String>,
 }
 
 /// Sanitized Attempt machine fields. Provider raw error text is intentionally

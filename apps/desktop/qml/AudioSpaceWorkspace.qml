@@ -20,6 +20,7 @@ Item {
     property bool textOnly: false
     property var allAssets: []
     property var smartAlbums: []
+    property var keywordFacets: []
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
     property int viewIndex: 0
 
@@ -44,6 +45,7 @@ Item {
             }
         }
         allAssets = assets
+        keywordFacets = backend.listKeywordFacets()
         rebuildSmartAlbums()
         refilter()
         if (reconciled !== null) {
@@ -115,7 +117,15 @@ Item {
         if (selectedFilter.startsWith("mood:")) {
             return asset.mood === selectedFilter.substring(5)
         }
+        if (selectedFilter.startsWith("keyword:")) {
+            const selectedKeyword = selectedFilter.substring(8)
+            return asset.keywords.some(keyword => normalizedKeyword(keyword) === selectedKeyword)
+        }
         return false
+    }
+
+    function normalizedKeyword(keyword: string) : string {
+        return keyword.trim().split(/\s+/).join(" ").toLocaleLowerCase()
     }
 
     function matchingSearchIds() : var {
@@ -268,6 +278,7 @@ Item {
                     Layout.fillHeight: true
                     assets: workspace.allAssets
                     smartAlbums: workspace.smartAlbums
+                    keywordFacets: workspace.keywordFacets
                     selectedFilter: workspace.selectedFilter
                     onFilterRequested: key => workspace.selectFilter(key)
                     onManageLibraryRequested: workspace.openLibraryRequested()

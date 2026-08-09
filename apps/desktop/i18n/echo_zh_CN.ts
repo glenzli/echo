@@ -45,6 +45,11 @@
     </message>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="119"/>
+        <source>AI KEYWORDS</source>
+        <translation>AI 关键词</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="151"/>
         <source>SOUND ALBUMS</source>
         <translation>声音相册</translation>
     </message>
@@ -233,6 +238,14 @@
 </context>
 <context>
     <name>AudioPlaybackWorkspace</name>
+    <message>
+        <source>Understanding this sound in the background…</source>
+        <translation>正在后台理解这个声音…</translation>
+    </message>
+    <message>
+        <source>Retry sound understanding</source>
+        <translation>重试声音理解</translation>
+    </message>
     <message>
         <location filename="../qml/AudioPlaybackWorkspace.qml" line="124"/>
         <source>Select a recording</source>

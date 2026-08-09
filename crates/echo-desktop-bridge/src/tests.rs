@@ -124,3 +124,100 @@ fn alignment_refines_matching_segment_boundaries_without_mutating_text() {
     assert!((refined[1].start - 0.91).abs() < f64::EPSILON);
     assert!((refined[1].end - 1.44).abs() < f64::EPSILON);
 }
+
+#[test]
+fn contextual_stage_and_keyword_facets_project_through_the_live_session() {
+    let root = fixture_catalog();
+    let catalog_path = root.join("catalog.sqlite");
+    let cache_root = root.join("cache");
+    let session = open_session(
+        catalog_path.to_str().expect("utf8"),
+        cache_root.to_str().expect("utf8"),
+    )
+    .expect("session opens");
+    let asset = session
+        .catalog()
+        .with_transaction(|transaction| {
+            echo_catalog::register_asset(
+                transaction,
+                &echo_catalog::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([21; 32]),
+                    path: &root.join("context.wav"),
+                    size_bytes: 1024,
+                    codec: None,
+                    duration_millis: Some(2100),
+                    recorded_at_millis: None,
+                    imported_at_millis: 0,
+                },
+            )
+        })
+        .expect("registration");
+    let echo_catalog::RegisterAsset::Created(asset) = asset else {
+        panic!("fixture must create")
+    };
+    let transcript = echo_core::TranscriptPayload {
+        model: "audio.transcribe".to_owned(),
+        language: Some("en".to_owned()),
+        text: "rain on the train platform".to_owned(),
+        segments: vec![],
+        runtime: None,
+    };
+    echo_core::record_transcript(session.catalog(), asset.id, &transcript, "fixture")
+        .expect("transcript records");
+    session
+        .catalog()
+        .with_transaction(|transaction| {
+            echo_catalog::record_analysis(
+                transaction,
+                &echo_catalog::AppendAnalysisRecord {
+                    asset_id: asset.id,
+                    record: echo_domain::AnalysisRecord::new(
+                        echo_domain::AnalysisKind::Alignment,
+                        serde_json::json!({"text":"rain on the train platform","items":[]}),
+                        echo_domain::ModelIdentity::new("aligner".into(), "1".into()),
+                        None,
+                        1,
+                    ),
+                },
+            )
+        })
+        .expect("alignment records");
+    let pending = session
+        .analysis_status(&asset.id.to_string())
+        .expect("status reads");
+    assert_eq!(pending.stage, "contextual");
+    assert_eq!(pending.state, "missing");
+
+    let keywords = vec!["Rain".to_owned(), "Train platform".to_owned()];
+    session
+        .catalog()
+        .with_transaction(|transaction| {
+            echo_catalog::record_contextual_analysis(
+                transaction,
+                &echo_catalog::AppendContextualAnalysis {
+                    analysis: echo_catalog::AppendAnalysisRecord {
+                        asset_id: asset.id,
+                        record: echo_domain::AnalysisRecord::new(
+                            echo_domain::AnalysisKind::Contextual,
+                            serde_json::json!({"summary":"Rain at a station","keywords":keywords}),
+                            echo_domain::ModelIdentity::new("qwen".into(), "build".into()),
+                            None,
+                            2,
+                        ),
+                    },
+                    keywords: &keywords,
+                },
+            )
+        })
+        .expect("contextual evidence records");
+    let complete = session
+        .analysis_status(&asset.id.to_string())
+        .expect("complete status reads");
+    assert_eq!(complete.stage, "complete");
+    assert_eq!(complete.state, "done");
+    let facets = session.keyword_facets().expect("facets project");
+    assert_eq!(facets.len(), 2);
+    assert_eq!(facets[0].count, 1);
+    assert!(facets.iter().any(|facet| facet.key == "rain"));
+    let _ = std::fs::remove_dir_all(root);
+}

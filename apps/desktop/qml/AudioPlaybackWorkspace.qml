@@ -286,7 +286,10 @@ Rectangle {
             EchoSectionLabel {
                 Layout.fillWidth: true
                 text: qsTr("Text")
-                hint: transcriptModel.count > 0
+                hint: preview.analysisStatus.stage === "contextual"
+                        && preview.analysisActive
+                    ? qsTr("Understanding this sound in the background…")
+                    : transcriptModel.count > 0
                     ? preview.analysisStatus.stage === "alignment"
                         && preview.analysisActive
                         ? qsTr("Refining word timing in the background…")
@@ -307,8 +310,10 @@ Rectangle {
 
             EchoButton {
                 visible: preview.analysisFailed
-                text: preview.analysisStatus.stage === "alignment"
-                    ? qsTr("Retry timing analysis") : qsTr("Retry text extraction")
+                text: preview.analysisStatus.stage === "contextual"
+                    ? qsTr("Retry sound understanding")
+                    : preview.analysisStatus.stage === "alignment"
+                        ? qsTr("Retry timing analysis") : qsTr("Retry text extraction")
                 enabled: preview.hasAsset
                     && preview.asset.pathStatus !== "missing"
                 ghost: true

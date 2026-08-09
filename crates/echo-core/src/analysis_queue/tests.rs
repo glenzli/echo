@@ -109,3 +109,53 @@ fn backfill_is_evidence_aware_and_job_idempotent() {
     assert_eq!(job.state, echo_catalog::JobState::Done);
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn contextual_backfill_requires_alignment_and_deduplicates_job_identity() {
+    let root = std::env::temp_dir().join(format!("echo-contextual-queue-{}", std::process::id()));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    catalog
+        .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
+            let asset_id = register(transaction, 2);
+            record_analysis(
+                transaction,
+                &echo_catalog::AppendAnalysisRecord {
+                    asset_id,
+                    record: AnalysisRecord::new(
+                        AnalysisKind::Transcript,
+                        serde_json::json!({ "text": "already done" }),
+                        ModelIdentity::new("test".into(), "1".into()),
+                        None,
+                        10,
+                    ),
+                },
+            )?;
+            record_analysis(
+                transaction,
+                &echo_catalog::AppendAnalysisRecord {
+                    asset_id,
+                    record: AnalysisRecord::new(
+                        AnalysisKind::Alignment,
+                        serde_json::json!({ "text": "already done", "items": [] }),
+                        ModelIdentity::new("aligner".into(), "1".into()),
+                        None,
+                        11,
+                    ),
+                },
+            )
+        })
+        .expect("aligned fixture writes");
+
+    assert_eq!(
+        enqueue_missing_contextual(&catalog, 20).expect("contextual backfill queues"),
+        1
+    );
+    assert_eq!(
+        enqueue_missing_contextual(&catalog, 30).expect("contextual backfill repeats"),
+        1,
+        "evidence admission is stable while deterministic job identity deduplicates"
+    );
+    let JobStats { pending, .. } = catalog.with_transaction(job_stats).expect("stats read");
+    assert_eq!(pending, 1);
+    let _ = std::fs::remove_dir_all(root);
+}

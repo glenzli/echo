@@ -98,28 +98,25 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_809, 3);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 4);
+    CatalogSchemaRevision::new(20_260_809, 4);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 5);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.4-infer-runtime-job-evidence";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.5-contextual-keyword-facets";
 
-pub(crate) const INFERENCE_RUN_SCHEMA_SQL: &str = "
-CREATE TABLE IF NOT EXISTS inference_runs (
-    local_job_id       TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
-    asset_id           TEXT NOT NULL REFERENCES assets(id),
-    intent             TEXT NOT NULL,
-    runtime_job_id     TEXT,
-    contract_version   TEXT NOT NULL,
-    state              TEXT NOT NULL CHECK (
-                       state IN ('submitting', 'succeeded', 'failed', 'cancelled', 'expired')),
-    http_status        INTEGER,
-    error_code         TEXT,
-    snapshot_json      TEXT,
-    updated_at_millis  INTEGER NOT NULL
+pub(crate) const CONTEXTUAL_FACET_SCHEMA_SQL: &str = "
+CREATE TABLE IF NOT EXISTS contextual_keyword_facets (
+    analysis_record_id  INTEGER NOT NULL REFERENCES analysis_records(id) ON DELETE CASCADE,
+    asset_id            TEXT NOT NULL REFERENCES assets(id),
+    normalized_keyword  TEXT NOT NULL,
+    display_keyword     TEXT NOT NULL,
+    PRIMARY KEY (analysis_record_id, normalized_keyword)
 );
 
-CREATE INDEX IF NOT EXISTS inference_runs_asset_intent
-    ON inference_runs (asset_id, intent, updated_at_millis DESC);
+CREATE INDEX IF NOT EXISTS contextual_keyword_facets_lookup
+    ON contextual_keyword_facets (normalized_keyword, asset_id);
+
+CREATE INDEX IF NOT EXISTS contextual_keyword_facets_latest
+    ON contextual_keyword_facets (asset_id, analysis_record_id DESC);
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -154,6 +151,20 @@ CREATE TABLE IF NOT EXISTS analysis_records (
 
 CREATE INDEX IF NOT EXISTS analysis_records_asset_kind
     ON analysis_records (asset_id, kind);
+
+CREATE TABLE IF NOT EXISTS contextual_keyword_facets (
+    analysis_record_id  INTEGER NOT NULL REFERENCES analysis_records(id) ON DELETE CASCADE,
+    asset_id            TEXT NOT NULL REFERENCES assets(id),
+    normalized_keyword  TEXT NOT NULL,
+    display_keyword     TEXT NOT NULL,
+    PRIMARY KEY (analysis_record_id, normalized_keyword)
+);
+
+CREATE INDEX IF NOT EXISTS contextual_keyword_facets_lookup
+    ON contextual_keyword_facets (normalized_keyword, asset_id);
+
+CREATE INDEX IF NOT EXISTS contextual_keyword_facets_latest
+    ON contextual_keyword_facets (asset_id, analysis_record_id DESC);
 
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset_id   TEXT PRIMARY KEY REFERENCES assets(id),

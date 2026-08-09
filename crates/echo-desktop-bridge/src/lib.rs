@@ -36,6 +36,14 @@ mod ffi {
         source_created_at: String,
     }
 
+    /// One indexed keyword facet over the newest contextual evidence.
+    #[derive(Debug)]
+    struct KeywordFacetWire {
+        key: String,
+        label: String,
+        count: u64,
+    }
+
     /// One pyramid level of a cached waveform artifact.
     #[derive(Debug)]
     struct WaveformLevelWire {
@@ -116,6 +124,8 @@ mod ffi {
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
         /// Lists registered assets, newest import first.
         fn session_list_assets(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
+        /// Lists contextual keyword facets by descending asset count.
+        fn session_keyword_facets(self: &LibrarySession) -> Result<Vec<KeywordFacetWire>>;
         /// Total registered asset count.
         fn session_asset_count(self: &LibrarySession) -> u64;
         /// The catalog file path.
@@ -193,6 +203,11 @@ impl LibrarySession {
     /// Returns the session error message when the catalog read fails.
     fn session_list_assets(&self) -> Result<Vec<ffi::AssetSummaryWire>, String> {
         self.list_assets().map_err(|error| error.message)
+    }
+
+    /// Lists contextual keyword facets by descending asset count.
+    fn session_keyword_facets(&self) -> Result<Vec<ffi::KeywordFacetWire>, String> {
+        self.keyword_facets().map_err(|error| error.message)
     }
 
     /// Total registered asset count.

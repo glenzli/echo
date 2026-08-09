@@ -6,7 +6,7 @@
 
 use echo_catalog::{
     Catalog, JobKind, complete_job, enqueue_job, job_by_id, list_assets_missing_analysis,
-    list_assets_with_empty_latest_transcript,
+    list_assets_with_alignment_missing_contextual, list_assets_with_empty_latest_transcript,
     list_assets_with_nonempty_transcript_missing_alignment,
 };
 use echo_domain::{AnalysisKind, AssetId};
@@ -79,6 +79,37 @@ pub(crate) fn enqueue_missing_alignments(
         .map_err(CoreError::from)
 }
 
+/// Persists contextual understanding after alignment evidence exists.
+pub(crate) fn enqueue_contextual(
+    transaction: &Transaction<'_>,
+    asset_id: AssetId,
+    now_millis: i64,
+) -> Result<(), echo_catalog::CatalogError> {
+    enqueue_job(
+        transaction,
+        &contextual_job_id(asset_id),
+        JobKind::Contextual,
+        &serde_json::json!({ "asset_id": asset_id.to_string() }),
+        now_millis,
+    )
+}
+
+/// Backfills durable contextual intents only for aligned, non-empty text.
+pub(crate) fn enqueue_missing_contextual(
+    catalog: &Catalog,
+    now_millis: i64,
+) -> Result<u64, CoreError> {
+    catalog
+        .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
+            let assets = list_assets_with_alignment_missing_contextual(transaction)?;
+            for asset_id in &assets {
+                enqueue_contextual(transaction, *asset_id, now_millis)?;
+            }
+            Ok(u64::try_from(assets.len()).expect("asset count fits u64"))
+        })
+        .map_err(CoreError::from)
+}
+
 /// Treats forced alignment as not applicable when ASR produced a valid empty
 /// transcript. This also cleans up failed compatibility-era alignment jobs.
 pub(crate) fn settle_empty_transcript_alignments(
@@ -107,6 +138,10 @@ fn transcription_job_id(asset_id: AssetId) -> String {
 
 pub(crate) fn alignment_job_id(asset_id: AssetId) -> String {
     format!("align-{asset_id}")
+}
+
+pub(crate) fn contextual_job_id(asset_id: AssetId) -> String {
+    format!("contextual-{asset_id}")
 }
 
 #[cfg(test)]

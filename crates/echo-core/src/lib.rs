@@ -28,10 +28,12 @@ pub use contextual::{ContextualPayload, record_contextual};
 pub use error::CoreErrorKind;
 pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
 pub use infer_runtime::{
-    ALIGNMENT_INTENT, AlignmentIntent, AlignmentItem, AlignmentPayload, EXPECTED_CONTRACT_VERSION,
-    InferRuntimeClient, InferRuntimeConfig, InferRuntimeError, InferRuntimeErrorKind,
-    MAX_AUDIO_UPLOAD_BYTES, RuntimeAttempt, RuntimeJobSnapshot, RuntimeProvenance,
-    TRANSCRIPTION_INTENT, TranscriptionIntent,
+    ALIGNMENT_INTENT, AlignmentIntent, AlignmentItem, AlignmentPayload, CONTEXTUAL_INTENT,
+    ContextualIntent, ContextualResponse, EXPECTED_CONTRACT_VERSION, InferRuntimeClient,
+    InferRuntimeConfig, InferRuntimeError, InferRuntimeErrorKind, MAX_AUDIO_UPLOAD_BYTES,
+    MAX_CONTEXTUAL_INPUT_BYTES, RuntimeAttempt, RuntimeCandidateDecision, RuntimeJobConstraints,
+    RuntimeJobSnapshot, RuntimeProvenance, RuntimeRoutingDecision, TRANSCRIPTION_INTENT,
+    TranscriptionIntent,
 };
 pub use infer_runtime_credentials::{
     InferRuntimeCredential, InferRuntimeCredentialError, InferRuntimeCredentialStore,
