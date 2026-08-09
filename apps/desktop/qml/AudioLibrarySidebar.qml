@@ -113,7 +113,11 @@ Rectangle {
 
         Repeater {
             model: [
-                { key: "has-speech", label: qsTr("With speech"), glyph: "“" },
+                {
+                    key: "has-speech",
+                    label: qsTr("With speech"),
+                    iconSource: "qrc:/EchoDesktop/icons/mic.svg"
+                },
                 { key: "missing", label: qsTr("Missing originals"), glyph: "◇" }
             ]
 
@@ -122,7 +126,8 @@ Rectangle {
 
                 Layout.fillWidth: true
                 label: modelData.label
-                glyph: modelData.glyph
+                glyph: modelData.glyph || ""
+                iconSource: modelData.iconSource || ""
                 count: sidebar.countFor(modelData.key)
                 selected: sidebar.selectedFilter === modelData.key
                 onActivated: sidebar.filterRequested(modelData.key)

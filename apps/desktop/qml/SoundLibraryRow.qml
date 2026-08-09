@@ -9,8 +9,9 @@ Rectangle {
     id: row
 
     required property string label
-    required property string glyph
     required property int count
+    property string glyph: ""
+    property url iconSource
     property bool selected: false
     property string subtitle: ""
 
@@ -45,12 +46,27 @@ Rectangle {
         anchors.rightMargin: 8
         spacing: 8
 
-        Text {
+        Item {
             Layout.preferredWidth: 17
-            text: row.glyph
-            color: row.selected ? Theme.accentSelectionText : Theme.textSecondary
-            font.pixelSize: 14
-            horizontalAlignment: Text.AlignHCenter
+            Layout.preferredHeight: 17
+
+            EchoIcon {
+                anchors.centerIn: parent
+                visible: row.iconSource.toString().length > 0
+                source: row.iconSource
+                size: 14
+                color: row.selected ? Theme.accentSelectionText : Theme.textSecondary
+            }
+
+            Text {
+                anchors.fill: parent
+                visible: row.iconSource.toString().length === 0
+                text: row.glyph
+                color: row.selected ? Theme.accentSelectionText : Theme.textSecondary
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
         }
 
         ColumnLayout {
