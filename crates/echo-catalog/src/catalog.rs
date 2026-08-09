@@ -9,7 +9,7 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::{
     error::{CatalogError, CatalogErrorKind},
-    schema::{SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION},
+    schema::{CatalogSchemaRevision, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION},
 };
 
 /// Durable catalog handle. `SQLite` access is serialized through one mutex: the
@@ -28,7 +28,7 @@ pub struct CatalogStats {
     /// Append-only analysis record count.
     pub analysis_record_count: u64,
     /// On-disk schema version.
-    pub schema_version: i64,
+    pub schema_version: CatalogSchemaRevision,
 }
 
 /// Opens (creating if needed) a catalog at `path` and verifies the schema.
@@ -55,21 +55,11 @@ pub fn open_catalog(path: &Path) -> Result<Catalog, CatalogError> {
 
 fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     connection.execute_batch(SCHEMA_SQL)?;
-    let stored_version: Option<i64> = connection
+    let stored_version: Option<String> = connection
         .query_row(
             "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
             [],
-            |row| {
-                row.get::<_, String>(0).and_then(|text| {
-                    text.parse::<i64>().map_err(|error| {
-                        rusqlite::Error::FromSqlConversionFailure(
-                            0,
-                            rusqlite::types::Type::Text,
-                            error.to_string().into(),
-                        )
-                    })
-                })
-            },
+            |row| row.get(0),
         )
         .optional()?;
     match stored_version {
@@ -83,8 +73,12 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 [SCHEMA_IDENTITY.to_string()],
             )?;
         }
-        Some(version) if version == SCHEMA_VERSION => {
-            // Identity is descriptive; the numeric revision is authoritative.
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == SCHEMA_VERSION) =>
+        {
+            // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -160,21 +154,17 @@ impl Catalog {
             connection.query_row("SELECT COUNT(*) FROM analysis_records", [], |row| {
                 row.get(0)
             })?;
-        let schema_version: i64 = connection.query_row(
+        let schema_version_text: String = connection.query_row(
             "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
             [],
-            |row| {
-                row.get::<_, String>(0).and_then(|text| {
-                    text.parse::<i64>().map_err(|error| {
-                        rusqlite::Error::FromSqlConversionFailure(
-                            0,
-                            rusqlite::types::Type::Text,
-                            error.to_string().into(),
-                        )
-                    })
-                })
-            },
+            |row| row.get(0),
         )?;
+        let schema_version = schema_version_text.parse().map_err(|_| {
+            CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                format!("catalog stores malformed schema revision {schema_version_text}"),
+            )
+        })?;
         Ok(CatalogStats {
             asset_count: u64::try_from(asset_count).expect("count is non-negative"),
             analysis_record_count: u64::try_from(analysis_record_count)

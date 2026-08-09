@@ -3,11 +3,104 @@
 //!
 //! Echo has no migration chain before its first compatibility promise. This
 //! module creates the current dated revision atomically and rejects every
-//! other persisted shape. Revisions follow Shadow's contract: `YYYYMMDDNN`.
+//! other persisted shape. Revisions use the canonical `YYYYMMDD.N` form.
 
-pub(crate) const SCHEMA_VERSION: i64 = 2_026_080_901;
+use std::str::FromStr;
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.1-derived-artifact-references";
+/// One dated Catalog contract revision: calendar date plus that day's
+/// positive sequence number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CatalogSchemaRevision {
+    date: u32,
+    daily_sequence: u16,
+}
+
+impl CatalogSchemaRevision {
+    /// Creates a canonical dated revision.
+    #[must_use]
+    pub(crate) const fn new(date: u32, daily_sequence: u16) -> Self {
+        Self {
+            date,
+            daily_sequence,
+        }
+    }
+
+    /// Eight-digit calendar identity in `YYYYMMDD` form.
+    #[must_use]
+    pub const fn date(self) -> u32 {
+        self.date
+    }
+
+    /// Positive revision sequence within the date.
+    #[must_use]
+    pub const fn daily_sequence(self) -> u16 {
+        self.daily_sequence
+    }
+}
+
+impl std::fmt::Display for CatalogSchemaRevision {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{:08}.{}", self.date, self.daily_sequence)
+    }
+}
+
+/// A persisted schema revision that is not canonical `YYYYMMDD.N`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("schema revision must use canonical YYYYMMDD.N form")]
+pub struct CatalogSchemaRevisionParseError;
+
+impl FromStr for CatalogSchemaRevision {
+    type Err = CatalogSchemaRevisionParseError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let (date, sequence) = text
+            .split_once('.')
+            .ok_or(CatalogSchemaRevisionParseError)?;
+        if date.len() != 8
+            || !date.bytes().all(|byte| byte.is_ascii_digit())
+            || sequence.is_empty()
+            || !sequence.bytes().all(|byte| byte.is_ascii_digit())
+        {
+            return Err(CatalogSchemaRevisionParseError);
+        }
+        let revision = Self::new(
+            date.parse().map_err(|_| CatalogSchemaRevisionParseError)?,
+            sequence
+                .parse()
+                .map_err(|_| CatalogSchemaRevisionParseError)?,
+        );
+        if !valid_calendar_date(revision.date)
+            || revision.daily_sequence == 0
+            || revision.to_string() != text
+        {
+            return Err(CatalogSchemaRevisionParseError);
+        }
+        Ok(revision)
+    }
+}
+
+fn valid_calendar_date(date: u32) -> bool {
+    let year = date / 10_000;
+    let month = (date / 100) % 100;
+    let day = date % 100;
+    if year == 0 || !(1..=12).contains(&month) {
+        return false;
+    }
+    let leap_year =
+        year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400));
+    let days_in_month = match month {
+        2 if leap_year => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    (1..=days_in_month).contains(&day)
+}
+
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 2);
+
+pub(crate) const SCHEMA_IDENTITY: &str =
+    "echo-catalog-20260809.2-derived-artifacts-canonical-revision";
 
 pub(crate) const SCHEMA_SQL: &str = "
 CREATE TABLE IF NOT EXISTS catalog_meta (
@@ -92,3 +185,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS transcript_fts USING fts5(
     tokenize = 'unicode61'
 );
 ";
+
+#[cfg(test)]
+mod tests;
