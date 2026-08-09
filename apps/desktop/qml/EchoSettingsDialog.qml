@@ -15,17 +15,68 @@ Dialog {
     property ModelPreferences modelPrefs: null
 
     readonly property var sections: [
-        { key: "general", title: qsTr("General"), subtitle: qsTr("Appearance & language") },
-        { key: "models", title: qsTr("Models"), subtitle: qsTr("Local inference access") }
+        { key: "general", title: qsTr("General"),
+          subtitle: qsTr("Appearance & language"), icon: "qrc:/EchoDesktop/icons/tune.svg" },
+        { key: "models", title: qsTr("Models"),
+          subtitle: qsTr("Local inference access"), icon: "qrc:/EchoDesktop/icons/mic.svg" }
     ]
     property int selectedIndex: 0
 
     title: qsTr("Settings")
     modal: true
-    standardButtons: Dialog.Close
     width: 560
-    height: 400
+    height: 430
     padding: 0
+
+    header: Rectangle {
+        implicitHeight: 48
+        color: Theme.chrome
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Theme.border
+        }
+
+        Text {
+            anchors.left: parent.left
+            anchors.leftMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            text: dialog.title
+            color: Theme.textPrimary
+            font.pixelSize: 14
+            font.bold: true
+        }
+    }
+
+    footer: Rectangle {
+        implicitHeight: 52
+        color: Theme.chrome
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: 1
+            color: Theme.border
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.rightMargin: 12
+            anchors.leftMargin: 12
+            spacing: 8
+
+            Item { Layout.fillWidth: true }
+
+            EchoButton {
+                text: qsTr("Done")
+                onClicked: dialog.close()
+            }
+        }
+    }
 
     contentItem: RowLayout {
         spacing: 0
@@ -51,35 +102,52 @@ Dialog {
                         required property int index
 
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: 52
                         radius: Theme.compactControlRadius
+                        border.width: dialog.selectedIndex === index ? 1 : 0
+                        border.color: dialog.selectedIndex === index
+                            ? Theme.accent : Theme.transparent
                         color: dialog.selectedIndex === index
-                            ? Theme.accentSurfaceQuiet : Theme.transparent
+                            ? Theme.accentSurface : Theme.transparent
 
                         MouseArea {
                             anchors.fill: parent
                             onClicked: dialog.selectedIndex = index
                         }
 
-                        ColumnLayout {
+                        RowLayout {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: 12
-                            spacing: 1
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            spacing: 10
 
-                            Text {
-                                text: modelData.title
+                            EchoIcon {
+                                source: modelData.icon
+                                size: 18
                                 color: dialog.selectedIndex === index
-                                    ? Theme.accentSelectionText : Theme.textPrimary
-                                font.pixelSize: Theme.fontBody
-                                font.bold: dialog.selectedIndex === index
+                                    ? Theme.accentSelectionText : Theme.textSecondary
                             }
 
-                            Text {
-                                text: modelData.subtitle
-                                color: Theme.textSecondary
-                                font.pixelSize: Theme.fontMeta
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                                Text {
+                                    text: modelData.title
+                                    color: dialog.selectedIndex === index
+                                        ? Theme.accentSelectionText : Theme.textPrimary
+                                    font.pixelSize: Theme.fontBody
+                                    font.bold: dialog.selectedIndex === index
+                                }
+
+                                Text {
+                                    text: modelData.subtitle
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontMeta
+                                    elide: Text.ElideRight
+                                }
                             }
                         }
                     }

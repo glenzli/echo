@@ -4,33 +4,33 @@
 <context>
     <name>EchoSettingsDialog</name>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="23"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="25"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="122"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="190"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="133"/>
-        <location filename="../qml/EchoSettingsDialog.qml" line="160"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="201"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="228"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="134"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="202"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="135"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="203"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="123"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="191"/>
         <source>Echo follows the system appearance in System mode; you can pin Light or Dark at any time.</source>
         <translation>跟随系统模式下，Echo 会跟随系统外观；你也可以随时固定为浅色或深色。</translation>
     </message>
@@ -40,67 +40,72 @@
         <translation>通用</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="18"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="19"/>
         <source>Appearance &amp; language</source>
         <translation>外观与语言</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="19"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="20"/>
         <source>Models</source>
         <translation>模型</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="19"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="21"/>
         <source>Local inference access</source>
         <translation>本地推理访问</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="150"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="75"/>
+        <source>Done</source>
+        <translation>完成</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="218"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="151"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="219"/>
         <source>The default follows your system language.</source>
         <translation>默认跟随系统语言。</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="184"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="252"/>
         <source>Model access</source>
         <translation>模型访问</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="185"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="253"/>
         <source>ASR models come from the shared HuggingFace cache; contextual understanding runs on your local Ollama.</source>
         <translation>ASR 模型来自共享的 HuggingFace 缓存；上下文理解在你的本地 Ollama 上运行。</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="237"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="305"/>
         <source>Ollama endpoint</source>
         <translation>Ollama 地址</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="250"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="318"/>
         <source>Ollama model</source>
         <translation>Ollama 模型</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="197"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="265"/>
         <source>Model root</source>
         <translation>模型目录</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="210"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="278"/>
         <source>Python</source>
         <translation>Python</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="219"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="287"/>
         <source>python3</source>
         <translation>python3</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="224"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="292"/>
         <source>Worker</source>
         <translation>工作脚本</translation>
     </message>
