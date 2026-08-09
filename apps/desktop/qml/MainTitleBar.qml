@@ -12,6 +12,7 @@ ToolBar {
     id: titleBar
 
     required property var hostWindow
+    required property var editor
     required property int workspaceIndex
     required property bool editorAvailable
     required property bool jobsActive
@@ -23,7 +24,7 @@ ToolBar {
 
     objectName: "titleToolBar"
     Accessible.name: qsTr("Echo toolbar")
-    implicitHeight: 48
+    implicitHeight: 44
     topPadding: 0
     bottomPadding: 0
     leftPadding: Math.max(
@@ -91,15 +92,15 @@ ToolBar {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            spacing: 6
+            spacing: 10
 
             Item {
-                width: 44
+                width: 46
                 height: parent.height
 
                 EchoIconButton {
                     anchors.centerIn: parent
-                    buttonSize: 38
+                    buttonSize: 30
                     iconSize: 18
                     source: "qrc:/EchoDesktop/icons/waveform.svg"
                     toolTipText: qsTr("Audio Space")
@@ -110,7 +111,7 @@ ToolBar {
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
-                    width: 28
+                    width: 24
                     height: 2
                     radius: 1
                     visible: titleBar.workspaceIndex === 0
@@ -119,12 +120,12 @@ ToolBar {
             }
 
             Item {
-                width: 44
+                width: 46
                 height: parent.height
 
                 EchoIconButton {
                     anchors.centerIn: parent
-                    buttonSize: 38
+                    buttonSize: 30
                     iconSize: 18
                     source: "qrc:/EchoDesktop/icons/edit.svg"
                     toolTipText: qsTr("Sound Adjustments")
@@ -136,7 +137,7 @@ ToolBar {
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
-                    width: 28
+                    width: 24
                     height: 2
                     radius: 1
                     visible: titleBar.workspaceIndex === 1
@@ -148,7 +149,7 @@ ToolBar {
         RowLayout {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 7
+            spacing: 4
 
             Rectangle {
                 visible: titleBar.jobsActive
@@ -166,9 +167,59 @@ ToolBar {
                 }
             }
 
+            Row {
+                visible: titleBar.workspaceIndex === 1
+                    && titleBar.editor !== null && titleBar.editor !== undefined
+                spacing: 6
+                Layout.rightMargin: 3
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 7
+                    height: 7
+                    radius: width / 2
+                    color: titleBar.editor.dirty
+                        ? Theme.warningText : Theme.accentSelectionText
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: titleBar.editor.dirty ? qsTr("Draft") : qsTr("Saved")
+                    color: titleBar.editor.dirty
+                        ? Theme.warningText : Theme.accentSelectionText
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.55
+                }
+            }
+
+            EchoIconButton {
+                visible: titleBar.workspaceIndex === 1
+                source: "qrc:/EchoDesktop/icons/undo.svg"
+                toolTipText: qsTr("Undo")
+                enabled: titleBar.editor !== null && titleBar.editor !== undefined
+                    && titleBar.editor.canUndo
+                buttonSize: 28
+                iconSize: 16
+                onClicked: titleBar.editor.undo()
+            }
+
+            EchoIconButton {
+                visible: titleBar.workspaceIndex === 1
+                source: "qrc:/EchoDesktop/icons/redo.svg"
+                toolTipText: qsTr("Redo")
+                enabled: titleBar.editor !== null && titleBar.editor !== undefined
+                    && titleBar.editor.canRedo
+                buttonSize: 28
+                iconSize: 16
+                onClicked: titleBar.editor.redo()
+            }
+
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/tune.svg"
                 toolTipText: qsTr("Settings")
+                buttonSize: 28
+                iconSize: 16
                 onClicked: titleBar.settingsRequested()
             }
         }

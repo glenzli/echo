@@ -45,10 +45,10 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 52
-            Layout.leftMargin: 16
+            Layout.preferredHeight: 40
+            Layout.leftMargin: 14
             Layout.rightMargin: 12
-            spacing: 8
+            spacing: 0
 
             ColumnLayout {
                 spacing: 2
@@ -68,20 +68,6 @@ Rectangle {
             }
 
             Item { Layout.fillWidth: true }
-
-            EchoButton {
-                text: qsTr("Undo")
-                ghost: true
-                enabled: inspector.draft.canUndo
-                onClicked: inspector.draft.undo()
-            }
-
-            EchoButton {
-                text: qsTr("Redo")
-                ghost: true
-                enabled: inspector.draft.canRedo
-                onClicked: inspector.draft.redo()
-            }
         }
 
         Rectangle {

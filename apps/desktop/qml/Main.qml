@@ -53,6 +53,7 @@ ApplicationWindow {
 
     header: MainTitleBar {
         hostWindow: window
+        editor: soundEditor
         workspaceIndex: window.workspaceIndex
         editorAvailable: audioSpace.selectedAsset !== null
         jobsActive: window.jobsActive

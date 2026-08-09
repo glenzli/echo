@@ -18,6 +18,9 @@ Rectangle {
     property bool auditionOriginal: false
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
+    readonly property bool dirty: adjustmentDraft.dirty
+    readonly property bool canUndo: adjustmentDraft.canUndo
+    readonly property bool canRedo: adjustmentDraft.canRedo
 
     color: Theme.window
 
@@ -123,6 +126,14 @@ Rectangle {
         if (wasLoaded) playFrom(resumeAt)
     }
 
+    function undo() : void {
+        adjustmentDraft.undo()
+    }
+
+    function redo() : void {
+        adjustmentDraft.redo()
+    }
+
     onAssetChanged: {
         player.stop()
         auditionOriginal = false
@@ -211,44 +222,43 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 20
-        spacing: 12
+        anchors.margins: 16
+        anchors.topMargin: 12
+        spacing: 10
         visible: workspace.hasAsset
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 54
-            spacing: 14
+            Layout.preferredHeight: 36
+            spacing: 10
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 3
+            Text {
+                Layout.maximumWidth: Math.min(440, implicitWidth)
+                text: workspace.hasAsset ? workspace.fileName(workspace.asset.path) : ""
+                color: Theme.textPrimary
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
 
-                Text {
-                    Layout.fillWidth: true
-                    text: workspace.hasAsset ? workspace.fileName(workspace.asset.path) : ""
-                    color: Theme.textPrimary
-                    font.pixelSize: 22
-                    font.bold: true
-                    elide: Text.ElideRight
-                }
+                HoverHandler { id: sourceHover }
+                ToolTip.visible: sourceHover.hovered
+                ToolTip.text: workspace.hasAsset ? workspace.asset.path : ""
+            }
 
-                Text {
-                    Layout.fillWidth: true
-                    text: workspace.technicalDetails()
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                    elide: Text.ElideRight
-                }
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 16
+                color: Theme.border
             }
 
             Text {
-                Layout.maximumWidth: 380
-                text: workspace.hasAsset ? workspace.asset.path : ""
-                color: Theme.textDisabled
+                text: workspace.technicalDetails()
+                color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
-                elide: Text.ElideMiddle
+                elide: Text.ElideRight
             }
+
+            Item { Layout.fillWidth: true }
         }
 
         RowLayout {

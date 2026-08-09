@@ -33,7 +33,10 @@ readouts. `SoundAdjustmentDraft.qml` owns validation, gesture-coalesced
 undo/redo history, saved-state comparison, and explicit publication.
 `SoundAdjustmentEditor.qml` is the precision inspector, while
 `SoundEditingWorkspace.qml` owns source, transport, selection looping,
-adjusted/original audition, and backend lifecycle. Pointer movement never
+adjusted/original audition, backend lifecycle, and the small command projection
+consumed by the window chrome. `MainTitleBar.qml` presents editor-wide draft
+state and undo/redo beside the workspace navigation; the inspector does not
+duplicate global history commands. Pointer movement never
 persists or recompiles playback; the prepared graph is rebuilt only when the
 user explicitly auditions the changed draft.
 

@@ -561,6 +561,22 @@
         <source>Settings</source>
         <translation>设置</translation>
     </message>
+    <message>
+        <source>Draft</source>
+        <translation>草稿</translation>
+    </message>
+    <message>
+        <source>Saved</source>
+        <translation>已保存</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation>撤销</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation>重做</translation>
+    </message>
 </context>
 <context>
     <name>SoundAdjustmentEditor</name>
@@ -618,14 +634,6 @@
         <location filename="../qml/SoundAdjustmentEditor.qml" line="167"/>
         <source>Fade out</source>
         <translation>淡出</translation>
-    </message>
-    <message>
-        <source>Undo</source>
-        <translation>撤销</translation>
-    </message>
-    <message>
-        <source>Redo</source>
-        <translation>重做</translation>
     </message>
     <message>
         <source>Time selection</source>

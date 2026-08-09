@@ -176,6 +176,8 @@ qt_add_qml_module(
         icons/filter.svg
         icons/filter-off.svg
         icons/edit.svg
+        icons/undo.svg
+        icons/redo.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)
