@@ -2,6 +2,33 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN">
 <context>
+    <name>AudioSpaceWorkspace</name>
+    <message>
+        <source>All sounds</source>
+        <translation>所有声音</translation>
+    </message>
+    <message>
+        <source>Recently added</source>
+        <translation>最近加入</translation>
+    </message>
+    <message>
+        <source>Liked</source>
+        <translation>喜欢</translation>
+    </message>
+    <message>
+        <source>5 stars</source>
+        <translation>5 星</translation>
+    </message>
+    <message>
+        <source>With text</source>
+        <translation>包含文字</translation>
+    </message>
+    <message>
+        <source>Missing originals</source>
+        <translation>原始文件缺失</translation>
+    </message>
+</context>
+<context>
     <name>AudioLibrarySidebar</name>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="57"/>
@@ -741,6 +768,29 @@
     </message>
 </context>
 <context>
+    <name>SoundPresentationToolbar</name>
+    <message>
+        <source>%1 visible</source>
+        <translation>%1 段可见</translation>
+    </message>
+    <message>
+        <source>Grid view</source>
+        <translation>网格视图</translation>
+    </message>
+    <message>
+        <source>Single sound with filmstrip</source>
+        <translation>单声音与胶片带</translation>
+    </message>
+    <message>
+        <source>SCALE</source>
+        <translation>缩放</translation>
+    </message>
+    <message>
+        <source>Sound card size</source>
+        <translation>声音卡片大小</translation>
+    </message>
+</context>
+<context>
     <name>SoundSelectionToolbar</name>
     <message>
         <location filename="../qml/SoundSelectionToolbar.qml" line="26"/>
@@ -761,16 +811,6 @@
         <location filename="../qml/SoundSelectionToolbar.qml" line="94"/>
         <source>Set %1 stars</source>
         <translation>设为 %1 星</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundSelectionToolbar.qml" line="124"/>
-        <source>Expand</source>
-        <translation>展开</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundSelectionToolbar.qml" line="131"/>
-        <source>Open the selected sound</source>
-        <translation>打开所选声音</translation>
     </message>
 </context>
 <context>
@@ -839,11 +879,6 @@
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWallBottomBar.qml" line="204"/>
-        <source>%1 / %2 sounds</source>
-        <translation>%1 / %2 段声音</translation>
-    </message>
-    <message>
         <source>Clear all filters</source>
         <translation>清除全部筛选</translation>
     </message>
@@ -856,20 +891,8 @@
         <translation>筛选 %1</translation>
     </message>
     <message>
-        <source>Grid view</source>
-        <translation>网格视图</translation>
-    </message>
-    <message>
         <source>Open advanced filters</source>
         <translation>打开复合筛选</translation>
-    </message>
-    <message>
-        <source>Single sound with filmstrip</source>
-        <translation>单声音与胶片带</translation>
-    </message>
-    <message>
-        <source>Sound card size</source>
-        <translation>声音卡片大小</translation>
     </message>
 </context>
 </TS>

@@ -1,6 +1,5 @@
-//! Global Audio Space browsing controls. The left capsule owns sort and
-//! filtering affordances, the centered group owns presentation and card scale,
-//! and the right edge reports the filtered result count.
+//! Global Audio Space sorting and evidence filters. Presentation and card
+//! scale belong to SoundPresentationToolbar above the center surface.
 
 import QtQuick
 import QtQuick.Controls
@@ -14,18 +13,12 @@ ToolBar {
     required property bool likedOnly
     required property int minimumRating
     required property bool textOnly
-    required property int visibleCount
-    required property int totalCount
-    required property real cardWidth
-    required property string viewMode
     required property var filterState
 
     signal sortRequested(string mode)
     signal likedFilterRequested(bool enabled)
     signal ratingFilterRequested(int minimumRating)
     signal textFilterRequested(bool enabled)
-    signal cardWidthRequested(real width)
-    signal viewModeRequested(string mode)
     signal clearAllFiltersRequested()
 
     readonly property bool anyFilterActive: likedOnly || minimumRating > 0
@@ -267,65 +260,5 @@ ToolBar {
             }
         }
 
-        Row {
-            id: viewControls
-
-            anchors.centerIn: parent
-            height: 30
-            spacing: 3
-
-            EchoIconButton {
-                source: "qrc:/EchoDesktop/icons/review-grid.svg"
-                selected: bar.viewMode === "grid"
-                toolTipText: qsTr("Grid view")
-                buttonSize: 28
-                iconSize: 15
-                onClicked: bar.viewModeRequested("grid")
-            }
-
-            EchoIconButton {
-                source: "qrc:/EchoDesktop/icons/filmstrip.svg"
-                selected: bar.viewMode === "focus"
-                toolTipText: qsTr("Single sound with filmstrip")
-                buttonSize: 28
-                iconSize: 15
-                onClicked: bar.viewModeRequested("focus")
-            }
-
-            Rectangle {
-                visible: bar.viewMode === "grid"
-                width: 1
-                height: 18
-                anchors.verticalCenter: parent.verticalCenter
-                color: Theme.border
-            }
-
-            Slider {
-                id: densitySlider
-
-                visible: bar.viewMode === "grid"
-                anchors.verticalCenter: parent.verticalCenter
-                width: 126
-                height: 28
-                from: 180
-                to: 420
-                stepSize: 8
-                value: bar.cardWidth
-                onMoved: bar.cardWidthRequested(value)
-
-                ToolTip.visible: hovered || pressed
-                ToolTip.text: qsTr("Sound card size")
-                ToolTip.delay: 400
-                Accessible.name: ToolTip.text
-            }
-        }
-
-        Text {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            text: qsTr("%1 / %2 sounds").arg(bar.visibleCount).arg(bar.totalCount)
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontMeta
-        }
     }
 }

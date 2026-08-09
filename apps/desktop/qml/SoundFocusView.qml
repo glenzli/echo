@@ -62,7 +62,6 @@ Rectangle {
         anchors.rightMargin: 20
         anchors.bottomMargin: 14
         asset: focusView.selectedAsset
-        showFocusAction: false
         z: 20
         onAffinityRequested: function(liked, rating) {
             focusView.affinityRequested(focusView.selectedAsset, liked, rating)

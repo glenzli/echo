@@ -1,5 +1,5 @@
-//! Contextual operations for the selected sound. Cards expose affinity state
-//! but do not mutate it; the selected identity owns Like, rating and expansion.
+//! Affinity operations for the selected sound. Cards expose Like and rating
+//! state but do not mutate it; presentation switching lives in the top bar.
 
 import QtQuick
 import QtQuick.Controls
@@ -10,10 +10,8 @@ Rectangle {
     id: toolbar
 
     required property var asset
-    property bool showFocusAction: true
 
     signal affinityRequested(bool liked, int rating)
-    signal expandRequested()
 
     visible: asset !== null
     implicitWidth: operations.implicitWidth + 20
@@ -115,24 +113,5 @@ Rectangle {
             }
         }
 
-        Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 20
-            color: Theme.border
-            visible: toolbar.showFocusAction
-        }
-
-        EchoButton {
-            visible: toolbar.showFocusAction
-            text: qsTr("Expand") + " ↗"
-            ghost: true
-            implicitWidth: 78
-            implicitHeight: 30
-            onClicked: toolbar.expandRequested()
-
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Open the selected sound")
-            ToolTip.delay: 500
-        }
     }
 }

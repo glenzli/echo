@@ -152,6 +152,7 @@ qt_add_qml_module(
         qml/SoundFocusView.qml
         qml/SoundInspector.qml
         qml/SoundLibraryRow.qml
+        qml/SoundPresentationToolbar.qml
         qml/SoundSelectionToolbar.qml
         qml/SoundWall.qml
         qml/SoundWallBottomBar.qml

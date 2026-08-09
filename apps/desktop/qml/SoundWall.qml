@@ -120,6 +120,5 @@ Rectangle {
         onAffinityRequested: function(liked, rating) {
             wall.affinityRequested(wall.selectedAsset, liked, rating)
         }
-        onExpandRequested: wall.assetOpened(wall.selectedAsset)
     }
 }

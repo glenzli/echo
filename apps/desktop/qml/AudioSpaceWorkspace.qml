@@ -74,6 +74,19 @@ Item {
         return null
     }
 
+    function collectionTitle() : string {
+        if (selectedFilter === "recent") return qsTr("Recently added")
+        if (selectedFilter === "liked") return qsTr("Liked")
+        if (selectedFilter === "five-star") return qsTr("5 stars")
+        if (selectedFilter === "has-text") return qsTr("With text")
+        if (selectedFilter === "missing") return qsTr("Missing originals")
+        if (selectedFilter.startsWith("album:")) {
+            const album = albumForKey(selectedFilter.substring(6))
+            if (album !== null) return album.label
+        }
+        return qsTr("All sounds")
+    }
+
     function matchesCollection(asset: var) : bool {
         if (selectedFilter === "all") {
             return true
@@ -259,38 +272,54 @@ Item {
                 onManageLibraryRequested: workspace.openLibraryRequested()
             }
 
-            StackLayout {
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumWidth: 560
-                currentIndex: workspace.viewMode === "grid" ? 0 : 1
+                spacing: 0
 
-                SoundWall {
+                SoundPresentationToolbar {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    assets: workspace.filteredAssets
-                    selectedAsset: workspace.selectedAsset
-                    searchText: workspace.searchText
-                    preferredCardWidth: workspace.preferredCardWidth
-                    density: workspace.cardDensity
-                    onAssetSelected: asset => workspace.selectedAsset = asset
-                    onAssetOpened: asset => workspace.openAsset(asset)
-                    onAffinityRequested: function(asset, liked, rating) {
-                        workspace.updateAffinity(asset, liked, rating)
-                    }
+                    collectionName: workspace.collectionTitle()
+                    visibleCount: workspace.visibleAssetCount
+                    viewMode: workspace.viewMode
+                    cardWidth: workspace.preferredCardWidth
+                    onViewModeRequested: mode => workspace.viewMode = mode
+                    onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
                 }
 
-                SoundFocusView {
-                    id: soundFocus
-
-                    Layout.fillHeight: true
+                StackLayout {
                     Layout.fillWidth: true
-                    assets: workspace.filteredAssets
-                    selectedAsset: workspace.selectedAsset
-                    jobStats: workspace.jobStats
-                    onAssetSelected: asset => workspace.selectedAsset = asset
-                    onAffinityRequested: function(asset, liked, rating) {
-                        workspace.updateAffinity(asset, liked, rating)
+                    Layout.fillHeight: true
+                    currentIndex: workspace.viewMode === "grid" ? 0 : 1
+
+                    SoundWall {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        assets: workspace.filteredAssets
+                        selectedAsset: workspace.selectedAsset
+                        searchText: workspace.searchText
+                        preferredCardWidth: workspace.preferredCardWidth
+                        density: workspace.cardDensity
+                        onAssetSelected: asset => workspace.selectedAsset = asset
+                        onAssetOpened: asset => workspace.openAsset(asset)
+                        onAffinityRequested: function(asset, liked, rating) {
+                            workspace.updateAffinity(asset, liked, rating)
+                        }
+                    }
+
+                    SoundFocusView {
+                        id: soundFocus
+
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                        assets: workspace.filteredAssets
+                        selectedAsset: workspace.selectedAsset
+                        jobStats: workspace.jobStats
+                        onAssetSelected: asset => workspace.selectedAsset = asset
+                        onAffinityRequested: function(asset, liked, rating) {
+                            workspace.updateAffinity(asset, liked, rating)
+                        }
                     }
                 }
             }
@@ -313,17 +342,11 @@ Item {
             likedOnly: workspace.likedOnly
             minimumRating: workspace.minimumRating
             textOnly: workspace.textOnly
-            visibleCount: workspace.visibleAssetCount
-            totalCount: workspace.allAssets.length
-            cardWidth: workspace.preferredCardWidth
-            viewMode: workspace.viewMode
             filterState: advancedFilterState
             onSortRequested: mode => workspace.setSortMode(mode)
             onLikedFilterRequested: enabled => workspace.setLikedOnly(enabled)
             onRatingFilterRequested: rating => workspace.setMinimumRating(rating)
             onTextFilterRequested: enabled => workspace.setTextOnly(enabled)
-            onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
-            onViewModeRequested: mode => workspace.viewMode = mode
             onClearAllFiltersRequested: workspace.clearAllFilters()
         }
     }
