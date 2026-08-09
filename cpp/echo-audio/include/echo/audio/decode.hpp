@@ -2,8 +2,14 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace echo::audio {
+
+struct AudioMetadataEntry {
+    std::string key;
+    std::string value;
+};
 
 /// Container/stream metadata for one source. A source without any audio
 /// stream reports `has_audio == false` and zeroed fields; the caller keeps
@@ -15,6 +21,8 @@ struct AudioProbe {
     uint32_t sample_rate = 0;
     uint32_t channel_count = 0;
     uint64_t duration_millis = 0;
+    int64_t recorded_at_millis = 0;
+    std::vector<AudioMetadataEntry> metadata;
 };
 
 /// Probes a source file without decoding audio samples.

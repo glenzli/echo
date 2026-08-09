@@ -126,14 +126,21 @@ qt_add_qml_module(
         qml/Main.qml
         qml/AudioMetadataBar.qml
         qml/AudioLibraryWorkspace.qml
+        qml/AudioLibrarySidebar.qml
         qml/AudioPlaybackWorkspace.qml
         qml/AudioSpaceWorkspace.qml
+        qml/ExpandedSoundWorkspace.qml
         qml/EchoButton.qml
         qml/EchoIcon.qml
         qml/EchoIconButton.qml
         qml/EchoSectionLabel.qml
         qml/EchoSettingsDialog.qml
         qml/EchoTextField.qml
+        qml/InspectorSection.qml
+        qml/SoundCard.qml
+        qml/SoundInspector.qml
+        qml/SoundLibraryRow.qml
+        qml/SoundWall.qml
         qml/Theme.qml
         qml/WaveformView.qml
     RESOURCES

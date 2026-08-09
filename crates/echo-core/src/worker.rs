@@ -23,7 +23,7 @@ use echo_catalog::{
 use crate::{
     analysis_queue,
     error::{CoreError, CoreErrorKind},
-    scanner,
+    metadata_queue, scanner,
 };
 
 /// Worker configuration shared by every job.
@@ -60,6 +60,7 @@ impl WorkerPool {
         catalog
             .with_transaction(|transaction| recover_interrupted_jobs(transaction, now))
             .map_err(CoreError::from)?;
+        metadata_queue::enqueue_missing_source_metadata(catalog, now)?;
         analysis_queue::enqueue_missing_transcriptions(catalog, now)?;
 
         let stop = Arc::new(AtomicBool::new(false));
@@ -115,6 +116,7 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
         JobKind::ScanRoot => {
             let payload = ScanRootJobPayload::decode(&job.payload)?;
             scanner::scan_root(catalog, &payload.root, crate::util::now_millis())?;
+            metadata_queue::enqueue_missing_source_metadata(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_transcriptions(catalog, crate::util::now_millis())?;
             Ok(())
         }
@@ -122,6 +124,34 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             let payload = FileJobPayload::decode(&job.payload)?;
             import_file(catalog, config, &payload.path)?;
             Ok(())
+        }
+        JobKind::ExtractMetadata => {
+            let asset_id = asset_id_of(&job.payload)?;
+            let source = source_path_of(catalog, &asset_id)?;
+            let probe = echo_bridge::probe(&source).map_err(|error| {
+                CoreError::new(CoreErrorKind::AudioEngineRejected, error.message)
+            })?;
+            catalog.with_transaction(|transaction| {
+                echo_catalog::record_source_metadata(
+                    transaction,
+                    asset_id,
+                    &echo_catalog::SourceMetadata {
+                        container_format: probe.container_format,
+                        sample_rate: probe.sample_rate,
+                        channel_count: probe.channel_count,
+                        entries: probe
+                            .metadata
+                            .into_iter()
+                            .map(|entry| echo_catalog::SourceMetadataEntry {
+                                key: entry.key,
+                                value: entry.value,
+                            })
+                            .collect(),
+                    },
+                    (probe.recorded_at_millis > 0).then_some(probe.recorded_at_millis),
+                )
+                .map_err(CoreError::from)
+            })
         }
         JobKind::AnalyzeWaveform => {
             let asset_id = asset_id_of(&job.payload)?;
@@ -228,12 +258,35 @@ fn import_file(catalog: &Catalog, _config: &WorkerConfig, path: &Path) -> Result
                             .as_ref()
                             .filter(|p| p.duration_millis > 0)
                             .map(|p| p.duration_millis),
-                        recorded_at_millis: None,
+                        recorded_at_millis: probe
+                            .as_ref()
+                            .filter(|p| p.recorded_at_millis > 0)
+                            .map(|p| p.recorded_at_millis),
                         imported_at_millis: now,
                     },
                 )?;
                 let asset = find_by_content_hash(transaction, content_hash)?;
                 if let AssetLookup::Found(asset) = asset {
+                    if let Some(probe) = &probe {
+                        echo_catalog::record_source_metadata(
+                            transaction,
+                            asset.id,
+                            &echo_catalog::SourceMetadata {
+                                container_format: probe.container_format.clone(),
+                                sample_rate: probe.sample_rate,
+                                channel_count: probe.channel_count,
+                                entries: probe
+                                    .metadata
+                                    .iter()
+                                    .map(|entry| echo_catalog::SourceMetadataEntry {
+                                        key: entry.key.clone(),
+                                        value: entry.value.clone(),
+                                    })
+                                    .collect(),
+                            },
+                            (probe.recorded_at_millis > 0).then_some(probe.recorded_at_millis),
+                        )?;
+                    }
                     // Import remains model-independent: it only persists
                     // derivation intents. Structural waveform work is claimed
                     // before progressive ASR by the queue policy.

@@ -23,6 +23,23 @@ fn now_millis() -> i64 {
         })
 }
 
+fn metadata_entry(entries: &[echo_catalog::SourceMetadataEntry], keys: &[&str]) -> String {
+    entries
+        .iter()
+        .find(|entry| keys.iter().any(|key| entry.key.eq_ignore_ascii_case(key)))
+        .map_or_else(String::new, |entry| entry.value.clone())
+}
+
+fn metadata_entry_containing(
+    entries: &[echo_catalog::SourceMetadataEntry],
+    needle: &str,
+) -> String {
+    entries
+        .iter()
+        .find(|entry| entry.key.to_ascii_lowercase().contains(needle))
+        .map_or_else(String::new, |entry| entry.value.clone())
+}
+
 /// One catalog attachment. Sessions are created on the Qt main thread and
 /// reused; the catalog serializes its own writes.
 #[derive(Debug)]
@@ -180,6 +197,45 @@ impl LibrarySession {
                             )
                         },
                     );
+                let text_preview = asset
+                    .transcript
+                    .as_ref()
+                    .and_then(|value| {
+                        serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
+                    })
+                    .map_or_else(String::new, |payload| payload.text);
+                let (
+                    container_format,
+                    sample_rate,
+                    channel_count,
+                    source_title,
+                    source_location,
+                    source_created_at,
+                ) = asset.source_metadata.as_ref().map_or_else(
+                    || {
+                        (
+                            String::new(),
+                            0,
+                            0,
+                            String::new(),
+                            String::new(),
+                            String::new(),
+                        )
+                    },
+                    |metadata| {
+                        (
+                            metadata.container_format.clone(),
+                            metadata.sample_rate,
+                            metadata.channel_count,
+                            metadata_entry(&metadata.entries, &["title", "stream.title"]),
+                            metadata_entry_containing(&metadata.entries, "location"),
+                            metadata_entry(
+                                &metadata.entries,
+                                &["creation_time", "stream.creation_time"],
+                            ),
+                        )
+                    },
+                );
                 AssetSummaryWire {
                     id: asset.id,
                     path: asset.path.to_string_lossy().into_owned(),
@@ -193,9 +249,44 @@ impl LibrarySession {
                     event_type,
                     mood,
                     keywords,
+                    text_preview,
+                    liked: asset.liked,
+                    rating: asset.rating,
+                    container_format,
+                    sample_rate,
+                    channel_count,
+                    source_title,
+                    source_location,
+                    source_created_at,
                 }
             })
             .collect())
+    }
+
+    /// Stores user-owned Like and rating state for one sound.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the asset identity or write is invalid.
+    pub fn set_asset_affinity(
+        &self,
+        asset_id: &str,
+        liked: bool,
+        rating: u8,
+    ) -> Result<(), SessionError> {
+        let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid asset id {asset_id}: {error}"),
+        })?;
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::set_asset_affinity(
+                    transaction,
+                    asset_id,
+                    echo_catalog::AssetAffinity { liked, rating },
+                    now_millis(),
+                )
+            })
+            .map_err(SessionError::from)
     }
 
     /// Returns the waveform artifact for an asset, building and caching it

@@ -20,6 +20,14 @@ FfiAudioProbe probe_audio(rust::Str path) {
     wire.sample_rate = result.sample_rate;
     wire.channel_count = result.channel_count;
     wire.duration_millis = result.duration_millis;
+    wire.recorded_at_millis = result.recorded_at_millis;
+    wire.metadata.reserve(result.metadata.size());
+    for (const audio::AudioMetadataEntry& entry : result.metadata) {
+        FfiAudioMetadataEntry wire_entry;
+        wire_entry.key = entry.key;
+        wire_entry.value = entry.value;
+        wire.metadata.push_back(wire_entry);
+    }
     return wire;
 }
 

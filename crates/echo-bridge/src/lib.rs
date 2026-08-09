@@ -16,6 +16,11 @@ use error::{BridgeError, BridgeErrorKind};
 
 #[cxx::bridge(namespace = "echo::bridge")]
 mod ffi {
+    struct FfiAudioMetadataEntry {
+        key: String,
+        value: String,
+    }
+
     struct FfiAudioProbe {
         has_audio: bool,
         codec_name: String,
@@ -23,6 +28,8 @@ mod ffi {
         sample_rate: u32,
         channel_count: u32,
         duration_millis: u64,
+        recorded_at_millis: i64,
+        metadata: Vec<FfiAudioMetadataEntry>,
     }
 
     struct FfiWaveformLevel {
@@ -53,6 +60,15 @@ pub struct AudioProbe {
     pub sample_rate: u32,
     pub channel_count: u32,
     pub duration_millis: u64,
+    pub recorded_at_millis: i64,
+    pub metadata: Vec<AudioMetadataEntry>,
+}
+
+/// One bounded metadata entry from the original container or audio stream.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AudioMetadataEntry {
+    pub key: String,
+    pub value: String,
 }
 
 /// Probes a source file without decoding samples.
@@ -71,6 +87,15 @@ pub fn probe(path: &Path) -> Result<AudioProbe, BridgeError> {
         sample_rate: wire.sample_rate,
         channel_count: wire.channel_count,
         duration_millis: wire.duration_millis,
+        recorded_at_millis: wire.recorded_at_millis,
+        metadata: wire
+            .metadata
+            .into_iter()
+            .map(|entry| AudioMetadataEntry {
+                key: entry.key,
+                value: entry.value,
+            })
+            .collect(),
     })
 }
 

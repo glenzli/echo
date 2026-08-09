@@ -17,8 +17,14 @@ pub struct AudioSpaceAsset {
     pub imported_at_millis: i64,
     pub path_status: String,
     pub max_level: u8,
+    pub liked: bool,
+    pub rating: u8,
     /// Latest contextual payload JSON (absent when not analyzed yet).
     pub contextual: Option<serde_json::Value>,
+    /// Latest model-extracted text payload JSON.
+    pub transcript: Option<serde_json::Value>,
+    /// Metadata extracted from the immutable source container.
+    pub source_metadata: Option<crate::SourceMetadata>,
 }
 
 /// Lists every asset with its newest contextual evidence, newest import
@@ -40,8 +46,14 @@ pub fn list_audio_space(
          a.imported_at_millis, a.path_status, \
          (SELECT max_level FROM asset_levels WHERE asset_id = a.id), \
          (SELECT value FROM analysis_records r WHERE r.asset_id = a.id \
-          AND r.kind = 'contextual' ORDER BY r.id DESC LIMIT 1) \
-         FROM assets a ORDER BY a.imported_at_millis DESC, a.id DESC",
+          AND r.kind = 'contextual' ORDER BY r.id DESC LIMIT 1), \
+         (SELECT value FROM analysis_records r WHERE r.asset_id = a.id \
+          AND r.kind = 'transcript' ORDER BY r.id DESC LIMIT 1), \
+         COALESCE(u.liked, 0), COALESCE(u.rating, 0), \
+         m.container_format, m.sample_rate, m.channel_count, m.entries_json \
+         FROM assets a LEFT JOIN asset_user_state u ON u.asset_id = a.id \
+         LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
+         ORDER BY a.imported_at_millis DESC, a.id DESC",
     )?;
     let rows = statement.query_map([], |row| {
         Ok(AudioSpaceAsset {
@@ -58,6 +70,24 @@ pub fn list_audio_space(
             contextual: row
                 .get::<_, Option<String>>(8)?
                 .map(|json| serde_json::from_str(&json).expect("contextual payload parses")),
+            transcript: row
+                .get::<_, Option<String>>(9)?
+                .map(|json| serde_json::from_str(&json).expect("transcript payload parses")),
+            liked: row.get::<_, i64>(10)? != 0,
+            rating: u8::try_from(row.get::<_, i64>(11)?)
+                .expect("stored rating is between zero and five"),
+            source_metadata: match row.get::<_, Option<String>>(12)? {
+                Some(container_format) => Some(crate::SourceMetadata {
+                    container_format,
+                    sample_rate: u32::try_from(row.get::<_, i64>(13)?)
+                        .expect("stored sample rate is non-negative"),
+                    channel_count: u32::try_from(row.get::<_, i64>(14)?)
+                        .expect("stored channel count is non-negative"),
+                    entries: serde_json::from_str(&row.get::<_, String>(15)?)
+                        .expect("source metadata entries parse"),
+                }),
+                None => None,
+            },
         })
     })?;
     let mut assets = Vec::new();
@@ -66,3 +96,6 @@ pub fn list_audio_space(
     }
     Ok(assets)
 }
+
+#[cfg(test)]
+mod tests;

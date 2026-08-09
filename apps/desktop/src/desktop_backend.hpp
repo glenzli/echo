@@ -32,6 +32,7 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList listAssets() const;
     Q_INVOKABLE QVariantList waveformForAsset(const QString& id) const;
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
+    Q_INVOKABLE bool setAssetAffinity(const QString& id, bool liked, int rating);
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE void transcribeAsset(
         const QString& id,

@@ -4,6 +4,9 @@
 
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace echo::audio {
 namespace {
@@ -36,6 +39,43 @@ class FormatContext {
   private:
     AVFormatContext* ptr_ = nullptr;
 };
+
+constexpr std::size_t kMaximumMetadataEntries = 128;
+constexpr std::size_t kMaximumMetadataValueBytes = 4096;
+
+void append_metadata(
+    std::vector<AudioMetadataEntry>& destination,
+    const AVDictionary* dictionary,
+    std::string_view prefix
+) {
+    const AVDictionaryEntry* entry = nullptr;
+    while (destination.size() < kMaximumMetadataEntries
+           && (entry = av_dict_get(dictionary, "", entry, AV_DICT_IGNORE_SUFFIX)) != nullptr) {
+        std::string value = entry->value != nullptr ? entry->value : "";
+        if (value.size() > kMaximumMetadataValueBytes) {
+            value.resize(kMaximumMetadataValueBytes);
+        }
+        destination.push_back(
+            AudioMetadataEntry{
+                .key = std::string(prefix) + (entry->key != nullptr ? entry->key : ""),
+                .value = std::move(value),
+            }
+        );
+    }
+}
+
+int64_t recorded_at_millis(const AVDictionary* container, const AVDictionary* stream) {
+    const AVDictionaryEntry* entry = av_dict_get(container, "creation_time", nullptr, 0);
+    if (entry == nullptr) {
+        entry = av_dict_get(stream, "creation_time", nullptr, 0);
+    }
+    int64_t timestamp_micros = 0;
+    if (entry == nullptr || entry->value == nullptr
+        || av_parse_time(&timestamp_micros, entry->value, 0) < 0 || timestamp_micros <= 0) {
+        return 0;
+    }
+    return timestamp_micros / 1000;
+}
 
 } // namespace
 
@@ -72,6 +112,10 @@ AudioProbe probe(const std::string& path) {
                 probe_result.duration_millis = static_cast<uint64_t>(duration);
             }
         }
+        probe_result.recorded_at_millis =
+            recorded_at_millis(format.get()->metadata, stream->metadata);
+        append_metadata(probe_result.metadata, format.get()->metadata, "");
+        append_metadata(probe_result.metadata, stream->metadata, "stream.");
         break;
     }
     return probe_result;

@@ -12,6 +12,7 @@ mod analysis_queue;
 mod contextual;
 mod error;
 mod import;
+mod metadata_queue;
 mod scanner;
 mod util;
 mod waveform_artifact;

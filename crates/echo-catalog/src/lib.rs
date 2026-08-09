@@ -9,6 +9,7 @@
 //! background work queue, and [`scan_root`] for the directories Echo watches.
 
 mod analysis;
+mod asset_affinity;
 mod asset_path;
 mod asset_registration;
 mod audio_space;
@@ -20,11 +21,13 @@ mod scan_journal;
 mod scan_root;
 mod schema;
 mod search;
+mod source_metadata;
 
 pub use analysis::{
     AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis, query_analysis,
     record_analysis,
 };
+pub use asset_affinity::{AssetAffinity, asset_affinity, set_asset_affinity};
 pub use asset_path::{mark_asset_missing, mark_asset_present, relink_asset_by_hash};
 pub use asset_registration::{
     AssetLookup, AssetRegistrationInput, RegisterAsset, find_by_content_hash, find_by_id,
@@ -48,6 +51,10 @@ pub use scan_root::{ScanRoot, add_scan_root, list_scan_roots, remove_scan_root};
 pub use schema::{CatalogSchemaRevision, CatalogSchemaRevisionParseError};
 pub use search::{
     SearchHit, index_transcript, remove_transcript_index, search_transcripts, segment_cjk,
+};
+pub use source_metadata::{
+    SourceMetadata, SourceMetadataEntry, list_assets_missing_source_metadata,
+    record_source_metadata,
 };
 
 #[cfg(test)]

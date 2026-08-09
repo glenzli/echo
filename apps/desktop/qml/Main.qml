@@ -104,7 +104,7 @@ ApplicationWindow {
         EchoIconButton {
             anchors.centerIn: parent
             source: "qrc:/EchoDesktop/icons/waveform.svg"
-            toolTipText: qsTr("Audio Space")
+            toolTipText: qsTr("Sound Wall")
             selected: window.workspaceIndex === 0
             onClicked: window.showAudioSpace()
         }

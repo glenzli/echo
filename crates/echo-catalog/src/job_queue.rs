@@ -18,6 +18,8 @@ pub enum JobKind {
     ScanRoot,
     /// Registers one discovered file (hash + probe).
     ImportFile,
+    /// Extracts technical and embedded metadata from the original container.
+    ExtractMetadata,
     /// Builds and caches the waveform pyramid for an asset.
     AnalyzeWaveform,
     /// Submits audio transcription and records transcript evidence.
@@ -126,10 +128,11 @@ pub fn claim_next_job(
              ORDER BY CASE kind \
                  WHEN 'scan_root' THEN 0 \
                  WHEN 'import_file' THEN 1 \
-                 WHEN 'analyze_waveform' THEN 2 \
-                 WHEN 'transcribe' THEN 3 \
-                 WHEN 'contextual' THEN 4 \
-                 ELSE 5 END, created_at_millis ASC, id ASC LIMIT 1",
+                 WHEN 'extract_metadata' THEN 2 \
+                 WHEN 'analyze_waveform' THEN 3 \
+                 WHEN 'transcribe' THEN 4 \
+                 WHEN 'contextual' THEN 5 \
+                 ELSE 6 END, created_at_millis ASC, id ASC LIMIT 1",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -366,6 +369,7 @@ pub(crate) const fn kind_text(kind: JobKind) -> &'static str {
     match kind {
         JobKind::ScanRoot => "scan_root",
         JobKind::ImportFile => "import_file",
+        JobKind::ExtractMetadata => "extract_metadata",
         JobKind::AnalyzeWaveform => "analyze_waveform",
         JobKind::Transcribe => "transcribe",
         JobKind::Contextual => "contextual",
@@ -376,6 +380,7 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
     match text {
         "scan_root" => Ok(JobKind::ScanRoot),
         "import_file" => Ok(JobKind::ImportFile),
+        "extract_metadata" => Ok(JobKind::ExtractMetadata),
         "analyze_waveform" => Ok(JobKind::AnalyzeWaveform),
         "transcribe" => Ok(JobKind::Transcribe),
         "contextual" => Ok(JobKind::Contextual),

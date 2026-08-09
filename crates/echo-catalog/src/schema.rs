@@ -1,9 +1,9 @@
 //! Authoritative construction and identity checks for the current development
 //! Catalog schema.
 //!
-//! Echo has no migration chain before its first compatibility promise. This
-//! module creates the current dated revision atomically and rejects every
-//! other persisted shape. Revisions use the canonical `YYYYMMDD.N` form.
+//! This module creates the current dated revision atomically and names the
+//! immediately preceding compatible revision used by Catalog's focused
+//! migration. Revisions use the canonical `YYYYMMDD.N` form.
 
 use std::str::FromStr;
 
@@ -97,10 +97,29 @@ fn valid_calendar_date(date: u32) -> bool {
     (1..=days_in_month).contains(&day)
 }
 
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 2);
+pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_809, 2);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 3);
 
 pub(crate) const SCHEMA_IDENTITY: &str =
-    "echo-catalog-20260809.2-derived-artifacts-canonical-revision";
+    "echo-catalog-20260809.3-sound-wall-user-state-source-metadata";
+
+pub(crate) const SOUND_WALL_SCHEMA_SQL: &str = "
+CREATE TABLE IF NOT EXISTS asset_user_state (
+    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
+    liked              INTEGER NOT NULL DEFAULT 0 CHECK (liked IN (0, 1)),
+    rating             INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+    updated_at_millis  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS asset_source_metadata (
+    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
+    container_format   TEXT NOT NULL,
+    sample_rate        INTEGER NOT NULL,
+    channel_count      INTEGER NOT NULL,
+    entries_json       TEXT NOT NULL
+);
+";
 
 pub(crate) const SCHEMA_SQL: &str = "
 CREATE TABLE IF NOT EXISTS catalog_meta (
@@ -183,6 +202,21 @@ CREATE VIRTUAL TABLE IF NOT EXISTS transcript_fts USING fts5(
     asset_id UNINDEXED,
     text,
     tokenize = 'unicode61'
+);
+
+CREATE TABLE IF NOT EXISTS asset_user_state (
+    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
+    liked              INTEGER NOT NULL DEFAULT 0 CHECK (liked IN (0, 1)),
+    rating             INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+    updated_at_millis  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS asset_source_metadata (
+    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
+    container_format   TEXT NOT NULL,
+    sample_rate        INTEGER NOT NULL,
+    channel_count      INTEGER NOT NULL,
+    entries_json       TEXT NOT NULL
 );
 ";
 

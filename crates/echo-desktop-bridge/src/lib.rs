@@ -25,6 +25,15 @@ mod ffi {
         event_type: String,
         mood: String,
         keywords: Vec<String>,
+        text_preview: String,
+        liked: bool,
+        rating: u8,
+        container_format: String,
+        sample_rate: u32,
+        channel_count: u32,
+        source_title: String,
+        source_location: String,
+        source_created_at: String,
     }
 
     /// One pyramid level of a cached waveform artifact.
@@ -113,6 +122,13 @@ mod ffi {
             self: &LibrarySession,
             asset_id: &str,
         ) -> Result<Vec<TranscriptWire>>;
+        /// Stores user-owned Like and rating state for one asset.
+        fn session_set_asset_affinity(
+            self: &LibrarySession,
+            asset_id: &str,
+            liked: bool,
+            rating: u8,
+        ) -> Result<()>;
         /// Transcribes an asset with the configured MLX worker. Stateless so
         /// it can run on a background thread.
         fn transcribe_asset(
@@ -209,6 +225,22 @@ impl LibrarySession {
     /// Returns the session error message when the catalog read fails.
     fn session_transcripts(&self, asset_id: &str) -> Result<Vec<ffi::TranscriptWire>, String> {
         self.transcripts(asset_id).map_err(|error| error.message)
+    }
+
+    /// Stores user-owned Like and rating state for one asset.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the asset identity or write is
+    /// invalid.
+    fn session_set_asset_affinity(
+        &self,
+        asset_id: &str,
+        liked: bool,
+        rating: u8,
+    ) -> Result<(), String> {
+        self.set_asset_affinity(asset_id, liked, rating)
+            .map_err(|error| error.message)
     }
 }
 

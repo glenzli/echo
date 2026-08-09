@@ -107,6 +107,7 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 AudioAsset
 ├── Original        content hash / path / codec / timestamp / metadata（immutable）
 ├── Analysis        transcript / speakers / emotions / audio events / embeddings / segments
+├── UserState       liked / rating / album membership（用户事实）
 ├── AdjustmentGraph gain / eq / denoise / normalize / trim（非破坏性）
 ├── DerivedRenders  可重建
 └── Relations       people / place / event（用户逐步确认，append-only）
@@ -157,8 +158,16 @@ InferenceBackend
 
 ## 8. UI 原则
 
-- 首屏是 Audio Space（时间 / 人物 / 声音类型 / Revisit），不是 Timeline。
-- 点击 asset 后进入：Waveform / Transcript / Events / People / Adjustment。
+- 首屏是 **声音墙**，不是 Timeline 或单条录音的大波形。左侧是资料库、系统集合和声音相册，
+  中间用横向声景卡片并行浏览，右侧是所选声音的详情检查器；双击或“展开”才进入完整播放工作区。
+- 声景卡片必须来自真实证据：缓存 waveform、文件元数据和可追溯 AI 分析。AI 可生成可修改的
+  标题、文字预览和事件标签，但不得用虚构图片冒充录音内容。
+- 用户层产品语言称 ASR 结果为“文字”；`transcript` 只保留在模型能力、数据类型、协议和证据
+  来源等技术语境中。点击文字仍可定位声音。
+- Like、评分与相册归用户事实，不是 AI Analysis；文件内嵌时间、地点和标签归 Original 的来源
+  元数据，必须标注来源，和模型推断严格区分。
+- 单击 asset：右侧快速检查 Waveform / 文字 / Events / People / Metadata；双击 asset：进入
+  Waveform / 文字 / Events / People / Adjustment 完整工作区。
 - 组件命名延续系列设计语言：`EchoButton`、`EchoIcon`……与 Shadow 的 `Shadow*` 组件对应，视觉 token 一致（Shadow/Echo 同系列）。
 
 ## 9. 里程碑
@@ -188,7 +197,11 @@ InferenceBackend
     进度和结果，保存模型/版本/置信度/时间戳；随后接 `audio.align`，完成
     waveform↔transcript 双向定位。
   - 待办：SenseVoice 能力 Intent、speaker/event 证据、取消/重试产品状态。
-- **M2 Library**：自然语言搜索、人物/声音、时间、audio event、CLAP semantic search。
+- **M2 Library**：声音墙、声音相册、Like/评分、来源元数据筛选、自然语言搜索、人物/声音、
+  时间、audio event、CLAP semantic search。
+  - 首个浏览切片（2026-08-09）：声音墙成为默认首屏；资料库、横向声景卡片和详情检查器拆分
+    为独立 UI owner；现有大波形页面降为展开层。用户 Like/评分持久化，卡片使用真实 waveform、
+    文件时间/格式和已有 AI 文字证据；FFmpeg probe 开始保存容器、采样率、声道和嵌入标签。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
@@ -208,9 +221,9 @@ Audio Space 页面。
 ```text
 导入一段真实录音
 → waveform
-→ Qwen3-ASR transcript + timestamp
+→ Qwen3-ASR 文字 + timestamp
 → SenseVoice emotion/event
-→ 点击文字定位声音
+→ 声音墙并行浏览、点击文字定位声音
 → 搜索一句自然语言
 → 找到并播放真实片段
 ```
@@ -220,7 +233,7 @@ Audio Space 页面。
 - **平台**：先跑通 macOS（Apple Silicon）；架构上不为 Windows 设障碍，迁移成本应可控（Qt/C++/Rust 均可移植，MLX 只存在于 AI 层并被 InferenceBackend 隔离）。
 - **License**：MIT。
 - **测试拓扑**：私有不变量测试紧邻 owner（`<owner>/tests.rs`，owner 文件以 `#[cfg(test)] mod tests;` 收尾）；跨模块契约在 crate facade 的 `src/tests/<responsibility>_contract.rs`；crate 级 `tests/` 只放消费公开 API 的黑盒契约。
-- **Catalog schema**：唯一规范格式为 `YYYYMMDD.N`（日期.当天版本号，例如 `20260809.2`）；开发期 catalog 只接受当前 revision，不把无点整数编码暴露为产品或持久化身份。
+- **Catalog schema**：唯一规范格式为 `YYYYMMDD.N`（日期.当天版本号，例如 `20260809.3`）；catalog 打开当前 revision，或将明确支持的紧邻前序 revision 原子迁移到当前版本；不把无点整数编码暴露为产品或持久化身份。
 - **格式**：Rust 用仓库 `rustfmt.toml`；C++/ObjC++ 用 `.clang-format`。
 - **i18n**：英文原文为 canonical 消息身份，简体中文必须是完整产品呈现（与 Shadow 相同契约），技术 token 不翻译。
 - **构建产物**：Cargo target / CMake build 目录放在仓库外的 `.echo-local-*`，不污染 worktree。

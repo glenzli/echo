@@ -9,7 +9,10 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::{
     error::{CatalogError, CatalogErrorKind},
-    schema::{CatalogSchemaRevision, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION},
+    schema::{
+        CatalogSchemaRevision, PREVIOUS_SCHEMA_VERSION, SCHEMA_IDENTITY, SCHEMA_SQL,
+        SCHEMA_VERSION, SOUND_WALL_SCHEMA_SQL,
+    },
 };
 
 /// Durable catalog handle. `SQLite` access is serialized through one mutex: the
@@ -54,7 +57,9 @@ pub fn open_catalog(path: &Path) -> Result<Catalog, CatalogError> {
 }
 
 fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
-    connection.execute_batch(SCHEMA_SQL)?;
+    connection.execute_batch(
+        "CREATE TABLE IF NOT EXISTS catalog_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
+    )?;
     let stored_version: Option<String> = connection
         .query_row(
             "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
@@ -64,6 +69,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         .optional()?;
     match stored_version {
         None => {
+            connection.execute_batch(SCHEMA_SQL)?;
             connection.execute(
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_version', ?1)",
                 [SCHEMA_VERSION.to_string()],
@@ -78,7 +84,15 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == SCHEMA_VERSION) =>
         {
+            connection.execute_batch(SCHEMA_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
+        {
+            migrate_sound_wall_schema(connection)?;
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -91,6 +105,22 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_sound_wall_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    transaction.execute_batch(SOUND_WALL_SCHEMA_SQL)?;
+    transaction.execute(
+        "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
+        [SCHEMA_VERSION.to_string()],
+    )?;
+    transaction.execute(
+        "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [SCHEMA_IDENTITY],
+    )?;
+    transaction.commit()?;
     Ok(())
 }
 
@@ -173,3 +203,6 @@ impl Catalog {
         })
     }
 }
+
+#[cfg(test)]
+mod tests;

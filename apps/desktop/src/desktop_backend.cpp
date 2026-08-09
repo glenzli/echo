@@ -61,6 +61,30 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("mood"),
             QString::fromUtf8(asset.mood.data(), asset.mood.size())
         );
+        entry.insert(
+            QStringLiteral("textPreview"),
+            QString::fromUtf8(asset.text_preview.data(), asset.text_preview.size())
+        );
+        entry.insert(QStringLiteral("liked"), asset.liked);
+        entry.insert(QStringLiteral("rating"), static_cast<int>(asset.rating));
+        entry.insert(
+            QStringLiteral("containerFormat"),
+            QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
+        );
+        entry.insert(QStringLiteral("sampleRate"), static_cast<int>(asset.sample_rate));
+        entry.insert(QStringLiteral("channelCount"), static_cast<int>(asset.channel_count));
+        entry.insert(
+            QStringLiteral("sourceTitle"),
+            QString::fromUtf8(asset.source_title.data(), asset.source_title.size())
+        );
+        entry.insert(
+            QStringLiteral("sourceLocation"),
+            QString::fromUtf8(asset.source_location.data(), asset.source_location.size())
+        );
+        entry.insert(
+            QStringLiteral("sourceCreatedAt"),
+            QString::fromUtf8(asset.source_created_at.data(), asset.source_created_at.size())
+        );
         QVariantList keywords;
         for (const auto& keyword : asset.keywords) {
             keywords.append(QString::fromUtf8(keyword.data(), keyword.size()));
@@ -69,6 +93,25 @@ QVariantList DesktopBackend::listAssets() const {
         list.append(entry);
     }
     return list;
+}
+
+bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating) {
+    if (rating < 0 || rating > 5) {
+        qWarning("asset rating is outside zero to five");
+        return false;
+    }
+    try {
+        session_->session_set_asset_affinity(
+            id.toStdString(),
+            liked,
+            static_cast<std::uint8_t>(rating)
+        );
+        emit assetsChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot update affinity for %s: %s", qPrintable(id), error.what());
+        return false;
+    }
 }
 
 QVariantList DesktopBackend::waveformForAsset(const QString& id) const {

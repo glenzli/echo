@@ -27,6 +27,7 @@ pub struct AudioProbe {
     pub codec: Option<String>,
     pub duration_millis: Option<u64>,
     pub recorded_at_millis: Option<i64>,
+    pub source_metadata: Option<echo_catalog::SourceMetadata>,
 }
 
 /// Outcome of one import.
@@ -58,12 +59,26 @@ fn audio_engine_probe(source: &Path) -> Result<Option<AudioProbe>, CoreError> {
             codec: None,
             duration_millis: None,
             recorded_at_millis: None,
+            source_metadata: None,
         }));
     }
     Ok(Some(AudioProbe {
         codec: Some(result.codec_name),
         duration_millis: (result.duration_millis > 0).then_some(result.duration_millis),
-        recorded_at_millis: None,
+        recorded_at_millis: (result.recorded_at_millis > 0).then_some(result.recorded_at_millis),
+        source_metadata: Some(echo_catalog::SourceMetadata {
+            container_format: result.container_format,
+            sample_rate: result.sample_rate,
+            channel_count: result.channel_count,
+            entries: result
+                .metadata
+                .into_iter()
+                .map(|entry| echo_catalog::SourceMetadataEntry {
+                    key: entry.key,
+                    value: entry.value,
+                })
+                .collect(),
+        }),
     }))
 }
 
@@ -104,10 +119,12 @@ pub fn import_asset_with_probe(
                     codec,
                     duration_millis,
                     recorded_at_millis,
+                    source_metadata,
                 } = probe_result.unwrap_or(AudioProbe {
                     codec: None,
                     duration_millis: None,
                     recorded_at_millis: None,
+                    source_metadata: None,
                 });
                 let registration = register_asset(
                     transaction,
@@ -122,7 +139,17 @@ pub fn import_asset_with_probe(
                     },
                 )?;
                 match registration {
-                    RegisterAsset::Created(asset) => Ok(ImportOutcome::Imported(asset)),
+                    RegisterAsset::Created(asset) => {
+                        if let Some(metadata) = source_metadata {
+                            echo_catalog::record_source_metadata(
+                                transaction,
+                                asset.id,
+                                &metadata,
+                                recorded_at_millis,
+                            )?;
+                        }
+                        Ok(ImportOutcome::Imported(asset))
+                    }
                     RegisterAsset::Existed(_) => unreachable!("hash was absent above"),
                 }
             }

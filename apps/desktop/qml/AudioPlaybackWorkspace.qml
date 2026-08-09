@@ -123,7 +123,7 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            text: qsTr("The waveform, playback controls, and transcript will stay at the center of your workspace.")
+            text: qsTr("The waveform, playback controls, and extracted text stay together in this workspace.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontBody
             wrapMode: Text.WordWrap
@@ -275,16 +275,16 @@ Rectangle {
 
             EchoSectionLabel {
                 Layout.fillWidth: true
-                text: qsTr("Transcript")
+                text: qsTr("Text")
                 hint: transcriptModel.count > 0
                     ? qsTr("Click a segment to seek")
                     : backend.transcribing
-                        ? qsTr("Retrying transcription…")
+                        ? qsTr("Retrying text extraction…")
                         : preview.backgroundAnalysisActive
-                            ? qsTr("Preparing transcript metadata in the background…")
+                            ? qsTr("Extracting text in the background…")
                             : preview.jobStats.failed > 0
                                 ? qsTr("Background analysis needs attention")
-                                : qsTr("Transcript metadata is prepared automatically")
+                                : qsTr("Text is extracted automatically")
             }
 
             BusyIndicator {
@@ -297,7 +297,7 @@ Rectangle {
 
             EchoButton {
                 visible: transcriptModel.count === 0 && preview.jobStats.failed > 0
-                text: backend.transcribing ? qsTr("Retrying…") : qsTr("Retry transcription")
+                text: backend.transcribing ? qsTr("Retrying…") : qsTr("Retry text extraction")
                 enabled: !backend.transcribing && preview.asset !== null
                     && preview.asset.pathStatus !== "missing"
                 ghost: true
@@ -320,12 +320,12 @@ Rectangle {
                 width: parent.width - 48
                 visible: transcriptModel.count === 0
                 text: backend.transcribing
-                    ? qsTr("Retrying this recording with the local compatibility adapter…")
+                    ? qsTr("Retrying text extraction with the local compatibility adapter…")
                     : preview.backgroundAnalysisActive
-                        ? qsTr("Echo is preparing transcript metadata in the background.")
+                        ? qsTr("Echo is extracting text from this sound in the background.")
                         : preview.jobStats.failed > 0
-                            ? qsTr("Background transcription did not complete. You can retry this recording.")
-                            : qsTr("Transcript metadata is prepared automatically after import.")
+                            ? qsTr("Background text extraction did not complete. You can retry this sound.")
+                            : qsTr("Text is extracted automatically after import.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap
