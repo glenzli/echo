@@ -11,6 +11,18 @@ use rusqlite::{OptionalExtension, Transaction};
 
 use crate::error::CatalogError;
 
+type StoredJobRow = (
+    String,
+    String,
+    String,
+    String,
+    u8,
+    u32,
+    i64,
+    i64,
+    Option<String>,
+);
+
 /// Job family; each kind owns its payload schema.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JobKind {
@@ -24,6 +36,8 @@ pub enum JobKind {
     AnalyzeWaveform,
     /// Submits audio transcription and records transcript evidence.
     Transcribe,
+    /// Submits forced alignment after transcript evidence exists.
+    Align,
     /// Runs local LLM contextual understanding over a transcript.
     Contextual,
 }
@@ -131,8 +145,9 @@ pub fn claim_next_job(
                  WHEN 'extract_metadata' THEN 2 \
                  WHEN 'analyze_waveform' THEN 3 \
                  WHEN 'transcribe' THEN 4 \
-                 WHEN 'contextual' THEN 5 \
-                 ELSE 6 END, created_at_millis ASC, id ASC LIMIT 1",
+                 WHEN 'align' THEN 5 \
+                 WHEN 'contextual' THEN 6 \
+                 ELSE 7 END, created_at_millis ASC, id ASC LIMIT 1",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -208,6 +223,73 @@ pub fn update_job_progress(
         rusqlite::params![id, progress, now_millis],
     )?;
     Ok(())
+}
+
+/// Reads one job by its stable local identity.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the row or its payload is invalid.
+pub fn job_by_id(transaction: &Transaction<'_>, id: &str) -> Result<Option<Job>, CatalogError> {
+    let row: Option<StoredJobRow> = transaction
+        .query_row(
+            "SELECT id, kind, payload, state, progress, attempts, created_at_millis, \
+                 updated_at_millis, error FROM jobs WHERE id = ?1",
+            [id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                    row.get(6)?,
+                    row.get(7)?,
+                    row.get(8)?,
+                ))
+            },
+        )
+        .optional()?;
+    row.map(
+        |(id, kind, payload, state, progress, attempts, created, updated, error)| {
+            Ok(Job {
+                id,
+                kind: parse_kind(&kind)?,
+                payload: serde_json::from_str(&payload).map_err(|error| {
+                    CatalogError::new(
+                        crate::error::CatalogErrorKind::Other,
+                        format!("corrupt job payload: {error}"),
+                    )
+                })?,
+                state: parse_state(&state)?,
+                progress,
+                attempts,
+                created_at_millis: created,
+                updated_at_millis: updated,
+                error,
+            })
+        },
+    )
+    .transpose()
+}
+
+/// Returns a failed or cancelled job to the pending queue.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the update cannot be applied.
+pub fn retry_job(
+    transaction: &Transaction<'_>,
+    id: &str,
+    now_millis: i64,
+) -> Result<bool, CatalogError> {
+    let affected = transaction.execute(
+        "UPDATE jobs SET state = 'pending', progress = 0, error = NULL, \
+         updated_at_millis = ?2 WHERE id = ?1 AND state IN ('failed', 'cancelled')",
+        rusqlite::params![id, now_millis],
+    )?;
+    Ok(affected > 0)
 }
 
 /// Resets interrupted jobs after a crash (running -> pending).
@@ -372,6 +454,7 @@ pub(crate) const fn kind_text(kind: JobKind) -> &'static str {
         JobKind::ExtractMetadata => "extract_metadata",
         JobKind::AnalyzeWaveform => "analyze_waveform",
         JobKind::Transcribe => "transcribe",
+        JobKind::Align => "align",
         JobKind::Contextual => "contextual",
     }
 }
@@ -383,10 +466,25 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
         "extract_metadata" => Ok(JobKind::ExtractMetadata),
         "analyze_waveform" => Ok(JobKind::AnalyzeWaveform),
         "transcribe" => Ok(JobKind::Transcribe),
+        "align" => Ok(JobKind::Align),
         "contextual" => Ok(JobKind::Contextual),
         other => Err(CatalogError::new(
             crate::error::CatalogErrorKind::Other,
             format!("unknown job kind {other}"),
+        )),
+    }
+}
+
+fn parse_state(text: &str) -> Result<JobState, CatalogError> {
+    match text {
+        "pending" => Ok(JobState::Pending),
+        "running" => Ok(JobState::Running),
+        "done" => Ok(JobState::Done),
+        "failed" => Ok(JobState::Failed),
+        "cancelled" => Ok(JobState::Cancelled),
+        other => Err(CatalogError::new(
+            crate::error::CatalogErrorKind::Other,
+            format!("unknown job state {other}"),
         )),
     }
 }

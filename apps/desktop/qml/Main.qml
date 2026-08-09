@@ -79,13 +79,11 @@ ApplicationWindow {
 
     Component.onCompleted: {
         settingsDialog.uiPrefs = uiPrefs
-        settingsDialog.modelPrefs = modelPrefs
+        settingsDialog.inferencePrefs = inferencePrefs
         Theme.mode = uiPrefs.mode
         uiPrefs.modeChanged.connect(() => {
             Theme.mode = uiPrefs.mode
         })
-        backend.startWorkers(modelPrefs.modelRoot, modelPrefs.python,
-                             modelPrefs.workerScript)
         backend.queueScans()
         audioSpace.refreshAssets()
         jobTimer.start()

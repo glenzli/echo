@@ -48,21 +48,15 @@ pub(crate) enum Command {
         #[arg(long)]
         root: Option<std::path::PathBuf>,
     },
-    /// Transcribes a recording with the local ASR model and records evidence.
+    /// Transcribes a recording through Infer Runtime and records evidence.
     Transcribe {
         /// Catalog database path.
         catalog: std::path::PathBuf,
         /// Recording file to transcribe.
         source: std::path::PathBuf,
-        /// Model root; defaults to the standard HF cache.
+        /// Infer Runtime endpoint (default: `ECHO_INFER_ENDPOINT` or local 8787).
         #[arg(long)]
-        model_root: Option<std::path::PathBuf>,
-        /// MLX interpreter (default: `ECHO_MLX_PYTHON` or the local MLX venv).
-        #[arg(long)]
-        python: Option<std::path::PathBuf>,
-        /// Audio worker script (default: `tools/inference/local_audio_worker.py`).
-        #[arg(long)]
-        worker: Option<std::path::PathBuf>,
+        endpoint: Option<String>,
     },
     /// Adds a scan root and queues its scan.
     AddRoot {
@@ -83,15 +77,9 @@ pub(crate) enum Command {
         /// Cache root (default: `ECHO_CACHE` or `cache`).
         #[arg(long)]
         cache: Option<std::path::PathBuf>,
-        /// Model root; defaults to the standard HF cache.
+        /// Infer Runtime endpoint (default: `ECHO_INFER_ENDPOINT` or local 8787).
         #[arg(long)]
-        model_root: Option<std::path::PathBuf>,
-        /// MLX interpreter (default: `ECHO_MLX_PYTHON` or the local MLX venv).
-        #[arg(long)]
-        python: Option<std::path::PathBuf>,
-        /// Audio worker script (default: `tools/inference/local_audio_worker.py`).
-        #[arg(long)]
-        worker: Option<std::path::PathBuf>,
+        endpoint: Option<String>,
         /// Worker threads (default 2).
         #[arg(long, default_value_t = 2)]
         workers: usize,
@@ -128,34 +116,22 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
         Command::Transcribe {
             catalog,
             source,
-            model_root,
-            python,
-            worker,
+            endpoint,
         } => {
-            let model_root = model_root.unwrap_or_else(models::default_model_root);
-            let python = python.unwrap_or_else(transcribe::default_python);
-            let worker = worker.unwrap_or_else(|| {
-                std::path::PathBuf::from("tools/inference/local_audio_worker.py")
-            });
-            transcribe::run_transcribe(&catalog, &source, &model_root, &python, &worker)
+            let endpoint = endpoint.unwrap_or_else(transcribe::default_runtime_endpoint);
+            transcribe::run_transcribe(&catalog, &source, &endpoint)
         }
         Command::AddRoot { catalog, root } => library::run_add_root(&catalog, &root),
         Command::Roots { catalog } => library::run_list_roots(&catalog),
         Command::Scan {
             catalog,
             cache,
-            model_root,
-            python,
-            worker,
+            endpoint,
             workers,
         } => {
             let cache = cache.unwrap_or_else(library::default_cache_root);
-            let model_root = model_root.unwrap_or_else(models::default_model_root);
-            let python = python.unwrap_or_else(transcribe::default_python);
-            let worker = worker.unwrap_or_else(|| {
-                std::path::PathBuf::from("tools/inference/local_audio_worker.py")
-            });
-            library::run_scan(&catalog, &cache, &model_root, &python, &worker, workers)
+            let endpoint = endpoint.unwrap_or_else(transcribe::default_runtime_endpoint);
+            library::run_scan(&catalog, &cache, &endpoint, workers)
         }
         Command::Jobs { catalog } => library::run_jobs(&catalog),
         Command::Search {

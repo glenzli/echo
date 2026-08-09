@@ -1,15 +1,11 @@
 //! Desktop backend facade: the only Qt-owned bridge to the Rust memory
 //! engine. QML never opens SQLite; all Library reads go through this object.
-//! Transitional direct transcription runs on one owned analysis thread and
-//! reports back through queued signals.
 
 #pragma once
 
 #include <QObject>
 #include <QUrl>
 #include <QVariantList>
-
-#include <thread>
 
 #include "echo-desktop-bridge/src/lib.rs.h"
 #include "rust/cxx.h"
@@ -19,14 +15,13 @@ class DesktopBackend : public QObject {
     Q_PROPERTY(quint64 assetCount READ assetCount NOTIFY assetsChanged)
     Q_PROPERTY(QString catalogPath READ catalogPath NOTIFY assetsChanged)
     Q_PROPERTY(QString cacheRoot READ cacheRoot NOTIFY assetsChanged)
-    Q_PROPERTY(bool transcribing READ transcribing NOTIFY transcriptionStateChanged)
 
   public:
     explicit DesktopBackend(
         rust::Box<echo::desktop::LibrarySession> session,
         QObject* parent = nullptr
     );
-    ~DesktopBackend() override;
+    ~DesktopBackend() override = default;
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE QVariantList listAssets() const;
@@ -34,14 +29,9 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
     Q_INVOKABLE bool setAssetAffinity(const QString& id, bool liked, int rating);
     Q_INVOKABLE QVariantList search(const QString& query) const;
-    Q_INVOKABLE void transcribeAsset(
-        const QString& id,
-        const QString& modelRoot,
-        const QString& python,
-        const QString& workerScript
-    );
-    Q_INVOKABLE void
-    startWorkers(const QString& modelRoot, const QString& python, const QString& workerScript);
+    Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;
+    Q_INVOKABLE bool retryAnalysis(const QString& id);
+    void startWorkers(const QString& runtimeEndpoint, const QString& runtimeToken);
     Q_INVOKABLE void queueScans();
     Q_INVOKABLE QVariantMap jobStats() const;
     Q_INVOKABLE QVariantList listRoots() const;
@@ -50,16 +40,11 @@ class DesktopBackend : public QObject {
     quint64 assetCount() const;
     QString catalogPath() const;
     QString cacheRoot() const;
-    bool transcribing() const;
 
   signals:
     void assetsChanged();
-    void transcriptionStateChanged();
-    void transcriptionFinished(const QString& assetId, bool ok, const QString& message);
     void jobsChanged();
 
   private:
     rust::Box<echo::desktop::LibrarySession> session_;
-    std::thread analysis_thread_;
-    bool transcribing_ = false;
 };

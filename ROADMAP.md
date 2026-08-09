@@ -91,10 +91,16 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 | 保存可追溯结果；模型升级后决定是否重算 | 模型路径、Python/worker 生命周期、部署状态和失败重试 |
 | 进度、取消和失败状态的产品呈现 | Job/Attempt 持久化、资源仲裁和运行审计 |
 
-仓库内现有 MLX/Ollama/脚本调用只作为概念验证和兼容适配层：允许验证数据契约，但不再
-扩充模型选择 UI、物理模型路由、下载器或驻留进程管理。正式接入从一个真实消费方开始，
-优先采用 Infer Build 已有的 `audio.transcribe` / `audio.align` 任务接口；不预建没有消费方的
-第二套调度机制。
+仓库内曾用于概念验证的 MLX/Ollama/脚本执行已退出生产链路；Echo 不再扩充模型选择 UI、
+物理模型路由、下载器或驻留进程管理。正式接入采用 Infer Build 已有的
+`audio.transcribe` / `audio.align` 任务接口，不预建没有消费方的第二套调度机制。
+
+正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.1` 合同与 inference API `8787`，
+以独立、非资源管理员的 Echo App 身份调用。Echo 只从进程 secret 注入读取 bearer token，
+不把 token、音频、provider 原始错误或物理模型路径写入设置与通用日志。Runtime consumer
+独立拥有合同探测、严格 multipart、HTTP status／`error.code` 分类和 Job snapshot 解码；
+Echo 的后台 worker 只提交产品 Intent、记录本地任务状态并把 Runtime 的 Job／Attempt／
+模型构建证据写入 Catalog。Runtime 不可用不得阻断扫描、波形、播放或 Library 浏览。
 
 ## 4. 音频底层
 
@@ -190,19 +196,23 @@ InferenceBackend
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
   - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
     导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
-  - 已接入（过渡切片，2026-08-09）：Echo 以 Infer Build 的 `audio.transcribe` logical intent、
-    标准请求字段和 `infer.*` constraints 形成请求；当前执行端是 JSON-lines 兼容的直接 MLX
-    adapter，只负责把请求硬映射到本地 Qwen3-ASR，不承担路由、准入、重试或资源生命周期。
+  - 已完成（正式 Runtime 切片，2026-08-09）：Echo 以独立非管理员 App 身份消费
+    `0.1.0-candidate.1`；后台队列依次提交 `audio.transcribe` 与 `audio.align`，读取 App-scoped
+    Job/Attempt，并把合同版本、provider/deployment、physical model/build 与稳定错误码写入
+    Catalog。桌面读取层以最新对齐证据细化段落时间，无法可靠匹配时保留原转写时间。
   - 默认分析策略（2026-08-09 校准）：新录音完成注册后持久入队 waveform 与
     `audio.transcribe`；应用启动时为已有但缺少 transcript 证据的在线录音做幂等回填。
     结构性扫描、导入和 waveform 优先于 ASR；ASR 失败不得影响 Original、播放或浏览。
     手动分析只作为失败重试/调试入口，不是正常产品路径。该默认不扩张到 SenseVoice、
     diarization、embedding、LLM contextual understanding 或 TTS。
   - 冻结项：不再增强 Echo 内的物理模型注册、Ollama worker 或裸 Python 路由。
-  - 下一真实切片：用 Infer Build 的正式 HTTP/Job 执行替换直接 adapter，接收 Job/Attempt
-    进度和结果，保存模型/版本/置信度/时间戳；随后接 `audio.align`，完成
-    waveform↔transcript 双向定位。
-  - 待办：SenseVoice 能力 Intent、speaker/event 证据、取消/重试产品状态。
+  - 正式 Runtime 接入边界（2026-08-09）：`audio.transcribe` 成功后读取 App-scoped
+    Job snapshot，再以 `audio.align` 细化文字时间；Echo 持久化 Runtime job id、合同版本、
+    provider/deployment、physical model/build、Attempt 和稳定错误码。25 MiB 上传上限在
+    consumer admission 明确失败；长录音代理／切片属于后续独立 payload 切片，不允许静默
+    截断原始声音。Echo 不消费 speech/TTS/voice-clone Intent。
+  - 待办：长录音代理／切片、SenseVoice 能力 Intent、speaker/event 证据；音频合同能在
+    执行中暴露 Job id 后，再补真正可中断的 Runtime 取消（当前同步 endpoint 仅在终态返回 id）。
 - **M2 Library**：声音墙、声音相册、Like/评分、来源元数据筛选、自然语言搜索、人物/声音、
   时间、audio event、CLAP semantic search。
   - 首个浏览切片（2026-08-09）：声音墙成为默认首屏；资料库、横向声景卡片和详情检查器拆分
@@ -241,7 +251,7 @@ Audio Space 页面。
 - **平台**：先跑通 macOS（Apple Silicon）；架构上不为 Windows 设障碍，迁移成本应可控（Qt/C++/Rust 均可移植，MLX 只存在于 AI 层并被 InferenceBackend 隔离）。
 - **License**：MIT。
 - **测试拓扑**：私有不变量测试紧邻 owner（`<owner>/tests.rs`，owner 文件以 `#[cfg(test)] mod tests;` 收尾）；跨模块契约在 crate facade 的 `src/tests/<responsibility>_contract.rs`；crate 级 `tests/` 只放消费公开 API 的黑盒契约。
-- **Catalog schema**：唯一规范格式为 `YYYYMMDD.N`（日期.当天版本号，例如 `20260809.3`）；catalog 打开当前 revision，或将明确支持的紧邻前序 revision 原子迁移到当前版本；不把无点整数编码暴露为产品或持久化身份。
+- **Catalog schema**：唯一规范格式为 `YYYYMMDD.N`（日期.当天版本号，例如 `20260809.4`）；catalog 打开当前 revision，或将明确支持的紧邻前序 revision 原子迁移到当前版本；不把无点整数编码暴露为产品或持久化身份。
 - **格式**：Rust 用仓库 `rustfmt.toml`；C++/ObjC++ 用 `.clang-format`。
 - **i18n**：英文原文为 canonical 消息身份，简体中文必须是完整产品呈现（与 Shadow 相同契约），技术 token 不翻译。
 - **构建产物**：Cargo target / CMake build 目录放在仓库外的 `.echo-local-*`，不污染 worktree。

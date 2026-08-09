@@ -40,9 +40,7 @@ pub(crate) fn run_list_roots(catalog_path: &Path) -> anyhow::Result<()> {
 pub(crate) fn run_scan(
     catalog_path: &Path,
     cache_root: &Path,
-    model_root: &Path,
-    python: &Path,
-    worker: &Path,
+    runtime_endpoint: &str,
     workers: usize,
 ) -> anyhow::Result<()> {
     let catalog = Arc::new(
@@ -53,13 +51,10 @@ pub(crate) fn run_scan(
     println!("queued {queued} scan job(s), processing...");
     let config = echo_core::WorkerConfig {
         cache_root: cache_root.to_owned(),
-        model_root: model_root.to_owned(),
-        python: python.to_owned(),
-        worker_script: worker.to_owned(),
-        ollama_endpoint: std::env::var("ECHO_OLLAMA_ENDPOINT")
-            .unwrap_or_else(|_| "http://127.0.0.1:11434".to_owned()),
-        ollama_model: std::env::var("ECHO_OLLAMA_MODEL")
-            .unwrap_or_else(|_| "qwen3.5:4b-mlx".to_owned()),
+        infer_runtime: echo_core::InferRuntimeConfig {
+            base_url: runtime_endpoint.to_owned(),
+            bearer_token: std::env::var("ECHO_INFER_TOKEN").unwrap_or_default(),
+        },
     };
     let pool = echo_core::WorkerPool::start(&catalog, &config, workers)?;
     loop {
@@ -124,6 +119,7 @@ impl JobKindLabel for echo_catalog::Job {
             JobKind::ExtractMetadata => "metadata",
             JobKind::AnalyzeWaveform => "waveform",
             JobKind::Transcribe => "transcribe",
+            JobKind::Align => "align",
             JobKind::Contextual => "contextual",
         }
     }

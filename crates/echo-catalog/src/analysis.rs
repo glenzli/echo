@@ -161,9 +161,72 @@ pub fn list_assets_missing_analysis(
     Ok(ids)
 }
 
+/// Lists present assets whose latest transcript has text but no forced
+/// alignment evidence.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the query or a stored asset identity is
+/// invalid.
+pub fn list_assets_with_nonempty_transcript_missing_alignment(
+    transaction: &Transaction<'_>,
+) -> Result<Vec<AssetId>, CatalogError> {
+    let mut statement = transaction.prepare(
+        "SELECT a.id FROM assets a WHERE a.path_status = 'present' \
+         AND TRIM(COALESCE(json_extract((\
+             SELECT transcript.value FROM analysis_records transcript \
+             WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript' \
+             ORDER BY transcript.id DESC LIMIT 1\
+         ), '$.text'), '')) <> '' AND NOT EXISTS (\
+             SELECT 1 FROM analysis_records missing \
+             WHERE missing.asset_id = a.id AND missing.kind = 'alignment'\
+         ) ORDER BY a.imported_at_millis ASC, a.id ASC",
+    )?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    parse_asset_ids(rows)
+}
+
+/// Lists assets whose latest transcript is a valid empty-text observation.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the query or a stored identity is invalid.
+pub fn list_assets_with_empty_latest_transcript(
+    transaction: &Transaction<'_>,
+) -> Result<Vec<AssetId>, CatalogError> {
+    let mut statement = transaction.prepare(
+        "SELECT a.id FROM assets a WHERE EXISTS (\
+             SELECT 1 FROM analysis_records transcript \
+             WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript'\
+         ) AND TRIM(COALESCE(json_extract((\
+             SELECT transcript.value FROM analysis_records transcript \
+             WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript' \
+             ORDER BY transcript.id DESC LIMIT 1\
+         ), '$.text'), '')) = '' ORDER BY a.id ASC",
+    )?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    parse_asset_ids(rows)
+}
+
+fn parse_asset_ids(
+    rows: impl Iterator<Item = rusqlite::Result<String>>,
+) -> Result<Vec<AssetId>, CatalogError> {
+    let mut ids = Vec::new();
+    for row in rows {
+        let text = row?;
+        ids.push(text.parse::<AssetId>().map_err(|error| {
+            CatalogError::new(
+                crate::error::CatalogErrorKind::Other,
+                format!("invalid stored asset id {text}: {error}"),
+            )
+        })?);
+    }
+    Ok(ids)
+}
+
 const fn minimum_level_for(kind: AnalysisKind) -> AnalysisLevel {
     match kind {
-        AnalysisKind::Transcript => AnalysisLevel::Asr,
+        AnalysisKind::Transcript | AnalysisKind::Alignment => AnalysisLevel::Asr,
         AnalysisKind::Speakers | AnalysisKind::Emotions | AnalysisKind::AudioEvents => {
             AnalysisLevel::Understanding
         }
@@ -175,6 +238,7 @@ const fn minimum_level_for(kind: AnalysisKind) -> AnalysisLevel {
 const fn kind_text(kind: AnalysisKind) -> &'static str {
     match kind {
         AnalysisKind::Transcript => "transcript",
+        AnalysisKind::Alignment => "alignment",
         AnalysisKind::Speakers => "speakers",
         AnalysisKind::Emotions => "emotions",
         AnalysisKind::AudioEvents => "audio_events",
@@ -187,6 +251,7 @@ const fn kind_text(kind: AnalysisKind) -> &'static str {
 fn parse_kind(text: &str) -> Option<AnalysisKind> {
     match text {
         "transcript" => Some(AnalysisKind::Transcript),
+        "alignment" => Some(AnalysisKind::Alignment),
         "speakers" => Some(AnalysisKind::Speakers),
         "emotions" => Some(AnalysisKind::Emotions),
         "audio_events" => Some(AnalysisKind::AudioEvents),

@@ -12,6 +12,7 @@ mod analysis_queue;
 mod contextual;
 mod error;
 mod import;
+mod infer_runtime;
 mod metadata_queue;
 mod scanner;
 mod util;
@@ -19,12 +20,18 @@ mod waveform_artifact;
 mod worker;
 
 pub use analysis::{
-    TRANSCRIPTION_INTENT, TranscribeWorker, TranscriptPayload, TranscriptSegment, TranscriptWord,
-    TranscriptionIntent, record_transcript, run_transcribe,
+    TranscriptPayload, TranscriptSegment, TranscriptWord, record_alignment,
+    record_runtime_transcript, record_transcript,
 };
-pub use contextual::{ContextualPayload, ContextualWorker, record_contextual, run_contextual};
+pub use contextual::{ContextualPayload, record_contextual};
 pub use error::CoreErrorKind;
 pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
+pub use infer_runtime::{
+    ALIGNMENT_INTENT, AlignmentIntent, AlignmentItem, AlignmentPayload, EXPECTED_CONTRACT_VERSION,
+    InferRuntimeClient, InferRuntimeConfig, InferRuntimeError, InferRuntimeErrorKind,
+    MAX_AUDIO_UPLOAD_BYTES, RuntimeAttempt, RuntimeJobSnapshot, RuntimeProvenance,
+    TRANSCRIPTION_INTENT, TranscriptionIntent,
+};
 pub use scanner::{
     FolderScanner, ScanOutcome, add_root_and_scan, queue_scans_for_enabled_roots, scan_root,
 };

@@ -10,8 +10,8 @@ use rusqlite::{Connection, OptionalExtension};
 use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
-        CatalogSchemaRevision, PREVIOUS_SCHEMA_VERSION, SCHEMA_IDENTITY, SCHEMA_SQL,
-        SCHEMA_VERSION, SOUND_WALL_SCHEMA_SQL,
+        CatalogSchemaRevision, INFERENCE_RUN_SCHEMA_SQL, PREVIOUS_SCHEMA_VERSION, SCHEMA_IDENTITY,
+        SCHEMA_SQL, SCHEMA_VERSION,
     },
 };
 
@@ -92,7 +92,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_sound_wall_schema(connection)?;
+            migrate_inference_run_schema(connection)?;
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -108,9 +108,9 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
-fn migrate_sound_wall_schema(connection: &Connection) -> Result<(), CatalogError> {
+fn migrate_inference_run_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
-    transaction.execute_batch(SOUND_WALL_SCHEMA_SQL)?;
+    transaction.execute_batch(INFERENCE_RUN_SCHEMA_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

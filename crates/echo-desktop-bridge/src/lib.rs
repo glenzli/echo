@@ -78,6 +78,16 @@ mod ffi {
         failed: u64,
     }
 
+    /// Per-asset projection of Echo's local stage and Runtime linkage.
+    #[derive(Debug)]
+    struct AnalysisStatusWire {
+        stage: String,
+        state: String,
+        error_code: String,
+        runtime_job_id: String,
+        contract_version: String,
+    }
+
     /// One configured scan root.
     #[derive(Debug)]
     struct ScanRootWire {
@@ -129,24 +139,19 @@ mod ffi {
             liked: bool,
             rating: u8,
         ) -> Result<()>;
-        /// Transcribes an asset with the configured MLX worker. Stateless so
-        /// it can run on a background thread.
-        fn transcribe_asset(
-            catalog_path: &str,
-            asset_id: &str,
-            model_root: &str,
-            python: &str,
-            worker_script: &str,
-        ) -> Result<u32>;
         /// Starts the background worker pool (idempotent).
         fn session_start_workers(
             self: &LibrarySession,
-            model_root: &str,
-            python: &str,
-            worker_script: &str,
-            ollama_endpoint: &str,
-            ollama_model: &str,
+            runtime_endpoint: &str,
+            runtime_token: &str,
         ) -> Result<()>;
+        /// Returns the current analysis stage for one asset.
+        fn session_analysis_status(
+            self: &LibrarySession,
+            asset_id: &str,
+        ) -> Result<AnalysisStatusWire>;
+        /// Requeues the failed analysis stage for one asset.
+        fn session_retry_analysis(self: &LibrarySession, asset_id: &str) -> Result<()>;
         /// Queues scans for every enabled root (incremental detection).
         fn session_queue_scans(self: &LibrarySession) -> Result<u64>;
         /// Reads aggregate job statistics.
@@ -244,24 +249,6 @@ impl LibrarySession {
     }
 }
 
-/// Transcribes an asset with the configured MLX worker. Stateless so it can
-/// run on a background thread.
-///
-/// # Errors
-///
-/// Returns the session error message when the model is missing or the worker
-/// fails.
-pub fn transcribe_asset(
-    catalog_path: &str,
-    asset_id: &str,
-    model_root: &str,
-    python: &str,
-    worker_script: &str,
-) -> Result<u32, String> {
-    session::transcribe_asset(catalog_path, asset_id, model_root, python, worker_script)
-        .map_err(|error| error.message)
-}
-
 impl LibrarySession {
     /// Starts the background worker pool (idempotent).
     ///
@@ -270,20 +257,22 @@ impl LibrarySession {
     /// Returns the session error message when the pool cannot start.
     fn session_start_workers(
         &self,
-        model_root: &str,
-        python: &str,
-        worker_script: &str,
-        ollama_endpoint: &str,
-        ollama_model: &str,
+        runtime_endpoint: &str,
+        runtime_token: &str,
     ) -> Result<(), String> {
-        self.start_workers(
-            model_root,
-            python,
-            worker_script,
-            ollama_endpoint,
-            ollama_model,
-        )
-        .map_err(|error| error.message)
+        self.start_workers(runtime_endpoint, runtime_token)
+            .map_err(|error| error.message)
+    }
+
+    /// Returns the current analysis stage for one asset.
+    fn session_analysis_status(&self, asset_id: &str) -> Result<ffi::AnalysisStatusWire, String> {
+        self.analysis_status(asset_id)
+            .map_err(|error| error.message)
+    }
+
+    /// Requeues the failed analysis stage for one asset.
+    fn session_retry_analysis(&self, asset_id: &str) -> Result<(), String> {
+        self.retry_analysis(asset_id).map_err(|error| error.message)
     }
 
     /// Queues scans for every enabled root (incremental detection).

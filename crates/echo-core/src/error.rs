@@ -11,6 +11,14 @@ pub enum CoreErrorKind {
     AudioEngineRejected,
     /// The catalog rejected the write.
     Catalog,
+    /// Infer Runtime could not be reached or had no usable capacity.
+    InferenceUnavailable,
+    /// Infer Runtime rejected the request or returned an invalid contract.
+    InferenceRejected,
+    /// Infer Runtime cancelled the external run.
+    InferenceCancelled,
+    /// Infer Runtime exceeded the request deadline.
+    InferenceDeadline,
     /// Another failure, with the underlying message preserved.
     Other,
 }
@@ -37,5 +45,23 @@ impl CoreError {
 impl From<echo_catalog::CatalogError> for CoreError {
     fn from(error: echo_catalog::CatalogError) -> Self {
         Self::new(CoreErrorKind::Catalog, error.to_string())
+    }
+}
+
+impl From<crate::InferRuntimeError> for CoreError {
+    fn from(error: crate::InferRuntimeError) -> Self {
+        let kind = match error.kind {
+            crate::InferRuntimeErrorKind::Unavailable | crate::InferRuntimeErrorKind::Capacity => {
+                CoreErrorKind::InferenceUnavailable
+            }
+            crate::InferRuntimeErrorKind::Cancelled => CoreErrorKind::InferenceCancelled,
+            crate::InferRuntimeErrorKind::Deadline => CoreErrorKind::InferenceDeadline,
+            crate::InferRuntimeErrorKind::ContractMismatch
+            | crate::InferRuntimeErrorKind::Authentication
+            | crate::InferRuntimeErrorKind::Rejected
+            | crate::InferRuntimeErrorKind::Protocol
+            | crate::InferRuntimeErrorKind::SourceTooLarge => CoreErrorKind::InferenceRejected,
+        };
+        Self::new(kind, error.to_string())
     }
 }

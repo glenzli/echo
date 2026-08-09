@@ -8,12 +8,6 @@
 DesktopBackend::DesktopBackend(rust::Box<echo::desktop::LibrarySession> session, QObject* parent) :
     QObject(parent), session_(std::move(session)) {}
 
-DesktopBackend::~DesktopBackend() {
-    if (analysis_thread_.joinable()) {
-        analysis_thread_.join();
-    }
-}
-
 void DesktopBackend::refresh() {
     emit assetsChanged();
 }
@@ -183,71 +177,52 @@ QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {
     return transcripts;
 }
 
-void DesktopBackend::transcribeAsset(
-    const QString& id,
-    const QString& modelRoot,
-    const QString& python,
-    const QString& workerScript
-) {
-    if (transcribing_) {
-        return;
-    }
-    if (analysis_thread_.joinable()) {
-        analysis_thread_.join();
-    }
-    transcribing_ = true;
-    emit transcriptionStateChanged();
-
-    const rust::String catalog_rust = session_->session_catalog_path();
-    const std::string catalog(catalog_rust.data(), catalog_rust.size());
-    const std::string asset = id.toStdString();
-    const std::string root = modelRoot.toStdString();
-    const std::string interpreter = python.toStdString();
-    const std::string worker = workerScript.toStdString();
-
-    analysis_thread_ = std::thread([this, catalog, asset, root, interpreter, worker] {
-        QString message;
-        bool ok = false;
-        try {
-            const auto segments =
-                echo::desktop::transcribe_asset(catalog, asset, root, interpreter, worker);
-            ok = true;
-            message = QStringLiteral("%1 segments").arg(segments);
-        } catch (const rust::Error& error) {
-            message = QString::fromUtf8(error.what());
-        }
-        const QString asset_id = QString::fromStdString(asset);
-        QMetaObject::invokeMethod(
-            this,
-            [this, asset_id, ok, message] {
-                transcribing_ = false;
-                emit transcriptionStateChanged();
-                emit transcriptionFinished(asset_id, ok, message);
-            },
-            Qt::QueuedConnection
-        );
-    });
-}
-
-bool DesktopBackend::transcribing() const {
-    return transcribing_;
-}
-
-void DesktopBackend::startWorkers(
-    const QString& modelRoot,
-    const QString& python,
-    const QString& workerScript
-) {
+void DesktopBackend::startWorkers(const QString& runtimeEndpoint, const QString& runtimeToken) {
     try {
-        session_->session_start_workers(
-            modelRoot.toStdString(),
-            python.toStdString(),
-            workerScript.toStdString(),
-            "",
-            ""
-        );
+        session_->session_start_workers(runtimeEndpoint.toStdString(), runtimeToken.toStdString());
     } catch (const rust::Error& error) {
         qWarning("cannot start background workers: %s", error.what());
+    }
+}
+
+QVariantMap DesktopBackend::analysisStatusForAsset(const QString& id) const {
+    QVariantMap status;
+    try {
+        const auto wire = session_->session_analysis_status(id.toStdString());
+        status.insert(
+            QStringLiteral("stage"),
+            QString::fromUtf8(wire.stage.data(), wire.stage.size())
+        );
+        status.insert(
+            QStringLiteral("state"),
+            QString::fromUtf8(wire.state.data(), wire.state.size())
+        );
+        status.insert(
+            QStringLiteral("errorCode"),
+            QString::fromUtf8(wire.error_code.data(), wire.error_code.size())
+        );
+        status.insert(
+            QStringLiteral("runtimeJobId"),
+            QString::fromUtf8(wire.runtime_job_id.data(), wire.runtime_job_id.size())
+        );
+        status.insert(
+            QStringLiteral("contractVersion"),
+            QString::fromUtf8(wire.contract_version.data(), wire.contract_version.size())
+        );
+    } catch (const rust::Error& error) {
+        qWarning("cannot read analysis status for %s: %s", qPrintable(id), error.what());
+    }
+    return status;
+}
+
+bool DesktopBackend::retryAnalysis(const QString& id) {
+    try {
+        session_->session_retry_analysis(id.toStdString());
+        emit jobsChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot retry analysis for %s: %s", qPrintable(id), error.what());
+        return false;
     }
 }
 

@@ -56,6 +56,8 @@ impl TryFrom<u8> for AnalysisLevel {
 pub enum AnalysisKind {
     /// Word/sentence-level transcript segments with timestamps.
     Transcript,
+    /// Forced-alignment timing evidence for transcript words or units.
+    Alignment,
     /// Speaker turns or diarization segments.
     Speakers,
     /// Emotion observations.

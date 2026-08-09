@@ -1,7 +1,7 @@
 //! Facade contracts for analysis: worker output parsing and evidence
 //! recording shape.
 
-use crate::{TranscribeWorker, TranscriptPayload, record_transcript, run_transcribe};
+use crate::{TranscriptPayload, record_transcript};
 use echo_catalog::{open_catalog, query_analysis};
 use echo_domain::AnalysisKind;
 
@@ -26,20 +26,6 @@ fn transcript_payload_parses_canonical_schema() {
     assert!((payload.segments[1].end - 4.8).abs() < f64::EPSILON);
     let words = payload.segments[1].words.as_ref().expect("words present");
     assert_eq!(words[0].text, "我们");
-}
-
-#[test]
-fn worker_rejects_missing_python() {
-    let worker = TranscribeWorker {
-        python: "/nonexistent/python".into(),
-        script: "/nonexistent/transcribe.py".into(),
-    };
-    let result = run_transcribe(
-        std::path::Path::new("/tmp/voice.wav"),
-        std::path::Path::new("/tmp/model"),
-        &worker,
-    );
-    assert!(result.is_err(), "missing interpreter must fail cleanly");
 }
 
 #[test]

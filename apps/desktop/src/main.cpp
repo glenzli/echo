@@ -2,7 +2,7 @@
 //! playback controller, and UI preferences, then load the Audio Space shell.
 
 #include "desktop_backend.hpp"
-#include "model_preferences.hpp"
+#include "inference_preferences.hpp"
 #include "playback_controller.hpp"
 #include "ui_preferences.hpp"
 
@@ -48,12 +48,12 @@ int main(int argc, char* argv[]) {
         "UiPreferences",
         "UiPreferences is created by the host application"
     );
-    qmlRegisterUncreatableType<ModelPreferences>(
+    qmlRegisterUncreatableType<InferencePreferences>(
         "EchoDesktop",
         0,
         1,
-        "ModelPreferences",
-        "ModelPreferences is created by the host application"
+        "InferencePreferences",
+        "InferencePreferences is created by the host application"
     );
 
     const std::string catalog = argc > 1 ? std::string(argv[1]) : default_catalog_path();
@@ -66,13 +66,17 @@ int main(int argc, char* argv[]) {
         DesktopBackend backend(std::move(session));
         PlaybackController player;
         UiPreferences ui_prefs(application);
-        ModelPreferences model_prefs;
+        InferencePreferences inference_prefs;
+        backend.startWorkers(inference_prefs.runtimeEndpoint(), inference_prefs.runtimeToken());
 
         QQmlApplicationEngine engine;
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
-        engine.rootContext()->setContextProperty(QStringLiteral("modelPrefs"), &model_prefs);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("inferencePrefs"),
+            &inference_prefs
+        );
         ui_prefs.attachEngine(engine);
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {

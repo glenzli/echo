@@ -11,8 +11,8 @@ use echo_core::load_or_build_waveform;
 use echo_domain::AssetId;
 
 use crate::ffi::{
-    AssetSummaryWire, JobStatsWire, ScanRootWire, SearchHitWire, TranscriptSegmentWire,
-    TranscriptWire, WaveformArtifactWire, WaveformLevelWire,
+    AnalysisStatusWire, AssetSummaryWire, JobStatsWire, ScanRootWire, SearchHitWire,
+    TranscriptSegmentWire, TranscriptWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 fn now_millis() -> i64 {
@@ -40,6 +40,16 @@ fn metadata_entry_containing(
         .map_or_else(String::new, |entry| entry.value.clone())
 }
 
+const fn job_state_text(state: echo_catalog::JobState) -> &'static str {
+    match state {
+        echo_catalog::JobState::Pending => "pending",
+        echo_catalog::JobState::Running => "running",
+        echo_catalog::JobState::Done => "done",
+        echo_catalog::JobState::Failed => "failed",
+        echo_catalog::JobState::Cancelled => "cancelled",
+    }
+}
+
 /// One catalog attachment. Sessions are created on the Qt main thread and
 /// reused; the catalog serializes its own writes.
 #[derive(Debug)]
@@ -63,72 +73,6 @@ impl From<echo_catalog::CatalogError> for SessionError {
             message: error.to_string(),
         }
     }
-}
-
-/// Transcribes an asset with the configured MLX worker. Stateless so it can
-/// run on a background thread.
-///
-/// # Errors
-///
-/// Returns [`SessionError`] when the asset is unknown, the ASR model is
-/// missing, or the worker fails.
-pub fn transcribe_asset(
-    catalog_path: &str,
-    asset_id: &str,
-    model_root: &str,
-    python: &str,
-    worker_script: &str,
-) -> Result<u32, SessionError> {
-    let catalog =
-        open_catalog(std::path::Path::new(catalog_path)).map_err(|error| SessionError {
-            message: error.to_string(),
-        })?;
-    let id = AssetId::from_str(asset_id).map_err(|error| SessionError {
-        message: format!("invalid asset id {asset_id}: {error}"),
-    })?;
-    let source = catalog.with_transaction(|transaction| match find_by_id(transaction, id) {
-        Ok(AssetLookup::Found(asset)) => Ok(asset.original.path),
-        Ok(AssetLookup::NotFound) => Err(SessionError {
-            message: format!("asset {asset_id} not found"),
-        }),
-        Err(error) => Err(SessionError {
-            message: error.to_string(),
-        }),
-    })?;
-    let asr_spec = echo_ai::MODEL_CATALOG
-        .iter()
-        .find(|spec| spec.id == "qwen3-asr-1.7b-mlx")
-        .expect("catalog declares qwen3-asr");
-    let snapshot = match echo_ai::resolve_model(std::path::Path::new(model_root), asr_spec)
-        .map_err(|error| SessionError {
-            message: format!("cannot scan model root: {error}"),
-        })? {
-        echo_ai::ModelStatus::Present { snapshot } => snapshot,
-        echo_ai::ModelStatus::Missing { download_command } => {
-            return Err(SessionError {
-                message: format!("ASR model missing; run: {download_command}"),
-            });
-        }
-    };
-    let worker = echo_core::TranscribeWorker {
-        python: std::path::PathBuf::from(python),
-        script: std::path::PathBuf::from(worker_script),
-    };
-    let payload =
-        echo_core::run_transcribe(&source, &snapshot, &worker).map_err(|error| SessionError {
-            message: format!("transcription failed: {error}"),
-        })?;
-    let version = snapshot
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("unknown")
-        .to_owned();
-    echo_core::record_transcript(&catalog, id, &payload, &version).map_err(|error| {
-        SessionError {
-            message: error.to_string(),
-        }
-    })?;
-    Ok(u32::try_from(payload.segments.len()).expect("segment count fits u32"))
 }
 
 /// Opens (creating if needed) the catalog at `path` with the cache root at
@@ -345,6 +289,12 @@ impl LibrarySession {
                 message: error.to_string(),
             })?;
         let mut wires = Vec::new();
+        let alignment = records
+            .iter()
+            .find(|record| record.kind == echo_domain::AnalysisKind::Alignment)
+            .and_then(|record| {
+                serde_json::from_value::<echo_core::AlignmentPayload>(record.value.clone()).ok()
+            });
         for record in records {
             if record.kind != echo_domain::AnalysisKind::Transcript {
                 continue;
@@ -353,13 +303,13 @@ impl LibrarySession {
             else {
                 continue;
             };
+            let segments = aligned_segments(&payload, alignment.as_ref());
             wires.push(TranscriptWire {
                 model: record.model.name,
                 model_version: record.model.version,
                 language: payload.language.unwrap_or_default(),
                 text: payload.text,
-                segments: payload
-                    .segments
+                segments: segments
                     .into_iter()
                     .map(|segment| TranscriptSegmentWire {
                         text: segment.text,
@@ -379,11 +329,8 @@ impl LibrarySession {
     /// Returns [`SessionError`] when the pool cannot start.
     pub fn start_workers(
         &self,
-        model_root: &str,
-        python: &str,
-        worker_script: &str,
-        ollama_endpoint: &str,
-        ollama_model: &str,
+        runtime_endpoint: &str,
+        runtime_token: &str,
     ) -> Result<(), SessionError> {
         let mut workers = self.workers.lock().expect("worker mutex poisoned");
         if workers.is_some() {
@@ -391,11 +338,10 @@ impl LibrarySession {
         }
         let config = echo_core::WorkerConfig {
             cache_root: self.cache_root.clone(),
-            model_root: PathBuf::from(model_root),
-            python: PathBuf::from(python),
-            worker_script: PathBuf::from(worker_script),
-            ollama_endpoint: ollama_endpoint.to_owned(),
-            ollama_model: ollama_model.to_owned(),
+            infer_runtime: echo_core::InferRuntimeConfig {
+                base_url: runtime_endpoint.to_owned(),
+                bearer_token: runtime_token.to_owned(),
+            },
         };
         let pool = echo_core::WorkerPool::start(&self.catalog, &config, 2).map_err(|error| {
             SessionError {
@@ -404,6 +350,94 @@ impl LibrarySession {
         })?;
         *workers = Some(pool);
         Ok(())
+    }
+
+    /// Returns the product stage and sanitized Runtime linkage for one asset.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the asset identity or catalog projection
+    /// is invalid.
+    pub fn analysis_status(&self, asset_id: &str) -> Result<AnalysisStatusWire, SessionError> {
+        let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid asset id {asset_id}: {error}"),
+        })?;
+        self.catalog.with_transaction(|transaction| {
+            let records = query_analysis(transaction, asset_id).map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+            let has_transcript = records
+                .iter()
+                .any(|record| record.kind == echo_domain::AnalysisKind::Transcript);
+            let latest_transcript_is_empty = records
+                .iter()
+                .find(|record| record.kind == echo_domain::AnalysisKind::Transcript)
+                .and_then(|record| {
+                    serde_json::from_value::<echo_core::TranscriptPayload>(record.value.clone())
+                        .ok()
+                })
+                .is_some_and(|payload| payload.text.trim().is_empty());
+            let has_alignment = records
+                .iter()
+                .any(|record| record.kind == echo_domain::AnalysisKind::Alignment);
+            let (stage, job_id) = if has_alignment || latest_transcript_is_empty {
+                ("complete", format!("align-{asset_id}"))
+            } else if has_transcript {
+                ("alignment", format!("align-{asset_id}"))
+            } else {
+                ("text", format!("transcribe-{asset_id}"))
+            };
+            let job = echo_catalog::job_by_id(transaction, &job_id)?;
+            let run = echo_catalog::inference_run(transaction, &job_id)?;
+            Ok(AnalysisStatusWire {
+                stage: stage.to_owned(),
+                state: job.as_ref().map_or_else(
+                    || if has_alignment { "done" } else { "missing" }.to_owned(),
+                    |job| job_state_text(job.state).to_owned(),
+                ),
+                error_code: run
+                    .as_ref()
+                    .and_then(|run| run.error_code.clone())
+                    .unwrap_or_default(),
+                runtime_job_id: run
+                    .as_ref()
+                    .and_then(|run| run.runtime_job_id.clone())
+                    .unwrap_or_default(),
+                contract_version: run
+                    .as_ref()
+                    .map_or_else(String::new, |run| run.contract_version.clone()),
+            })
+        })
+    }
+
+    /// Requeues the failed product analysis stage for one asset.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when no failed stage can be retried.
+    pub fn retry_analysis(&self, asset_id: &str) -> Result<(), SessionError> {
+        let status = self.analysis_status(asset_id)?;
+        let id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid asset id {asset_id}: {error}"),
+        })?;
+        let job_id = if status.stage == "alignment" {
+            format!("align-{id}")
+        } else {
+            format!("transcribe-{id}")
+        };
+        let retried = self
+            .catalog
+            .with_transaction(|transaction| {
+                echo_catalog::retry_job(transaction, &job_id, now_millis())
+            })
+            .map_err(SessionError::from)?;
+        if retried {
+            Ok(())
+        } else {
+            Err(SessionError {
+                message: "analysis stage is not failed or cancelled".to_owned(),
+            })
+        }
     }
 
     /// Queues scans for every enabled root (incremental detection).
@@ -602,4 +636,47 @@ impl LibrarySession {
     pub fn cache_root(&self) -> &Path {
         &self.cache_root
     }
+}
+
+pub(crate) fn aligned_segments(
+    transcript: &echo_core::TranscriptPayload,
+    alignment: Option<&echo_core::AlignmentPayload>,
+) -> Vec<echo_core::TranscriptSegment> {
+    let Some(alignment) = alignment.filter(|alignment| {
+        normalized_text(&alignment.text) == normalized_text(&transcript.text)
+            && !alignment.items.is_empty()
+    }) else {
+        return transcript.segments.clone();
+    };
+    let mut cursor = 0;
+    transcript
+        .segments
+        .iter()
+        .map(|segment| {
+            let target = normalized_text(&segment.text);
+            let start_cursor = cursor;
+            let mut collected = String::new();
+            while cursor < alignment.items.len()
+                && collected.chars().count() < target.chars().count()
+            {
+                collected.push_str(&normalized_text(&alignment.items[cursor].text));
+                cursor += 1;
+            }
+            if !target.is_empty() && collected == target && cursor > start_cursor {
+                let mut refined = segment.clone();
+                refined.start = alignment.items[start_cursor].start;
+                refined.end = alignment.items[cursor - 1].end;
+                refined
+            } else {
+                cursor = start_cursor;
+                segment.clone()
+            }
+        })
+        .collect()
+}
+
+fn normalized_text(text: &str) -> String {
+    text.chars()
+        .filter(|character| !character.is_whitespace())
+        .collect()
 }

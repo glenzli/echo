@@ -1,18 +1,25 @@
-use super::{TRANSCRIPTION_INTENT, direct_request};
+use super::{TranscriptPayload, TranscriptSegment, TranscriptWord};
 
 #[test]
-fn direct_request_preserves_the_infer_transcription_contract() {
-    let request = direct_request(
-        std::path::Path::new("/recordings/memory.wav"),
-        std::path::Path::new("/models/qwen3-asr"),
-    );
-    let value = serde_json::to_value(request).expect("request serializes");
-
-    assert_eq!(value["operation"], "transcribe");
-    assert_eq!(value["intent"]["model"], TRANSCRIPTION_INTENT);
-    assert_eq!(value["intent"]["response_format"], "verbose_json");
-    assert_eq!(value["intent"]["metadata"]["infer.policy"], "local-first");
-    assert_eq!(value["intent"]["metadata"]["infer.placement"], "local_only");
-    assert_eq!(value["model"], "/models/qwen3-asr");
-    assert_eq!(value["audio_path"], "/recordings/memory.wav");
+fn transcript_payload_keeps_optional_word_timing() {
+    let payload = TranscriptPayload {
+        model: "audio.transcribe".to_owned(),
+        language: Some("zh".to_owned()),
+        text: "你好".to_owned(),
+        segments: vec![TranscriptSegment {
+            text: "你好".to_owned(),
+            start: 0.1,
+            end: 0.8,
+            words: Some(vec![TranscriptWord {
+                text: "你好".to_owned(),
+                start: 0.1,
+                end: 0.8,
+            }]),
+        }],
+        runtime: None,
+    };
+    let decoded: TranscriptPayload =
+        serde_json::from_value(serde_json::to_value(payload).expect("payload serializes"))
+            .expect("payload decodes");
+    assert!((decoded.segments[0].words.as_ref().unwrap()[0].end - 0.8).abs() < f64::EPSILON);
 }

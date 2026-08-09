@@ -1,6 +1,5 @@
-//! Centered application settings. General preferences and the temporary
-//! Infer-compatible execution route are presented as product settings rather
-//! than exposing physical model plumbing.
+//! Centered application settings. Runtime configuration presents only the
+//! consumer boundary; physical models and worker plumbing belong to Runtime.
 
 import QtQuick
 import QtQuick.Controls
@@ -11,13 +10,13 @@ Dialog {
     id: dialog
 
     property UiPreferences uiPrefs: null
-    property ModelPreferences modelPrefs: null
+    property InferencePreferences inferencePrefs: null
     property int selectedIndex: 0
 
     readonly property var sections: [
         { title: qsTr("General"), subtitle: qsTr("Appearance & language"),
           icon: "qrc:/EchoDesktop/icons/tune.svg" },
-        { title: qsTr("Inference"), subtitle: qsTr("Local compatibility route"),
+        { title: qsTr("Inference"), subtitle: qsTr("Infer Runtime consumer"),
           icon: "qrc:/EchoDesktop/icons/mic.svg" }
     ]
 
@@ -95,7 +94,7 @@ Dialog {
                 }
 
                 Text {
-                    text: qsTr("Appearance, language, and local inference")
+                    text: qsTr("Appearance, language, and AI services")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
                 }
@@ -304,8 +303,31 @@ Dialog {
 
                         EchoSectionLabel {
                             Layout.fillWidth: true
-                            text: qsTr("Inference route")
-                            hint: qsTr("Infer-compatible request, direct MLX execution")
+                            text: qsTr("Infer Runtime")
+                            hint: qsTr("Echo submits audio understanding intents; Runtime schedules execution and records audit evidence.")
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 7
+
+                            Text {
+                                text: qsTr("Runtime endpoint")
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontBody
+                            }
+
+                            EchoTextField {
+                                Layout.fillWidth: true
+                                text: dialog.inferencePrefs !== null
+                                    ? dialog.inferencePrefs.runtimeEndpoint : ""
+                                placeholderText: "http://127.0.0.1:8787"
+                                onEditingFinished: {
+                                    if (dialog.inferencePrefs !== null) {
+                                        dialog.inferencePrefs.runtimeEndpoint = text
+                                    }
+                                }
+                            }
                         }
 
                         Rectangle {
@@ -326,10 +348,13 @@ Dialog {
 
                                 Repeater {
                                     model: [
-                                        { label: qsTr("Request contract"), value: "audio.transcribe" },
-                                        { label: qsTr("Execution"), value: qsTr("Local MLX compatibility adapter") },
-                                        { label: qsTr("Python"), value: dialog.modelPrefs !== null
-                                            ? dialog.modelPrefs.python : "" }
+                                        { label: qsTr("Contract"), value: "0.1.0-candidate.1" },
+                                        { label: qsTr("Intents"), value: "audio.transcribe · audio.align" },
+                                        { label: qsTr("Placement"), value: qsTr("Local only") },
+                                        { label: qsTr("Consumer credential"),
+                                          value: dialog.inferencePrefs !== null
+                                              && dialog.inferencePrefs.credentialAvailable
+                                              ? qsTr("Available") : qsTr("Missing") }
                                     ]
 
                                     delegate: RowLayout {
@@ -364,12 +389,14 @@ Dialog {
                                 Layout.preferredWidth: 8
                                 Layout.preferredHeight: 8
                                 radius: 4
-                                color: Theme.accent
+                                color: dialog.inferencePrefs !== null
+                                    && dialog.inferencePrefs.credentialAvailable
+                                    ? Theme.accent : Theme.textDisabled
                             }
 
                             Text {
                                 Layout.fillWidth: true
-                                text: qsTr("This direct route is temporary. Infer Build will take over scheduling, resources, and audit without changing the product request contract.")
+                                text: qsTr("The consumer credential is injected by the Echo process and is never stored in settings. Endpoint changes take effect after restarting Echo.")
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontBody
                                 wrapMode: Text.WordWrap

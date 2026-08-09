@@ -39,6 +39,7 @@ fn backfill_is_evidence_aware_and_job_idempotent() {
         .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
             let _missing = register(transaction, 1);
             let analyzed = register(transaction, 2);
+            let empty = register(transaction, 3);
             record_analysis(
                 transaction,
                 &echo_catalog::AppendAnalysisRecord {
@@ -49,6 +50,19 @@ fn backfill_is_evidence_aware_and_job_idempotent() {
                         ModelIdentity::new("test".into(), "1".into()),
                         None,
                         10,
+                    ),
+                },
+            )?;
+            record_analysis(
+                transaction,
+                &echo_catalog::AppendAnalysisRecord {
+                    asset_id: empty,
+                    record: AnalysisRecord::new(
+                        AnalysisKind::Transcript,
+                        serde_json::json!({ "text": "" }),
+                        ModelIdentity::new("test".into(), "1".into()),
+                        None,
+                        11,
                     ),
                 },
             )
@@ -65,5 +79,33 @@ fn backfill_is_evidence_aware_and_job_idempotent() {
     );
     let JobStats { pending, .. } = catalog.with_transaction(job_stats).expect("stats read");
     assert_eq!(pending, 1, "deterministic job identity prevents duplicates");
+
+    assert_eq!(
+        enqueue_missing_alignments(&catalog, 40).expect("alignment backfill queues"),
+        1
+    );
+    let JobStats { pending, .. } = catalog.with_transaction(job_stats).expect("stats read");
+    assert_eq!(pending, 2, "only transcript evidence admits alignment");
+
+    let empty = catalog
+        .with_transaction(|transaction| {
+            echo_catalog::find_by_content_hash(transaction, ContentHash::new([3; 32]))
+        })
+        .expect("empty transcript asset reads");
+    let echo_catalog::AssetLookup::Found(empty) = empty else {
+        panic!("empty transcript asset exists")
+    };
+    catalog
+        .with_transaction(|transaction| enqueue_alignment(transaction, empty.id, 50))
+        .expect("legacy empty alignment queues");
+    assert_eq!(
+        settle_empty_transcript_alignments(&catalog, 60).expect("empty alignment settles"),
+        1
+    );
+    let job = catalog
+        .with_transaction(|transaction| job_by_id(transaction, &alignment_job_id(empty.id)))
+        .expect("job reads")
+        .expect("job exists");
+    assert_eq!(job.state, echo_catalog::JobState::Done);
     let _ = std::fs::remove_dir_all(root);
 }

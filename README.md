@@ -20,7 +20,7 @@ AI model selection, and milestone plan.
 | Catalog | [`echo-catalog`](crates/echo-catalog/src/lib.rs) | SQLite ownership, asset registration, analysis records |
 | Cache | [`echo-cache`](crates/echo-cache/src/lib.rs) | Content-addressed rebuildable blobs (waveform, embeddings, renders) |
 | Core workflows | [`echo-core`](crates/echo-core/src/lib.rs) | Import, scanning, background job scheduling |
-| AI contracts | [`echo-ai`](crates/echo-ai/src/lib.rs) | Capability routing, inference backend identities |
+| AI catalog | [`echo-ai`](crates/echo-ai/src/lib.rs) | Legacy capability identities; production scheduling belongs to Infer Runtime |
 | Audio bridge | [`echo-bridge`](crates/echo-bridge/README.md) | Safe Rust API over the C++ audio engine |
 | Native audio engine | [`cpp/echo-audio`](cpp/echo-audio/CMakeLists.txt) | FFmpeg decode, canonical PCM, waveform pyramid |
 | Desktop services | [`echo-desktop-bridge`](crates/echo-desktop-bridge/README.md) | Long-lived Qt-facing services |
@@ -39,7 +39,7 @@ cargo run --package echo-cli -- probe /path/to/recording.m4a
 cargo run --package echo-cli -- waveform ./cache /path/to/recording.m4a
 cargo run --package echo-cli -- list ./catalogs/demo.sqlite
 cargo run --package echo-cli -- models            # cataloged model status
-ECHO_MLX_PYTHON=~/.venvs/mlx/bin/python cargo run --package echo-cli -- transcribe ./catalogs/demo.sqlite /path/to/recording.wav
+ECHO_INFER_TOKEN='<consumer secret>' cargo run --package echo-cli -- transcribe ./catalogs/demo.sqlite /path/to/recording.wav
 ```
 
 Native engine checks (independent CMake graph):
@@ -52,7 +52,7 @@ Desktop shell (Qt Quick):
 
 ```sh
 cmake --preset desktop-dev && cmake --build --preset desktop-dev
-./.echo-local-build/desktop-dev/apps/desktop/echo-desktop ./catalogs/demo.sqlite
+ECHO_INFER_TOKEN='<consumer secret>' ./.echo-local-build/desktop-dev/apps/desktop/echo-desktop ./catalogs/demo.sqlite
 ```
 
 ## License

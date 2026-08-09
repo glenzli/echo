@@ -234,223 +234,238 @@
 <context>
     <name>AudioPlaybackWorkspace</name>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="118"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="124"/>
         <source>Select a recording</source>
         <translation>选择一段录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="127"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="133"/>
         <source>The waveform, playback controls, and extracted text stay together in this workspace.</source>
         <translation>波形、播放控制和提取的文字会始终集中在这个工作区中。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="178"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="184"/>
         <source>Missing</source>
         <translation>缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="178"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="184"/>
         <source>Original preserved</source>
         <translation>原始文件已保留</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="221"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="227"/>
         <source>Original file is unavailable</source>
         <translation>原始文件当前不可用</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="221"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="227"/>
         <source>Preparing waveform…</source>
         <translation>正在准备波形…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="236"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="242"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="236"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="242"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="251"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="257"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="282"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="288"/>
         <source>Text</source>
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="286"/>
-        <source>Retrying text extraction…</source>
-        <translation>正在重试文字提取…</translation>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="311"/>
+        <source>Retry timing analysis</source>
+        <translation>重试时间对齐</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="288"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="336"/>
+        <source>Echo is extracting text from this sound through Infer Runtime.</source>
+        <translation>Echo 正在通过 Infer Runtime 从这段声音中提取文字。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="295"/>
         <source>Extracting text in the background…</source>
         <translation>正在后台提取文字…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="291"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="298"/>
         <source>Text is extracted automatically</source>
         <translation>文字会自动提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="304"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="311"/>
         <source>Retry text extraction</source>
         <translation>重试文字提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="327"/>
-        <source>Retrying text extraction with the local compatibility adapter…</source>
-        <translation>正在通过本地兼容适配器重试文字提取…</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="329"/>
-        <source>Echo is extracting text from this sound in the background.</source>
-        <translation>Echo 正在后台从这段声音中提取文字。</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="331"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="338"/>
         <source>Background text extraction did not complete. You can retry this sound.</source>
         <translation>后台文字提取未完成，你可以重试这段声音。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="332"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="339"/>
         <source>Text is extracted automatically after import.</source>
         <translation>导入后会自动提取文字。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="284"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="293"/>
         <source>Click a segment to seek</source>
         <translation>点击片段即可定位</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="290"/>
-        <source>Background analysis needs attention</source>
-        <translation>后台分析需要处理</translation>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="292"/>
+        <source>Refining word timing in the background…</source>
+        <translation>正在后台细化文字时间…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="304"/>
-        <source>Retrying…</source>
-        <translation>正在重试…</translation>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="297"/>
+        <source>Background analysis needs attention</source>
+        <translation>后台分析需要处理</translation>
     </message>
 </context>
 <context>
     <name>EchoSettingsDialog</name>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="20"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="19"/>
         <source>Inference</source>
         <translation>推理</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="29"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="19"/>
+        <source>Infer Runtime consumer</source>
+        <translation>Infer Runtime 消费端</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="28"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="236"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="97"/>
+        <source>Appearance, language, and AI services</source>
+        <translation>外观、语言与 AI 服务</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="235"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="246"/>
-        <location filename="../qml/EchoSettingsDialog.qml" line="280"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="245"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="279"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="247"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="246"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="248"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="247"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="18"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="306"/>
+        <source>Infer Runtime</source>
+        <translation>Infer Runtime</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="307"/>
+        <source>Echo submits audio understanding intents; Runtime schedules execution and records audit evidence.</source>
+        <translation>Echo 提交声音理解意图；Runtime 负责调度执行并记录审计证据。</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="315"/>
+        <source>Runtime endpoint</source>
+        <translation>Runtime 地址</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="351"/>
+        <source>Contract</source>
+        <translation>合同</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="352"/>
+        <source>Intents</source>
+        <translation>意图</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="353"/>
+        <source>Placement</source>
+        <translation>执行位置</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="353"/>
+        <source>Local only</source>
+        <translation>仅本机</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="354"/>
+        <source>Consumer credential</source>
+        <translation>消费端凭证</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="357"/>
+        <source>Available</source>
+        <translation>可用</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="357"/>
+        <source>Missing</source>
+        <translation>缺失</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="399"/>
+        <source>The consumer credential is injected by the Echo process and is never stored in settings. Endpoint changes take effect after restarting Echo.</source>
+        <translation>消费端凭证由 Echo 进程注入，绝不会保存在设置中。地址修改将在重启 Echo 后生效。</translation>
+    </message>
+    <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="17"/>
         <source>General</source>
         <translation>通用</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="18"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="17"/>
         <source>Appearance &amp; language</source>
         <translation>外观与语言</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="20"/>
-        <source>Local compatibility route</source>
-        <translation>本地兼容路径</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="91"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="90"/>
         <source>Echo Settings</source>
         <translation>Echo 设置</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="98"/>
-        <source>Appearance, language, and local inference</source>
-        <translation>外观、语言与本地推理</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="135"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="134"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="237"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="236"/>
         <source>Follow the system, or keep Echo light or dark.</source>
         <translation>跟随系统外观，或让 Echo 始终保持浅色或深色。</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="270"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="269"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="271"/>
+        <location filename="../qml/EchoSettingsDialog.qml" line="270"/>
         <source>The default follows your system language.</source>
         <translation>默认跟随系统语言。</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="307"/>
-        <source>Inference route</source>
-        <translation>推理路径</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="308"/>
-        <source>Infer-compatible request, direct MLX execution</source>
-        <translation>兼容 Infer 的请求，由 MLX 直接执行</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="329"/>
-        <source>Request contract</source>
-        <translation>请求契约</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="330"/>
-        <source>Execution</source>
-        <translation>执行方式</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="330"/>
-        <source>Local MLX compatibility adapter</source>
-        <translation>本地 MLX 兼容适配器</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="372"/>
-        <source>This direct route is temporary. Infer Build will take over scheduling, resources, and audit without changing the product request contract.</source>
-        <translation>这条直接执行路径是临时方案。后续 Infer Build 会在不改变产品请求契约的前提下接管调度、资源与审计。</translation>
-    </message>
-    <message>
-        <location filename="../qml/EchoSettingsDialog.qml" line="331"/>
-        <source>Python</source>
-        <translation>Python</translation>
     </message>
 </context>
 <context>

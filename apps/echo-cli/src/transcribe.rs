@@ -1,49 +1,45 @@
-//! Transcription command: import the source, resolve the ASR model, run the
-//! worker, and record the transcript as analysis evidence.
+//! Transcription command: import the source, submit the product intent to
+//! Infer Runtime, and record transcript plus alignment evidence.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::Context;
-use echo_ai::{ModelStatus, resolve_model};
 use echo_catalog::open_catalog;
-use echo_core::run_transcribe as run_asr_worker;
-use echo_core::{ImportOutcome, TranscribeWorker, import_asset, record_transcript};
+use echo_core::{
+    AlignmentIntent, ImportOutcome, InferRuntimeClient, InferRuntimeConfig, TranscriptionIntent,
+    import_asset, record_alignment, record_runtime_transcript,
+};
 
 pub(crate) fn run_transcribe(
     catalog_path: &Path,
     source: &Path,
-    model_root: &Path,
-    python: &Path,
-    worker_script: &Path,
+    runtime_endpoint: &str,
 ) -> anyhow::Result<()> {
     let asset = match import_asset(catalog_path, source)? {
         ImportOutcome::Imported(asset) | ImportOutcome::AlreadyPresent(asset) => asset,
     };
     println!("asset {} ready, transcribing...", asset.id);
 
-    let asr_spec = echo_ai::MODEL_CATALOG
-        .iter()
-        .find(|spec| spec.id == "qwen3-asr-1.7b-mlx")
-        .expect("catalog declares qwen3-asr");
-    let snapshot = match resolve_model(model_root, asr_spec).context("cannot resolve models")? {
-        ModelStatus::Present { snapshot } => snapshot,
-        ModelStatus::Missing { download_command } => {
-            anyhow::bail!("ASR model missing; run: {download_command}");
-        }
-    };
-
-    let worker = TranscribeWorker {
-        python: python.to_owned(),
-        script: worker_script.to_owned(),
-    };
-    let payload =
-        run_asr_worker(&asset.original.path, &snapshot, &worker).context("transcription failed")?;
-    let version = snapshot
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("unknown")
-        .to_owned();
-    record_transcript(&open_catalog(catalog_path)?, asset.id, &payload, &version)?;
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url: runtime_endpoint.to_owned(),
+        bearer_token: std::env::var("ECHO_INFER_TOKEN").unwrap_or_default(),
+    });
+    let payload = client
+        .transcribe(&asset.original.path, &TranscriptionIntent::default())
+        .context("Runtime transcription failed")?;
+    let catalog = open_catalog(catalog_path)?;
+    record_runtime_transcript(&catalog, asset.id, &payload)?;
+    let alignment = client
+        .align(
+            &asset.original.path,
+            &payload.text,
+            &AlignmentIntent {
+                language: payload.language.clone(),
+                ..AlignmentIntent::default()
+            },
+        )
+        .context("Runtime alignment failed")?;
+    record_alignment(&catalog, asset.id, &alignment)?;
 
     println!(
         "transcribed {} segments, {} chars (language {:?})",
@@ -60,16 +56,6 @@ pub(crate) fn run_transcribe(
     Ok(())
 }
 
-pub(crate) fn default_python() -> PathBuf {
-    std::env::var_os("ECHO_MLX_PYTHON").map_or_else(
-        || {
-            let local = std::env::var_os("HOME")
-                .map(PathBuf::from)
-                .map(|home| home.join("ai-lab/audio/qwen-tts/.venv/bin/python"));
-            local
-                .filter(|path| path.is_file())
-                .unwrap_or_else(|| PathBuf::from("python3"))
-        },
-        PathBuf::from,
-    )
+pub(crate) fn default_runtime_endpoint() -> String {
+    std::env::var("ECHO_INFER_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:8787".to_owned())
 }

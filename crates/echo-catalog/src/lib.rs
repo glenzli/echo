@@ -16,6 +16,7 @@ mod audio_space;
 mod catalog;
 mod derived_artifact;
 mod error;
+mod inference_run;
 mod job_queue;
 mod scan_journal;
 mod scan_root;
@@ -24,8 +25,9 @@ mod search;
 mod source_metadata;
 
 pub use analysis::{
-    AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis, query_analysis,
-    record_analysis,
+    AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis,
+    list_assets_with_empty_latest_transcript,
+    list_assets_with_nonempty_transcript_missing_alignment, query_analysis, record_analysis,
 };
 pub use asset_affinity::{AssetAffinity, asset_affinity, set_asset_affinity};
 pub use asset_path::{mark_asset_missing, mark_asset_present, relink_asset_by_hash};
@@ -41,10 +43,14 @@ pub use derived_artifact::{
 };
 pub use error::CatalogError;
 pub use error::CatalogErrorKind;
+pub use inference_run::{
+    InferenceRun, InferenceRunState, UpsertInferenceRun, inference_run,
+    requeue_recoverable_inference_runs, upsert_inference_run,
+};
 pub use job_queue::{
     ClaimedJob, FileJobPayload, Job, JobKind, JobState, JobStats, ScanRootJobPayload,
-    claim_next_job, complete_job, enqueue_job, fail_job, job_stats, list_failed_jobs,
-    recover_interrupted_jobs, requeue_scan_job, update_job_progress,
+    claim_next_job, complete_job, enqueue_job, fail_job, job_by_id, job_stats, list_failed_jobs,
+    recover_interrupted_jobs, requeue_scan_job, retry_job, update_job_progress,
 };
 pub use scan_journal::{journal_fingerprint, upsert_journal};
 pub use scan_root::{ScanRoot, add_scan_root, list_scan_roots, remove_scan_root};

@@ -13,10 +13,15 @@ Rectangle {
     property var waveformLevels: []
     property string loadedPath: ""
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
+    property var analysisStatus: ({ stage: "text", state: "missing",
+                                    errorCode: "", runtimeJobId: "",
+                                    contractVersion: "" })
 
-    readonly property bool backgroundAnalysisActive:
-        jobStats.pending > 0 || jobStats.running > 0
     readonly property bool hasAsset: asset !== null && asset !== undefined
+    readonly property bool analysisActive: analysisStatus.state === "pending"
+        || analysisStatus.state === "running"
+    readonly property bool analysisFailed: analysisStatus.state === "failed"
+        || analysisStatus.state === "cancelled"
 
     color: Theme.panelRaised
     radius: 0
@@ -47,8 +52,12 @@ Rectangle {
         transcriptModel.clear()
         waveformLevels = []
         if (!asset || !asset.id || asset.pathStatus === "missing") {
+            analysisStatus = ({ stage: "text", state: "missing",
+                                errorCode: "", runtimeJobId: "",
+                                contractVersion: "" })
             return
         }
+        analysisStatus = backend.analysisStatusForAsset(asset.id)
         waveformLevels = backend.waveformForAsset(asset.id)
         const records = backend.transcriptsForAsset(asset.id)
         if (records.length > 0) {
@@ -78,12 +87,9 @@ Rectangle {
             preview.refreshAsset()
         }
 
-        function onTranscriptionFinished(assetId: string, ok: bool, message: string) : void {
-            if (ok && preview.hasAsset && assetId === preview.asset.id) {
-                preview.refreshAsset()
-            }
-            if (!ok) {
-                console.warn("transcription failed: " + message)
+        function onJobsChanged() : void {
+            if (preview.hasAsset) {
+                preview.analysisStatus = backend.analysisStatusForAsset(preview.asset.id)
             }
         }
     }
@@ -281,33 +287,36 @@ Rectangle {
                 Layout.fillWidth: true
                 text: qsTr("Text")
                 hint: transcriptModel.count > 0
-                    ? qsTr("Click a segment to seek")
-                    : backend.transcribing
-                        ? qsTr("Retrying text extraction…")
-                        : preview.backgroundAnalysisActive
-                            ? qsTr("Extracting text in the background…")
-                            : preview.jobStats.failed > 0
-                                ? qsTr("Background analysis needs attention")
-                                : qsTr("Text is extracted automatically")
+                    ? preview.analysisStatus.stage === "alignment"
+                        && preview.analysisActive
+                        ? qsTr("Refining word timing in the background…")
+                        : qsTr("Click a segment to seek")
+                    : preview.analysisActive
+                        ? qsTr("Extracting text in the background…")
+                        : preview.analysisFailed
+                            ? qsTr("Background analysis needs attention")
+                            : qsTr("Text is extracted automatically")
             }
 
             BusyIndicator {
-                visible: transcriptModel.count === 0
-                    && (backend.transcribing || preview.backgroundAnalysisActive)
+                visible: preview.analysisActive
                 running: visible
                 Layout.preferredWidth: 18
                 Layout.preferredHeight: 18
             }
 
             EchoButton {
-                visible: transcriptModel.count === 0 && preview.jobStats.failed > 0
-                text: backend.transcribing ? qsTr("Retrying…") : qsTr("Retry text extraction")
-                enabled: !backend.transcribing && preview.hasAsset
+                visible: preview.analysisFailed
+                text: preview.analysisStatus.stage === "alignment"
+                    ? qsTr("Retry timing analysis") : qsTr("Retry text extraction")
+                enabled: preview.hasAsset
                     && preview.asset.pathStatus !== "missing"
                 ghost: true
-                onClicked: backend.transcribeAsset(
-                    preview.asset.id, modelPrefs.modelRoot,
-                    modelPrefs.python, modelPrefs.workerScript)
+                onClicked: {
+                    if (backend.retryAnalysis(preview.asset.id)) {
+                        preview.analysisStatus = backend.analysisStatusForAsset(preview.asset.id)
+                    }
+                }
             }
         }
 
@@ -323,13 +332,11 @@ Rectangle {
                 anchors.centerIn: parent
                 width: parent.width - 48
                 visible: transcriptModel.count === 0
-                text: backend.transcribing
-                    ? qsTr("Retrying text extraction with the local compatibility adapter…")
-                    : preview.backgroundAnalysisActive
-                        ? qsTr("Echo is extracting text from this sound in the background.")
-                        : preview.jobStats.failed > 0
-                            ? qsTr("Background text extraction did not complete. You can retry this sound.")
-                            : qsTr("Text is extracted automatically after import.")
+                text: preview.analysisActive
+                    ? qsTr("Echo is extracting text from this sound through Infer Runtime.")
+                    : preview.analysisFailed
+                        ? qsTr("Background text extraction did not complete. You can retry this sound.")
+                        : qsTr("Text is extracted automatically after import.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap

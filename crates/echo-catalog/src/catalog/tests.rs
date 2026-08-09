@@ -12,10 +12,9 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                  VALUES ('asset', ?1, '/voice.wav', 1, 1)",
                 ["00".repeat(32)],
             )?;
-            transaction.execute("DROP TABLE asset_user_state", [])?;
-            transaction.execute("DROP TABLE asset_source_metadata", [])?;
+            transaction.execute("DROP TABLE inference_runs", [])?;
             transaction.execute(
-                "UPDATE catalog_meta SET value = '20260809.2' WHERE key = 'schema_version'",
+                "UPDATE catalog_meta SET value = '20260809.3' WHERE key = 'schema_version'",
                 [],
             )?;
             Ok(())
@@ -24,7 +23,7 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
     drop(catalog);
 
     let migrated = open_catalog(&path).expect("previous revision migrates");
-    let (version, asset_count, user_state_table): (String, i64, i64) = migrated
+    let (version, asset_count, inference_run_table): (String, i64, i64) = migrated
         .with_transaction(|transaction| -> Result<_, CatalogError> {
             Ok((
                 transaction.query_row(
@@ -35,15 +34,15 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                 transaction.query_row("SELECT COUNT(*) FROM assets", [], |row| row.get(0))?,
                 transaction.query_row(
                     "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' \
-                     AND name = 'asset_user_state'",
+                     AND name = 'inference_runs'",
                     [],
                     |row| row.get(0),
                 )?,
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260809.3");
+    assert_eq!(version, "20260809.4");
     assert_eq!(asset_count, 1);
-    assert_eq!(user_state_table, 1);
+    assert_eq!(inference_run_table, 1);
     let _ = std::fs::remove_dir_all(root);
 }

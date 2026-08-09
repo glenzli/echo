@@ -98,27 +98,28 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_809, 2);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 3);
+    CatalogSchemaRevision::new(20_260_809, 3);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 4);
 
-pub(crate) const SCHEMA_IDENTITY: &str =
-    "echo-catalog-20260809.3-sound-wall-user-state-source-metadata";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.4-infer-runtime-job-evidence";
 
-pub(crate) const SOUND_WALL_SCHEMA_SQL: &str = "
-CREATE TABLE IF NOT EXISTS asset_user_state (
-    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
-    liked              INTEGER NOT NULL DEFAULT 0 CHECK (liked IN (0, 1)),
-    rating             INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+pub(crate) const INFERENCE_RUN_SCHEMA_SQL: &str = "
+CREATE TABLE IF NOT EXISTS inference_runs (
+    local_job_id       TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    intent             TEXT NOT NULL,
+    runtime_job_id     TEXT,
+    contract_version   TEXT NOT NULL,
+    state              TEXT NOT NULL CHECK (
+                       state IN ('submitting', 'succeeded', 'failed', 'cancelled', 'expired')),
+    http_status        INTEGER,
+    error_code         TEXT,
+    snapshot_json      TEXT,
     updated_at_millis  INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS asset_source_metadata (
-    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
-    container_format   TEXT NOT NULL,
-    sample_rate        INTEGER NOT NULL,
-    channel_count      INTEGER NOT NULL,
-    entries_json       TEXT NOT NULL
-);
+CREATE INDEX IF NOT EXISTS inference_runs_asset_intent
+    ON inference_runs (asset_id, intent, updated_at_millis DESC);
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -218,6 +219,23 @@ CREATE TABLE IF NOT EXISTS asset_source_metadata (
     channel_count      INTEGER NOT NULL,
     entries_json       TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS inference_runs (
+    local_job_id       TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    intent             TEXT NOT NULL,
+    runtime_job_id     TEXT,
+    contract_version   TEXT NOT NULL,
+    state              TEXT NOT NULL CHECK (
+                       state IN ('submitting', 'succeeded', 'failed', 'cancelled', 'expired')),
+    http_status        INTEGER,
+    error_code         TEXT,
+    snapshot_json      TEXT,
+    updated_at_millis  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS inference_runs_asset_intent
+    ON inference_runs (asset_id, intent, updated_at_millis DESC);
 ";
 
 #[cfg(test)]

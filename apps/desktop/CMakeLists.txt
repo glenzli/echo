@@ -110,8 +110,8 @@ qt_add_executable(
     src/playback_controller.hpp
     src/ui_preferences.cpp
     src/ui_preferences.hpp
-    src/model_preferences.cpp
-    src/model_preferences.hpp
+    src/inference_preferences.cpp
+    src/inference_preferences.hpp
     src/mac_titlebar.hpp
 )
 if(APPLE)

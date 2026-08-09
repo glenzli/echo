@@ -15,9 +15,10 @@ use std::{
 };
 
 use echo_catalog::{
-    AssetLookup, Catalog, ClaimedJob, FileJobPayload, JobKind, ScanRootJobPayload, claim_next_job,
-    complete_job, enqueue_job, fail_job, find_by_content_hash, find_by_id,
-    recover_interrupted_jobs, upsert_journal,
+    AssetLookup, Catalog, ClaimedJob, FileJobPayload, InferenceRunState, JobKind,
+    ScanRootJobPayload, UpsertInferenceRun, claim_next_job, complete_job, enqueue_job, fail_job,
+    find_by_content_hash, find_by_id, recover_interrupted_jobs, requeue_recoverable_inference_runs,
+    upsert_inference_run, upsert_journal,
 };
 
 use crate::{
@@ -30,11 +31,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkerConfig {
     pub cache_root: PathBuf,
-    pub model_root: PathBuf,
-    pub python: PathBuf,
-    pub worker_script: PathBuf,
-    pub ollama_endpoint: String,
-    pub ollama_model: String,
+    pub infer_runtime: crate::InferRuntimeConfig,
 }
 
 /// The worker pool handle.
@@ -60,8 +57,19 @@ impl WorkerPool {
         catalog
             .with_transaction(|transaction| recover_interrupted_jobs(transaction, now))
             .map_err(CoreError::from)?;
+        catalog
+            .with_transaction(|transaction| {
+                requeue_recoverable_inference_runs(
+                    transaction,
+                    !config.infer_runtime.bearer_token.trim().is_empty(),
+                    now,
+                )
+            })
+            .map_err(CoreError::from)?;
         metadata_queue::enqueue_missing_source_metadata(catalog, now)?;
         analysis_queue::enqueue_missing_transcriptions(catalog, now)?;
+        analysis_queue::settle_empty_transcript_alignments(catalog, now)?;
+        analysis_queue::enqueue_missing_alignments(catalog, now)?;
 
         let stop = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -118,6 +126,7 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             scanner::scan_root(catalog, &payload.root, crate::util::now_millis())?;
             metadata_queue::enqueue_missing_source_metadata(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_transcriptions(catalog, crate::util::now_millis())?;
+            analysis_queue::enqueue_missing_alignments(catalog, crate::util::now_millis())?;
             Ok(())
         }
         JobKind::ImportFile => {
@@ -165,51 +174,90 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             )
             .map(|_| ())
         }
+        JobKind::Transcribe | JobKind::Align | JobKind::Contextual => {
+            dispatch_analysis(catalog, config, job)
+        }
+    }
+}
+
+fn dispatch_analysis(
+    catalog: &Catalog,
+    config: &WorkerConfig,
+    job: &ClaimedJob,
+) -> Result<(), CoreError> {
+    match job.kind {
         JobKind::Transcribe => {
             let asset_id = asset_id_of(&job.payload)?;
             let source = source_path_of(catalog, &asset_id)?;
-            let snapshot = resolve_asr_snapshot(&config.model_root)?;
-            let worker = crate::TranscribeWorker {
-                python: config.python.clone(),
-                script: config.worker_script.clone(),
+            record_inference_submitting(catalog, job, asset_id, crate::TRANSCRIPTION_INTENT)?;
+            let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
+            let payload = match client.transcribe(&source, &crate::TranscriptionIntent::default()) {
+                Ok(payload) => payload,
+                Err(error) => {
+                    record_inference_failure(
+                        catalog,
+                        job,
+                        asset_id,
+                        crate::TRANSCRIPTION_INTENT,
+                        &error,
+                    )?;
+                    return Err(error.into());
+                }
             };
-            let payload = crate::run_transcribe(&source, &snapshot, &worker)?;
-            let version = snapshot
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("unknown")
-                .to_owned();
-            crate::record_transcript(catalog, asset_id_of(&job.payload)?, &payload, &version)?;
+            let provenance = payload.runtime.as_ref().ok_or_else(|| {
+                CoreError::new(
+                    CoreErrorKind::InferenceRejected,
+                    "Runtime transcript lacks accepted Job provenance",
+                )
+            })?;
+            record_inference_success(catalog, job, asset_id, provenance)?;
+            crate::record_runtime_transcript(catalog, asset_id, &payload)?;
+            if !payload.text.trim().is_empty() {
+                catalog.with_transaction(|transaction| {
+                    analysis_queue::enqueue_alignment(
+                        transaction,
+                        asset_id,
+                        crate::util::now_millis(),
+                    )
+                    .map_err(CoreError::from)
+                })?;
+            }
             Ok(())
         }
-        JobKind::Contextual => {
+        JobKind::Align => {
             let asset_id = asset_id_of(&job.payload)?;
             let source = source_path_of(catalog, &asset_id)?;
-            let _ = source;
-            // The transcript is the input; read the newest transcript record.
-            let records = catalog.with_transaction(|transaction| {
-                echo_catalog::query_analysis(transaction, asset_id)
-                    .map_err(|error| CoreError::new(CoreErrorKind::Other, error.to_string()))
-            })?;
-            let transcript = records
-                .iter()
-                .find(|record| record.kind == echo_domain::AnalysisKind::Transcript)
-                .and_then(|record| {
-                    serde_json::from_value::<crate::TranscriptPayload>(record.value.clone()).ok()
-                })
-                .ok_or_else(|| {
-                    CoreError::new(
-                        CoreErrorKind::Other,
-                        "contextual job requires a transcript record",
-                    )
-                })?;
-            let worker = crate::ContextualWorker {
-                endpoint: config.ollama_endpoint.clone(),
-                model: config.ollama_model.clone(),
+            let transcript = newest_transcript(catalog, asset_id)?;
+            record_inference_submitting(catalog, job, asset_id, crate::ALIGNMENT_INTENT)?;
+            let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
+            let intent = crate::AlignmentIntent {
+                language: transcript.language.clone(),
+                ..crate::AlignmentIntent::default()
             };
-            let payload = crate::run_contextual(&transcript.text, &worker)?;
-            crate::record_contextual(catalog, asset_id, &payload, &worker.model)
+            let payload = match client.align(&source, &transcript.text, &intent) {
+                Ok(payload) => payload,
+                Err(error) => {
+                    record_inference_failure(
+                        catalog,
+                        job,
+                        asset_id,
+                        crate::ALIGNMENT_INTENT,
+                        &error,
+                    )?;
+                    return Err(error.into());
+                }
+            };
+            record_inference_success(catalog, job, asset_id, &payload.runtime)?;
+            crate::record_alignment(catalog, asset_id, &payload)
         }
+        JobKind::Contextual => Err(CoreError::new(
+            CoreErrorKind::InferenceRejected,
+            "contextual analysis is not available in the frozen Runtime contract",
+        )),
+        JobKind::ScanRoot
+        | JobKind::ImportFile
+        | JobKind::ExtractMetadata
+        | JobKind::AnalyzeWaveform => unreachable!("structural jobs use dispatch"),
     }
 }
 
@@ -333,21 +381,118 @@ fn source_path_of(
     })
 }
 
-fn resolve_asr_snapshot(model_root: &Path) -> Result<PathBuf, CoreError> {
-    let asr_spec = echo_ai::MODEL_CATALOG
+fn newest_transcript(
+    catalog: &Catalog,
+    asset_id: echo_domain::AssetId,
+) -> Result<crate::TranscriptPayload, CoreError> {
+    let records = catalog.with_transaction(|transaction| {
+        echo_catalog::query_analysis(transaction, asset_id)
+            .map_err(|error| CoreError::new(CoreErrorKind::Other, error.to_string()))
+    })?;
+    records
         .iter()
-        .find(|spec| spec.id == "qwen3-asr-1.7b-mlx")
-        .expect("catalog declares qwen3-asr");
-    match echo_ai::resolve_model(model_root, asr_spec).map_err(|error| {
+        .find(|record| record.kind == echo_domain::AnalysisKind::Transcript)
+        .and_then(|record| serde_json::from_value(record.value.clone()).ok())
+        .ok_or_else(|| {
+            CoreError::new(
+                CoreErrorKind::InferenceRejected,
+                "alignment requires transcript evidence",
+            )
+        })
+}
+
+fn record_inference_submitting(
+    catalog: &Catalog,
+    job: &ClaimedJob,
+    asset_id: echo_domain::AssetId,
+    intent: &str,
+) -> Result<(), CoreError> {
+    catalog
+        .with_transaction(|transaction| {
+            upsert_inference_run(
+                transaction,
+                &UpsertInferenceRun {
+                    local_job_id: &job.id,
+                    asset_id,
+                    intent,
+                    runtime_job_id: None,
+                    contract_version: crate::EXPECTED_CONTRACT_VERSION,
+                    state: InferenceRunState::Submitting,
+                    http_status: None,
+                    error_code: None,
+                    snapshot: None,
+                    updated_at_millis: crate::util::now_millis(),
+                },
+            )
+        })
+        .map_err(CoreError::from)
+}
+
+fn record_inference_success(
+    catalog: &Catalog,
+    job: &ClaimedJob,
+    asset_id: echo_domain::AssetId,
+    provenance: &crate::RuntimeProvenance,
+) -> Result<(), CoreError> {
+    let snapshot = serde_json::to_value(&provenance.job).map_err(|error| {
         CoreError::new(
             CoreErrorKind::Other,
-            format!("cannot scan model root: {error}"),
+            format!("cannot encode Runtime provenance: {error}"),
         )
-    })? {
-        echo_ai::ModelStatus::Present { snapshot } => Ok(snapshot),
-        echo_ai::ModelStatus::Missing { download_command } => Err(CoreError::new(
-            CoreErrorKind::Other,
-            format!("ASR model missing; run: {download_command}"),
-        )),
-    }
+    })?;
+    catalog
+        .with_transaction(|transaction| {
+            upsert_inference_run(
+                transaction,
+                &UpsertInferenceRun {
+                    local_job_id: &job.id,
+                    asset_id,
+                    intent: &provenance.job.intent,
+                    runtime_job_id: Some(&provenance.job.id),
+                    contract_version: &provenance.contract_version,
+                    state: InferenceRunState::Succeeded,
+                    http_status: Some(200),
+                    error_code: None,
+                    snapshot: Some(&snapshot),
+                    updated_at_millis: crate::util::now_millis(),
+                },
+            )
+        })
+        .map_err(CoreError::from)
 }
+
+fn record_inference_failure(
+    catalog: &Catalog,
+    job: &ClaimedJob,
+    asset_id: echo_domain::AssetId,
+    intent: &str,
+    error: &crate::InferRuntimeError,
+) -> Result<(), CoreError> {
+    let state = match error.kind {
+        crate::InferRuntimeErrorKind::Cancelled => InferenceRunState::Cancelled,
+        crate::InferRuntimeErrorKind::Deadline => InferenceRunState::Expired,
+        _ => InferenceRunState::Failed,
+    };
+    catalog
+        .with_transaction(|transaction| {
+            upsert_inference_run(
+                transaction,
+                &UpsertInferenceRun {
+                    local_job_id: &job.id,
+                    asset_id,
+                    intent,
+                    runtime_job_id: None,
+                    contract_version: crate::EXPECTED_CONTRACT_VERSION,
+                    state,
+                    http_status: error.http_status,
+                    error_code: Some(&error.code),
+                    snapshot: None,
+                    updated_at_millis: crate::util::now_millis(),
+                },
+            )
+        })
+        .map_err(CoreError::from)
+}
+
+#[cfg(test)]
+mod tests;
