@@ -1,6 +1,6 @@
-//! Echo application shell. Workspace chrome and process-level lifecycle live
-//! here; Audio Space, playback, and inspection own their presentation
-//! internally. Library management is a transient toolbar surface.
+//! Echo application shell. Workspace chrome, page routing, and process-level
+//! lifecycle live here; Audio Space and Audio Library own their presentation
+//! and interaction internally.
 
 import QtQuick
 import QtQuick.Controls
@@ -22,6 +22,7 @@ ApplicationWindow {
 
     property var jobSnapshot: ({ pending: 0, running: 0, done: 0, failed: 0 })
     property bool jobsWereActive: false
+    property int workspaceIndex: 0
 
     readonly property bool jobsActive: jobSnapshot.pending > 0 || jobSnapshot.running > 0
 
@@ -30,15 +31,16 @@ ApplicationWindow {
     }
 
     function openLibrary() : void {
-        libraryDialog.open()
+        workspaceIndex = 1
+        audioLibrary.refresh()
+    }
+
+    function showAudioSpace() : void {
+        workspaceIndex = 0
     }
 
     EchoSettingsDialog {
         id: settingsDialog
-    }
-
-    LibraryDialog {
-        id: libraryDialog
     }
 
     Rectangle {
@@ -103,7 +105,8 @@ ApplicationWindow {
             anchors.centerIn: parent
             source: "qrc:/EchoDesktop/icons/waveform.svg"
             toolTipText: qsTr("Audio Space")
-            selected: true
+            selected: window.workspaceIndex === 0
+            onClicked: window.showAudioSpace()
         }
 
         RowLayout {
@@ -140,18 +143,29 @@ ApplicationWindow {
         }
     }
 
-    Item {
+    StackLayout {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: titleBar.bottom
         anchors.bottom: parent.bottom
+        currentIndex: window.workspaceIndex
 
         AudioSpaceWorkspace {
             id: audioSpace
 
-            anchors.fill: parent
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             jobStats: window.jobSnapshot
             onOpenLibraryRequested: window.openLibrary()
+        }
+
+        AudioLibraryWorkspace {
+            id: audioLibrary
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            jobStats: window.jobSnapshot
+            onCloseRequested: window.showAudioSpace()
         }
     }
 

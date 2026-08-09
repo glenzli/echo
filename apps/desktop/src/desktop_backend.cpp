@@ -1,6 +1,8 @@
 #include "desktop_backend.hpp"
 
 #include <QDebug>
+#include <QDir>
+#include <QFileInfo>
 #include <QString>
 
 DesktopBackend::DesktopBackend(rust::Box<echo::desktop::LibrarySession> session, QObject* parent) :
@@ -250,7 +252,17 @@ QVariantList DesktopBackend::listRoots() const {
     return roots;
 }
 
-bool DesktopBackend::addRoot(const QString& path) {
+bool DesktopBackend::addRoot(const QUrl& folder) {
+    if (!folder.isLocalFile()) {
+        qWarning("cannot add non-local scan root %s", qPrintable(folder.toString()));
+        return false;
+    }
+    const QString path = QDir::cleanPath(folder.toLocalFile());
+    const QFileInfo info(path);
+    if (!info.exists() || !info.isDir()) {
+        qWarning("cannot add missing scan root %s", qPrintable(path));
+        return false;
+    }
     try {
         session_->session_add_root(path.toStdString());
         emit jobsChanged();

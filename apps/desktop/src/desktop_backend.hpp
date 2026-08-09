@@ -6,6 +6,7 @@
 #pragma once
 
 #include <QObject>
+#include <QUrl>
 #include <QVariantList>
 
 #include <thread>
@@ -43,7 +44,7 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE void queueScans();
     Q_INVOKABLE QVariantMap jobStats() const;
     Q_INVOKABLE QVariantList listRoots() const;
-    Q_INVOKABLE bool addRoot(const QString& path);
+    Q_INVOKABLE bool addRoot(const QUrl& folder);
     Q_INVOKABLE void removeRoot(qlonglong id);
     quint64 assetCount() const;
     QString catalogPath() const;

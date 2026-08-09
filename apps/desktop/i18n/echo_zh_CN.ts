@@ -2,6 +2,124 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN">
 <context>
+    <name>AudioLibraryWorkspace</name>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="29"/>
+        <source>Folder added. Echo is preparing its recordings.</source>
+        <translation>已添加文件夹，Echo 正在准备其中的录音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="33"/>
+        <source>Echo could not add that folder.</source>
+        <translation>Echo 无法添加该文件夹。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="40"/>
+        <source>Choose an audio folder</source>
+        <translation>选择音频文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="88"/>
+        <source>Audio Library</source>
+        <translation>音频资料库</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="96"/>
+        <source>Manage watched folders while original recordings remain untouched.</source>
+        <translation>管理监听的文件夹，原始录音始终保持不变。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="112"/>
+        <source>Preparing %1</source>
+        <translation>正在准备 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="120"/>
+        <source>Back to Audio Space</source>
+        <translation>返回声音空间</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="136"/>
+        <source>WATCHED FOLDERS</source>
+        <translation>监听文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="146"/>
+        <source>%1 folders</source>
+        <translation>%1 个文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="189"/>
+        <source>ADD AUDIO FOLDER</source>
+        <translation>添加音频文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="197"/>
+        <source>Choose a folder; Echo will watch it and prepare new or changed recordings in the background.</source>
+        <translation>选择一个文件夹；Echo 会持续监听，并在后台准备新增或变化的录音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="205"/>
+        <source>Choose Folder…</source>
+        <translation>选择文件夹…</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="271"/>
+        <source>Watched folder</source>
+        <translation>已监听文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="279"/>
+        <source>Remove folder</source>
+        <translation>移除文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="286"/>
+        <source>Folder removed. Imported evidence is preserved.</source>
+        <translation>已移除文件夹，导入的证据仍会保留。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="303"/>
+        <source>No watched folders yet</source>
+        <translation>还没有监听的文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="314"/>
+        <source>MISSING RECORDINGS</source>
+        <translation>缺失的录音</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="324"/>
+        <source>%1 missing</source>
+        <translation>缺失 %1 个</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="360"/>
+        <source>Missing</source>
+        <translation>缺失</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="379"/>
+        <source>All original recordings are available</source>
+        <translation>所有原始录音均可用</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="387"/>
+        <source>Echo preserves analysis evidence when a recording is offline and reconnects it when the original returns.</source>
+        <translation>录音离线时 Echo 仍会保留分析证据，并在原始文件恢复后自动重新连接。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="397"/>
+        <source>STORAGE</source>
+        <translation>存储</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibraryWorkspace.qml" line="421"/>
+        <source>Rebuildable cache</source>
+        <translation>可重建缓存</translation>
+    </message>
+</context>
+<context>
     <name>AudioMetadataBar</name>
     <message>
         <location filename="../qml/AudioMetadataBar.qml" line="20"/>
@@ -368,121 +486,25 @@
     </message>
 </context>
 <context>
-    <name>LibraryDialog</name>
-    <message>
-        <location filename="../qml/LibraryDialog.qml" line="12"/>
-        <source>Library</source>
-        <translation>资料库</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryDialog.qml" line="34"/>
-        <source>Audio library</source>
-        <translation>音频资料库</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryDialog.qml" line="59"/>
-        <source>Changes are applied immediately</source>
-        <translation>更改会立即生效</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryDialog.qml" line="67"/>
-        <source>Done</source>
-        <translation>完成</translation>
-    </message>
-</context>
-<context>
-    <name>LibraryPanel</name>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="18"/>
-        <source>Library</source>
-        <translation>资料库</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="25"/>
-        <source>Folders Echo watches and listens to</source>
-        <translation>Echo 监视并聆听的文件夹</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="34"/>
-        <source>Refresh library</source>
-        <translation>刷新资料库</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="45"/>
-        <source>Scan roots</source>
-        <translation>扫描根目录</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="46"/>
-        <source>New and changed recordings are imported and prepared for browsing in the background. Missing files re-link automatically when they return.</source>
-        <translation>新增或变更的录音会在后台导入并准备好供浏览。缺失文件回归后会自动重新链接。</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="89"/>
-        <source>Remove</source>
-        <translation>移除</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="107"/>
-        <source>/path/to/recordings</source>
-        <translation>/path/to/recordings</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="111"/>
-        <source>Add</source>
-        <translation>添加</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="124"/>
-        <source>Missing recordings</source>
-        <translation>缺失的录音</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="125"/>
-        <source>Evidence stays in the library; the file re-links automatically when it returns.</source>
-        <translation>分析证据会保留在资料库中；文件回归时会自动重新链接。</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="165"/>
-        <source>Missing</source>
-        <translation>缺失</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="185"/>
-        <source>Storage</source>
-        <translation>存储</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="186"/>
-        <source>The cache holds rebuildable waveform and analysis data.</source>
-        <translation>缓存保存可重建的波形与分析数据。</translation>
-    </message>
-    <message>
-        <location filename="../qml/LibraryPanel.qml" line="203"/>
-        <source>Cache</source>
-        <translation>缓存</translation>
-    </message>
-</context>
-<context>
     <name>Main</name>
     <message>
         <location filename="../qml/Main.qml" line="19"/>
-        <location filename="../qml/Main.qml" line="87"/>
+        <location filename="../qml/Main.qml" line="97"/>
         <source>Echo</source>
         <translation>Echo</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="97"/>
+        <location filename="../qml/Main.qml" line="107"/>
         <source>Audio Space</source>
         <translation>声音空间</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="120"/>
+        <location filename="../qml/Main.qml" line="131"/>
         <source>Indexing %1</source>
         <translation>正在索引 %1 项</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="129"/>
+        <location filename="../qml/Main.qml" line="140"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
