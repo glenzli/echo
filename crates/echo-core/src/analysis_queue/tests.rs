@@ -171,6 +171,6 @@ fn contextual_backfill_requires_alignment_and_deduplicates_job_identity() {
             .expect("job reads")
             .is_some()
     );
-    assert!(contextual_job_id(asset.id).starts_with("contextual-v2-r2-"));
+    assert!(contextual_job_id(asset.id).starts_with("contextual-v3-r1-"));
     let _ = std::fs::remove_dir_all(root);
 }

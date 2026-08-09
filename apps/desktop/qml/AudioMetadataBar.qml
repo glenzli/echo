@@ -111,6 +111,9 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            visible: metadata.asset !== null
+                && (metadata.asset.summary.length > 0
+                    || metadata.insightTags().length > 0)
             spacing: 10
 
             Text {
@@ -122,10 +125,9 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: metadata.asset !== null && metadata.asset.summary.length > 0
-                    ? metadata.asset.summary : qsTr("Not analyzed yet")
-                color: metadata.asset !== null && metadata.asset.summary.length > 0
-                    ? Theme.textPrimary : Theme.textDisabled
+                visible: metadata.asset !== null && metadata.asset.summary.length > 0
+                text: visible ? metadata.asset.summary : ""
+                color: Theme.textPrimary
                 font.pixelSize: Theme.fontBody
                 elide: Text.ElideRight
             }

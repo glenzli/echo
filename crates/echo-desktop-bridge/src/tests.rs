@@ -29,9 +29,9 @@ fn record_current_contextual_fixture(
                         record: echo_domain::AnalysisRecord::new(
                             echo_domain::AnalysisKind::Contextual,
                             serde_json::json!({
-                                "schema_version":2,
+                                "schema_version":3,
                                 "sound_caption":"Rain across a station platform",
-                                "summary":"Rain at a station",
+                                "summary":"",
                                 "keywords":keywords,
                                 "mood":null,
                                 "place_hint":null,
@@ -234,7 +234,7 @@ fn contextual_stage_and_keyword_facets_project_through_the_live_session() {
     let assets = session.list_assets().expect("assets project");
     assert_eq!(assets.len(), 1);
     assert_eq!(assets[0].sound_caption, "Rain across a station platform");
-    assert_eq!(assets[0].summary, "Rain at a station");
+    assert!(assets[0].summary.is_empty());
     let facets = session.keyword_facets().expect("facets project");
     assert_eq!(facets.len(), 2);
     assert_eq!(facets[0].count, 1);

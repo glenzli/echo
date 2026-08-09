@@ -132,9 +132,9 @@ fn contextual_projection_requires_the_newest_current_sound_caption() {
                 200,
             )?;
             let current_value = serde_json::json!({
-                "schema_version": 2,
+                "schema_version": 3,
                 "sound_caption": "Voices in a quiet room",
-                "summary": "Two voices are audible."
+                "summary": ""
             });
             record_fixture_analysis(
                 transaction,
@@ -163,7 +163,7 @@ fn contextual_projection_requires_the_newest_current_sound_caption() {
 
     let queued = catalog
         .with_transaction(|transaction| {
-            list_assets_with_alignment_missing_current_contextual(transaction, 2)
+            list_assets_with_alignment_missing_current_contextual(transaction, 3)
         })
         .expect("projection reads");
     assert_eq!(queued, [missing, legacy, superseded]);

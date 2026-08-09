@@ -276,11 +276,6 @@
         <source>Understanding</source>
         <translation>声音理解</translation>
     </message>
-    <message>
-        <location filename="../qml/AudioMetadataBar.qml" line="126"/>
-        <source>Not analyzed yet</source>
-        <translation>尚未分析</translation>
-    </message>
 </context>
 <context>
     <name>AudioPlaybackWorkspace</name>

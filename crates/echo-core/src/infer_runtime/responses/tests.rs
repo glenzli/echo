@@ -11,9 +11,9 @@ use super::*;
 #[test]
 fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
     let product_json = json!({
-        "schema_version": 2,
+        "schema_version": 3,
         "sound_caption": "Fixture voices in a quiet room",
-        "summary": "fixture summary",
+        "summary": "",
         "keywords": ["fixture", "speech"],
         "mood": null,
         "place_hint": null,
@@ -46,7 +46,7 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
         .contextualize("fixture transcript", &ContextualIntent::default())
         .expect("contextual response is accepted");
 
-    assert!(response.output_text.contains("fixture summary"));
+    assert!(response.output_text.contains("sound_caption"));
     assert_eq!(response.runtime.job.intent, CONTEXTUAL_INTENT);
     assert_eq!(
         response.runtime.job.constraints.placement.as_deref(),
@@ -78,7 +78,7 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
         request["instructions"]
             .as_str()
             .expect("instructions are text")
-            .contains("schema_version must be the JSON integer 2")
+            .contains("schema_version must be the JSON integer 3")
     );
 }
 

@@ -1,8 +1,8 @@
 //! Contextual understanding evidence and strict model-output ingestion.
 //!
 //! Runtime executes a stable text Intent but does not guarantee structured
-//! output. Echo validates the complete product schema here before publishing
-//! any summary or facet.
+//! output. Echo validates the complete product schema here, hard-compacts
+//! presentation text, and only then publishes a summary or facet.
 
 use echo_catalog::{AppendAnalysisRecord, AppendContextualAnalysis, record_contextual_analysis};
 use echo_domain::{AnalysisKind, AnalysisRecord, AssetId, ModelIdentity};
@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 use crate::error::{CoreError, CoreErrorKind};
 
 /// Current append-only contextual presentation contract.
-pub const CONTEXTUAL_SCHEMA_VERSION: u32 = 2;
+pub const CONTEXTUAL_SCHEMA_VERSION: u32 = 3;
 /// Prompt/validation revision within the current persisted schema.
-pub const CONTEXTUAL_JOB_REVISION: u32 = 2;
+pub const CONTEXTUAL_JOB_REVISION: u32 = 1;
 
 const CONTEXTUAL_KEYS: [&str; 8] = [
     "schema_version",
@@ -101,8 +101,7 @@ pub(crate) fn decode_contextual_output(
         return Err(invalid_output("unsupported_schema_version"));
     }
     let sound_caption = validate_sound_caption(&decoded.sound_caption, transcript)?;
-    let summary = bounded_required(&decoded.summary, 400, "invalid_summary")?;
-    validate_primary_script(&summary, transcript, "summary_language_mismatch")?;
+    let summary = validate_summary(&decoded.summary, transcript);
     if decoded.keywords.len() > 8 {
         return Err(invalid_output("invalid_keyword_count"));
     }
@@ -147,7 +146,7 @@ const fn legacy_contextual_schema_version() -> u32 {
 }
 
 fn validate_sound_caption(value: &str, transcript: &str) -> Result<String, ContextualOutputError> {
-    let caption = bounded_required(value, 96, "invalid_sound_caption")?;
+    let caption = bounded_required(value, 64, "invalid_sound_caption")?;
     if caption.contains(['\n', '\r']) {
         return Err(invalid_output("invalid_sound_caption"));
     }
@@ -161,20 +160,9 @@ fn validate_sound_caption(value: &str, transcript: &str) -> Result<String, Conte
     }
 
     let script = dominant_script(&caption);
-    let unit_count = if matches!(script, Some(Script::Cjk)) {
-        caption
-            .chars()
-            .filter(|character| !character.is_whitespace())
-            .count()
-    } else {
-        caption.split_whitespace().count()
-    };
-    let maximum_units = if matches!(script, Some(Script::Cjk)) {
-        28
-    } else {
-        12
-    };
-    if unit_count == 0 || unit_count > maximum_units {
+    let unit_count = text_units(&caption, script);
+    let maximum_units = if uses_character_units(script) { 14 } else { 7 };
+    if unit_count == 0 {
         return Err(invalid_output("sound_caption_too_long"));
     }
 
@@ -182,12 +170,81 @@ fn validate_sound_caption(value: &str, transcript: &str) -> Result<String, Conte
     let normalized_caption = normalize_comparison_text(&caption);
     let normalized_transcript = normalize_comparison_text(transcript);
     if normalized_caption == normalized_transcript
-        || (normalized_caption.chars().count() >= 16
+        || (normalized_caption.chars().count() >= 8
             && normalized_transcript.contains(&normalized_caption))
     {
         return Err(invalid_output("sound_caption_copies_transcript"));
     }
-    Ok(caption)
+    Ok(compact_text(&caption, script, maximum_units))
+}
+
+fn validate_summary(value: &str, transcript: &str) -> String {
+    let summary = value.trim();
+    if summary.is_empty() {
+        return String::new();
+    }
+    if summary.contains(['\n', '\r']) {
+        return String::new();
+    }
+    if validate_primary_script(summary, transcript, "summary_language_mismatch").is_err() {
+        return String::new();
+    }
+
+    let script = dominant_script(transcript);
+    let summary_units = text_units(summary, script);
+    let transcript_units = text_units(transcript, script);
+    let maximum_summary_units = if uses_character_units(script) { 40 } else { 16 };
+    let minimum_source_units = if uses_character_units(script) { 60 } else { 30 };
+    if summary_units == 0
+        || transcript_units < minimum_source_units
+        || summary_units.saturating_mul(3) > transcript_units
+    {
+        return String::new();
+    }
+    compact_text(summary, script, maximum_summary_units)
+}
+
+fn uses_character_units(script: Option<Script>) -> bool {
+    matches!(script, Some(Script::Cjk | Script::Hangul))
+}
+
+fn text_units(value: &str, script: Option<Script>) -> usize {
+    if uses_character_units(script) {
+        value
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .count()
+    } else {
+        value.split_whitespace().count()
+    }
+}
+
+fn compact_text(value: &str, script: Option<Script>, maximum_units: usize) -> String {
+    if uses_character_units(script) {
+        let mut units = 0;
+        value
+            .trim()
+            .chars()
+            .take_while(|character| {
+                if character.is_whitespace() {
+                    true
+                } else if units < maximum_units {
+                    units += 1;
+                    true
+                } else {
+                    false
+                }
+            })
+            .collect::<String>()
+            .trim()
+            .to_owned()
+    } else {
+        value
+            .split_whitespace()
+            .take(maximum_units)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
 }
 
 fn normalize_comparison_text(value: &str) -> String {

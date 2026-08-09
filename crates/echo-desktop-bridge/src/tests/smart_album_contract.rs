@@ -44,9 +44,9 @@ fn smart_album_membership_crosses_the_live_cxx_projection() {
                                 record: echo_domain::AnalysisRecord::new(
                                     echo_domain::AnalysisKind::Contextual,
                                     serde_json::json!({
-                                        "schema_version": 2,
+                                        "schema_version": 3,
                                         "sound_caption": "Breakfast voices in a kitchen",
-                                        "summary": "fixture",
+                                        "summary": "",
                                         "keywords": ["kitchen"],
                                         "mood": "calm",
                                         "place_hint": "home",
