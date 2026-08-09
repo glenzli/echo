@@ -11,6 +11,8 @@ use super::*;
 #[test]
 fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
     let product_json = json!({
+        "schema_version": 2,
+        "sound_caption": "Fixture voices in a quiet room",
         "summary": "fixture summary",
         "keywords": ["fixture", "speech"],
         "mood": null,
@@ -66,6 +68,18 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
     assert_eq!(request["metadata"]["infer.latency"], "throughput");
     assert_eq!(request["metadata"]["infer.fallback"], "none");
     assert_eq!(request["metadata"]["infer.max_cost_usd"], "0");
+    assert!(
+        request["instructions"]
+            .as_str()
+            .expect("instructions are text")
+            .contains("sound_caption")
+    );
+    assert!(
+        request["instructions"]
+            .as_str()
+            .expect("instructions are text")
+            .contains("schema_version must be the JSON integer 2")
+    );
 }
 
 #[test]

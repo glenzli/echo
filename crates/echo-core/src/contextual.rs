@@ -10,7 +10,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{CoreError, CoreErrorKind};
 
-const CONTEXTUAL_KEYS: [&str; 6] = [
+/// Current append-only contextual presentation contract.
+pub const CONTEXTUAL_SCHEMA_VERSION: u32 = 2;
+/// Prompt/validation revision within the current persisted schema.
+pub const CONTEXTUAL_JOB_REVISION: u32 = 2;
+
+const CONTEXTUAL_KEYS: [&str; 8] = [
+    "schema_version",
+    "sound_caption",
     "summary",
     "keywords",
     "mood",
@@ -18,10 +25,29 @@ const CONTEXTUAL_KEYS: [&str; 6] = [
     "event_type",
     "people_hints",
 ];
+const SOUND_CAPTION_META_PREFIXES: [&str; 13] = [
+    "this recording",
+    "the recording",
+    "this audio",
+    "the audio",
+    "a person",
+    "someone",
+    "the speaker",
+    "这段录音",
+    "该录音",
+    "录音中",
+    "这段音频",
+    "有人描述",
+    "说话人",
+];
 
 /// The canonical contextual payload.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ContextualPayload {
+    #[serde(default = "legacy_contextual_schema_version")]
+    pub schema_version: u32,
+    #[serde(default)]
+    pub sound_caption: String,
     pub summary: String,
     #[serde(default)]
     pub keywords: Vec<String>,
@@ -38,6 +64,8 @@ pub struct ContextualPayload {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct StrictContextualPayload {
+    schema_version: u32,
+    sound_caption: String,
     summary: String,
     keywords: Vec<String>,
     mood: Option<String>,
@@ -55,6 +83,7 @@ pub(crate) struct ContextualOutputError {
 
 pub(crate) fn decode_contextual_output(
     output: &str,
+    transcript: &str,
 ) -> Result<ContextualPayload, ContextualOutputError> {
     let value: serde_json::Value =
         serde_json::from_str(output.trim()).map_err(|_| invalid_output("invalid_json"))?;
@@ -68,8 +97,13 @@ pub(crate) fn decode_contextual_output(
     }
     let decoded: StrictContextualPayload =
         serde_json::from_value(value).map_err(|_| invalid_output("invalid_field_type"))?;
+    if decoded.schema_version != CONTEXTUAL_SCHEMA_VERSION {
+        return Err(invalid_output("unsupported_schema_version"));
+    }
+    let sound_caption = validate_sound_caption(&decoded.sound_caption, transcript)?;
     let summary = bounded_required(&decoded.summary, 400, "invalid_summary")?;
-    if !(1..=8).contains(&decoded.keywords.len()) {
+    validate_primary_script(&summary, transcript, "summary_language_mismatch")?;
+    if decoded.keywords.len() > 8 {
         return Err(invalid_output("invalid_keyword_count"));
     }
     let keywords = decoded
@@ -89,6 +123,8 @@ pub(crate) fn decode_contextual_output(
         .map(|person| bounded_required(&person, 80, "invalid_people_hint"))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(ContextualPayload {
+        schema_version: decoded.schema_version,
+        sound_caption,
         summary,
         keywords,
         mood,
@@ -96,6 +132,142 @@ pub(crate) fn decode_contextual_output(
         event_type,
         people_hints,
     })
+}
+
+impl ContextualPayload {
+    /// Whether this evidence can drive the current sound-wall presentation.
+    #[must_use]
+    pub fn is_current(&self) -> bool {
+        self.schema_version == CONTEXTUAL_SCHEMA_VERSION && !self.sound_caption.trim().is_empty()
+    }
+}
+
+const fn legacy_contextual_schema_version() -> u32 {
+    1
+}
+
+fn validate_sound_caption(value: &str, transcript: &str) -> Result<String, ContextualOutputError> {
+    let caption = bounded_required(value, 96, "invalid_sound_caption")?;
+    if caption.contains(['\n', '\r']) {
+        return Err(invalid_output("invalid_sound_caption"));
+    }
+
+    let lowercase = caption.to_lowercase();
+    if SOUND_CAPTION_META_PREFIXES
+        .iter()
+        .any(|prefix| lowercase.starts_with(prefix))
+    {
+        return Err(invalid_output("sound_caption_meta_language"));
+    }
+
+    let script = dominant_script(&caption);
+    let unit_count = if matches!(script, Some(Script::Cjk)) {
+        caption
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .count()
+    } else {
+        caption.split_whitespace().count()
+    };
+    let maximum_units = if matches!(script, Some(Script::Cjk)) {
+        28
+    } else {
+        12
+    };
+    if unit_count == 0 || unit_count > maximum_units {
+        return Err(invalid_output("sound_caption_too_long"));
+    }
+
+    validate_primary_script(&caption, transcript, "sound_caption_language_mismatch")?;
+    let normalized_caption = normalize_comparison_text(&caption);
+    let normalized_transcript = normalize_comparison_text(transcript);
+    if normalized_caption == normalized_transcript
+        || (normalized_caption.chars().count() >= 16
+            && normalized_transcript.contains(&normalized_caption))
+    {
+        return Err(invalid_output("sound_caption_copies_transcript"));
+    }
+    Ok(caption)
+}
+
+fn normalize_comparison_text(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+fn validate_primary_script(
+    value: &str,
+    transcript: &str,
+    code: &'static str,
+) -> Result<(), ContextualOutputError> {
+    if let (Some(value_script), Some(transcript_script)) =
+        (dominant_script(value), dominant_script(transcript))
+        && value_script != transcript_script
+    {
+        return Err(invalid_output(code));
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Script {
+    Cjk,
+    Hangul,
+    Cyrillic,
+    Arabic,
+    Devanagari,
+    Latin,
+}
+
+fn dominant_script(value: &str) -> Option<Script> {
+    let mut counts = [0_u32; 6];
+    for character in value.chars() {
+        let codepoint = u32::from(character);
+        let script = if matches!(
+            codepoint,
+            0x3040..=0x309f
+                | 0x30a0..=0x30ff
+                | 0x31f0..=0x31ff
+                | 0x3400..=0x4dbf
+                | 0x4e00..=0x9fff
+                | 0xf900..=0xfaff
+        ) {
+            Some(Script::Cjk)
+        } else if matches!(codepoint, 0xac00..=0xd7af | 0x1100..=0x11ff) {
+            Some(Script::Hangul)
+        } else if matches!(codepoint, 0x0400..=0x052f) {
+            Some(Script::Cyrillic)
+        } else if matches!(codepoint, 0x0600..=0x06ff | 0x0750..=0x077f) {
+            Some(Script::Arabic)
+        } else if matches!(codepoint, 0x0900..=0x097f) {
+            Some(Script::Devanagari)
+        } else if character.is_ascii_alphabetic()
+            || matches!(codepoint, 0x00c0..=0x024f | 0x1e00..=0x1eff)
+        {
+            Some(Script::Latin)
+        } else {
+            None
+        };
+        if let Some(script) = script {
+            counts[script as usize] += 1;
+        }
+    }
+    counts
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, count)| **count)
+        .filter(|(_, count)| **count > 0)
+        .map(|(index, _)| match index {
+            0 => Script::Cjk,
+            1 => Script::Hangul,
+            2 => Script::Cyrillic,
+            3 => Script::Arabic,
+            4 => Script::Devanagari,
+            _ => Script::Latin,
+        })
 }
 
 fn bounded_required(

@@ -134,7 +134,7 @@ Item {
             return true
         }
         const haystack = [
-            fileName(asset.path), asset.summary, asset.textPreview,
+            fileName(asset.path), asset.soundCaption, asset.summary, asset.textPreview,
             asset.eventType, asset.mood, asset.sourceTitle, asset.sourceLocation,
             asset.keywords.join(" ")
         ].join(" ").toLocaleLowerCase()

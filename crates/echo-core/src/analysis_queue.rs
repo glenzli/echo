@@ -6,7 +6,8 @@
 
 use echo_catalog::{
     Catalog, JobKind, complete_job, enqueue_job, job_by_id, list_assets_missing_analysis,
-    list_assets_with_alignment_missing_contextual, list_assets_with_empty_latest_transcript,
+    list_assets_with_alignment_missing_current_contextual,
+    list_assets_with_empty_latest_transcript,
     list_assets_with_nonempty_transcript_missing_alignment,
 };
 use echo_domain::{AnalysisKind, AssetId};
@@ -101,7 +102,10 @@ pub(crate) fn enqueue_missing_contextual(
 ) -> Result<u64, CoreError> {
     catalog
         .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
-            let assets = list_assets_with_alignment_missing_contextual(transaction)?;
+            let assets = list_assets_with_alignment_missing_current_contextual(
+                transaction,
+                crate::CONTEXTUAL_SCHEMA_VERSION,
+            )?;
             for asset_id in &assets {
                 enqueue_contextual(transaction, *asset_id, now_millis)?;
             }
@@ -140,8 +144,13 @@ pub(crate) fn alignment_job_id(asset_id: AssetId) -> String {
     format!("align-{asset_id}")
 }
 
-pub(crate) fn contextual_job_id(asset_id: AssetId) -> String {
-    format!("contextual-{asset_id}")
+#[must_use]
+pub fn contextual_job_id(asset_id: AssetId) -> String {
+    format!(
+        "contextual-v{}-r{}-{asset_id}",
+        crate::CONTEXTUAL_SCHEMA_VERSION,
+        crate::CONTEXTUAL_JOB_REVISION,
+    )
 }
 
 #[cfg(test)]

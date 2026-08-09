@@ -109,6 +109,14 @@ Schema structured-output 合同，因此格式不合格必须作为稳定的派�
 修补正文或回退为裸 Ollama／MLX 调用。成功结果与音频结果一样，必须先核验 App-scoped Job、
 local-first／local_only／background／no fallback 约束，再写入分析证据。
 
+Contextual 产品合同从 2026-08-10 起显式区分“声音速写”和“理解摘要”：声音速写是供声音墙、
+胶片带与检查器标题消费的一行短标题，必须沿用文字的主要语言、描述可听见的场景或事件，且不得
+复制正文或使用“这段录音／某人描述”等模型元话语；理解摘要可保留一到两句，用于详情与搜索。
+两者都属于可重建模型证据，不替代完整文字。合同以内容 schema version 和后台 job revision
+共同版本化；旧版本或缺少合格声音速写的 contextual 证据在启动时幂等回填，以新的 append-only
+Analysis 覆盖读取投影，不原地篡改历史证据。长录音仍必须先经过后续独立的代理／分段与聚合切片，
+当前有界输入不得静默截断，也不提前把尚无消费方的章节系统塞进 contextual owner。
+
 ## 4. 音频底层
 
 - 不自己重写 codec，直接用 FFmpeg / libavfilter。
@@ -178,6 +186,9 @@ InferenceBackend
   单声音聆听视图，底部胶片带继续消费同一份筛选结果，左侧资料库与右侧详情不退出。
 - 声景卡片必须来自真实证据：缓存 waveform、文件元数据和可追溯 AI 分析。AI 可生成可修改的
   标题、文字预览和事件标签，但不得用虚构图片冒充录音内容。
+- 声景卡片标题固定使用合格的“声音速写”，其次才是文件内嵌标题与文件名；完整文字永不作为标题
+  兜底。声音速写在模型合同内保持一行和短长度，卡片尺寸只决定视觉截断，不把长正文压成伪标题。
+  详情中的“理解”继续展示更完整的摘要，文字区继续展示逐字内容，三种信息不得混用。
 - 用户层产品语言称 ASR 结果为“文字”；`transcript` 只保留在模型能力、数据类型、协议和证据
   来源等技术语境中。点击文字仍可定位声音。
 - Like、评分与相册归用户事实，不是 AI Analysis；文件内嵌时间、地点和标签归 Original 的来源
@@ -228,6 +239,10 @@ InferenceBackend
     手动分析只作为失败重试/调试入口，不是正常产品路径。非空文字完成 `audio.align` 后，
     继续以最低队列优先级提交 `text.summarize` contextual 元数据；该默认仍不扩张到
     SenseVoice、diarization、embedding 或 TTS。
+  - Contextual 展示合同（2026-08-10）：`text.summarize` 输出升级为带版本的严格 JSON，新增
+    独立声音速写并保留理解摘要、关键词、情绪、地点、事件和人物提示。Echo 校验字段全集、版本、
+    长度、主要书写系统和元话语；卡片不再使用正文兜底。旧 contextual job 与证据通过版本化身份
+    自动进入 append-only 回填，失败只影响派生展示，不影响扫描、波形、播放和已有文字。
   - 冻结项：不再增强 Echo 内的物理模型注册、Ollama worker 或裸 Python 路由。
   - 正式 Runtime 接入边界（2026-08-09）：`audio.transcribe` 成功后读取 App-scoped
     Job snapshot，再以 `audio.align` 细化文字时间；Echo 持久化 Runtime job id、合同版本、

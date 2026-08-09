@@ -51,6 +51,100 @@ const fn job_state_text(state: echo_catalog::JobState) -> &'static str {
     }
 }
 
+fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire {
+    let (sound_caption, summary, event_type, mood, keywords) = asset
+        .contextual
+        .as_ref()
+        .and_then(|value| {
+            serde_json::from_value::<echo_core::ContextualPayload>(value.clone()).ok()
+        })
+        .map_or(
+            (
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                Vec::new(),
+            ),
+            |payload| {
+                (
+                    if payload.is_current() {
+                        payload.sound_caption
+                    } else {
+                        String::new()
+                    },
+                    payload.summary,
+                    payload.event_type.unwrap_or_default(),
+                    payload.mood.unwrap_or_default(),
+                    payload.keywords,
+                )
+            },
+        );
+    let text_preview = asset
+        .transcript
+        .as_ref()
+        .and_then(|value| {
+            serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
+        })
+        .map_or_else(String::new, |payload| payload.text);
+    let (
+        container_format,
+        sample_rate,
+        channel_count,
+        source_title,
+        source_location,
+        source_created_at,
+    ) = asset.source_metadata.as_ref().map_or_else(
+        || {
+            (
+                String::new(),
+                0,
+                0,
+                String::new(),
+                String::new(),
+                String::new(),
+            )
+        },
+        |metadata| {
+            (
+                metadata.container_format.clone(),
+                metadata.sample_rate,
+                metadata.channel_count,
+                metadata_entry(&metadata.entries, &["title", "stream.title"]),
+                metadata_entry_containing(&metadata.entries, "location"),
+                metadata_entry(
+                    &metadata.entries,
+                    &["creation_time", "stream.creation_time"],
+                ),
+            )
+        },
+    );
+    AssetSummaryWire {
+        id: asset.id,
+        path: asset.path.to_string_lossy().into_owned(),
+        codec: asset.codec.unwrap_or_else(|| "unknown".to_owned()),
+        duration_millis: asset.duration_millis.unwrap_or(0),
+        recorded_at_millis: asset.recorded_at_millis.unwrap_or(0),
+        imported_at_millis: asset.imported_at_millis,
+        max_level: asset.max_level,
+        path_status: asset.path_status,
+        sound_caption,
+        summary,
+        event_type,
+        mood,
+        keywords,
+        text_preview,
+        liked: asset.liked,
+        rating: asset.rating,
+        container_format,
+        sample_rate,
+        channel_count,
+        source_title,
+        source_location,
+        source_created_at,
+    }
+}
+
 /// One catalog attachment. Sessions are created on the Qt main thread and
 /// reused; the catalog serializes its own writes.
 #[derive(Debug)]
@@ -122,90 +216,7 @@ impl LibrarySession {
             .map_err(|error| SessionError {
                 message: error.to_string(),
             })?;
-        Ok(projection
-            .into_iter()
-            .map(|asset| {
-                let (summary, event_type, mood, keywords) = asset
-                    .contextual
-                    .as_ref()
-                    .and_then(|value| {
-                        serde_json::from_value::<echo_core::ContextualPayload>(value.clone()).ok()
-                    })
-                    .map_or(
-                        (String::new(), String::new(), String::new(), Vec::new()),
-                        |payload| {
-                            (
-                                payload.summary,
-                                payload.event_type.unwrap_or_default(),
-                                payload.mood.unwrap_or_default(),
-                                payload.keywords,
-                            )
-                        },
-                    );
-                let text_preview = asset
-                    .transcript
-                    .as_ref()
-                    .and_then(|value| {
-                        serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
-                    })
-                    .map_or_else(String::new, |payload| payload.text);
-                let (
-                    container_format,
-                    sample_rate,
-                    channel_count,
-                    source_title,
-                    source_location,
-                    source_created_at,
-                ) = asset.source_metadata.as_ref().map_or_else(
-                    || {
-                        (
-                            String::new(),
-                            0,
-                            0,
-                            String::new(),
-                            String::new(),
-                            String::new(),
-                        )
-                    },
-                    |metadata| {
-                        (
-                            metadata.container_format.clone(),
-                            metadata.sample_rate,
-                            metadata.channel_count,
-                            metadata_entry(&metadata.entries, &["title", "stream.title"]),
-                            metadata_entry_containing(&metadata.entries, "location"),
-                            metadata_entry(
-                                &metadata.entries,
-                                &["creation_time", "stream.creation_time"],
-                            ),
-                        )
-                    },
-                );
-                AssetSummaryWire {
-                    id: asset.id,
-                    path: asset.path.to_string_lossy().into_owned(),
-                    codec: asset.codec.unwrap_or_else(|| "unknown".to_owned()),
-                    duration_millis: asset.duration_millis.unwrap_or(0),
-                    recorded_at_millis: asset.recorded_at_millis.unwrap_or(0),
-                    imported_at_millis: asset.imported_at_millis,
-                    max_level: asset.max_level,
-                    path_status: asset.path_status,
-                    summary,
-                    event_type,
-                    mood,
-                    keywords,
-                    text_preview,
-                    liked: asset.liked,
-                    rating: asset.rating,
-                    container_format,
-                    sample_rate,
-                    channel_count,
-                    source_title,
-                    source_location,
-                    source_created_at,
-                }
-            })
-            .collect())
+        Ok(projection.into_iter().map(asset_summary_wire).collect())
     }
 
     /// Lists contextual keyword facets using the Catalog's latest-evidence
@@ -433,15 +444,21 @@ impl LibrarySession {
             let has_alignment = records
                 .iter()
                 .any(|record| record.kind == echo_domain::AnalysisKind::Alignment);
-            let has_contextual = records
+            let has_current_contextual = records
                 .iter()
-                .any(|record| record.kind == echo_domain::AnalysisKind::Contextual);
+                .find(|record| record.kind == echo_domain::AnalysisKind::Contextual)
+                .and_then(|record| {
+                    serde_json::from_value::<echo_core::ContextualPayload>(record.value.clone())
+                        .ok()
+                })
+                .is_some_and(|payload| payload.is_current());
+            let contextual_job_id = echo_core::contextual_job_id(asset_id);
             let (stage, job_id) = if latest_transcript_is_empty {
                 ("complete", format!("align-{asset_id}"))
-            } else if has_contextual {
-                ("complete", format!("contextual-{asset_id}"))
+            } else if has_current_contextual {
+                ("complete", contextual_job_id.clone())
             } else if has_alignment {
-                ("contextual", format!("contextual-{asset_id}"))
+                ("contextual", contextual_job_id)
             } else if has_transcript {
                 ("alignment", format!("align-{asset_id}"))
             } else {
@@ -453,7 +470,7 @@ impl LibrarySession {
                 stage: stage.to_owned(),
                 state: job.as_ref().map_or_else(
                     || {
-                        if has_contextual || latest_transcript_is_empty {
+                        if has_current_contextual || latest_transcript_is_empty {
                             "done"
                         } else {
                             "missing"
@@ -488,7 +505,7 @@ impl LibrarySession {
             message: format!("invalid asset id {asset_id}: {error}"),
         })?;
         let job_id = match status.stage.as_str() {
-            "contextual" => format!("contextual-{id}"),
+            "contextual" => echo_core::contextual_job_id(id),
             "alignment" => format!("align-{id}"),
             _ => format!("transcribe-{id}"),
         };

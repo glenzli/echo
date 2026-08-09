@@ -68,8 +68,11 @@ Rectangle {
         anchors.leftMargin: 7
         anchors.rightMargin: 7
         height: 25
-        text: thumbnail.entry.summary.length > 0
-            ? thumbnail.entry.summary : thumbnail.fileName(thumbnail.entry.path)
+        text: thumbnail.entry.soundCaption.length > 0
+            ? thumbnail.entry.soundCaption
+            : thumbnail.entry.sourceTitle.length > 0
+                ? thumbnail.entry.sourceTitle
+                : thumbnail.fileName(thumbnail.entry.path)
         color: Theme.textPrimary
         font.pixelSize: 9
         font.bold: thumbnail.selected

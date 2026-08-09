@@ -24,7 +24,10 @@ pub use analysis::{
     TranscriptPayload, TranscriptSegment, TranscriptWord, record_alignment,
     record_runtime_transcript, record_transcript,
 };
-pub use contextual::{ContextualPayload, record_contextual};
+pub use analysis_queue::contextual_job_id;
+pub use contextual::{
+    CONTEXTUAL_JOB_REVISION, CONTEXTUAL_SCHEMA_VERSION, ContextualPayload, record_contextual,
+};
 pub use error::CoreErrorKind;
 pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
 pub use infer_runtime::{

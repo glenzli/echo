@@ -14,6 +14,41 @@ fn fixture_catalog() -> std::path::PathBuf {
     ))
 }
 
+fn record_current_contextual_fixture(
+    catalog: &echo_catalog::Catalog,
+    asset_id: echo_domain::AssetId,
+) {
+    let keywords = vec!["Rain".to_owned(), "Train platform".to_owned()];
+    catalog
+        .with_transaction(|transaction| {
+            echo_catalog::record_contextual_analysis(
+                transaction,
+                &echo_catalog::AppendContextualAnalysis {
+                    analysis: echo_catalog::AppendAnalysisRecord {
+                        asset_id,
+                        record: echo_domain::AnalysisRecord::new(
+                            echo_domain::AnalysisKind::Contextual,
+                            serde_json::json!({
+                                "schema_version":2,
+                                "sound_caption":"Rain across a station platform",
+                                "summary":"Rain at a station",
+                                "keywords":keywords,
+                                "mood":null,
+                                "place_hint":null,
+                                "event_type":null,
+                                "people_hints":[]
+                            }),
+                            echo_domain::ModelIdentity::new("qwen".into(), "build".into()),
+                            None,
+                            2,
+                        ),
+                    },
+                },
+            )
+        })
+        .expect("contextual evidence records");
+}
+
 #[test]
 fn transcripts_round_trip_through_a_live_catalog() {
     let root = fixture_catalog();
@@ -190,39 +225,16 @@ fn contextual_stage_and_keyword_facets_project_through_the_live_session() {
     assert_eq!(pending.stage, "contextual");
     assert_eq!(pending.state, "missing");
 
-    let keywords = vec!["Rain".to_owned(), "Train platform".to_owned()];
-    session
-        .catalog()
-        .with_transaction(|transaction| {
-            echo_catalog::record_contextual_analysis(
-                transaction,
-                &echo_catalog::AppendContextualAnalysis {
-                    analysis: echo_catalog::AppendAnalysisRecord {
-                        asset_id: asset.id,
-                        record: echo_domain::AnalysisRecord::new(
-                            echo_domain::AnalysisKind::Contextual,
-                            serde_json::json!({
-                                "summary":"Rain at a station",
-                                "keywords":keywords,
-                                "mood":null,
-                                "place_hint":null,
-                                "event_type":null,
-                                "people_hints":[]
-                            }),
-                            echo_domain::ModelIdentity::new("qwen".into(), "build".into()),
-                            None,
-                            2,
-                        ),
-                    },
-                },
-            )
-        })
-        .expect("contextual evidence records");
+    record_current_contextual_fixture(session.catalog(), asset.id);
     let complete = session
         .analysis_status(&asset.id.to_string())
         .expect("complete status reads");
     assert_eq!(complete.stage, "complete");
     assert_eq!(complete.state, "done");
+    let assets = session.list_assets().expect("assets project");
+    assert_eq!(assets.len(), 1);
+    assert_eq!(assets[0].sound_caption, "Rain across a station platform");
+    assert_eq!(assets[0].summary, "Rain at a station");
     let facets = session.keyword_facets().expect("facets project");
     assert_eq!(facets.len(), 2);
     assert_eq!(facets[0].count, 1);

@@ -56,14 +56,11 @@ Rectangle {
 
     function titleFor(asset: var) : string {
         const maximum = rich ? 58 : overview ? 28 : 34
-        if (asset.summary.length > 0) {
-            return compactText(asset.summary, maximum)
+        if (asset.soundCaption.length > 0) {
+            return compactText(asset.soundCaption, maximum)
         }
         if (asset.sourceTitle.length > 0) {
             return compactText(asset.sourceTitle, maximum)
-        }
-        if (asset.textPreview.length > 0) {
-            return compactText(asset.textPreview, maximum)
         }
         return fileName(asset.path)
     }

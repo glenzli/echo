@@ -186,15 +186,17 @@ pub fn list_assets_with_nonempty_transcript_missing_alignment(
     parse_asset_ids(rows)
 }
 
-/// Lists present assets with alignment evidence and non-empty text but no
-/// contextual evidence.
+/// Lists present assets with alignment evidence and non-empty text whose
+/// newest contextual evidence does not satisfy the requested presentation
+/// schema.
 ///
 /// # Errors
 ///
 /// Returns a catalog failure when the query or a stored asset identity is
 /// invalid.
-pub fn list_assets_with_alignment_missing_contextual(
+pub fn list_assets_with_alignment_missing_current_contextual(
     transaction: &Transaction<'_>,
+    schema_version: u32,
 ) -> Result<Vec<AssetId>, CatalogError> {
     let mut statement = transaction.prepare(
         "SELECT a.id FROM assets a WHERE a.path_status = 'present' \
@@ -204,12 +206,20 @@ pub fn list_assets_with_alignment_missing_contextual(
              SELECT transcript.value FROM analysis_records transcript \
              WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript' \
              ORDER BY transcript.id DESC LIMIT 1\
-         ), '$.text'), '')) <> '' AND NOT EXISTS (\
-             SELECT 1 FROM analysis_records contextual \
-             WHERE contextual.asset_id = a.id AND contextual.kind = 'contextual'\
+         ), '$.text'), '')) <> '' AND (\
+             COALESCE(CAST(json_extract((\
+                 SELECT contextual.value FROM analysis_records contextual \
+                 WHERE contextual.asset_id = a.id AND contextual.kind = 'contextual' \
+                 ORDER BY contextual.id DESC LIMIT 1\
+             ), '$.schema_version') AS INTEGER), 0) <> ?1 OR \
+             TRIM(COALESCE(json_extract((\
+                 SELECT contextual.value FROM analysis_records contextual \
+                 WHERE contextual.asset_id = a.id AND contextual.kind = 'contextual' \
+                 ORDER BY contextual.id DESC LIMIT 1\
+             ), '$.sound_caption'), '')) = ''\
          ) ORDER BY a.imported_at_millis ASC, a.id ASC",
     )?;
-    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    let rows = statement.query_map([i64::from(schema_version)], |row| row.get::<_, String>(0))?;
     parse_asset_ids(rows)
 }
 

@@ -36,14 +36,11 @@ Rectangle {
         if (!selected) {
             return ""
         }
-        if (selected.summary.length > 0) {
-            return compactText(selected.summary, 68)
+        if (selected.soundCaption.length > 0) {
+            return compactText(selected.soundCaption, 68)
         }
         if (selected.sourceTitle.length > 0) {
             return compactText(selected.sourceTitle, 68)
-        }
-        if (selected.textPreview.length > 0) {
-            return compactText(selected.textPreview, 54)
         }
         return fileName(selected.path)
     }

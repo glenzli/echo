@@ -277,7 +277,10 @@ fn dispatch_contextual(
             return Err(error.into());
         }
     };
-    let payload = match crate::contextual::decode_contextual_output(&response.output_text) {
+    let payload = match crate::contextual::decode_contextual_output(
+        &response.output_text,
+        &transcript.text,
+    ) {
         Ok(payload) => payload,
         Err(error) => {
             record_inference_ingestion_failure(

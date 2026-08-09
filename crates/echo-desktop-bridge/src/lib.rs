@@ -21,6 +21,7 @@ mod ffi {
         imported_at_millis: i64,
         max_level: u8,
         path_status: String,
+        sound_caption: String,
         summary: String,
         event_type: String,
         mood: String,

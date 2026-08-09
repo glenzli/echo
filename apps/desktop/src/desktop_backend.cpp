@@ -44,6 +44,10 @@ QVariantList DesktopBackend::listAssets() const {
             QString::fromUtf8(asset.path_status.data(), asset.path_status.size())
         );
         entry.insert(
+            QStringLiteral("soundCaption"),
+            QString::fromUtf8(asset.sound_caption.data(), asset.sound_caption.size())
+        );
+        entry.insert(
             QStringLiteral("summary"),
             QString::fromUtf8(asset.summary.data(), asset.summary.size())
         );

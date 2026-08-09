@@ -157,5 +157,20 @@ fn contextual_backfill_requires_alignment_and_deduplicates_job_identity() {
     );
     let JobStats { pending, .. } = catalog.with_transaction(job_stats).expect("stats read");
     assert_eq!(pending, 1);
+    let asset = catalog
+        .with_transaction(|transaction| {
+            echo_catalog::find_by_content_hash(transaction, ContentHash::new([2; 32]))
+        })
+        .expect("contextual asset reads");
+    let echo_catalog::AssetLookup::Found(asset) = asset else {
+        panic!("contextual asset exists")
+    };
+    assert!(
+        catalog
+            .with_transaction(|transaction| job_by_id(transaction, &contextual_job_id(asset.id)))
+            .expect("job reads")
+            .is_some()
+    );
+    assert!(contextual_job_id(asset.id).starts_with("contextual-v2-r2-"));
     let _ = std::fs::remove_dir_all(root);
 }

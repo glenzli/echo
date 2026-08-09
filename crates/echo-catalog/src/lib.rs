@@ -28,7 +28,8 @@ mod source_metadata;
 
 pub use analysis::{
     AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis,
-    list_assets_with_alignment_missing_contextual, list_assets_with_empty_latest_transcript,
+    list_assets_with_alignment_missing_current_contextual,
+    list_assets_with_empty_latest_transcript,
     list_assets_with_nonempty_transcript_missing_alignment, query_analysis, record_analysis,
 };
 pub use asset_affinity::{AssetAffinity, asset_affinity, set_asset_affinity};
