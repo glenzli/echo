@@ -1,6 +1,6 @@
-//! Dedicated non-destructive editing workspace. It owns adjustment drafts,
-//! range visualization, adjusted preview, and explicit version publication;
-//! Audio Space remains a listening and evidence-browsing surface.
+//! Dedicated editing workspace. It owns selected-source lifecycle, adjusted
+//! audition, original comparison, transport, and version publication while
+//! SoundEditorTimeline owns direct manipulation of the adjustment draft.
 
 import QtQuick
 import QtQuick.Controls
@@ -15,6 +15,7 @@ Rectangle {
     property var waveformLevels: []
     property string loadedPath: ""
     property string loadedAdjustmentKey: ""
+    property bool auditionOriginal: false
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
 
@@ -28,16 +29,39 @@ Rectangle {
     function formatDuration(millis: int) : string {
         const safeMillis = Math.max(0, millis)
         const totalSeconds = Math.floor(safeMillis / 1000)
-        const minutes = Math.floor(totalSeconds / 60)
+        const hours = Math.floor(totalSeconds / 3600)
+        const minutes = Math.floor((totalSeconds % 3600) / 60)
         const seconds = totalSeconds % 60
         const tenths = Math.floor((safeMillis % 1000) / 100)
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds + "." + tenths
+        if (hours > 0) {
+            return hours + ":" + String(minutes).padStart(2, "0") + ":"
+                + String(seconds).padStart(2, "0") + "." + tenths
+        }
+        return minutes + ":" + String(seconds).padStart(2, "0") + "." + tenths
+    }
+
+    function technicalDetails() : string {
+        if (!hasAsset) return ""
+        const values = []
+        if (asset.codec.length > 0) values.push(asset.codec.toUpperCase())
+        if (asset.sampleRate > 0) {
+            values.push((asset.sampleRate / 1000).toFixed(
+                asset.sampleRate % 1000 === 0 ? 0 : 1) + " kHz")
+        }
+        if (asset.channelCount > 0) {
+            values.push(qsTr("%1 channels").arg(asset.channelCount))
+        }
+        values.push(formatDuration(asset.durationMillis))
+        return values.join(" · ")
     }
 
     function adjustmentKey() : string {
-        return adjustmentEditor.trimStartMillis + ":" + adjustmentEditor.trimEndMillis
-            + ":" + adjustmentEditor.fadeInMillis + ":" + adjustmentEditor.fadeOutMillis
-            + ":" + adjustmentEditor.gainCentibels
+        const prefix = auditionOriginal ? "original" : "adjusted"
+        return prefix + ":" + adjustmentEditor.trimStartMillis + ":"
+            + adjustmentEditor.trimEndMillis + ":"
+            + (auditionOriginal ? 0 : adjustmentEditor.fadeInMillis) + ":"
+            + (auditionOriginal ? 0 : adjustmentEditor.fadeOutMillis) + ":"
+            + (auditionOriginal ? 0 : adjustmentEditor.gainCentibels)
     }
 
     function refreshAsset() : void {
@@ -55,9 +79,9 @@ Rectangle {
         player.playAdjusted(asset.path,
                             adjustmentEditor.trimStartMillis,
                             adjustmentEditor.trimEndMillis,
-                            adjustmentEditor.fadeInMillis,
-                            adjustmentEditor.fadeOutMillis,
-                            adjustmentEditor.gainCentibels)
+                            auditionOriginal ? 0 : adjustmentEditor.fadeInMillis,
+                            auditionOriginal ? 0 : adjustmentEditor.fadeOutMillis,
+                            auditionOriginal ? 0 : adjustmentEditor.gainCentibels)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(adjustmentEditor.trimStartMillis,
@@ -67,8 +91,39 @@ Rectangle {
         }
     }
 
+    function seekOrLoad(millis: int) : void {
+        if (!hasAsset) return
+        if (loadedPath !== asset.path || loadedAdjustmentKey !== adjustmentKey()) {
+            playFrom(millis)
+        } else {
+            player.seek(Math.max(adjustmentEditor.trimStartMillis,
+                Math.min(millis, adjustmentEditor.trimEndMillis)))
+        }
+    }
+
+    function togglePlayback() : void {
+        if (!hasAsset || asset.pathStatus === "missing") return
+        if (loadedPath !== asset.path || loadedAdjustmentKey !== adjustmentKey()) {
+            playFrom(adjustmentEditor.trimStartMillis)
+        } else {
+            player.togglePause()
+        }
+    }
+
+    function setOriginalAudition(enabled: bool) : void {
+        if (auditionOriginal === enabled) return
+        const resumeAt = loadedPath === (hasAsset ? asset.path : "")
+            ? player.position : adjustmentEditor.trimStartMillis
+        const wasLoaded = hasAsset && loadedPath === asset.path
+        auditionOriginal = enabled
+        if (wasLoaded) {
+            playFrom(resumeAt)
+        }
+    }
+
     onAssetChanged: {
         player.stop()
+        auditionOriginal = false
         loadedPath = ""
         loadedAdjustmentKey = ""
         Qt.callLater(refreshAsset)
@@ -124,157 +179,97 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 28
-        spacing: 16
+        anchors.margins: 20
+        spacing: 12
         visible: workspace.hasAsset
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 16
+            Layout.preferredHeight: 54
+            spacing: 14
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 4
-
-                Text {
-                    text: qsTr("Sound Adjustments")
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                    font.bold: true
-                }
+                spacing: 3
 
                 Text {
                     Layout.fillWidth: true
                     text: workspace.hasAsset ? workspace.fileName(workspace.asset.path) : ""
                     color: Theme.textPrimary
-                    font.pixelSize: 24
+                    font.pixelSize: 22
                     font.bold: true
                     elide: Text.ElideRight
                 }
 
                 Text {
                     Layout.fillWidth: true
-                    text: workspace.hasAsset ? workspace.asset.path : ""
+                    text: workspace.technicalDetails()
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
-                    elide: Text.ElideMiddle
-                }
-            }
-
-        }
-
-        AudioMetadataBar {
-            Layout.fillWidth: true
-            Layout.preferredHeight: implicitHeight
-            asset: workspace.asset
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumHeight: 250
-            radius: 16
-            color: Theme.waveformSurface
-            border.color: Theme.borderStrong
-
-            WaveformView {
-                anchors.fill: parent
-                anchors.margins: 28
-                levels: workspace.waveformLevels
-                progress: workspace.hasAsset && workspace.loadedPath === workspace.asset.path
-                        && player.duration > 0
-                    ? player.position / player.duration : 0
-            }
-
-            Rectangle {
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                width: parent.width * adjustmentEditor.trimStartMillis
-                    / Math.max(1, adjustmentEditor.sourceDurationMillis)
-                color: Theme.window
-                opacity: 0.62
-            }
-
-            Rectangle {
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.right: parent.right
-                width: parent.width * Math.max(0,
-                    adjustmentEditor.sourceDurationMillis - adjustmentEditor.trimEndMillis)
-                    / Math.max(1, adjustmentEditor.sourceDurationMillis)
-                color: Theme.window
-                opacity: 0.62
-            }
-
-            Rectangle {
-                x: parent.width * adjustmentEditor.trimStartMillis
-                    / Math.max(1, adjustmentEditor.sourceDurationMillis)
-                width: parent.width * adjustmentEditor.selectedDurationMillis
-                    / Math.max(1, adjustmentEditor.sourceDurationMillis)
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                color: Theme.transparent
-                border.width: adjustmentEditor.dirty ? 2 : 1
-                border.color: Theme.accent
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
-                    && adjustmentEditor.sourceDurationMillis > 0
-                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: function(mouse) {
-                    const target = Math.round(mouse.x / width
-                        * adjustmentEditor.sourceDurationMillis)
-                    if (workspace.loadedPath !== workspace.asset.path
-                            || workspace.loadedAdjustmentKey !== workspace.adjustmentKey()) {
-                        workspace.playFrom(target)
-                    } else {
-                        player.seek(Math.max(adjustmentEditor.trimStartMillis,
-                            Math.min(target, adjustmentEditor.trimEndMillis)))
-                    }
+                    elide: Text.ElideRight
                 }
             }
 
             Text {
-                anchors.centerIn: parent
-                visible: workspace.waveformLevels.length === 0
-                text: workspace.hasAsset && workspace.asset.pathStatus === "missing"
-                    ? qsTr("Original file is unavailable") : qsTr("Preparing waveform…")
+                Layout.maximumWidth: 380
+                text: workspace.hasAsset ? workspace.asset.path : ""
                 color: Theme.textDisabled
-                font.pixelSize: Theme.fontBody
+                font.pixelSize: Theme.fontMeta
+                elide: Text.ElideMiddle
             }
+        }
+
+        SoundEditorTimeline {
+            id: editorTimeline
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            waveformLevels: workspace.waveformLevels
+            sourceDurationMillis: adjustmentEditor.sourceDurationMillis
+            trimStartMillis: adjustmentEditor.trimStartMillis
+            trimEndMillis: adjustmentEditor.trimEndMillis
+            fadeInMillis: adjustmentEditor.fadeInMillis
+            fadeOutMillis: adjustmentEditor.fadeOutMillis
+            gainCentibels: adjustmentEditor.gainCentibels
+            playbackPositionMillis: workspace.hasAsset
+                    && workspace.loadedPath === workspace.asset.path
+                ? player.position : adjustmentEditor.trimStartMillis
+            isPlaying: workspace.hasAsset && workspace.loadedPath === workspace.asset.path
+                && player.playing
+            enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
+
+            onTrimRequested: function(startMillis, endMillis) {
+                adjustmentEditor.setTrimRange(startMillis, endMillis)
+            }
+            onFadeRequested: function(fadeIn, fadeOut) {
+                adjustmentEditor.setFades(fadeIn, fadeOut)
+            }
+            onGainRequested: gain => adjustmentEditor.setGain(gain)
+            onSeekRequested: millis => workspace.seekOrLoad(millis)
+            onPlayPauseRequested: workspace.togglePlayback()
         }
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.preferredHeight: 42
             spacing: 10
 
             EchoIconButton {
-                source: workspace.hasAsset && player.isPlaying
+                source: workspace.hasAsset && player.playing
                         && workspace.loadedPath === workspace.asset.path
                     ? "qrc:/EchoDesktop/icons/pause.svg"
                     : "qrc:/EchoDesktop/icons/play.svg"
-                toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Preview")
+                toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
                 enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
                 buttonSize: 40
                 iconSize: 19
-                onClicked: {
-                    if (workspace.loadedPath !== workspace.asset.path
-                            || workspace.loadedAdjustmentKey !== workspace.adjustmentKey()) {
-                        workspace.playFrom(adjustmentEditor.trimStartMillis)
-                    } else {
-                        player.togglePause()
-                    }
-                }
+                onClicked: workspace.togglePlayback()
             }
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/stop.svg"
                 toolTipText: qsTr("Stop")
-                enabled: workspace.hasAsset
-                    && workspace.loadedPath === workspace.asset.path
+                enabled: workspace.hasAsset && workspace.loadedPath === workspace.asset.path
                 buttonSize: 36
                 iconSize: 16
                 onClicked: player.stop()
@@ -283,27 +278,32 @@ Rectangle {
             Text {
                 text: workspace.formatDuration(player.position) + " / "
                     + workspace.formatDuration(player.duration)
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-                Layout.preferredWidth: 104
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontBody
+                font.bold: true
+                Layout.preferredWidth: 124
             }
 
-            Slider {
-                Layout.fillWidth: true
-                from: adjustmentEditor.trimStartMillis
-                to: Math.max(adjustmentEditor.trimStartMillis + 1,
-                             adjustmentEditor.trimEndMillis)
-                value: player.duration > 0 ? player.position : 0
-                enabled: workspace.hasAsset && player.duration > 0
-                    && workspace.loadedPath === workspace.asset.path
-                onMoved: player.seek(value)
-            }
+            Item { Layout.fillWidth: true }
 
             Text {
-                text: qsTr("Selected %1").arg(
-                    workspace.formatDuration(adjustmentEditor.selectedDurationMillis))
+                text: qsTr("Audition")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
+            }
+
+            EchoButton {
+                text: qsTr("Adjusted")
+                ghost: true
+                selected: !workspace.auditionOriginal
+                onClicked: workspace.setOriginalAudition(false)
+            }
+
+            EchoButton {
+                text: qsTr("Original")
+                ghost: true
+                selected: workspace.auditionOriginal
+                onClicked: workspace.setOriginalAudition(true)
             }
         }
 
@@ -313,13 +313,11 @@ Rectangle {
             Layout.fillWidth: true
             asset: workspace.asset
 
-            onPreviewRequested: function(startMillis, endMillis, fadeIn, fadeOut, gain) {
-                workspace.playFrom(startMillis)
-            }
             onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut, gain) {
                 if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                                fadeIn, fadeOut, gain)) {
-                    workspace.playFrom(startMillis)
+                    workspace.auditionOriginal = false
+                    workspace.loadedAdjustmentKey = ""
                 }
             }
         }

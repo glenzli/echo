@@ -26,6 +26,15 @@ authored units into the C++ producer path; the Qt audio callback still only
 copies prepared frames. Audio Space playback consumes the saved revision and
 never mutates adjustment parameters.
 
+`SoundEditorTimeline.qml` owns the editor's high-frequency interaction state:
+time projection, logarithmic zoom, horizontal navigation, direct trim handles,
+linear fade handles, the clip-gain dB line, playhead, and transient gesture
+readouts. `SoundAdjustmentEditor.qml` remains the authoritative draft and
+publication owner, while `SoundEditingWorkspace.qml` owns source, transport,
+adjusted/original audition, and backend lifecycle. Pointer movement never
+persists or recompiles playback; the prepared graph is rebuilt only when the
+user explicitly auditions the changed draft.
+
 QML never opens SQLite, calls FFmpeg, or interprets cache paths. Theme tokens
 live in [`qml/Theme.qml`](qml/Theme.qml); components follow the series naming
 convention (`EchoButton`, ...) shared with Shadow.

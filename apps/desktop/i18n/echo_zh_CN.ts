@@ -565,62 +565,67 @@
 <context>
     <name>SoundAdjustmentEditor</name>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="92"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="127"/>
         <source>Adjustments</source>
         <translation>声音调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="94"/>
-        <source>Previewing an unsaved version</source>
-        <translation>正在预览未保存的版本</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="96"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="131"/>
         <source>Saved version</source>
         <translation>已保存版本</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="97"/>
-        <source>Original remains unchanged</source>
-        <translation>原始声音保持不变</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="101"/>
-        <source>Reset</source>
-        <translation>重置</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="112"/>
-        <source>Preview</source>
-        <translation>预览</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="121"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="149"/>
         <source>Save version</source>
         <translation>保存版本</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="134"/>
-        <source>Range</source>
-        <translation>有效范围</translation>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="129"/>
+        <source>Unsaved changes</source>
+        <translation>有未保存的调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="175"/>
-        <source>Selected %1</source>
-        <translation>已选 %1</translation>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="131"/>
+        <source>No adjustments</source>
+        <translation>暂无调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="192"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="135"/>
+        <source>Revert</source>
+        <translation>还原已保存</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="142"/>
+        <source>Clear</source>
+        <translation>清空调整</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="163"/>
+        <source>In</source>
+        <translation>入点</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="164"/>
+        <source>Out</source>
+        <translation>出点</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="165"/>
+        <source>Duration</source>
+        <translation>时长</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="166"/>
         <source>Fade in</source>
         <translation>淡入</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="220"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="167"/>
         <source>Fade out</source>
         <translation>淡出</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="248"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="168"/>
         <source>Gain</source>
         <translation>增益</translation>
     </message>
@@ -704,49 +709,104 @@
 <context>
     <name>SoundEditingWorkspace</name>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="108"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="52"/>
+        <source>%1 channels</source>
+        <translation>%1 声道</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="163"/>
         <source>Select a sound in Audio Space</source>
         <translation>请先在声音空间中选择声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="117"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="172"/>
         <source>Choose a sound before opening adjustments.</source>
         <translation>选择声音后即可进入调整工作区。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="140"/>
-        <source>Sound Adjustments</source>
-        <translation>声音调整</translation>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="262"/>
+        <source>Play</source>
+        <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="244"/>
-        <source>Original file is unavailable</source>
-        <translation>原始文件当前不可用</translation>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="290"/>
+        <source>Audition</source>
+        <translation>试听对比</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="244"/>
-        <source>Preparing waveform…</source>
-        <translation>正在准备波形…</translation>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="296"/>
+        <source>Adjusted</source>
+        <translation>调整后</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="259"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="303"/>
+        <source>Original</source>
+        <translation>原始</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="262"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="259"/>
-        <source>Preview</source>
-        <translation>预览</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="275"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="271"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
+</context>
+<context>
+    <name>SoundEditorTimeline</name>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="303"/>
-        <source>Selected %1</source>
-        <translation>已选 %1</translation>
+        <location filename="../qml/SoundEditorTimeline.qml" line="219"/>
+        <source>Timeline</source>
+        <translation>时间轴</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="235"/>
+        <source>Follow</source>
+        <translation>跟随播放</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="242"/>
+        <source>Fit selection</source>
+        <translation>适配选区</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="249"/>
+        <source>Fit all</source>
+        <translation>显示全部</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="255"/>
+        <source>Zoom</source>
+        <translation>缩放</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="268"/>
+        <source>Timeline zoom</source>
+        <translation>时间轴缩放</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="597"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="608"/>
+        <source>Fade in %1</source>
+        <translation>淡入 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="638"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="649"/>
+        <source>Fade out %1</source>
+        <translation>淡出 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="715"/>
+        <source>Timeline position</source>
+        <translation>时间轴位置</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="737"/>
+        <source>Selection %1</source>
+        <translation>选区 %1</translation>
     </message>
 </context>
 <context>

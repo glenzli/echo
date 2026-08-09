@@ -1,6 +1,6 @@
-//! Draft owner for the first non-destructive sound-processing slice.
-//! Milliseconds and centibels mirror the persisted AdjustmentGraph exactly;
-//! preview and save are explicit so browsing never mutates an original.
+//! Authoritative draft owner for one adjustment version. The timeline owns
+//! direct manipulation; this compact inspector owns validation, precise
+//! readback, revert/reset policy, and explicit publication.
 
 import QtQuick
 import QtQuick.Controls
@@ -21,6 +21,9 @@ Rectangle {
     readonly property int sourceDurationMillis: asset ? Number(asset.durationMillis) : 0
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canAdjust: sourceDurationMillis > 0
+    readonly property bool identity: trimStartMillis === 0
+        && trimEndMillis === sourceDurationMillis
+        && fadeInMillis === 0 && fadeOutMillis === 0 && gainCentibels === 0
     readonly property bool dirty: asset && (
         trimStartMillis !== Number(asset.trimStartMillis)
         || trimEndMillis !== Number(asset.trimEndMillis)
@@ -28,13 +31,16 @@ Rectangle {
         || fadeOutMillis !== Number(asset.fadeOutMillis)
         || gainCentibels !== Number(asset.gainCentibels))
 
-    signal previewRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int gain)
     signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int gain)
 
-    implicitHeight: 202
+    implicitHeight: 112
     color: Theme.surfaceSubtle
     radius: Theme.controlRadius
     border.color: dirty ? Theme.accent : Theme.border
+
+    function clamp(value: real, minimum: real, maximum: real) : int {
+        return Math.round(Math.max(minimum, Math.min(maximum, value)))
+    }
 
     function formatDuration(millis: int) : string {
         const safeMillis = Math.max(0, millis)
@@ -43,6 +49,11 @@ Rectangle {
         const seconds = totalSeconds % 60
         const tenths = Math.floor((safeMillis % 1000) / 100)
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds + "." + tenths
+    }
+
+    function formatGain(centibels: int) : string {
+        return (centibels >= 0 ? "+" : "")
+            + (centibels / 100).toFixed(1) + " dB"
     }
 
     function syncFromAsset() : void {
@@ -70,6 +81,29 @@ Rectangle {
         gainCentibels = 0
     }
 
+    function setTrimRange(startMillis: int, endMillis: int) : void {
+        if (!canAdjust) return
+        const minimumSelection = Math.min(1000,
+            Math.max(50, Math.round(sourceDurationMillis / 10000)))
+        trimStartMillis = clamp(startMillis, 0,
+            Math.max(0, trimEndMillis - minimumSelection))
+        trimEndMillis = clamp(endMillis,
+            Math.min(sourceDurationMillis, trimStartMillis + minimumSelection),
+            sourceDurationMillis)
+        normalizeFades()
+    }
+
+    function setFades(fadeIn: int, fadeOut: int) : void {
+        if (!canAdjust) return
+        fadeInMillis = clamp(fadeIn, 0, selectedDurationMillis)
+        fadeOutMillis = clamp(fadeOut, 0,
+            Math.max(0, selectedDurationMillis - fadeInMillis))
+    }
+
+    function setGain(centibels: int) : void {
+        gainCentibels = clamp(centibels, -2400, 1200)
+    }
+
     function normalizeFades() : void {
         fadeInMillis = Math.min(fadeInMillis, selectedDurationMillis)
         fadeOutMillis = Math.min(fadeOutMillis,
@@ -86,35 +120,29 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: 8
 
             EchoSectionLabel {
                 Layout.fillWidth: true
                 text: qsTr("Adjustments")
                 hint: editor.dirty
-                    ? qsTr("Previewing an unsaved version")
+                    ? qsTr("Unsaved changes")
                     : editor.asset && Number(editor.asset.adjustmentRevision) > 0
-                        ? qsTr("Saved version")
-                        : qsTr("Original remains unchanged")
+                        ? qsTr("Saved version") : qsTr("No adjustments")
             }
 
             EchoButton {
-                text: qsTr("Reset")
+                text: qsTr("Revert")
                 ghost: true
-                enabled: editor.canAdjust && (editor.dirty
-                    || editor.trimStartMillis !== 0
-                    || editor.trimEndMillis !== editor.sourceDurationMillis
-                    || editor.fadeInMillis !== 0 || editor.fadeOutMillis !== 0
-                    || editor.gainCentibels !== 0)
+                enabled: editor.canAdjust && editor.dirty
+                onClicked: editor.syncFromAsset()
+            }
+
+            EchoButton {
+                text: qsTr("Clear")
+                ghost: true
+                enabled: editor.canAdjust && !editor.identity
                 onClicked: editor.resetDraft()
-            }
-
-            EchoButton {
-                text: qsTr("Preview")
-                ghost: true
-                enabled: editor.canAdjust
-                onClicked: editor.previewRequested(
-                    editor.trimStartMillis, editor.trimEndMillis,
-                    editor.fadeInMillis, editor.fadeOutMillis, editor.gainCentibels)
             }
 
             EchoButton {
@@ -128,144 +156,48 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 8
 
-            Text {
-                text: qsTr("Range")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-                Layout.preferredWidth: 52
-            }
+            Repeater {
+                model: [
+                    { label: qsTr("In"), value: editor.formatDuration(editor.trimStartMillis) },
+                    { label: qsTr("Out"), value: editor.formatDuration(editor.trimEndMillis) },
+                    { label: qsTr("Duration"), value: editor.formatDuration(editor.selectedDurationMillis) },
+                    { label: qsTr("Fade in"), value: editor.formatDuration(editor.fadeInMillis) },
+                    { label: qsTr("Fade out"), value: editor.formatDuration(editor.fadeOutMillis) },
+                    { label: qsTr("Gain"), value: editor.formatGain(editor.gainCentibels) }
+                ]
 
-            Text {
-                text: editor.formatDuration(editor.trimStartMillis)
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontMeta
-                Layout.preferredWidth: 44
-            }
+                delegate: Rectangle {
+                    required property var modelData
 
-            RangeSlider {
-                id: trimSlider
-                Layout.fillWidth: true
-                from: 0
-                to: Math.max(1, editor.sourceDurationMillis)
-                stepSize: 50
-                first.value: editor.trimStartMillis
-                second.value: Math.max(editor.trimStartMillis + 1, editor.trimEndMillis)
-                enabled: editor.canAdjust
-                first.onMoved: {
-                    editor.trimStartMillis = Math.round(first.value)
-                    editor.normalizeFades()
-                }
-                second.onMoved: {
-                    editor.trimEndMillis = Math.round(second.value)
-                    editor.normalizeFades()
-                }
-            }
-
-            Text {
-                text: editor.formatDuration(editor.trimEndMillis)
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontMeta
-                Layout.preferredWidth: 44
-                horizontalAlignment: Text.AlignRight
-            }
-
-            Text {
-                text: qsTr("Selected %1").arg(editor.formatDuration(editor.selectedDurationMillis))
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-                Layout.preferredWidth: 92
-                horizontalAlignment: Text.AlignRight
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 18
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    text: qsTr("Fade in")
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 52
-                }
-                Slider {
                     Layout.fillWidth: true
-                    from: 0
-                    to: Math.max(1, Math.min(5000,
-                        editor.selectedDurationMillis - editor.fadeOutMillis))
-                    stepSize: 50
-                    value: editor.fadeInMillis
-                    enabled: editor.canAdjust
-                    onMoved: editor.fadeInMillis = Math.round(value)
-                }
-                Text {
-                    text: editor.formatDuration(editor.fadeInMillis)
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 38
-                }
-            }
+                    Layout.preferredHeight: 34
+                    radius: Theme.compactControlRadius
+                    color: Theme.panelRaised
+                    border.color: Theme.border
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 9
+                        anchors.rightMargin: 9
+                        spacing: 6
 
-                Text {
-                    text: qsTr("Fade out")
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 54
-                }
-                Slider {
-                    Layout.fillWidth: true
-                    from: 0
-                    to: Math.max(1, Math.min(5000,
-                        editor.selectedDurationMillis - editor.fadeInMillis))
-                    stepSize: 50
-                    value: editor.fadeOutMillis
-                    enabled: editor.canAdjust
-                    onMoved: editor.fadeOutMillis = Math.round(value)
-                }
-                Text {
-                    text: editor.formatDuration(editor.fadeOutMillis)
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 38
-                }
-            }
+                        Text {
+                            text: modelData.label
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
+                        Item { Layout.fillWidth: true }
 
-                Text {
-                    text: qsTr("Gain")
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 38
-                }
-                Slider {
-                    Layout.fillWidth: true
-                    from: -2400
-                    to: 1200
-                    stepSize: 50
-                    value: editor.gainCentibels
-                    enabled: editor.canAdjust
-                    onMoved: editor.gainCentibels = Math.round(value)
-                }
-                Text {
-                    text: (editor.gainCentibels >= 0 ? "+" : "")
-                        + (editor.gainCentibels / 100).toFixed(1) + " dB"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 48
-                    horizontalAlignment: Text.AlignRight
+                        Text {
+                            text: modelData.value
+                            color: Theme.textPrimary
+                            font.pixelSize: Theme.fontMeta
+                            font.bold: true
+                        }
+                    }
                 }
             }
         }

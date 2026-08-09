@@ -283,11 +283,11 @@ Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.leftMargin: 9
                         anchors.bottomMargin: 7
-                        source: inspector.hasAsset && player.isPlaying
+                        source: inspector.hasAsset && player.playing
                             && inspector.loadedPath === inspector.asset.path
                             ? "qrc:/EchoDesktop/icons/pause.svg"
                             : "qrc:/EchoDesktop/icons/play.svg"
-                        toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Play")
+                        toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
                         enabled: inspector.hasAsset
                             && inspector.asset.pathStatus !== "missing"
                         buttonSize: 27

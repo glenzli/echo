@@ -147,6 +147,7 @@ qt_add_qml_module(
         qml/MainTitleBar.qml
         qml/SoundAdvancedFilterPopup.qml
         qml/SoundAdjustmentEditor.qml
+        qml/SoundEditorTimeline.qml
         qml/SoundEditingWorkspace.qml
         qml/SoundCard.qml
         qml/SoundFilmstripItem.qml

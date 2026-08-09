@@ -266,11 +266,11 @@ Rectangle {
             spacing: 10
 
             EchoIconButton {
-                source: preview.hasAsset && player.isPlaying
+                source: preview.hasAsset && player.playing
                         && preview.loadedPath === preview.asset.path
                     ? "qrc:/EchoDesktop/icons/pause.svg"
                     : "qrc:/EchoDesktop/icons/play.svg"
-                toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Play")
+                toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
                 enabled: preview.hasAsset && preview.asset.pathStatus !== "missing"
                 buttonSize: 38
                 iconSize: 19
