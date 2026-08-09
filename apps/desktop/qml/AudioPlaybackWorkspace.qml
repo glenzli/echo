@@ -12,6 +12,10 @@ Rectangle {
     property var asset: null
     property var waveformLevels: []
     property string loadedPath: ""
+    property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
+
+    readonly property bool backgroundAnalysisActive:
+        jobStats.pending > 0 || jobStats.running > 0
 
     color: Theme.panelRaised
     radius: 0
@@ -68,6 +72,10 @@ Rectangle {
 
     Connections {
         target: backend
+
+        function onAssetsChanged() : void {
+            preview.refreshAsset()
+        }
 
         function onTranscriptionFinished(assetId: string, ok: bool, message: string) : void {
             if (ok && preview.asset !== null && assetId === preview.asset.id) {
@@ -270,12 +278,26 @@ Rectangle {
                 text: qsTr("Transcript")
                 hint: transcriptModel.count > 0
                     ? qsTr("Click a segment to seek")
-                    : qsTr("No transcript evidence yet")
+                    : backend.transcribing
+                        ? qsTr("Retrying transcription…")
+                        : preview.backgroundAnalysisActive
+                            ? qsTr("Preparing transcript metadata in the background…")
+                            : preview.jobStats.failed > 0
+                                ? qsTr("Background analysis needs attention")
+                                : qsTr("Transcript metadata is prepared automatically")
+            }
+
+            BusyIndicator {
+                visible: transcriptModel.count === 0
+                    && (backend.transcribing || preview.backgroundAnalysisActive)
+                running: visible
+                Layout.preferredWidth: 18
+                Layout.preferredHeight: 18
             }
 
             EchoButton {
-                visible: transcriptModel.count === 0
-                text: backend.transcribing ? qsTr("Analyzing…") : qsTr("Analyze (prototype)")
+                visible: transcriptModel.count === 0 && preview.jobStats.failed > 0
+                text: backend.transcribing ? qsTr("Retrying…") : qsTr("Retry transcription")
                 enabled: !backend.transcribing && preview.asset !== null
                     && preview.asset.pathStatus !== "missing"
                 ghost: true
@@ -297,7 +319,13 @@ Rectangle {
                 anchors.centerIn: parent
                 width: parent.width - 48
                 visible: transcriptModel.count === 0
-                text: qsTr("Transcription is optional. The direct local worker remains a temporary compatibility path until Infer Build integration.")
+                text: backend.transcribing
+                    ? qsTr("Retrying this recording with the local compatibility adapter…")
+                    : preview.backgroundAnalysisActive
+                        ? qsTr("Echo is preparing transcript metadata in the background.")
+                        : preview.jobStats.failed > 0
+                            ? qsTr("Background transcription did not complete. You can retry this recording.")
+                            : qsTr("Transcript metadata is prepared automatically after import.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap

@@ -11,8 +11,11 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import subprocess
 import sys
+import tempfile
 import traceback
+from pathlib import Path
 from typing import Any
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -44,6 +47,45 @@ def normalize_units(units: Any) -> list[dict[str, Any]]:
     ]
 
 
+@contextlib.contextmanager
+def normalized_audio_source(audio_path: str):
+    """Bridges formats the temporary MLX decoder cannot read directly."""
+    if Path(audio_path).suffix.lower() not in {".aif", ".aiff"}:
+        yield audio_path
+        return
+
+    with tempfile.TemporaryDirectory(prefix="echo-asr-") as directory:
+        normalized_path = Path(directory) / "source.wav"
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-nostdin",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-i",
+                    audio_path,
+                    "-ac",
+                    "1",
+                    "-ar",
+                    "16000",
+                    str(normalized_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError as error:
+            raise RuntimeError(
+                "AIFF transcription requires ffmpeg in the local adapter"
+            ) from error
+        except subprocess.CalledProcessError as error:
+            detail = error.stderr.strip() or "ffmpeg conversion failed"
+            raise RuntimeError(detail) from error
+        yield str(normalized_path)
+
+
 def transcribe(request: dict[str, Any]) -> dict[str, Any]:
     intent = request.get("intent") or {}
     if intent.get("model") != "audio.transcribe":
@@ -60,7 +102,8 @@ def transcribe(request: dict[str, Any]) -> dict[str, Any]:
             kwargs["system_prompt"] = intent["prompt"]
         if intent.get("temperature") is not None:
             kwargs["temperature"] = intent["temperature"]
-        result = model.generate(request["audio_path"], **kwargs)
+        with normalized_audio_source(request["audio_path"]) as audio_source:
+            result = model.generate(audio_source, **kwargs)
 
     raw_segments = field(result, "segments", field(result, "sentences", [])) or []
     segments = []

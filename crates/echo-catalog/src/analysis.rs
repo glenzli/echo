@@ -126,6 +126,41 @@ pub fn query_analysis(
     Ok(records)
 }
 
+/// Lists present assets that do not yet carry evidence of `kind`.
+///
+/// This is the catalog-side admission projection used by background analysis
+/// backfill. Missing originals are excluded because inference must never make
+/// source availability a prerequisite for browsing the Library.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the query or a stored asset identity is
+/// invalid.
+pub fn list_assets_missing_analysis(
+    transaction: &Transaction<'_>,
+    kind: AnalysisKind,
+) -> Result<Vec<AssetId>, CatalogError> {
+    let mut statement = transaction.prepare(
+        "SELECT a.id FROM assets a \
+         WHERE a.path_status = 'present' AND NOT EXISTS (\
+             SELECT 1 FROM analysis_records r \
+             WHERE r.asset_id = a.id AND r.kind = ?1\
+         ) ORDER BY a.imported_at_millis ASC, a.id ASC",
+    )?;
+    let rows = statement.query_map([kind_text(kind)], |row| row.get::<_, String>(0))?;
+    let mut ids = Vec::new();
+    for row in rows {
+        let text = row?;
+        ids.push(text.parse::<AssetId>().map_err(|error| {
+            CatalogError::new(
+                crate::error::CatalogErrorKind::Other,
+                format!("invalid stored asset id {text}: {error}"),
+            )
+        })?);
+    }
+    Ok(ids)
+}
+
 const fn minimum_level_for(kind: AnalysisKind) -> AnalysisLevel {
     match kind {
         AnalysisKind::Transcript => AnalysisLevel::Asr,
@@ -161,3 +196,6 @@ fn parse_kind(text: &str) -> Option<AnalysisKind> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests;

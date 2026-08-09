@@ -72,11 +72,8 @@ fn failed_jobs_record_errors_and_stats_aggregate() {
             enqueue_job(
                 transaction,
                 "b",
-                JobKind::ScanRoot,
-                &ScanRootJobPayload {
-                    root: "/tmp".into(),
-                }
-                .encode(),
+                JobKind::Contextual,
+                &serde_json::json!({ "asset_id": "x" }),
                 0,
             )
         })
@@ -90,6 +87,62 @@ fn failed_jobs_record_errors_and_stats_aggregate() {
     let stats = catalog.with_transaction(job_stats).expect("stats");
     assert_eq!(stats.pending, 1);
     assert_eq!(stats.failed, 1);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn structural_jobs_are_claimed_before_progressive_analysis() {
+    let (root, catalog) = fixture("priority");
+    catalog
+        .with_transaction(|transaction| {
+            enqueue_job(
+                transaction,
+                "old-transcript",
+                JobKind::Transcribe,
+                &serde_json::json!({ "asset_id": "x" }),
+                0,
+            )?;
+            enqueue_job(
+                transaction,
+                "waveform",
+                JobKind::AnalyzeWaveform,
+                &serde_json::json!({ "asset_id": "x" }),
+                10,
+            )?;
+            enqueue_job(
+                transaction,
+                "import",
+                JobKind::ImportFile,
+                &FileJobPayload {
+                    path: "/tmp/voice.wav".into(),
+                }
+                .encode(),
+                10,
+            )?;
+            enqueue_job(
+                transaction,
+                "scan",
+                JobKind::ScanRoot,
+                &ScanRootJobPayload {
+                    root: "/tmp".into(),
+                }
+                .encode(),
+                10,
+            )
+        })
+        .expect("enqueue");
+
+    let mut claimed = Vec::new();
+    for now in 20..24 {
+        claimed.push(
+            catalog
+                .with_transaction(|transaction| claim_next_job(transaction, now))
+                .expect("claim")
+                .expect("pending job")
+                .id,
+        );
+    }
+    assert_eq!(claimed, ["scan", "import", "waveform", "old-transcript"]);
     let _ = std::fs::remove_dir_all(root);
 }
 

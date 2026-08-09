@@ -125,7 +125,9 @@ Level 4  CLAP embedding / semantic indexing
 Level 5  LLM contextual understanding / memory association
 ```
 
-首次 import 很快可浏览；机器空闲时慢慢理解过去。
+首次 import 很快可浏览；ASR 作为默认的后台派生元数据持久入队，但绝不阻塞导入、浏览或
+播放。其余理解层仍由能力、资源和用户需要渐进触发；正式接入后由 Infer Build 负责准入、
+空闲调度和资源仲裁，而不是让 Echo 在导入事务里同步运行模型。
 
 ## 7. 推理能力与模型参考
 
@@ -176,6 +178,11 @@ InferenceBackend
   - 已接入（过渡切片，2026-08-09）：Echo 以 Infer Build 的 `audio.transcribe` logical intent、
     标准请求字段和 `infer.*` constraints 形成请求；当前执行端是 JSON-lines 兼容的直接 MLX
     adapter，只负责把请求硬映射到本地 Qwen3-ASR，不承担路由、准入、重试或资源生命周期。
+  - 默认分析策略（2026-08-09 校准）：新录音完成注册后持久入队 waveform 与
+    `audio.transcribe`；应用启动时为已有但缺少 transcript 证据的在线录音做幂等回填。
+    结构性扫描、导入和 waveform 优先于 ASR；ASR 失败不得影响 Original、播放或浏览。
+    手动分析只作为失败重试/调试入口，不是正常产品路径。该默认不扩张到 SenseVoice、
+    diarization、embedding、LLM contextual understanding 或 TTS。
   - 冻结项：不再增强 Echo 内的物理模型注册、Ollama worker 或裸 Python 路由。
   - 下一真实切片：用 Infer Build 的正式 HTTP/Job 执行替换直接 adapter，接收 Job/Attempt
     进度和结果，保存模型/版本/置信度/时间戳；随后接 `audio.align`，完成
@@ -188,9 +195,10 @@ InferenceBackend
 
 ### 当前状态校准（2026-08-09）
 
-Echo 处于 **M0 收口、M1 概念验证完成但生产接入尚未开始** 的阶段。Audio Space 已经形成
-首个可用垂直界面，但人物、地点、声音类型仍是展示维度，不应被描述为已经具备完整识别和
-关系系统。M4 表示声音相册体验成熟，而不是首次出现 Audio Space 页面。
+Echo 处于 **M0 收口、M1 默认 Intent admission 已开始但正式 Infer Build 执行尚未接入**
+的阶段。Audio Space 已经形成首个可用垂直界面，但人物、地点、声音类型仍是展示维度，
+不应被描述为已经具备完整识别和关系系统。M4 表示声音相册体验成熟，而不是首次出现
+Audio Space 页面。
 
 在 M1 的 Infer Build 任务切片完成前，不把直接模型调用的数量当作里程碑进度；在 M2 前，
 不把 transcript 包含匹配描述成语义搜索；在 M3 前，不在实时播放路径加入任何 AI effect。

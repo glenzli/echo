@@ -21,7 +21,10 @@ mod scan_root;
 mod schema;
 mod search;
 
-pub use analysis::{AnalysisQueryError, AppendAnalysisRecord, query_analysis, record_analysis};
+pub use analysis::{
+    AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis, query_analysis,
+    record_analysis,
+};
 pub use asset_path::{mark_asset_missing, mark_asset_present, relink_asset_by_hash};
 pub use asset_registration::{
     AssetLookup, AssetRegistrationInput, RegisterAsset, find_by_content_hash, find_by_id,

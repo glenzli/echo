@@ -123,7 +123,13 @@ pub fn claim_next_job(
     let candidate: Option<(String, String, String, u32)> = transaction
         .query_row(
             "SELECT id, kind, payload, attempts FROM jobs WHERE state = 'pending' \
-             ORDER BY created_at_millis ASC, id ASC LIMIT 1",
+             ORDER BY CASE kind \
+                 WHEN 'scan_root' THEN 0 \
+                 WHEN 'import_file' THEN 1 \
+                 WHEN 'analyze_waveform' THEN 2 \
+                 WHEN 'transcribe' THEN 3 \
+                 WHEN 'contextual' THEN 4 \
+                 ELSE 5 END, created_at_millis ASC, id ASC LIMIT 1",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )

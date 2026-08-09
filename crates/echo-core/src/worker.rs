@@ -21,6 +21,7 @@ use echo_catalog::{
 };
 
 use crate::{
+    analysis_queue,
     error::{CoreError, CoreErrorKind},
     scanner,
 };
@@ -59,6 +60,7 @@ impl WorkerPool {
         catalog
             .with_transaction(|transaction| recover_interrupted_jobs(transaction, now))
             .map_err(CoreError::from)?;
+        analysis_queue::enqueue_missing_transcriptions(catalog, now)?;
 
         let stop = Arc::new(AtomicBool::new(false));
         let mut handles = Vec::new();
@@ -113,6 +115,7 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
         JobKind::ScanRoot => {
             let payload = ScanRootJobPayload::decode(&job.payload)?;
             scanner::scan_root(catalog, &payload.root, crate::util::now_millis())?;
+            analysis_queue::enqueue_missing_transcriptions(catalog, crate::util::now_millis())?;
             Ok(())
         }
         JobKind::ImportFile => {
@@ -231,9 +234,9 @@ fn import_file(catalog: &Catalog, _config: &WorkerConfig, path: &Path) -> Result
                 )?;
                 let asset = find_by_content_hash(transaction, content_hash)?;
                 if let AssetLookup::Found(asset) = asset {
-                    // Import stays fast and model-independent: Level 0 only.
-                    // Higher levels are explicit inference intents, not an
-                    // automatic raw-model chain.
+                    // Import remains model-independent: it only persists
+                    // derivation intents. Structural waveform work is claimed
+                    // before progressive ASR by the queue policy.
                     enqueue_job(
                         transaction,
                         &format!("waveform-{}", asset.id),
@@ -241,6 +244,7 @@ fn import_file(catalog: &Catalog, _config: &WorkerConfig, path: &Path) -> Result
                         &asset_id_payload(&asset.id),
                         now,
                     )?;
+                    analysis_queue::enqueue_transcription(transaction, asset.id, now)?;
                 }
             }
         }

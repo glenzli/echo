@@ -560,6 +560,7 @@ Item {
             Layout.fillHeight: true
             Layout.minimumWidth: 480
             asset: workspace.selectedAsset
+            jobStats: workspace.jobStats
         }
     }
 }

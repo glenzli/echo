@@ -176,79 +176,109 @@
 <context>
     <name>AudioPlaybackWorkspace</name>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="109"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="117"/>
         <source>Select a recording</source>
         <translation>选择一段录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="118"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="126"/>
         <source>The waveform, playback controls, and transcript will stay at the center of your workspace.</source>
         <translation>波形、播放控制和转写将始终位于工作区中央。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="169"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="177"/>
         <source>Missing</source>
         <translation>缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="169"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="177"/>
         <source>Original preserved</source>
         <translation>原始文件已保留</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="211"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="219"/>
         <source>Original file is unavailable</source>
         <translation>原始文件当前不可用</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="211"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="219"/>
         <source>Preparing waveform…</source>
         <translation>正在准备波形…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="225"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="233"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="225"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="233"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="240"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="248"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="270"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="278"/>
         <source>Transcript</source>
         <translation>转写</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="272"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="280"/>
         <source>Click a segment to seek</source>
         <translation>点击片段即可定位</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="273"/>
-        <source>No transcript evidence yet</source>
-        <translation>还没有转写证据</translation>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="282"/>
+        <source>Retrying transcription…</source>
+        <translation>正在重试转写…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="278"/>
-        <source>Analyzing…</source>
-        <translation>分析中…</translation>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="284"/>
+        <source>Preparing transcript metadata in the background…</source>
+        <translation>正在后台准备转写元数据…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="278"/>
-        <source>Analyze (prototype)</source>
-        <translation>分析（原型）</translation>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="286"/>
+        <source>Background analysis needs attention</source>
+        <translation>后台分析需要处理</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="287"/>
+        <source>Transcript metadata is prepared automatically</source>
+        <translation>转写元数据会自动生成</translation>
     </message>
     <message>
         <location filename="../qml/AudioPlaybackWorkspace.qml" line="300"/>
-        <source>Transcription is optional. The direct local worker remains a temporary compatibility path until Infer Build integration.</source>
-        <translation>转写是可选能力。直接调用本地工作进程仍只是接入 Infer Build 前的临时兼容路径。</translation>
+        <source>Retrying…</source>
+        <translation>正在重试…</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="300"/>
+        <source>Retry transcription</source>
+        <translation>重试转写</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="323"/>
+        <source>Retrying this recording with the local compatibility adapter…</source>
+        <translation>正在通过本地兼容适配器重试这段录音…</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="325"/>
+        <source>Echo is preparing transcript metadata in the background.</source>
+        <translation>Echo 正在后台准备转写元数据。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="327"/>
+        <source>Background transcription did not complete. You can retry this recording.</source>
+        <translation>后台转写未完成，你可以重试这段录音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="328"/>
+        <source>Transcript metadata is prepared automatically after import.</source>
+        <translation>导入后会自动生成转写元数据。</translation>
     </message>
 </context>
 <context>

@@ -8,6 +8,7 @@
 //! inference boundary and never enters playback.
 
 mod analysis;
+mod analysis_queue;
 mod contextual;
 mod error;
 mod import;
