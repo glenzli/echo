@@ -112,6 +112,42 @@ QVariantList DesktopBackend::listKeywordFacets() const {
     return list;
 }
 
+QVariantList DesktopBackend::listSmartAlbums() const {
+    QVariantList list;
+    try {
+        const auto albums = session_->session_smart_albums();
+        for (const auto& album : albums) {
+            QVariantMap entry;
+            entry.insert(
+                QStringLiteral("key"),
+                QString::fromUtf8(album.key.data(), album.key.size())
+            );
+            entry.insert(
+                QStringLiteral("label"),
+                QString::fromUtf8(album.label.data(), album.label.size())
+            );
+            entry.insert(
+                QStringLiteral("facet"),
+                QString::fromUtf8(album.facet.data(), album.facet.size())
+            );
+            entry.insert(
+                QStringLiteral("evidence"),
+                QString::fromUtf8(album.evidence.data(), album.evidence.size())
+            );
+            entry.insert(QStringLiteral("count"), static_cast<qulonglong>(album.count));
+            QVariantList memberIds;
+            for (const auto& memberId : album.member_asset_ids) {
+                memberIds.append(QString::fromUtf8(memberId.data(), memberId.size()));
+            }
+            entry.insert(QStringLiteral("memberIds"), memberIds);
+            list.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list smart album candidates: %s", error.what());
+    }
+    return list;
+}
+
 bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating) {
     if (rating < 0 || rating > 5) {
         qWarning("asset rating is outside zero to five");

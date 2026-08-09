@@ -12,7 +12,8 @@ use echo_domain::AssetId;
 
 use crate::ffi::{
     AnalysisStatusWire, AssetSummaryWire, JobStatsWire, KeywordFacetWire, ScanRootWire,
-    SearchHitWire, TranscriptSegmentWire, TranscriptWire, WaveformArtifactWire, WaveformLevelWire,
+    SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire, WaveformArtifactWire,
+    WaveformLevelWire,
 };
 
 fn now_millis() -> i64 {
@@ -224,6 +225,34 @@ impl LibrarySession {
                 key: facet.key,
                 label: facet.label,
                 count: facet.count,
+            })
+            .collect())
+    }
+
+    /// Lists smart album candidates projected by the Catalog. Membership is
+    /// explicit so QML never needs to reinterpret evidence strings.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the candidate projection fails.
+    pub fn smart_albums(&self) -> Result<Vec<SmartAlbumWire>, SessionError> {
+        let candidates = self
+            .catalog
+            .with_transaction(echo_catalog::list_smart_album_candidates)
+            .map_err(SessionError::from)?;
+        Ok(candidates
+            .into_iter()
+            .map(|candidate| SmartAlbumWire {
+                key: candidate.key,
+                label: candidate.label,
+                facet: candidate.facet.as_str().to_owned(),
+                evidence: candidate.evidence.as_str().to_owned(),
+                count: u64::try_from(candidate.member_asset_ids.len()).unwrap_or(u64::MAX),
+                member_asset_ids: candidate
+                    .member_asset_ids
+                    .into_iter()
+                    .map(|asset_id| asset_id.to_string())
+                    .collect(),
             })
             .collect())
     }

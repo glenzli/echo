@@ -23,6 +23,7 @@ mod scan_journal;
 mod scan_root;
 mod schema;
 mod search;
+mod smart_albums;
 mod source_metadata;
 
 pub use analysis::{
@@ -62,6 +63,9 @@ pub use scan_root::{ScanRoot, add_scan_root, list_scan_roots, remove_scan_root};
 pub use schema::{CatalogSchemaRevision, CatalogSchemaRevisionParseError};
 pub use search::{
     SearchHit, index_transcript, remove_transcript_index, search_transcripts, segment_cjk,
+};
+pub use smart_albums::{
+    SmartAlbumCandidate, SmartAlbumEvidence, SmartAlbumFacet, list_smart_album_candidates,
 };
 pub use source_metadata::{
     SourceMetadata, SourceMetadataEntry, list_assets_missing_source_metadata,

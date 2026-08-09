@@ -234,6 +234,11 @@ InferenceBackend
     索引；原始模型输出仍保留在 append-only Analysis 中，Facet 只保存规范化检索键与展示值。
     资料库以关键词和计数形成 AI 发现入口，选择后筛选声音墙；不做未经证据支持的同义词合并，
     也不把关键词提升为用户确认事实。
+  - 智能相册候选切片（2026-08-09）：Catalog 将 contextual 浏览索引扩展到情绪、地点、事件和
+    人物提示，并把最新 AI 证据与 Original 的录制日期、嵌入地点投影为跨声音候选。候选至少需要
+    两个精确成员，携带成员身份、证据维度与来源，重分析后旧成员关系自动退出；桌面只按 Catalog
+    返回的成员集合浏览，不在 QML 中重新解释模型字符串。候选不是用户相册事实，不做同义词、人物
+    身份或相近地点合并，用户确认／保存相册留给后续独立切片。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
@@ -241,7 +246,7 @@ InferenceBackend
 ### 当前状态校准（2026-08-09）
 
 Echo 处于 **M0 已收口、M1 Runtime 音频证据链完成并开始接入 contextual、M2 声音墙进入
-AI 聚合首切片** 的阶段。Audio Space 已经形成首个可用垂直界面，但人物、地点、声音类型
+可解释的 AI 聚合与相册候选阶段**。Audio Space 已经形成首个可用垂直界面，但人物、地点、声音类型
 仍是模型提示或展示维度，不应被描述为已经具备完整识别和关系系统。M4 表示声音相册体验
 成熟，而不是首次出现 Audio Space 页面。
 

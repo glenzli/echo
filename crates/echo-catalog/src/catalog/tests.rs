@@ -30,9 +30,18 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                  '{\"summary\":\"Rain\",\"keywords\":[\"Rain\"]}', 'test', '1', 2)",
                 [asset_id.to_string()],
             )?;
-            transaction.execute("DROP TABLE contextual_keyword_facets", [])?;
+            transaction.execute("DROP TABLE contextual_browse_facets", [])?;
+            transaction.execute_batch(
+                "CREATE TABLE contextual_keyword_facets (
+                    analysis_record_id INTEGER NOT NULL,
+                    asset_id TEXT NOT NULL,
+                    normalized_keyword TEXT NOT NULL,
+                    display_keyword TEXT NOT NULL,
+                    PRIMARY KEY (analysis_record_id, normalized_keyword)
+                );",
+            )?;
             transaction.execute(
-                "UPDATE catalog_meta SET value = '20260809.4' WHERE key = 'schema_version'",
+                "UPDATE catalog_meta SET value = '20260809.5' WHERE key = 'schema_version'",
                 [],
             )?;
             Ok(())
@@ -51,14 +60,14 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                 )?,
                 transaction.query_row("SELECT COUNT(*) FROM assets", [], |row| row.get(0))?,
                 transaction.query_row(
-                    "SELECT COUNT(*) FROM contextual_keyword_facets",
+                    "SELECT COUNT(*) FROM contextual_browse_facets",
                     [],
                     |row| row.get(0),
                 )?,
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260809.5");
+    assert_eq!(version, "20260809.6");
     assert_eq!(asset_count, 1);
     assert_eq!(facet_count, 1);
     let _ = std::fs::remove_dir_all(root);

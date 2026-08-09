@@ -92,7 +92,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_contextual_facet_schema(connection)?;
+            migrate_contextual_browse_schema(connection)?;
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -108,10 +108,10 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
-fn migrate_contextual_facet_schema(connection: &Connection) -> Result<(), CatalogError> {
+fn migrate_contextual_browse_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     transaction.execute_batch(CONTEXTUAL_FACET_SCHEMA_SQL)?;
-    crate::contextual_facets::rebuild_contextual_keyword_facets(&transaction)?;
+    crate::contextual_facets::rebuild_contextual_browse_facets(&transaction)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

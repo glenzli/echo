@@ -19,6 +19,26 @@ Rectangle {
 
     color: Theme.panel
 
+    function albumReason(album: var) : string {
+        if (album.evidence === "original") {
+            return album.facet === "time"
+                ? qsTr("Shared recording day") : qsTr("Embedded location")
+        }
+        if (album.facet === "place") {
+            return qsTr("Shared AI place")
+        }
+        if (album.facet === "event") {
+            return qsTr("Shared AI event")
+        }
+        if (album.facet === "mood") {
+            return qsTr("Shared AI mood")
+        }
+        if (album.facet === "person") {
+            return qsTr("Shared AI people hint")
+        }
+        return qsTr("Shared AI evidence")
+    }
+
     function countFor(key: string) : int {
         let count = 0
         const now = Date.now()
@@ -158,7 +178,7 @@ Rectangle {
                     Layout.leftMargin: 7
                     Layout.topMargin: 10
                     Layout.bottomMargin: 4
-                    text: qsTr("SOUND ALBUMS")
+                    text: qsTr("SUGGESTED ALBUMS")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     font.bold: true
@@ -173,10 +193,11 @@ Rectangle {
 
                         Layout.fillWidth: true
                         label: modelData.label
-                        glyph: modelData.aiSuggested ? "✦" : "▱"
+                        subtitle: sidebar.albumReason(modelData)
+                        glyph: modelData.evidence === "ai" ? "✦" : "▱"
                         count: modelData.count
-                        selected: sidebar.selectedFilter === modelData.key
-                        onActivated: sidebar.filterRequested(modelData.key)
+                        selected: sidebar.selectedFilter === "album:" + modelData.key
+                        onActivated: sidebar.filterRequested("album:" + modelData.key)
                     }
                 }
 
@@ -185,7 +206,7 @@ Rectangle {
                     Layout.leftMargin: 8
                     Layout.rightMargin: 8
                     visible: sidebar.smartAlbums.length === 0
-                    text: qsTr("AI-discovered places, people, and events will appear here as evidence becomes available.")
+                    text: qsTr("Album suggestions will appear when at least two sounds share time, place, mood, event, or people evidence.")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     wrapMode: Text.WordWrap

@@ -86,13 +86,16 @@ fn append(
                     serde_json::json!({
                         "summary": "fixture",
                         "keywords": keywords,
+                        "mood": null,
+                        "place_hint": null,
+                        "event_type": null,
+                        "people_hints": [],
                     }),
                     ModelIdentity::new("test".into(), "1".into()),
                     None,
                     recorded_at_millis,
                 ),
             },
-            keywords,
         },
     )
 }

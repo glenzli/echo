@@ -50,13 +50,41 @@
     </message>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="151"/>
-        <source>SOUND ALBUMS</source>
-        <translation>声音相册</translation>
+        <source>SUGGESTED ALBUMS</source>
+        <translation>建议相册</translation>
     </message>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="157"/>
-        <source>AI-discovered places, people, and events will appear here as evidence becomes available.</source>
-        <translation>AI 发现的地点、人物和事件会随着证据的积累出现在这里。</translation>
+        <source>Album suggestions will appear when at least two sounds share time, place, mood, event, or people evidence.</source>
+        <translation>当至少两段声音共享时间、地点、情绪、事件或人物证据时，相册建议会出现在这里。</translation>
+    </message>
+    <message>
+        <source>Shared recording day</source>
+        <translation>录制于同一天</translation>
+    </message>
+    <message>
+        <source>Embedded location</source>
+        <translation>相同的嵌入地点</translation>
+    </message>
+    <message>
+        <source>Shared AI place</source>
+        <translation>AI 推断的相同地点</translation>
+    </message>
+    <message>
+        <source>Shared AI event</source>
+        <translation>AI 推断的相同事件</translation>
+    </message>
+    <message>
+        <source>Shared AI mood</source>
+        <translation>AI 推断的相同情绪</translation>
+    </message>
+    <message>
+        <source>Shared AI people hint</source>
+        <translation>AI 推断的相同人物提示</translation>
+    </message>
+    <message>
+        <source>Shared AI evidence</source>
+        <translation>相同的 AI 证据</translation>
     </message>
     <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="193"/>

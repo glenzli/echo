@@ -46,7 +46,11 @@ Item {
         }
         allAssets = assets
         keywordFacets = backend.listKeywordFacets()
-        rebuildSmartAlbums()
+        smartAlbums = backend.listSmartAlbums()
+        if (selectedFilter.startsWith("album:")
+                && albumForKey(selectedFilter.substring(6)) === null) {
+            selectedFilter = "all"
+        }
         refilter()
         if (reconciled !== null) {
             selectedAsset = reconciled
@@ -57,36 +61,13 @@ Item {
         }
     }
 
-    function rebuildSmartAlbums() : void {
-        const collections = {}
-        for (const asset of allAssets) {
-            if (asset.sourceLocation.length > 0) {
-                const key = "place:" + asset.sourceLocation
-                collections[key] = {
-                    key: key, label: asset.sourceLocation,
-                    count: (collections[key] ? collections[key].count : 0) + 1,
-                    aiSuggested: false
-                }
-            }
-            if (asset.eventType.length > 0) {
-                const key = "event:" + asset.eventType
-                collections[key] = {
-                    key: key, label: asset.eventType,
-                    count: (collections[key] ? collections[key].count : 0) + 1,
-                    aiSuggested: true
-                }
-            }
-            if (asset.mood.length > 0) {
-                const key = "mood:" + asset.mood
-                collections[key] = {
-                    key: key, label: asset.mood,
-                    count: (collections[key] ? collections[key].count : 0) + 1,
-                    aiSuggested: true
-                }
+    function albumForKey(key: string) : var {
+        for (const album of smartAlbums) {
+            if (album.key === key) {
+                return album
             }
         }
-        smartAlbums = Object.values(collections).sort((left, right) =>
-            left.label.localeCompare(right.label))
+        return null
     }
 
     function matchesCollection(asset: var) : bool {
@@ -108,14 +89,9 @@ Item {
         if (selectedFilter === "missing") {
             return asset.pathStatus === "missing"
         }
-        if (selectedFilter.startsWith("place:")) {
-            return asset.sourceLocation === selectedFilter.substring(6)
-        }
-        if (selectedFilter.startsWith("event:")) {
-            return asset.eventType === selectedFilter.substring(6)
-        }
-        if (selectedFilter.startsWith("mood:")) {
-            return asset.mood === selectedFilter.substring(5)
+        if (selectedFilter.startsWith("album:")) {
+            const album = albumForKey(selectedFilter.substring(6))
+            return album !== null && album.memberIds.includes(asset.id)
         }
         if (selectedFilter.startsWith("keyword:")) {
             const selectedKeyword = selectedFilter.substring(8)

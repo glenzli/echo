@@ -160,7 +160,6 @@ pub fn record_contextual(
                             now,
                         ),
                     },
-                    keywords: &payload.keywords,
                 },
             )
         })

@@ -12,10 +12,11 @@ Rectangle {
     required property string glyph
     required property int count
     property bool selected: false
+    property string subtitle: ""
 
     signal activated()
 
-    implicitHeight: 34
+    implicitHeight: subtitle.length > 0 ? 46 : 34
     radius: Theme.controlRadius
     color: selected ? Theme.accentSurfaceQuiet
                     : hover.hovered ? Theme.surfaceSubtle : Theme.transparent
@@ -52,13 +53,27 @@ Rectangle {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        Text {
+        ColumnLayout {
             Layout.fillWidth: true
-            text: row.label
-            color: row.selected ? Theme.accentSelectionText : Theme.textPrimary
-            font.pixelSize: Theme.fontBody
-            font.bold: row.selected
-            elide: Text.ElideRight
+            spacing: 1
+
+            Text {
+                Layout.fillWidth: true
+                text: row.label
+                color: row.selected ? Theme.accentSelectionText : Theme.textPrimary
+                font.pixelSize: Theme.fontBody
+                font.bold: row.selected
+                elide: Text.ElideRight
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: row.subtitle.length > 0
+                text: row.subtitle
+                color: Theme.textDisabled
+                font.pixelSize: Theme.fontMeta
+                elide: Text.ElideRight
+            }
         }
 
         Text {

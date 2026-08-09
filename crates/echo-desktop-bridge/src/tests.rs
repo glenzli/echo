@@ -1,5 +1,7 @@
 //! Session contract tests: transcripts query against a real catalog.
 
+mod smart_album_contract;
+
 use crate::session::{aligned_segments, open_session};
 
 fn fixture_catalog() -> std::path::PathBuf {
@@ -199,13 +201,19 @@ fn contextual_stage_and_keyword_facets_project_through_the_live_session() {
                         asset_id: asset.id,
                         record: echo_domain::AnalysisRecord::new(
                             echo_domain::AnalysisKind::Contextual,
-                            serde_json::json!({"summary":"Rain at a station","keywords":keywords}),
+                            serde_json::json!({
+                                "summary":"Rain at a station",
+                                "keywords":keywords,
+                                "mood":null,
+                                "place_hint":null,
+                                "event_type":null,
+                                "people_hints":[]
+                            }),
                             echo_domain::ModelIdentity::new("qwen".into(), "build".into()),
                             None,
                             2,
                         ),
                     },
-                    keywords: &keywords,
                 },
             )
         })

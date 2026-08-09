@@ -98,25 +98,29 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_809, 4);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 5);
+    CatalogSchemaRevision::new(20_260_809, 5);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_809, 6);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.5-contextual-keyword-facets";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260809.6-contextual-browse-facets";
 
 pub(crate) const CONTEXTUAL_FACET_SCHEMA_SQL: &str = "
-CREATE TABLE IF NOT EXISTS contextual_keyword_facets (
+CREATE TABLE IF NOT EXISTS contextual_browse_facets (
     analysis_record_id  INTEGER NOT NULL REFERENCES analysis_records(id) ON DELETE CASCADE,
     asset_id            TEXT NOT NULL REFERENCES assets(id),
-    normalized_keyword  TEXT NOT NULL,
-    display_keyword     TEXT NOT NULL,
-    PRIMARY KEY (analysis_record_id, normalized_keyword)
+    facet_kind          TEXT NOT NULL CHECK (
+                        facet_kind IN ('keyword', 'mood', 'place', 'event', 'person')),
+    normalized_value    TEXT NOT NULL,
+    display_value       TEXT NOT NULL,
+    PRIMARY KEY (analysis_record_id, facet_kind, normalized_value)
 );
 
-CREATE INDEX IF NOT EXISTS contextual_keyword_facets_lookup
-    ON contextual_keyword_facets (normalized_keyword, asset_id);
+CREATE INDEX IF NOT EXISTS contextual_browse_facets_lookup
+    ON contextual_browse_facets (facet_kind, normalized_value, asset_id);
 
-CREATE INDEX IF NOT EXISTS contextual_keyword_facets_latest
-    ON contextual_keyword_facets (asset_id, analysis_record_id DESC);
+CREATE INDEX IF NOT EXISTS contextual_browse_facets_latest
+    ON contextual_browse_facets (asset_id, analysis_record_id DESC);
+
+DROP TABLE IF EXISTS contextual_keyword_facets;
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -152,19 +156,21 @@ CREATE TABLE IF NOT EXISTS analysis_records (
 CREATE INDEX IF NOT EXISTS analysis_records_asset_kind
     ON analysis_records (asset_id, kind);
 
-CREATE TABLE IF NOT EXISTS contextual_keyword_facets (
+CREATE TABLE IF NOT EXISTS contextual_browse_facets (
     analysis_record_id  INTEGER NOT NULL REFERENCES analysis_records(id) ON DELETE CASCADE,
     asset_id            TEXT NOT NULL REFERENCES assets(id),
-    normalized_keyword  TEXT NOT NULL,
-    display_keyword     TEXT NOT NULL,
-    PRIMARY KEY (analysis_record_id, normalized_keyword)
+    facet_kind          TEXT NOT NULL CHECK (
+                        facet_kind IN ('keyword', 'mood', 'place', 'event', 'person')),
+    normalized_value    TEXT NOT NULL,
+    display_value       TEXT NOT NULL,
+    PRIMARY KEY (analysis_record_id, facet_kind, normalized_value)
 );
 
-CREATE INDEX IF NOT EXISTS contextual_keyword_facets_lookup
-    ON contextual_keyword_facets (normalized_keyword, asset_id);
+CREATE INDEX IF NOT EXISTS contextual_browse_facets_lookup
+    ON contextual_browse_facets (facet_kind, normalized_value, asset_id);
 
-CREATE INDEX IF NOT EXISTS contextual_keyword_facets_latest
-    ON contextual_keyword_facets (asset_id, analysis_record_id DESC);
+CREATE INDEX IF NOT EXISTS contextual_browse_facets_latest
+    ON contextual_browse_facets (asset_id, analysis_record_id DESC);
 
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset_id   TEXT PRIMARY KEY REFERENCES assets(id),

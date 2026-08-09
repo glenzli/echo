@@ -44,6 +44,17 @@ mod ffi {
         count: u64,
     }
 
+    /// One explainable cross-asset album candidate.
+    #[derive(Debug)]
+    struct SmartAlbumWire {
+        key: String,
+        label: String,
+        facet: String,
+        evidence: String,
+        count: u64,
+        member_asset_ids: Vec<String>,
+    }
+
     /// One pyramid level of a cached waveform artifact.
     #[derive(Debug)]
     struct WaveformLevelWire {
@@ -126,6 +137,8 @@ mod ffi {
         fn session_list_assets(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
         /// Lists contextual keyword facets by descending asset count.
         fn session_keyword_facets(self: &LibrarySession) -> Result<Vec<KeywordFacetWire>>;
+        /// Lists explainable cross-asset album candidates.
+        fn session_smart_albums(self: &LibrarySession) -> Result<Vec<SmartAlbumWire>>;
         /// Total registered asset count.
         fn session_asset_count(self: &LibrarySession) -> u64;
         /// The catalog file path.
@@ -208,6 +221,11 @@ impl LibrarySession {
     /// Lists contextual keyword facets by descending asset count.
     fn session_keyword_facets(&self) -> Result<Vec<ffi::KeywordFacetWire>, String> {
         self.keyword_facets().map_err(|error| error.message)
+    }
+
+    /// Lists explainable cross-asset album candidates.
+    fn session_smart_albums(&self) -> Result<Vec<ffi::SmartAlbumWire>, String> {
+        self.smart_albums().map_err(|error| error.message)
     }
 
     /// Total registered asset count.
