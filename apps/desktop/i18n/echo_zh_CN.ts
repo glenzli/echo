@@ -342,37 +342,37 @@
 <context>
     <name>AudioSpaceWorkspace</name>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="175"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="180"/>
         <source>All sounds</source>
         <translation>所有声音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="176"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="181"/>
         <source>Recently added</source>
         <translation>最近加入</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="177"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="182"/>
         <source>Liked</source>
         <translation>喜欢</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="178"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="183"/>
         <source>5 stars</source>
         <translation>5 星</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="179"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="184"/>
         <source>With text</source>
         <translation>包含文字</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="180"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="185"/>
         <source>Missing originals</source>
         <translation>原始文件缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="190"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="195"/>
         <source>Sounds</source>
         <translation>声音</translation>
     </message>
@@ -508,22 +508,64 @@
     <name>Main</name>
     <message>
         <location filename="../qml/Main.qml" line="19"/>
-        <location filename="../qml/Main.qml" line="97"/>
         <source>Echo</source>
         <translation>Echo</translation>
     </message>
+</context>
+<context>
+    <name>MainTitleBar</name>
     <message>
-        <location filename="../qml/Main.qml" line="107"/>
+        <location filename="../qml/MainTitleBar.qml" line="33"/>
+        <source>Echo toolbar</source>
+        <translation>Echo 工具栏</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="120"/>
+        <source>%1 sounds</source>
+        <translation>%1 段声音</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="132"/>
+        <source>Search text, events, or filenames…</source>
+        <translation>搜索文字、事件或文件名…</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="145"/>
         <source>Sound Wall</source>
         <translation>声音墙</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="131"/>
+        <location filename="../qml/MainTitleBar.qml" line="171"/>
+        <source>Date</source>
+        <translation>日期</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="171"/>
+        <source>Duration</source>
+        <translation>时长</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="171"/>
+        <source>Rating</source>
+        <translation>评分</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="205"/>
+        <source>Size</source>
+        <translation>大小</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="223"/>
+        <source>Expand</source>
+        <translation>展开</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="239"/>
         <source>Indexing %1</source>
         <translation>正在索引 %1 项</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="140"/>
+        <location filename="../qml/MainTitleBar.qml" line="247"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
@@ -564,117 +606,107 @@
 <context>
     <name>SoundInspector</name>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="52"/>
+        <location filename="../qml/SoundInspector.qml" line="51"/>
         <source>Unknown length</source>
         <translation>未知时长</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="67"/>
+        <location filename="../qml/SoundInspector.qml" line="66"/>
         <source>Unknown</source>
         <translation>未知</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="136"/>
+        <location filename="../qml/SoundInspector.qml" line="135"/>
         <source>Select a sound</source>
         <translation>选择一段声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="145"/>
+        <location filename="../qml/SoundInspector.qml" line="144"/>
         <source>Its waveform, text, source metadata, and AI evidence will appear here.</source>
         <translation>它的波形、文字、来源元数据和 AI 证据会显示在这里。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="179"/>
-        <source>SOUND DETAILS</source>
-        <translation>声音详情</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundInspector.qml" line="187"/>
-        <source>Expand</source>
-        <translation>展开</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundInspector.qml" line="270"/>
+        <location filename="../qml/SoundInspector.qml" line="232"/>
         <source>Rating</source>
         <translation>评分</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="328"/>
+        <location filename="../qml/SoundInspector.qml" line="290"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="328"/>
+        <location filename="../qml/SoundInspector.qml" line="290"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="378"/>
+        <location filename="../qml/SoundInspector.qml" line="340"/>
         <source>TEXT</source>
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="380"/>
+        <location filename="../qml/SoundInspector.qml" line="342"/>
         <source>Model evidence</source>
         <translation>模型证据</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="387"/>
+        <location filename="../qml/SoundInspector.qml" line="349"/>
         <source>Echo is extracting text in the background…</source>
         <translation>Echo 正在后台提取文字…</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="388"/>
+        <location filename="../qml/SoundInspector.qml" line="350"/>
         <source>No text has been extracted from this sound yet.</source>
         <translation>这段声音还没有提取出文字。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="401"/>
+        <location filename="../qml/SoundInspector.qml" line="363"/>
         <source>SOURCE METADATA</source>
         <translation>来源元数据</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="402"/>
+        <location filename="../qml/SoundInspector.qml" line="364"/>
         <source>Original evidence</source>
         <translation>原始证据</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="410"/>
+        <location filename="../qml/SoundInspector.qml" line="372"/>
         <source>Recorded</source>
         <translation>录制时间</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="423"/>
+        <location filename="../qml/SoundInspector.qml" line="385"/>
         <source>Location</source>
         <translation>地点</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="427"/>
+        <location filename="../qml/SoundInspector.qml" line="389"/>
         <source>Not embedded</source>
         <translation>未写入文件</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="434"/>
+        <location filename="../qml/SoundInspector.qml" line="396"/>
         <source>Format</source>
         <translation>格式</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="445"/>
+        <location filename="../qml/SoundInspector.qml" line="407"/>
         <source>Audio</source>
         <translation>音频</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="449"/>
+        <location filename="../qml/SoundInspector.qml" line="411"/>
         <source>%1 Hz · %2 channel(s)</source>
         <translation>%1 Hz · %2 声道</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="452"/>
+        <location filename="../qml/SoundInspector.qml" line="414"/>
         <source>Technical metadata pending</source>
         <translation>技术元数据正在准备</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="463"/>
+        <location filename="../qml/SoundInspector.qml" line="425"/>
         <source>ORIGINAL</source>
         <translation>原始文件</translation>
     </message>
@@ -682,52 +714,22 @@
 <context>
     <name>SoundWall</name>
     <message>
-        <location filename="../qml/SoundWall.qml" line="59"/>
-        <source>%1 sounds</source>
-        <translation>%1 段声音</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWall.qml" line="70"/>
-        <source>Search text, events, or filenames…</source>
-        <translation>搜索文字、事件或文件名…</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWall.qml" line="80"/>
-        <source>Date</source>
-        <translation>日期</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWall.qml" line="80"/>
-        <source>Duration</source>
-        <translation>时长</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWall.qml" line="80"/>
-        <source>Rating</source>
-        <translation>评分</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWall.qml" line="111"/>
-        <source>Size</source>
-        <translation>大小</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundWall.qml" line="196"/>
+        <location filename="../qml/SoundWall.qml" line="88"/>
         <source>No matching sounds</source>
         <translation>没有匹配的声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWall.qml" line="196"/>
+        <location filename="../qml/SoundWall.qml" line="88"/>
         <source>This collection is empty</source>
         <translation>这个分类还是空的</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWall.qml" line="206"/>
+        <location filename="../qml/SoundWall.qml" line="98"/>
         <source>Try another word, event, or filename.</source>
         <translation>试试其他文字、事件或文件名。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWall.qml" line="207"/>
+        <location filename="../qml/SoundWall.qml" line="99"/>
         <source>Imported recordings will appear here as sound cards.</source>
         <translation>导入的录音会以声音卡片的形式出现在这里。</translation>
     </message>

@@ -168,6 +168,8 @@ InferenceBackend
   元数据，必须标注来源，和模型推断严格区分。
 - 单击 asset：右侧快速检查 Waveform / 文字 / Events / People / Metadata；双击 asset：进入
   Waveform / 文字 / Events / People / Adjustment 完整工作区。
+- 桌面窗口只保留一条与 Shadow 同构的融合标题工具栏：品牌、工作区导航、当前工作区工具、
+  设置与原生窗口拖动共享一个 chrome owner；内容区域不得重复绘制第二条伪标题栏。
 - 组件命名延续系列设计语言：`EchoButton`、`EchoIcon`……与 Shadow 的 `Shadow*` 组件对应，视觉 token 一致（Shadow/Echo 同系列）。
 
 ## 9. 里程碑
@@ -201,7 +203,8 @@ InferenceBackend
   时间、audio event、CLAP semantic search。
   - 首个浏览切片（2026-08-09）：声音墙成为默认首屏；资料库、横向声景卡片和详情检查器拆分
     为独立 UI owner；现有大波形页面降为展开层。用户 Like/评分持久化，卡片使用真实 waveform、
-    文件时间/格式和已有 AI 文字证据；FFmpeg probe 开始保存容器、采样率、声道和嵌入标签。
+    文件时间/格式和已有 AI 文字证据；FFmpeg probe 开始保存容器、采样率、声道和嵌入标签；
+    窗口 chrome 收敛为与 Shadow 同构、可拖动的单一融合标题工具栏。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。

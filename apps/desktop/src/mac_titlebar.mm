@@ -1,7 +1,5 @@
-//! Positions the native traffic-light buttons at a fixed distance below the
-//! window top so they share the toolbar row with the actions (the QML scene
-//! starts below the native title strip, so a simple vertical offset places
-//! the lights in the toolbar band).
+//! Positions the native traffic-light buttons at the vertical center of the
+//! one QML title toolbar, matching Shadow's extended-title-bar behavior.
 
 #import <AppKit/AppKit.h>
 
@@ -20,8 +18,8 @@ namespace {
 
 class MacTitleBarAlignment final : public QObject {
   public:
-    MacTitleBarAlignment(QWindow* window, const int traffic_light_center_y) :
-        QObject(window), window_(window), traffic_light_center_y_(traffic_light_center_y) {
+    MacTitleBarAlignment(QWindow* window, const int title_bar_height) :
+        QObject(window), window_(window), title_bar_height_(title_bar_height) {
         window_->installEventFilter(this);
         connect(window_, &QWindow::screenChanged, this, [this] { scheduleAlignment(); });
         scheduleAlignment();
@@ -67,7 +65,7 @@ class MacTitleBarAlignment final : public QObject {
         const NSRect window_frame = native_window.frame;
         const NSPoint target_in_screen = NSMakePoint(
             NSMidX(window_frame),
-            NSMaxY(window_frame) - static_cast<CGFloat>(traffic_light_center_y_)
+            NSMaxY(window_frame) - static_cast<CGFloat>(title_bar_height_) / 2.0
         );
         const NSPoint target_in_window = [native_window convertPointFromScreen:target_in_screen];
 
@@ -96,16 +94,16 @@ class MacTitleBarAlignment final : public QObject {
     }
 
     QPointer<QWindow> window_;
-    int traffic_light_center_y_ = 0;
+    int title_bar_height_ = 0;
     bool alignment_pending_ = false;
 };
 
 } // namespace
 
-void installMacTitleBarAlignment(QWindow* window, const int traffic_light_center_y) {
-    if (window == nullptr || traffic_light_center_y <= 0
+void installMacTitleBarAlignment(QWindow* window, const int title_bar_height) {
+    if (window == nullptr || title_bar_height <= 0
         || QGuiApplication::platformName() != QStringLiteral("cocoa")) {
         return;
     }
-    new MacTitleBarAlignment(window, traffic_light_center_y);
+    new MacTitleBarAlignment(window, title_bar_height);
 }

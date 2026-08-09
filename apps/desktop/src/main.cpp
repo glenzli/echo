@@ -80,9 +80,12 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 #if defined(Q_OS_MACOS)
-        // The fused toolbar spans the window top (0-48 pt); its center (24)
-        // puts the lights in the same row as the actions.
-        installMacTitleBarAlignment(qobject_cast<QQuickWindow*>(engine.rootObjects().first()), 24);
+        QObject* const root_object = engine.rootObjects().first();
+        QObject* const title_toolbar =
+            root_object->findChild<QObject*>(QStringLiteral("titleToolBar"));
+        const int title_bar_height =
+            title_toolbar == nullptr ? 48 : qRound(title_toolbar->property("height").toReal());
+        installMacTitleBarAlignment(qobject_cast<QQuickWindow*>(root_object), title_bar_height);
 #endif
         // Headless smoke aids: ECHO_DEBUG_SCREENSHOT=/path.png captures the
         // first window after the shell settles; ECHO_DEBUG_AUTOPLAY=/file.wav

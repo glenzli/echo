@@ -16,6 +16,7 @@ Rectangle {
 
     readonly property bool backgroundAnalysisActive:
         jobStats.pending > 0 || jobStats.running > 0
+    readonly property bool hasAsset: asset !== null && asset !== undefined
 
     color: Theme.panelRaised
     radius: 0
@@ -45,7 +46,7 @@ Rectangle {
     function refreshAsset() : void {
         transcriptModel.clear()
         waveformLevels = []
-        if (asset === null || !asset.id || asset.pathStatus === "missing") {
+        if (!asset || !asset.id || asset.pathStatus === "missing") {
             return
         }
         waveformLevels = backend.waveformForAsset(asset.id)
@@ -58,7 +59,7 @@ Rectangle {
     }
 
     function playFrom(millis: int) : void {
-        if (asset === null || asset.pathStatus === "missing") {
+        if (!asset || asset.pathStatus === "missing") {
             return
         }
         player.play(asset.path)
@@ -78,7 +79,7 @@ Rectangle {
         }
 
         function onTranscriptionFinished(assetId: string, ok: bool, message: string) : void {
-            if (ok && preview.asset !== null && assetId === preview.asset.id) {
+            if (ok && preview.hasAsset && assetId === preview.asset.id) {
                 preview.refreshAsset()
             }
             if (!ok) {
@@ -95,7 +96,7 @@ Rectangle {
         anchors.centerIn: parent
         width: Math.min(parent.width - 80, 380)
         spacing: 12
-        visible: preview.asset === null
+        visible: !preview.hasAsset
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
@@ -135,7 +136,7 @@ Rectangle {
         anchors.fill: parent
         anchors.margins: 20
         spacing: 12
-        visible: preview.asset !== null
+        visible: preview.hasAsset
 
         RowLayout {
             Layout.fillWidth: true
@@ -147,7 +148,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: preview.asset !== null ? preview.fileName(preview.asset.path) : ""
+                    text: preview.hasAsset ? preview.fileName(preview.asset.path) : ""
                     color: Theme.textPrimary
                     font.pixelSize: 20
                     font.bold: true
@@ -156,7 +157,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: preview.asset !== null ? preview.asset.path : ""
+                    text: preview.hasAsset ? preview.asset.path : ""
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
                     elide: Text.ElideMiddle
@@ -167,15 +168,15 @@ Rectangle {
                 Layout.preferredWidth: statusText.implicitWidth + 16
                 Layout.preferredHeight: 24
                 radius: 12
-                color: preview.asset !== null && preview.asset.pathStatus === "missing"
+                color: preview.hasAsset && preview.asset.pathStatus === "missing"
                     ? Theme.warningSurface : Theme.accentSurfaceQuiet
 
                 Text {
                     id: statusText
                     anchors.centerIn: parent
-                    text: preview.asset !== null && preview.asset.pathStatus === "missing"
+                    text: preview.hasAsset && preview.asset.pathStatus === "missing"
                         ? qsTr("Missing") : qsTr("Original preserved")
-                    color: preview.asset !== null && preview.asset.pathStatus === "missing"
+                    color: preview.hasAsset && preview.asset.pathStatus === "missing"
                         ? Theme.warningText : Theme.accentSelectionText
                     font.pixelSize: Theme.fontMeta
                 }
@@ -205,7 +206,8 @@ Rectangle {
 
             MouseArea {
                 anchors.fill: parent
-                enabled: player.duration > 0 && preview.loadedPath === preview.asset.path
+                enabled: preview.hasAsset && player.duration > 0
+                    && preview.loadedPath === preview.asset.path
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: function(mouse) {
                     player.seek(Math.round(mouse.x / width * player.duration))
@@ -215,7 +217,7 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 visible: preview.waveformLevels.length === 0
-                text: preview.asset !== null && preview.asset.pathStatus === "missing"
+                text: preview.hasAsset && preview.asset.pathStatus === "missing"
                     ? qsTr("Original file is unavailable") : qsTr("Preparing waveform…")
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontBody
@@ -227,11 +229,12 @@ Rectangle {
             spacing: 10
 
             EchoIconButton {
-                source: player.isPlaying && preview.loadedPath === preview.asset.path
+                source: preview.hasAsset && player.isPlaying
+                    && preview.loadedPath === preview.asset.path
                     ? "qrc:/EchoDesktop/icons/pause.svg"
                     : "qrc:/EchoDesktop/icons/play.svg"
                 toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Play")
-                enabled: preview.asset !== null && preview.asset.pathStatus !== "missing"
+                enabled: preview.hasAsset && preview.asset.pathStatus !== "missing"
                 buttonSize: 38
                 iconSize: 19
                 onClicked: {
@@ -246,7 +249,7 @@ Rectangle {
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/stop.svg"
                 toolTipText: qsTr("Stop")
-                enabled: preview.loadedPath === preview.asset.path
+                enabled: preview.hasAsset && preview.loadedPath === preview.asset.path
                 buttonSize: 34
                 iconSize: 16
                 onClicked: player.stop()
@@ -264,7 +267,8 @@ Rectangle {
                 from: 0
                 to: Math.max(1, player.duration)
                 value: player.duration > 0 ? player.position : 0
-                enabled: player.duration > 0 && preview.loadedPath === preview.asset.path
+                enabled: preview.hasAsset && player.duration > 0
+                    && preview.loadedPath === preview.asset.path
                 onMoved: player.seek(value)
             }
         }
@@ -298,7 +302,7 @@ Rectangle {
             EchoButton {
                 visible: transcriptModel.count === 0 && preview.jobStats.failed > 0
                 text: backend.transcribing ? qsTr("Retrying…") : qsTr("Retry text extraction")
-                enabled: !backend.transcribing && preview.asset !== null
+                enabled: !backend.transcribing && preview.hasAsset
                     && preview.asset.pathStatus !== "missing"
                 ghost: true
                 onClicked: backend.transcribeAsset(

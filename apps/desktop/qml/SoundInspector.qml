@@ -15,7 +15,8 @@ Rectangle {
     property var textRecords: []
     property string loadedPath: ""
 
-    signal expandRequested(var asset)
+    readonly property bool hasAsset: asset !== null && asset !== undefined
+
     signal affinityRequested(var asset, bool liked, int rating)
 
     color: Theme.panelRaised
@@ -32,7 +33,7 @@ Rectangle {
     }
 
     function titleFor(selected: var) : string {
-        if (selected === null) {
+        if (!selected) {
             return ""
         }
         if (selected.summary.length > 0) {
@@ -72,7 +73,7 @@ Rectangle {
     function refresh() : void {
         waveformLevels = []
         textRecords = []
-        if (asset === null || !asset.id) {
+        if (!asset || !asset.id) {
             return
         }
         if (asset.pathStatus !== "missing") {
@@ -82,7 +83,7 @@ Rectangle {
     }
 
     function playSelected() : void {
-        if (asset === null || asset.pathStatus === "missing") {
+        if (!asset || asset.pathStatus === "missing") {
             return
         }
         if (loadedPath !== asset.path) {
@@ -94,7 +95,7 @@ Rectangle {
     }
 
     function insightTags() : var {
-        if (asset === null) {
+        if (!asset) {
             return []
         }
         const tags = []
@@ -129,7 +130,7 @@ Rectangle {
         anchors.centerIn: parent
         width: Math.min(parent.width - 50, 270)
         spacing: 9
-        visible: inspector.asset === null
+        visible: !inspector.hasAsset
 
         Text {
             Layout.fillWidth: true
@@ -153,44 +154,7 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
-        visible: inspector.asset !== null
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 54
-            color: Theme.chrome
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: 1
-                color: Theme.border
-            }
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 15
-                anchors.rightMargin: 12
-                spacing: 8
-
-                Text {
-                    Layout.fillWidth: true
-                    text: qsTr("SOUND DETAILS")
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontMeta
-                    font.bold: true
-                    font.letterSpacing: 1.2
-                }
-
-                EchoButton {
-                    text: qsTr("Expand") + " ↗"
-                    ghost: true
-                    implicitHeight: 29
-                    onClicked: inspector.expandRequested(inspector.asset)
-                }
-            }
-        }
+        visible: inspector.hasAsset
 
         ScrollView {
             id: detailScroll
@@ -219,7 +183,8 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.titleFor(inspector.asset)
+                            text: inspector.hasAsset
+                                ? inspector.titleFor(inspector.asset) : ""
                             color: Theme.textPrimary
                             font.pixelSize: 18
                             font.bold: true
@@ -230,8 +195,10 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.fileName(inspector.asset.path)
-                                + " · " + inspector.formatDuration(inspector.asset.durationMillis)
+                            text: inspector.hasAsset
+                                ? inspector.fileName(inspector.asset.path) + " · "
+                                    + inspector.formatDuration(inspector.asset.durationMillis)
+                                : ""
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideMiddle
@@ -251,8 +218,9 @@ Rectangle {
                         }
 
                         contentItem: Text {
-                            text: inspector.asset.liked ? "♥" : "♡"
-                            color: inspector.asset.liked ? "#dc4b6b" : Theme.textDisabled
+                            text: inspector.hasAsset && inspector.asset.liked ? "♥" : "♡"
+                            color: inspector.hasAsset && inspector.asset.liked
+                                ? "#dc4b6b" : Theme.textDisabled
                             font.pixelSize: 18
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -279,8 +247,9 @@ Rectangle {
 
                         delegate: Text {
                             required property int index
-                            text: index < inspector.asset.rating ? "★" : "☆"
-                            color: index < inspector.asset.rating ? "#d89a16" : Theme.textDisabled
+                            text: inspector.hasAsset && index < inspector.asset.rating ? "★" : "☆"
+                            color: inspector.hasAsset && index < inspector.asset.rating
+                                ? "#d89a16" : Theme.textDisabled
                             font.pixelSize: 15
 
                             MouseArea {
@@ -313,7 +282,8 @@ Rectangle {
                         anchors.topMargin: 18
                         anchors.bottomMargin: 30
                         levels: inspector.waveformLevels
-                        progress: player.duration > 0 && inspector.loadedPath === inspector.asset.path
+                        progress: inspector.hasAsset && player.duration > 0
+                            && inspector.loadedPath === inspector.asset.path
                             ? player.position / player.duration : 0
                     }
 
@@ -322,11 +292,13 @@ Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.leftMargin: 9
                         anchors.bottomMargin: 7
-                        source: player.isPlaying && inspector.loadedPath === inspector.asset.path
+                        source: inspector.hasAsset && player.isPlaying
+                            && inspector.loadedPath === inspector.asset.path
                             ? "qrc:/EchoDesktop/icons/pause.svg"
                             : "qrc:/EchoDesktop/icons/play.svg"
                         toolTipText: player.isPlaying ? qsTr("Pause") : qsTr("Play")
-                        enabled: inspector.asset.pathStatus !== "missing"
+                        enabled: inspector.hasAsset
+                            && inspector.asset.pathStatus !== "missing"
                         buttonSize: 27
                         iconSize: 14
                         onClicked: inspector.playSelected()
@@ -337,10 +309,12 @@ Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.rightMargin: 10
                         anchors.bottomMargin: 12
-                        text: inspector.loadedPath === inspector.asset.path
+                        text: inspector.hasAsset
+                            && inspector.loadedPath === inspector.asset.path
                             ? inspector.formatDuration(player.position) + " / "
                                 + inspector.formatDuration(player.duration)
-                            : inspector.formatDuration(inspector.asset.durationMillis)
+                            : inspector.hasAsset
+                                ? inspector.formatDuration(inspector.asset.durationMillis) : "—"
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontMeta
                     }
@@ -410,11 +384,13 @@ Rectangle {
                         Text { text: qsTr("Recorded"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.asset.sourceCreatedAt.length > 0
+                            text: inspector.hasAsset
+                                && inspector.asset.sourceCreatedAt.length > 0
                                 ? inspector.asset.sourceCreatedAt
-                                : inspector.formatDate(inspector.asset.recordedAtMillis > 0
+                                : inspector.hasAsset
+                                    ? inspector.formatDate(inspector.asset.recordedAtMillis > 0
                                     ? inspector.asset.recordedAtMillis
-                                    : inspector.asset.importedAtMillis)
+                                    : inspector.asset.importedAtMillis) : ""
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
@@ -423,9 +399,11 @@ Rectangle {
                         Text { text: qsTr("Location"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.asset.sourceLocation.length > 0
+                            text: inspector.hasAsset
+                                && inspector.asset.sourceLocation.length > 0
                                 ? inspector.asset.sourceLocation : qsTr("Not embedded")
-                            color: inspector.asset.sourceLocation.length > 0
+                            color: inspector.hasAsset
+                                && inspector.asset.sourceLocation.length > 0
                                 ? Theme.textPrimary : Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
@@ -434,9 +412,11 @@ Rectangle {
                         Text { text: qsTr("Format"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.asset.codec.toUpperCase()
-                                + (inspector.asset.containerFormat.length > 0
-                                    ? " · " + inspector.asset.containerFormat : "")
+                            text: inspector.hasAsset
+                                ? inspector.asset.codec.toUpperCase()
+                                    + (inspector.asset.containerFormat.length > 0
+                                        ? " · " + inspector.asset.containerFormat : "")
+                                : ""
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
@@ -445,12 +425,12 @@ Rectangle {
                         Text { text: qsTr("Audio"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.asset.sampleRate > 0
+                            text: inspector.hasAsset && inspector.asset.sampleRate > 0
                                 ? qsTr("%1 Hz · %2 channel(s)")
                                     .arg(inspector.asset.sampleRate)
                                     .arg(inspector.asset.channelCount)
                                 : qsTr("Technical metadata pending")
-                            color: inspector.asset.sampleRate > 0
+                            color: inspector.hasAsset && inspector.asset.sampleRate > 0
                                 ? Theme.textPrimary : Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
@@ -464,7 +444,7 @@ Rectangle {
 
                     Text {
                         Layout.fillWidth: true
-                        text: inspector.asset.path
+                        text: inspector.hasAsset ? inspector.asset.path : ""
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontMeta
                         wrapMode: Text.WrapAnywhere

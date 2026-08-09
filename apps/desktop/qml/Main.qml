@@ -43,111 +43,27 @@ ApplicationWindow {
         id: settingsDialog
     }
 
-    Rectangle {
-        id: titleBar
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 48
-        y: 0
-        color: Theme.chrome
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: 1
-            color: Theme.border
-        }
-
-        DragHandler {
-            acceptedButtons: Qt.LeftButton
-            target: null
-            onActiveChanged: {
-                if (active) {
-                    window.startSystemMove()
-                }
-            }
-        }
-
-        RowLayout {
-            anchors.left: parent.left
-            anchors.leftMargin: Math.max(
-                SafeArea.margins.left,
-                Qt.platform.os === "osx" && window.visibility !== Window.FullScreen ? 96 : 16
-            )
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 8
-
-            Rectangle {
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
-                radius: 7
-                color: Theme.accentSurface
-
-                EchoIcon {
-                    anchors.centerIn: parent
-                    source: "qrc:/EchoDesktop/icons/waveform.svg"
-                    size: 15
-                    color: Theme.accentSelectionText
-                }
-            }
-
-            Text {
-                text: qsTr("Echo")
-                color: Theme.textPrimary
-                font.pixelSize: 14
-                font.bold: true
-            }
-        }
-
-        EchoIconButton {
-            anchors.centerIn: parent
-            source: "qrc:/EchoDesktop/icons/waveform.svg"
-            toolTipText: qsTr("Sound Wall")
-            selected: window.workspaceIndex === 0
-            onClicked: window.showAudioSpace()
-        }
-
-        RowLayout {
-            anchors.right: parent.right
-            anchors.rightMargin: Math.max(
-                SafeArea.margins.right,
-                Qt.platform.os === "windows" ? 152 : 16
-            )
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 8
-
-            Rectangle {
-                visible: window.jobsActive
-                Layout.preferredWidth: jobLabel.implicitWidth + 18
-                Layout.preferredHeight: 24
-                radius: 12
-                color: Theme.surfaceSubtle
-
-                Text {
-                    id: jobLabel
-                    anchors.centerIn: parent
-                    text: qsTr("Indexing %1").arg(
-                        window.jobSnapshot.pending + window.jobSnapshot.running)
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                }
-            }
-
-            EchoIconButton {
-                source: "qrc:/EchoDesktop/icons/tune.svg"
-                toolTipText: qsTr("Settings")
-                onClicked: window.openSettings()
-            }
-        }
+    header: MainTitleBar {
+        hostWindow: window
+        workspaceIndex: window.workspaceIndex
+        collectionLabel: audioSpace.activeCollectionLabel
+        soundCount: audioSpace.visibleAssetCount
+        searchText: audioSpace.searchText
+        sortMode: audioSpace.sortMode
+        cardSize: audioSpace.preferredCardWidth
+        selectedSoundAvailable: audioSpace.hasSelectedAsset
+        jobsActive: window.jobsActive
+        activeJobCount: window.jobSnapshot.pending + window.jobSnapshot.running
+        onSoundWallRequested: window.showAudioSpace()
+        onSettingsRequested: window.openSettings()
+        onSearchRequested: text => audioSpace.setSearchText(text)
+        onSortRequested: mode => audioSpace.setSortMode(mode)
+        onCardSizeRequested: size => audioSpace.setPreferredCardWidth(size)
+        onExpandRequested: audioSpace.expandSelectedAsset()
     }
 
     StackLayout {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: titleBar.bottom
-        anchors.bottom: parent.bottom
+        anchors.fill: parent
         currentIndex: window.workspaceIndex
 
         AudioSpaceWorkspace {

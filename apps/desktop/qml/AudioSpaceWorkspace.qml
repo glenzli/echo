@@ -14,10 +14,15 @@ Item {
     property string selectedFilter: "all"
     property string searchText: ""
     property string sortMode: "date"
+    property int preferredCardWidth: 286
     property var allAssets: []
     property var smartAlbums: []
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
     property int viewIndex: 0
+
+    readonly property string activeCollectionLabel: collectionLabel()
+    readonly property int visibleAssetCount: filteredAssets.count
+    readonly property bool hasSelectedAsset: selectedAsset !== null
 
     signal openLibraryRequested()
 
@@ -196,6 +201,26 @@ Item {
         viewIndex = 0
     }
 
+    function setSearchText(text: string) : void {
+        searchText = text
+        refilter()
+    }
+
+    function setSortMode(mode: string) : void {
+        sortMode = mode
+        refilter()
+    }
+
+    function setPreferredCardWidth(value: real) : void {
+        preferredCardWidth = Math.round(value)
+    }
+
+    function expandSelectedAsset() : void {
+        if (selectedAsset !== null) {
+            openAsset(selectedAsset)
+        }
+    }
+
     function updateAffinity(asset: var, liked: bool, rating: int) : void {
         if (asset === null) {
             return
@@ -250,19 +275,12 @@ Item {
                 Layout.minimumWidth: 560
                 assets: filteredAssets
                 selectedAsset: workspace.selectedAsset
-                collectionLabel: workspace.collectionLabel()
+                searchText: workspace.searchText
+                preferredCardWidth: workspace.preferredCardWidth
                 onAssetSelected: asset => workspace.selectedAsset = asset
                 onAssetOpened: asset => workspace.openAsset(asset)
                 onAffinityRequested: function(asset, liked, rating) {
                     workspace.updateAffinity(asset, liked, rating)
-                }
-                onSearchRequested: function(text) {
-                    workspace.searchText = text
-                    workspace.refilter()
-                }
-                onSortRequested: function(mode) {
-                    workspace.sortMode = mode
-                    workspace.refilter()
                 }
             }
 
@@ -272,7 +290,6 @@ Item {
                 Layout.fillHeight: true
                 asset: workspace.selectedAsset
                 jobStats: workspace.jobStats
-                onExpandRequested: asset => workspace.openAsset(asset)
                 onAffinityRequested: function(asset, liked, rating) {
                     workspace.updateAffinity(asset, liked, rating)
                 }
