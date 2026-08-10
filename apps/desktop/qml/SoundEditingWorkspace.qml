@@ -323,9 +323,9 @@ Rectangle {
 
             SoundAdjustmentEditor {
                 SplitView.fillWidth: true
-                SplitView.preferredHeight: 240
-                SplitView.minimumHeight: 196
-                SplitView.maximumHeight: 300
+                SplitView.preferredHeight: 124
+                SplitView.minimumHeight: 118
+                SplitView.maximumHeight: 158
                 draft: adjustmentDraft
                 hasTimeSelection: editorTimeline.hasTimeSelection
                 selectionStartMillis: editorTimeline.selectionStartMillis

@@ -582,8 +582,8 @@
     <name>SoundAdjustmentEditor</name>
     <message>
         <location filename="../qml/SoundAdjustmentEditor.qml" line="127"/>
-        <source>Adjustments</source>
-        <translation>声音调整</translation>
+        <source>Basic adjustments</source>
+        <translation>基础调整</translation>
     </message>
     <message>
         <location filename="../qml/SoundAdjustmentEditor.qml" line="149"/>
@@ -616,14 +616,8 @@
         <translation>时长</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="166"/>
-        <source>Fade in</source>
-        <translation>淡入</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="167"/>
-        <source>Fade out</source>
-        <translation>淡出</translation>
+        <source>Fades</source>
+        <translation>淡化</translation>
     </message>
     <message>
         <source>Range</source>
@@ -646,28 +640,16 @@
         <translation>低切</translation>
     </message>
     <message>
-        <source>Low cut frequency</source>
-        <translation>低切频率</translation>
+        <source>Enable low cut</source>
+        <translation>启用低切</translation>
     </message>
     <message>
-        <source>Off</source>
-        <translation>关闭</translation>
-    </message>
-    <message>
-        <source>On</source>
-        <translation>开启</translation>
+        <source>Disable low cut</source>
+        <translation>停用低切</translation>
     </message>
     <message>
         <source>Bypass</source>
         <translation>旁路</translation>
-    </message>
-    <message>
-        <source>Output</source>
-        <translation>输出</translation>
-    </message>
-    <message>
-        <source>Length</source>
-        <translation>长度</translation>
     </message>
     <message>
         <source>Linear</source>

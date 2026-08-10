@@ -1,6 +1,8 @@
-//! Bottom precision console for the editor draft. SoundAdjustmentDraft owns
+//! Compact precision rack for the editor draft. SoundAdjustmentDraft owns
 //! mutation, validation, history, and persistence semantics; this component
-//! arranges exact controls below the direct timeline gestures.
+//! presents the exact controls that complement direct timeline gestures.
+
+pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
@@ -15,7 +17,7 @@ Rectangle {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitHeight: 220
+    implicitHeight: 122
     color: Theme.panel
     border.color: Theme.border
 
@@ -39,53 +41,77 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 38
-            Layout.leftMargin: 12
-            Layout.rightMargin: 10
-            spacing: 8
+            Layout.preferredHeight: 33
+            Layout.leftMargin: 10
+            Layout.rightMargin: 8
+            spacing: 7
+
+            EchoIcon {
+                source: "qrc:/EchoDesktop/icons/tune.svg"
+                size: 15
+                color: Theme.textSecondary
+            }
 
             Text {
-                text: qsTr("Adjustments")
+                text: qsTr("Basic adjustments")
                 color: Theme.textPrimary
-                font.pixelSize: 14
+                font.pixelSize: Theme.fontSection
                 font.weight: Font.DemiBold
+                font.letterSpacing: 0.35
             }
 
             Rectangle {
                 visible: inspector.hasTimeSelection
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: 15
-                color: Theme.border
-            }
+                Layout.preferredWidth: rangeText.implicitWidth + 14
+                Layout.preferredHeight: 22
+                radius: Theme.compactControlRadius
+                color: Theme.surfaceSubtle
+                border.width: 1
+                border.color: Theme.border
 
-            Text {
-                visible: inspector.hasTimeSelection
-                text: qsTr("Range") + " "
-                    + inspector.formatDuration(inspector.selectionStartMillis)
-                    + " — " + inspector.formatDuration(inspector.selectionEndMillis)
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
+                Text {
+                    id: rangeText
+                    anchors.centerIn: parent
+                    text: qsTr("Range") + "  "
+                        + inspector.formatDuration(inspector.selectionStartMillis)
+                        + " — " + inspector.formatDuration(inspector.selectionEndMillis)
+                    color: Theme.textSecondary
+                    font.family: "Menlo"
+                    font.pixelSize: 9
+                }
             }
 
             Item { Layout.fillWidth: true }
 
-            EchoButton {
-                text: qsTr("Revert")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/refresh.svg"
+                toolTipText: qsTr("Revert")
                 enabled: inspector.draft.dirty
+                buttonSize: 27
+                iconSize: 15
                 onClicked: inspector.draft.revert()
             }
 
-            EchoButton {
-                text: qsTr("Clear")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/reset-all.svg"
+                toolTipText: qsTr("Clear")
                 enabled: !inspector.draft.identity
+                buttonSize: 27
+                iconSize: 15
                 onClicked: inspector.draft.clear()
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 17
+                color: Theme.border
             }
 
             EchoButton {
                 text: qsTr("Save version")
                 enabled: inspector.draft.dirty
+                implicitWidth: 84
+                implicitHeight: 27
                 onClicked: inspector.draft.save()
             }
         }
@@ -99,39 +125,47 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
-            Layout.topMargin: 9
-            Layout.bottomMargin: 10
-            spacing: 12
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            Layout.topMargin: 7
+            Layout.bottomMargin: 8
+            spacing: 10
 
             AdjustmentSection {
-                Layout.preferredWidth: 184
+                Layout.preferredWidth: 216
+                Layout.minimumWidth: 196
                 title: qsTr("Clip")
+                iconSource: "qrc:/EchoDesktop/icons/crop.svg"
 
-                ColumnLayout {
-                    width: parent.width
-                    spacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 9
 
-                    InspectorValueRow {
+                    MetricValue {
+                        Layout.fillWidth: true
                         label: qsTr("In")
                         value: inspector.formatDuration(inspector.draft.trimStartMillis)
                     }
-                    InspectorValueRow {
+                    MetricValue {
+                        Layout.fillWidth: true
                         label: qsTr("Out")
                         value: inspector.formatDuration(inspector.draft.trimEndMillis)
                     }
-                    InspectorValueRow {
+                    MetricValue {
+                        Layout.fillWidth: true
                         label: qsTr("Duration")
-                        value: inspector.formatDuration(inspector.draft.selectedDurationMillis)
+                        value: inspector.formatDuration(
+                            inspector.draft.selectedDurationMillis)
                     }
 
-                    EchoButton {
-                        Layout.fillWidth: true
+                    EchoIconButton {
                         visible: inspector.hasTimeSelection
-                        text: qsTr("Crop to selection")
+                        source: "qrc:/EchoDesktop/icons/crop.svg"
+                        toolTipText: qsTr("Crop to selection")
                         enabled: inspector.selectionEndMillis
                             > inspector.selectionStartMillis
+                        buttonSize: 26
+                        iconSize: 15
                         onClicked: inspector.draft.setTrimRange(
                             inspector.selectionStartMillis,
                             inspector.selectionEndMillis)
@@ -142,27 +176,26 @@ Rectangle {
             SectionDivider {}
 
             AdjustmentSection {
-                Layout.fillWidth: true
-                title: qsTr("Fade in")
+                Layout.preferredWidth: 232
+                Layout.minimumWidth: 216
+                title: qsTr("Fades")
+                iconSource: "qrc:/EchoDesktop/icons/fade-smooth.svg"
 
-                FadeCurveControl {
-                    width: parent.width
-                    durationText: inspector.formatDuration(inspector.draft.fadeInMillis)
+                FadeCurveRow {
+                    Layout.fillWidth: true
+                    label: qsTr("In")
+                    durationText: inspector.formatDuration(
+                        inspector.draft.fadeInMillis)
                     curve: inspector.draft.fadeInCurve
                     onCurveRequested: value => inspector.draft.setFadeCurves(
                         value, inspector.draft.fadeOutCurve)
                 }
-            }
 
-            SectionDivider {}
-
-            AdjustmentSection {
-                Layout.fillWidth: true
-                title: qsTr("Fade out")
-
-                FadeCurveControl {
-                    width: parent.width
-                    durationText: inspector.formatDuration(inspector.draft.fadeOutMillis)
+                FadeCurveRow {
+                    Layout.fillWidth: true
+                    label: qsTr("Out")
+                    durationText: inspector.formatDuration(
+                        inspector.draft.fadeOutMillis)
                     curve: inspector.draft.fadeOutCurve
                     onCurveRequested: value => inspector.draft.setFadeCurves(
                         inspector.draft.fadeInCurve, value)
@@ -173,63 +206,44 @@ Rectangle {
 
             AdjustmentSection {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 176
                 title: qsTr("Low cut")
+                iconSource: "qrc:/EchoDesktop/icons/high-pass.svg"
 
-                ColumnLayout {
-                    width: parent.width
-                    spacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
 
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        EchoButton {
-                            text: inspector.draft.lowCutHertz === 0
-                                ? qsTr("Off") : qsTr("On")
-                            ghost: true
-                            selected: inspector.draft.lowCutHertz > 0
-                            onClicked: inspector.draft.setLowCut(
-                                inspector.draft.lowCutHertz === 0 ? 80 : 0)
-                        }
-                        Item { Layout.fillWidth: true }
-                        Text {
-                            text: inspector.draft.lowCutHertz === 0
-                                ? qsTr("Bypass")
-                                : inspector.draft.lowCutHertz + " Hz"
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontBody
-                            font.weight: Font.DemiBold
-                        }
+                    EchoIconButton {
+                        source: inspector.draft.lowCutHertz > 0
+                            ? "qrc:/EchoDesktop/icons/filter.svg"
+                            : "qrc:/EchoDesktop/icons/filter-off.svg"
+                        toolTipText: inspector.draft.lowCutHertz > 0
+                            ? qsTr("Disable low cut") : qsTr("Enable low cut")
+                        selected: inspector.draft.lowCutHertz > 0
+                        buttonSize: 26
+                        iconSize: 15
+                        onClicked: inspector.draft.setLowCut(
+                            inspector.draft.lowCutHertz === 0 ? 80 : 0)
                     }
 
-                    Slider {
+                    EchoParameterSlider {
                         Layout.fillWidth: true
                         from: 20
                         to: 240
                         stepSize: 1
                         value: inspector.draft.lowCutHertz > 0
                             ? inspector.draft.lowCutHertz : 80
+                        valueText: inspector.draft.lowCutHertz === 0
+                            ? qsTr("Bypass")
+                            : inspector.draft.lowCutHertz + " Hz"
+                        accessibleName: qsTr("Low cut")
+                        valueWidth: 52
+                        fillFromMinimum: true
                         enabled: inspector.draft.lowCutHertz > 0
-                        Accessible.name: qsTr("Low cut frequency")
-                        onPressedChanged: {
-                            if (pressed) inspector.draft.beginGesture()
-                            else inspector.draft.endGesture()
-                        }
-                        onMoved: inspector.draft.setLowCut(value)
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Text {
-                            text: "20 Hz"
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontMeta
-                        }
-                        Item { Layout.fillWidth: true }
-                        Text {
-                            text: "240 Hz"
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontMeta
-                        }
+                        onGestureStarted: inspector.draft.beginGesture()
+                        onGestureFinished: inspector.draft.endGesture()
+                        onEdited: value => inspector.draft.setLowCut(value)
                     }
                 }
             }
@@ -238,63 +252,25 @@ Rectangle {
 
             AdjustmentSection {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 176
                 title: qsTr("Clip gain")
+                iconSource: "qrc:/EchoDesktop/icons/gain.svg"
 
-                ColumnLayout {
-                    width: parent.width
-                    spacing: 6
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        Text {
-                            text: qsTr("Output")
-                            color: Theme.textSecondary
-                            font.pixelSize: Theme.fontBody
-                        }
-                        Item { Layout.fillWidth: true }
-                        Text {
-                            text: inspector.formatGain(inspector.draft.gainCentibels)
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontBody
-                            font.weight: Font.DemiBold
-                        }
-                    }
-
-                    Slider {
-                        Layout.fillWidth: true
-                        from: -2400
-                        to: 1200
-                        stepSize: 10
-                        value: inspector.draft.gainCentibels
-                        Accessible.name: qsTr("Clip gain")
-                        onPressedChanged: {
-                            if (pressed) inspector.draft.beginGesture()
-                            else inspector.draft.endGesture()
-                        }
-                        onMoved: inspector.draft.setGain(value)
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Text {
-                            text: "−24"
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontMeta
-                        }
-                        Item { Layout.fillWidth: true }
-                        Text {
-                            text: "0 dB"
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontMeta
-                        }
-                        Item { Layout.fillWidth: true }
-                        Text {
-                            text: "+12"
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontMeta
-                        }
-                    }
+                EchoParameterSlider {
+                    Layout.fillWidth: true
+                    from: -2400
+                    to: 1200
+                    stepSize: 10
+                    value: inspector.draft.gainCentibels
+                    valueText: inspector.formatGain(
+                        inspector.draft.gainCentibels)
+                    accessibleName: qsTr("Clip gain")
+                    valueWidth: 64
+                    neutralValue: 0
+                    showNeutralMarker: true
+                    onGestureStarted: inspector.draft.beginGesture()
+                    onGestureFinished: inspector.draft.endGesture()
+                    onEdited: value => inspector.draft.setGain(value)
                 }
             }
         }
@@ -302,22 +278,35 @@ Rectangle {
 
     component AdjustmentSection: ColumnLayout {
         property string title: ""
+        property url iconSource
         default property alias content: sectionContent.data
 
         Layout.fillHeight: true
-        spacing: 8
+        spacing: 5
 
-        Text {
-            text: parent.title
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontSection
-            font.weight: Font.DemiBold
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 5
+
+            EchoIcon {
+                source: parent.parent.iconSource
+                size: 13
+                color: Theme.textSecondary
+            }
+            Text {
+                text: parent.parent.title.toUpperCase()
+                color: Theme.textSecondary
+                font.pixelSize: 9
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.55
+            }
+            Item { Layout.fillWidth: true }
         }
 
         ColumnLayout {
             id: sectionContent
             Layout.fillWidth: true
-            spacing: 7
+            spacing: 3
         }
 
         Item { Layout.fillHeight: true }
@@ -326,74 +315,96 @@ Rectangle {
     component SectionDivider: Rectangle {
         Layout.preferredWidth: 1
         Layout.fillHeight: true
-        Layout.topMargin: 4
-        Layout.bottomMargin: 4
+        Layout.topMargin: 1
+        Layout.bottomMargin: 1
         color: Theme.border
     }
 
-    component InspectorValueRow: RowLayout {
+    component MetricValue: ColumnLayout {
         property string label: ""
         property string value: ""
 
-        spacing: 8
+        spacing: 2
 
         Text {
-            text: parent.label
-            color: Theme.textSecondary
-            font.pixelSize: Theme.fontBody
+            text: parent.label.toUpperCase()
+            color: Theme.textDisabled
+            font.pixelSize: 8
+            font.weight: Font.Medium
         }
-        Item { Layout.fillWidth: true }
         Text {
             text: parent.value
             color: Theme.textPrimary
-            font.pixelSize: Theme.fontBody
+            font.family: "Menlo"
+            font.pixelSize: Theme.fontMeta
             font.weight: Font.Medium
+            elide: Text.ElideRight
         }
     }
 
-    component FadeCurveControl: ColumnLayout {
+    component FadeCurveRow: RowLayout {
         id: curveControl
 
         property int curve: 0
+        property string label: ""
         property string durationText: ""
         signal curveRequested(int value)
 
-        spacing: 7
+        spacing: 4
 
-        RowLayout {
-            Layout.fillWidth: true
-            Text {
-                text: qsTr("Length")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontBody
-            }
-            Item { Layout.fillWidth: true }
-            Text {
-                text: curveControl.durationText
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontBody
-                font.weight: Font.DemiBold
-            }
+        Text {
+            Layout.preferredWidth: 18
+            text: curveControl.label.toUpperCase()
+            color: Theme.textSecondary
+            font.pixelSize: 9
+            font.weight: Font.DemiBold
+            horizontalAlignment: Text.AlignRight
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 4
+        Text {
+            Layout.preferredWidth: 47
+            text: curveControl.durationText
+            color: Theme.textPrimary
+            font.family: "Menlo"
+            font.pixelSize: 9
+            horizontalAlignment: Text.AlignRight
+        }
 
-            Repeater {
-                model: [qsTr("Linear"), qsTr("Smooth"), qsTr("Equal power")]
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 17
+            color: Theme.border
+        }
 
-                delegate: EchoButton {
-                    required property int index
-                    required property string modelData
-
-                    Layout.fillWidth: true
-                    text: modelData
-                    ghost: true
-                    selected: curveControl.curve === index
-                    onClicked: curveControl.curveRequested(index)
+        Repeater {
+            model: [
+                {
+                    "name": qsTr("Linear"),
+                    "icon": "qrc:/EchoDesktop/icons/fade-linear.svg"
+                },
+                {
+                    "name": qsTr("Smooth"),
+                    "icon": "qrc:/EchoDesktop/icons/fade-smooth.svg"
+                },
+                {
+                    "name": qsTr("Equal power"),
+                    "icon": "qrc:/EchoDesktop/icons/fade-equal-power.svg"
                 }
+            ]
+
+            delegate: EchoIconButton {
+                required property int index
+                required property var modelData
+
+                source: modelData.icon
+                toolTipText: modelData.name
+                selected: curveControl.curve === index
+                buttonSize: 24
+                iconSize: 14
+                onClicked: curveControl.curveRequested(index)
             }
         }
+
+        Item { Layout.fillWidth: true }
     }
 }

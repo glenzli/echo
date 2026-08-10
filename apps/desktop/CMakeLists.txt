@@ -140,6 +140,7 @@ qt_add_qml_module(
         qml/EchoButton.qml
         qml/EchoIcon.qml
         qml/EchoIconButton.qml
+        qml/EchoParameterSlider.qml
         qml/EchoSectionLabel.qml
         qml/EchoSettingsDialog.qml
         qml/EchoTextField.qml
@@ -178,6 +179,13 @@ qt_add_qml_module(
         icons/edit.svg
         icons/undo.svg
         icons/redo.svg
+        icons/crop.svg
+        icons/reset-all.svg
+        icons/high-pass.svg
+        icons/gain.svg
+        icons/fade-linear.svg
+        icons/fade-smooth.svg
+        icons/fade-equal-power.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)
