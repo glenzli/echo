@@ -40,6 +40,8 @@ pub enum JobKind {
     Align,
     /// Runs local LLM contextual understanding over a transcript.
     Contextual,
+    /// Embeds the current bounded text-evidence document for semantic search.
+    EmbedText,
 }
 
 /// Job lifecycle state.
@@ -147,7 +149,8 @@ pub fn claim_next_job(
                  WHEN 'transcribe' THEN 4 \
                  WHEN 'align' THEN 5 \
                  WHEN 'contextual' THEN 6 \
-                 ELSE 7 END, created_at_millis ASC, id ASC LIMIT 1",
+                 WHEN 'embed_text' THEN 7 \
+                 ELSE 8 END, created_at_millis ASC, id ASC LIMIT 1",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -456,6 +459,7 @@ pub(crate) const fn kind_text(kind: JobKind) -> &'static str {
         JobKind::Transcribe => "transcribe",
         JobKind::Align => "align",
         JobKind::Contextual => "contextual",
+        JobKind::EmbedText => "embed_text",
     }
 }
 
@@ -468,6 +472,7 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
         "transcribe" => Ok(JobKind::Transcribe),
         "align" => Ok(JobKind::Align),
         "contextual" => Ok(JobKind::Contextual),
+        "embed_text" => Ok(JobKind::EmbedText),
         other => Err(CatalogError::new(
             crate::error::CatalogErrorKind::Other,
             format!("unknown job kind {other}"),

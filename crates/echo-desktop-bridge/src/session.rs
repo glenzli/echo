@@ -752,13 +752,15 @@ impl LibrarySession {
         })?;
         let nodes = self
             .catalog
-            .with_transaction(|transaction| {
-                echo_catalog::list_long_audio_outline_nodes(
-                    transaction,
-                    asset_id,
-                    echo_core::LONG_AUDIO_PLAN_VERSION,
-                )
-            })
+            .with_transaction(
+                |transaction| -> Result<Vec<_>, echo_catalog::CatalogError> {
+                    echo_catalog::list_long_audio_outline_nodes(
+                        transaction,
+                        asset_id,
+                        echo_core::LONG_AUDIO_PLAN_VERSION,
+                    )
+                },
+            )
             .map_err(|error| SessionError {
                 message: error.to_string(),
             })?;
@@ -1033,9 +1035,22 @@ impl LibrarySession {
     pub fn search(&self, query: &str, limit: u64) -> Result<Vec<SearchHitWire>, SessionError> {
         let hits = self
             .catalog
-            .with_transaction(|transaction| {
-                echo_catalog::search_transcripts(transaction, query, limit)
-            })
+            .with_transaction(
+                |transaction| -> Result<Vec<_>, echo_catalog::CatalogError> {
+                    let mut hits = echo_catalog::search_semantic_text(transaction, query, limit)?;
+                    let mut seen = hits
+                        .iter()
+                        .map(|hit| hit.asset_id.clone())
+                        .collect::<std::collections::BTreeSet<_>>();
+                    for hit in echo_catalog::search_transcripts(transaction, query, limit)? {
+                        if seen.insert(hit.asset_id.clone()) {
+                            hits.push(hit);
+                        }
+                    }
+                    hits.truncate(usize::try_from(limit).unwrap_or(usize::MAX));
+                    Ok(hits)
+                },
+            )
             .map_err(|error| SessionError {
                 message: error.to_string(),
             })?;

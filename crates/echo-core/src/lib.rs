@@ -18,6 +18,7 @@ mod infer_runtime_discovery;
 mod long_audio;
 mod metadata_queue;
 mod scanner;
+mod semantic_search;
 mod util;
 mod waveform_artifact;
 mod worker;
@@ -37,8 +38,9 @@ pub use infer_runtime::{
     ContextualIntent, ContextualResponse, EXPECTED_CONTRACT_VERSION, InferRuntimeClient,
     InferRuntimeConfig, InferRuntimeError, InferRuntimeErrorKind, MAX_AUDIO_UPLOAD_BYTES,
     MAX_CONTEXTUAL_INPUT_BYTES, RuntimeAttempt, RuntimeCandidateDecision, RuntimeJobConstraints,
-    RuntimeJobSnapshot, RuntimeProvenance, RuntimeRoutingDecision, TRANSCRIPTION_INTENT,
-    TranscriptionIntent,
+    RuntimeJobSnapshot, RuntimeProvenance, RuntimeRoutingDecision, TEXT_EMBEDDING_INTENT,
+    TRANSCRIPTION_INTENT, TextEmbeddingIntent, TextEmbeddingPayload,
+    TextEmbeddingProviderProvenance, TranscriptionIntent,
 };
 pub use infer_runtime_credentials::{
     InferRuntimeCredential, InferRuntimeCredentialError, InferRuntimeCredentialStore,
@@ -48,6 +50,7 @@ pub use long_audio::LONG_AUDIO_PLAN_VERSION;
 pub use scanner::{
     FolderScanner, ScanOutcome, add_root_and_scan, queue_scans_for_enabled_roots, scan_root,
 };
+pub use semantic_search::search as semantic_search;
 pub use waveform_artifact::{
     WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,
     load_or_build_waveform,

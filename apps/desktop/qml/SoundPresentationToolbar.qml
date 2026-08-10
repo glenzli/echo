@@ -15,6 +15,7 @@ ToolBar {
     required property string viewMode
     required property real cardWidth
     required property string searchText
+    required property bool semanticSearching
 
     signal searchRequested(string text)
     signal viewModeRequested(string mode)
@@ -63,8 +64,16 @@ ToolBar {
             Layout.maximumWidth: 280
             implicitHeight: Theme.compactControlHeight
             text: toolbar.searchText
-            placeholderText: qsTr("Search text, events, or filenames…")
+            placeholderText: qsTr("Search sounds by words or meaning…")
             onTextEdited: toolbar.searchRequested(text)
+        }
+
+        BusyIndicator {
+            visible: toolbar.semanticSearching
+            running: visible
+            Layout.preferredWidth: 18
+            Layout.preferredHeight: 18
+            Accessible.name: qsTr("Searching meaning")
         }
 
         Item { Layout.fillWidth: true }

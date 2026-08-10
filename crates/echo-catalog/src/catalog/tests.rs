@@ -63,7 +63,7 @@ fn previous_catalog_revision_adds_render_exports_without_losing_assets() {
                 ))
             })
             .expect("migration reads");
-    assert_eq!(version, "20260811.5");
+    assert_eq!(version, "20260811.6");
     assert_eq!(asset_count, 1);
     assert_eq!(render_table_count, 1);
     assert_eq!(album_table_count, 1);
@@ -111,7 +111,7 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.5");
+    assert_eq!(version, "20260811.6");
     assert_eq!(album_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -178,7 +178,7 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.5");
+    assert_eq!(version, "20260811.6");
     assert_eq!(render_table_count, 1);
     assert_eq!(reverb_column_count, 1);
     assert_eq!(album_table_count, 1);
@@ -224,7 +224,58 @@ fn immediately_previous_revision_adds_long_audio_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.5");
+    assert_eq!(version, "20260811.6");
     assert_eq!(segment_table_count, 1);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn immediately_previous_revision_adds_semantic_search_projection() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-semantic-migration-{}",
+        std::process::id()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            transaction.execute("DROP TABLE semantic_document_fts", [])?;
+            transaction.execute("DROP TABLE semantic_documents", [])?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260811.5' WHERE key = 'schema_version'",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("previous fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("previous revision migrates");
+    let (version, document_count, fts_count): (String, i64, i64) = migrated
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok((
+                transaction.query_row(
+                    "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                    [],
+                    |row| row.get(0),
+                )?,
+                transaction.query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' \
+                     AND name = 'semantic_documents'",
+                    [],
+                    |row| row.get(0),
+                )?,
+                transaction.query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' \
+                     AND name = 'semantic_document_fts'",
+                    [],
+                    |row| row.get(0),
+                )?,
+            ))
+        })
+        .expect("migration reads");
+    assert_eq!(version, "20260811.6");
+    assert_eq!(document_count, 1);
+    assert_eq!(fts_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }

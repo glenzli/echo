@@ -70,6 +70,11 @@ ApplicationWindow {
         audioSpace.debugCreateAlbum(name)
     }
 
+    function debugSearch(text: string) : void {
+        showAudioSpace()
+        audioSpace.setSearchText(text)
+    }
+
     function debugExportSound(destination: url) : void {
         if (audioSpace.selectedAsset === null) return
         showSoundEditor()

@@ -5,8 +5,13 @@
 //! response normalization and App-scoped Job provenance. It never opens the
 //! catalog and never knows how Echo schedules or presents analysis work.
 
+mod embeddings;
 mod responses;
 
+pub use embeddings::{
+    TEXT_EMBEDDING_INTENT, TextEmbeddingIntent, TextEmbeddingPayload,
+    TextEmbeddingProviderProvenance,
+};
 pub use responses::{
     CONTEXTUAL_INTENT, ContextualIntent, ContextualResponse, MAX_CONTEXTUAL_INPUT_BYTES,
 };

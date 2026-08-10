@@ -44,6 +44,10 @@ Item {
         return normalized.substring(normalized.lastIndexOf("/") + 1)
     }
 
+    function normalizedSearchText() : string {
+        return searchText.trim().replace(/\s+/g, " ")
+    }
+
     function refreshAssets() : void {
         const selectedId = selectedAsset !== null ? selectedAsset.id : ""
         const assets = backend.listAssets()
@@ -123,24 +127,29 @@ Item {
         return false
     }
 
-    function matchingSearchIds() : var {
+    function matchingSearchScores() : var {
         const ids = {}
-        const query = searchText.trim()
+        const query = normalizedSearchText()
         if (query.length === 0) {
             return ids
         }
         for (const hit of backend.search(query)) {
-            ids[hit.id] = true
+            ids[hit.id] = 2
+        }
+        if (semanticSearch.resultsQuery === query) {
+            for (const hit of semanticSearch.results) {
+                ids[hit.id] = Math.max(ids[hit.id] || 0, hit.score)
+            }
         }
         return ids
     }
 
-    function matchesSearch(asset: var, indexedIds: var) : bool {
+    function matchesSearch(asset: var, indexedScores: var) : bool {
         const query = searchText.trim().toLocaleLowerCase()
         if (query.length === 0) {
             return true
         }
-        if (indexedIds[asset.id]) {
+        if (indexedScores[asset.id] !== undefined) {
             return true
         }
         const haystack = [
@@ -151,6 +160,18 @@ Item {
         return haystack.includes(query)
     }
 
+    function searchRank(asset: var, indexedScores: var) : real {
+        const query = normalizedSearchText().toLocaleLowerCase()
+        if (query.length === 0) return 0
+        const haystack = [
+            fileName(asset.path), asset.soundCaption, asset.summary, asset.textPreview,
+            asset.eventType, asset.mood, asset.sourceTitle, asset.sourceLocation,
+            asset.keywords.join(" ")
+        ].join(" ").toLocaleLowerCase()
+        if (haystack.includes(query)) return 3
+        return indexedScores[asset.id] === undefined ? 0 : indexedScores[asset.id]
+    }
+
     function matchesFacets(asset: var) : bool {
         return (!likedOnly || asset.liked)
             && (minimumRating === 0 || asset.rating >= minimumRating)
@@ -159,15 +180,20 @@ Item {
     }
 
     function refilter() : void {
-        const indexedIds = matchingSearchIds()
+        const indexedScores = matchingSearchScores()
         const admitted = []
         for (const asset of allAssets) {
             if (matchesCollection(asset) && matchesFacets(asset)
-                    && matchesSearch(asset, indexedIds)) {
+                    && matchesSearch(asset, indexedScores)) {
                 admitted.push(asset)
             }
         }
         admitted.sort((left, right) => {
+            if (normalizedSearchText().length > 0) {
+                const relevance = searchRank(right, indexedScores)
+                    - searchRank(left, indexedScores)
+                if (Math.abs(relevance) > 0.000001) return relevance
+            }
             if (sortMode === "duration") {
                 return right.durationMillis - left.durationMillis
             }
@@ -196,6 +222,7 @@ Item {
     function setSearchText(text: string) : void {
         searchText = text
         refilter()
+        semanticSearchTimer.restart()
     }
 
     function setSortMode(mode: string) : void {
@@ -296,6 +323,26 @@ Item {
     }
 
     Connections {
+        target: semanticSearch
+        function onResultsChanged() : void {
+            if (semanticSearch.resultsQuery === workspace.normalizedSearchText()) {
+                workspace.refilter()
+            }
+        }
+    }
+
+    Timer {
+        id: semanticSearchTimer
+        interval: 320
+        repeat: false
+        onTriggered: {
+            const query = workspace.normalizedSearchText()
+            if (query.length === 0) semanticSearch.clear()
+            else semanticSearch.request(query)
+        }
+    }
+
+    Connections {
         target: advancedFilterState
         function onFiltersChanged() : void { workspace.refilter() }
     }
@@ -355,6 +402,7 @@ Item {
                     viewMode: workspace.viewMode
                     cardWidth: workspace.preferredCardWidth
                     searchText: workspace.searchText
+                    semanticSearching: semanticSearch.running
                     onSearchRequested: text => workspace.setSearchText(text)
                     onViewModeRequested: mode => workspace.viewMode = mode
                     onCardWidthRequested: width => workspace.setPreferredCardWidth(width)

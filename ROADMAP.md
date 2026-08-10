@@ -114,6 +114,16 @@ Schema structured-output 合同，因此格式不合格必须作为稳定的派�
 修补正文或回退为裸 Ollama／MLX 调用。成功结果与音频结果一样，必须先核验 App-scoped Job、
 local-first／local_only／background／no fallback 约束，再写入分析证据。
 
+自然语言检索继续沿用同一 Echo Consumer 身份，但只增加 `vision.embed_text` 最小 Intent 权限，
+不获得图片、人脸或资源管理能力。Echo 通过 typed
+`POST /infer/v1/vision/text-embeddings` 获取 768 维、L2 normalized 的文本向量，严格核验
+`0.1.0-candidate.2`、App-scoped Job、local-first／local_only／background／offline／
+no fallback／零成本约束，以及 provider/deployment/model build 和精确 embedding-space 身份。
+当前能力来自 SigLIP2 的文本塔：它适合在同一跨模态空间内提供 provisional 的文本证据近邻，
+但不是专为通用 text-text 检索优化的 encoder，也不能冒充尚未接入的 CLAP 音频向量。
+用户查询只在内存中短暂存在，不进入 Catalog、普通 metadata 或日志；Runtime 不可用时，已有
+literal FTS、Library 浏览、扫描、波形与播放保持可用。
+
 Contextual 产品合同从 2026-08-10 起显式区分“声音速写”和“理解摘要”：声音速写是供声音墙、
 胶片带与检查器标题消费的一行短标题，必须沿用文字的主要语言、描述可听见的场景或事件，且不得
 复制正文或使用“这段录音／某人描述”等模型元话语。声音速写最多 14 个中日韩字符或 7 个词，
@@ -257,7 +267,8 @@ InferenceBackend
     结构性扫描、导入和 waveform 优先于 ASR；ASR 失败不得影响 Original、播放或浏览。
     手动分析只作为失败重试/调试入口，不是正常产品路径。非空文字完成 `audio.align` 后，
     继续以最低队列优先级提交 `text.summarize` contextual 元数据；该默认仍不扩张到
-    SenseVoice、diarization、embedding 或 TTS。
+    SenseVoice、diarization 或 TTS。M2 已在合格 contextual 证据之后追加独立、可重建的
+    text-evidence embedding，不改变 M1 的音频分析 admission。
   - Contextual 展示合同（2026-08-10）：`text.summarize` 输出升级为带版本的严格 JSON，新增
     独立声音速写并保留理解摘要、关键词、情绪、地点、事件和人物提示。Echo 校验字段全集、版本、
     长度、主要书写系统和元话语；卡片不再使用正文兜底。旧 contextual job 与证据通过版本化身份
@@ -283,7 +294,7 @@ InferenceBackend
     声音墙与轻量详情不再急切加载整份 transcript JSON，只返回有界预览和叶子计数；
     完整文字、章节与点击定位只由显式打开的单声音工作区及专用读取 owner 按需提供；
     完整文字实体的分页／虚拟化是后续大实例压测的性能门槛，不由声音墙偷偷代读。
-  - 待办：长录音代理／切片、SenseVoice 能力 Intent、speaker/event 证据；音频合同能在
+  - 待办：SenseVoice 能力 Intent、speaker/event 证据；音频合同能在
     执行中暴露 Job id 后，再补真正可中断的 Runtime 取消（当前同步 endpoint 仅在终态返回 id）。
 - **M2 Library**：声音墙、声音相册、Like/评分、来源元数据筛选、自然语言搜索、人物/声音、
   时间、audio event、CLAP semantic search。
@@ -308,6 +319,19 @@ InferenceBackend
     返回的成员集合浏览，不在 QML 中重新解释模型字符串。同维度新的非空证据会令旧成员关系退出；
     空值不充当否定证据。候选不是用户相册事实，不做同义词、人物
     身份或相近地点合并，用户确认／保存相册留给后续独立切片。
+  - 自然语言检索首个切片（2026-08-11）：Catalog `20260811.6` 为每段声音构建有界、可重建的
+    semantic document，来源由声音速写、压缩摘要、关键词、情绪、地点、事件、人物提示和有限
+    文字预览组成；当前 contextual／transcript Analysis id 共同形成 source revision，任何证据
+    更新都会令旧向量失效并持久入队回填。向量按精确 space 保存为 8-bit 量化投影，Runtime
+    provenance 与文档一起保存；不同 space 永不混排。literal 层同时为整份有界证据建立 FTS，
+    避免只有逐字文字能被精确找到。
+    桌面搜索先同步返回文件名、卡片证据与 FTS 结果，320 ms 停顿后才在独立线程提交一次短暂
+    query embedding；旧 generation 返回会被丢弃，Qt 主线程不等待 Runtime。混合结果把直接
+    包含、FTS 与 semantic 近邻按来源排序；semantic 只披露前 40 候选中相对靠前的四分之一，
+    最少 3、最多 12 条，分数只作相对排序而不显示为“置信度”。Echo CLI 提供只输出资产身份和
+    相似度的诊断入口。当前只完成“AI／文字证据 ↔ 自然语言”的 provisional 检索；不声称已经
+    能在没有任何文字证据时从原始波形找到火车、雨声等声音，CLAP audio↔text 双索引仍是后续
+    独立能力与质量门槛。
 - **M3 Restore**：非破坏性 effect graph、EQ、loudness、DeepFilterNet、A/B Original。
   - 首个基础处理切片（2026-08-10）：Catalog 以 append-only revision 保存明确单位的
     `AdjustmentGraph`，当前只包含 Trim、Fade in/out 与输出 Gain；重复保存同一图保持幂等，
@@ -404,14 +428,15 @@ InferenceBackend
 
 ### 当前状态校准（2026-08-11）
 
-Echo 处于 **M0 已收口、M1 Runtime 音频证据链完成并开始接入 contextual、M2 声音墙进入
-可解释的 AI 聚合阶段、M3 已形成可试听、可测量、可保存版本并可离线导出的基础非破坏性处理
+Echo 处于 **M0 已收口、M1 Runtime 音频证据链与长录音分层理解完成、M2 声音墙已具备
+用户相册、可解释 AI 聚合和首个 provisional 自然语言检索、M3 已形成可试听、可测量、可保存版本并可离线导出的基础非破坏性处理
 闭环、M4 开始把 AI 相册候选提升为由用户确认的声音相册体验**。人物、地点、声音类型仍是模型
 提示或展示维度，不应被描述为已经具备完整识别和关系系统；用户保存建议只确认当时的成员快照，
-不反向确认人物身份或地点关系。M4 的成熟仍需要长录音结构、语义检索和更完整的 Revisit 体验。
+不反向确认人物身份或地点关系。M4 的成熟仍需要音频信号语义索引、人物关系和更完整的 Revisit
+体验。
 
-不把直接模型调用的数量当作里程碑进度；在 embedding／语义索引落地前，不把 transcript
-包含匹配或关键词 Facet 描述成语义搜索；在 M3 前，不在实时播放路径加入任何 AI effect。
+不把直接模型调用的数量当作里程碑进度；当前 text-evidence embedding 只能描述为 provisional
+自然语言检索，不把它夸大为原始声音语义搜索；在 M3 前，不在实时播放路径加入任何 AI effect。
 
 ## 10. 垂直切片（判断 Echo 是否成立的标准）
 

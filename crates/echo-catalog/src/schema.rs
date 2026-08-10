@@ -98,16 +98,42 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 4);
+    CatalogSchemaRevision::new(20_260_811, 5);
 pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 3);
+    CatalogSchemaRevision::new(20_260_811, 4);
 pub(crate) const OLDER_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 2);
+    CatalogSchemaRevision::new(20_260_811, 3);
 pub(crate) const OLDEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 2);
+pub(crate) const ANCIENT_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 5);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 6);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.5-long-audio-segments";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.6-semantic-search";
+
+pub(crate) const SEMANTIC_SEARCH_MIGRATION_SQL: &str = r"
+CREATE TABLE IF NOT EXISTS semantic_documents (
+    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
+    source_revision    TEXT NOT NULL,
+    document_text      TEXT NOT NULL,
+    embedding_space    TEXT NOT NULL,
+    dimensions         INTEGER NOT NULL CHECK (dimensions > 0),
+    quantized_vector   BLOB NOT NULL,
+    vector_norm_sq     INTEGER NOT NULL CHECK (vector_norm_sq > 0),
+    runtime_json       TEXT NOT NULL,
+    updated_at_millis  INTEGER NOT NULL,
+    CHECK (length(quantized_vector) = dimensions)
+);
+
+CREATE INDEX IF NOT EXISTS semantic_documents_space
+    ON semantic_documents (embedding_space, asset_id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS semantic_document_fts USING fts5(
+    asset_id UNINDEXED,
+    text,
+    tokenize = 'unicode61'
+);
+";
 
 pub(crate) const LONG_AUDIO_MIGRATION_SQL: &str = r"
 CREATE TABLE long_audio_segments (
@@ -287,6 +313,28 @@ CREATE TABLE IF NOT EXISTS scan_journal (
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS transcript_fts USING fts5(
+    asset_id UNINDEXED,
+    text,
+    tokenize = 'unicode61'
+);
+
+CREATE TABLE IF NOT EXISTS semantic_documents (
+    asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
+    source_revision    TEXT NOT NULL,
+    document_text      TEXT NOT NULL,
+    embedding_space    TEXT NOT NULL,
+    dimensions         INTEGER NOT NULL CHECK (dimensions > 0),
+    quantized_vector   BLOB NOT NULL,
+    vector_norm_sq     INTEGER NOT NULL CHECK (vector_norm_sq > 0),
+    runtime_json       TEXT NOT NULL,
+    updated_at_millis  INTEGER NOT NULL,
+    CHECK (length(quantized_vector) = dimensions)
+);
+
+CREATE INDEX IF NOT EXISTS semantic_documents_space
+    ON semantic_documents (embedding_space, asset_id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS semantic_document_fts USING fts5(
     asset_id UNINDEXED,
     text,
     tokenize = 'unicode61'

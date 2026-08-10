@@ -112,6 +112,11 @@ pub(crate) fn dispatch_long_audio(
         )?;
         if let Some(root) = aggregate_outline(catalog, &client, asset.id, &segments)? {
             crate::record_contextual(catalog, asset.id, &root.payload, &root.runtime)?;
+            crate::semantic_search::enqueue_current_document(
+                catalog,
+                asset.id,
+                crate::util::now_millis(),
+            )?;
         }
     }
     if let Some(runtime) = last_transcription_runtime {

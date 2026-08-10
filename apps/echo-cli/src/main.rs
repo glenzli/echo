@@ -12,6 +12,7 @@ mod list;
 mod models;
 mod probe;
 mod search;
+mod semantic_search;
 mod transcribe;
 mod waveform;
 

@@ -125,6 +125,7 @@ impl JobKindLabel for echo_catalog::Job {
             JobKind::Transcribe => "transcribe",
             JobKind::Align => "align",
             JobKind::Contextual => "contextual",
+            JobKind::EmbedText => "embed text",
         }
     }
 }

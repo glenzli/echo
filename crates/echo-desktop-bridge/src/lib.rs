@@ -231,11 +231,25 @@ mod ffi {
         start_millis: u64,
     }
 
+    /// One compact semantic result; presentation resolves the asset itself.
+    #[derive(Debug)]
+    struct SemanticSearchHitWire {
+        asset_id: String,
+        score: f64,
+    }
+
     extern "Rust" {
         type LibrarySession;
 
         /// Reports whether Echo's owner-only Runtime credential is available.
         fn infer_runtime_credential_available() -> bool;
+        /// Runs an ephemeral semantic query against one catalog attachment.
+        fn semantic_search_catalog(
+            catalog_path: &str,
+            runtime_endpoint: &str,
+            query: &str,
+            limit: u64,
+        ) -> Result<Vec<SemanticSearchHitWire>>;
         /// Opens (creating if needed) the catalog and cache at the given
         /// roots.
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
@@ -341,6 +355,37 @@ mod ffi {
 
 fn infer_runtime_credential_available() -> bool {
     echo_core::infer_runtime_credential_available()
+}
+
+fn semantic_search_catalog(
+    catalog_path: &str,
+    runtime_endpoint: &str,
+    query: &str,
+    limit: u64,
+) -> Result<Vec<ffi::SemanticSearchHitWire>, String> {
+    let catalog = echo_catalog::open_catalog(std::path::Path::new(catalog_path))
+        .map_err(|error| error.to_string())?;
+    let bearer_token = echo_core::load_infer_runtime_credential()
+        .map_err(|error| error.to_string())?
+        .into_bearer_token();
+    echo_core::semantic_search(
+        &catalog,
+        &echo_core::InferRuntimeConfig {
+            base_url: runtime_endpoint.to_owned(),
+            bearer_token,
+        },
+        query,
+        limit,
+    )
+    .map(|hits| {
+        hits.into_iter()
+            .map(|hit| ffi::SemanticSearchHitWire {
+                asset_id: hit.asset_id,
+                score: hit.score,
+            })
+            .collect()
+    })
+    .map_err(|error| error.to_string())
 }
 
 /// Opens (creating if needed) the catalog at `path` with the cache root at

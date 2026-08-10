@@ -6,6 +6,7 @@
 #include "loudness_analysis_controller.hpp"
 #include "playback_controller.hpp"
 #include "render_export_controller.hpp"
+#include "semantic_search_controller.hpp"
 #include "ui_preferences.hpp"
 
 #if defined(Q_OS_MACOS)
@@ -72,6 +73,18 @@ int main(int argc, char* argv[]) {
         RenderExportController render_exporter(backend);
         UiPreferences ui_prefs(application);
         InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
+        SemanticSearchController semantic_search(
+            QString::fromStdString(catalog),
+            inference_prefs.runtimeEndpoint()
+        );
+        QObject::connect(
+            &inference_prefs,
+            &InferencePreferences::runtimeEndpointChanged,
+            &semantic_search,
+            [&inference_prefs, &semantic_search] {
+                semantic_search.setRuntimeEndpoint(inference_prefs.runtimeEndpoint());
+            }
+        );
         backend.startWorkers(inference_prefs.runtimeEndpoint());
 
         QQmlApplicationEngine engine;
@@ -92,6 +105,10 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(
             QStringLiteral("inferencePrefs"),
             &inference_prefs
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("semanticSearch"),
+            &semantic_search
         );
         ui_prefs.attachEngine(engine);
         engine.loadFromModule("EchoDesktop", "Main");
@@ -143,6 +160,13 @@ int main(int argc, char* argv[]) {
                 QMetaObject::invokeMethod(root, "debugCreateAlbum", Q_ARG(QString, name));
             });
         }
+        if (const char* search_text = std::getenv("ECHO_DEBUG_SEARCH")) {
+            QObject* root = engine.rootObjects().first();
+            const QString query = QString::fromUtf8(search_text);
+            QTimer::singleShot(600, root, [root, query] {
+                QMetaObject::invokeMethod(root, "debugSearch", Q_ARG(QString, query));
+            });
+        }
         if (std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr) {
             QObject* root = engine.rootObjects().first();
             QTimer::singleShot(750, root, [root] {
@@ -189,10 +213,15 @@ int main(int argc, char* argv[]) {
                                      || std::getenv("ECHO_DEBUG_OPEN_LIBRARY") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_ALBUM") != nullptr
                                      || std::getenv("ECHO_DEBUG_CREATE_ALBUM") != nullptr
+                                     || std::getenv("ECHO_DEBUG_SEARCH") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EXPORT") != nullptr
                                      || replay_editor;
-                const int delay = replay_editor ? 5000 : delayed ? 3000 : 800;
+                const bool semantic_search = std::getenv("ECHO_DEBUG_SEARCH") != nullptr;
+                const int delay = replay_editor     ? 5000
+                                  : semantic_search ? 6000
+                                  : delayed         ? 3000
+                                                    : 800;
                 QTimer::singleShot(delay, window, [window, shot] {
                     window->grabWindow().save(QString::fromUtf8(shot));
                     QGuiApplication::exit(0);

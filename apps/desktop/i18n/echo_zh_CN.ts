@@ -1408,8 +1408,13 @@
     <name>SoundPresentationToolbar</name>
     <message>
         <location filename="../qml/SoundPresentationToolbar.qml" line="66"/>
-        <source>Search text, events, or filenames…</source>
-        <translation>搜索文字、事件或文件名…</translation>
+        <source>Search sounds by words or meaning…</source>
+        <translation>按文字或含义搜索声音…</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundPresentationToolbar.qml" line="78"/>
+        <source>Searching meaning</source>
+        <translation>正在理解搜索含义</translation>
     </message>
     <message>
         <location filename="../qml/SoundPresentationToolbar.qml" line="54"/>

@@ -28,6 +28,7 @@ mod scan_journal;
 mod scan_root;
 mod schema;
 mod search;
+mod semantic_search;
 mod smart_albums;
 mod source_metadata;
 mod user_albums;
@@ -82,7 +83,13 @@ pub use scan_journal::{journal_fingerprint, upsert_journal};
 pub use scan_root::{ScanRoot, add_scan_root, list_scan_roots, remove_scan_root};
 pub use schema::{CatalogSchemaRevision, CatalogSchemaRevisionParseError};
 pub use search::{
-    SearchHit, index_transcript, remove_transcript_index, search_transcripts, segment_cjk,
+    SearchHit, index_transcript, remove_transcript_index, search_semantic_text, search_transcripts,
+    segment_cjk,
+};
+pub use semantic_search::{
+    SemanticSearchHit, SemanticSource, UpsertSemanticDocument, index_semantic_source_text,
+    list_semantic_sources_needing_embedding, search_semantic_documents, semantic_source,
+    upsert_semantic_document,
 };
 pub use smart_albums::{
     SmartAlbumCandidate, SmartAlbumEvidence, SmartAlbumFacet, list_smart_album_candidates,

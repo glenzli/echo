@@ -3,7 +3,8 @@
 use clap::{Parser, Subcommand};
 
 use super::{
-    catalog, credentials, import, library, list, models, probe, search, transcribe, waveform,
+    catalog, credentials, import, library, list, models, probe, search, semantic_search,
+    transcribe, waveform,
 };
 
 #[derive(Debug, Parser)]
@@ -106,6 +107,19 @@ pub(crate) enum Command {
         #[arg(long, default_value_t = 20)]
         limit: u64,
     },
+    /// Searches by natural-language meaning using Echo's local semantic index.
+    SemanticSearch {
+        /// Catalog database path.
+        catalog: std::path::PathBuf,
+        /// Natural-language query. It is embedded ephemerally and not persisted.
+        query: String,
+        /// Infer Runtime endpoint (default: env override, Discovery, then local 8787).
+        #[arg(long)]
+        endpoint: Option<String>,
+        /// Maximum hits (default 20).
+        #[arg(long, default_value_t = 20)]
+        limit: u64,
+    },
 }
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()> {
@@ -147,5 +161,14 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
             query,
             limit,
         } => search::run_search(&catalog, &query, limit),
+        Command::SemanticSearch {
+            catalog,
+            query,
+            endpoint,
+            limit,
+        } => {
+            let endpoint = endpoint.unwrap_or_else(transcribe::default_runtime_endpoint);
+            semantic_search::run_search(&catalog, &query, &endpoint, limit)
+        }
     }
 }

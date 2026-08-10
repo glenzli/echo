@@ -90,7 +90,7 @@ pub fn search_transcripts(
     )?;
     let rows = statement.query_map(
         rusqlite::params![
-            format!("\"{segmented}\""),
+            fts_phrase(&segmented),
             i64::try_from(limit).unwrap_or(i64::MAX)
         ],
         |row| {
@@ -107,6 +107,44 @@ pub fn search_transcripts(
     Ok(hits)
 }
 
+/// Full-text search over the bounded semantic evidence document. This covers
+/// captions, summaries, keywords, facets, people hints, and a transcript
+/// preview while vector retrieval handles non-literal meaning.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the query cannot be applied.
+pub fn search_semantic_text(
+    transaction: &Transaction<'_>,
+    query: &str,
+    limit: u64,
+) -> Result<Vec<SearchHit>, CatalogError> {
+    let segmented = segment_cjk(query.trim());
+    if segmented.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut statement = transaction.prepare(
+        "SELECT document.asset_id, snippet(semantic_document_fts, 1, '…', '…', '…', 24) \
+         FROM semantic_document_fts document JOIN assets asset ON asset.id = document.asset_id \
+         WHERE semantic_document_fts MATCH ?1 AND asset.path_status = 'present' \
+         ORDER BY rank LIMIT ?2",
+    )?;
+    let rows = statement.query_map(
+        rusqlite::params![
+            fts_phrase(&segmented),
+            i64::try_from(limit).unwrap_or(i64::MAX)
+        ],
+        |row| {
+            Ok(SearchHit {
+                asset_id: row.get(0)?,
+                snippet: row.get(1)?,
+            })
+        },
+    )?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(CatalogError::from)
+}
+
 /// Removes the index row for an asset (used when evidence is superseded).
 ///
 /// # Errors
@@ -119,3 +157,10 @@ pub fn remove_transcript_index(
     transaction.execute("DELETE FROM transcript_fts WHERE asset_id = ?1", [asset_id])?;
     Ok(())
 }
+
+fn fts_phrase(segmented: &str) -> String {
+    format!("\"{}\"", segmented.replace('"', "\"\""))
+}
+
+#[cfg(test)]
+mod tests;

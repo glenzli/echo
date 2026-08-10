@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.28)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS LinguistTools Quick Multimedia)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Concurrent LinguistTools Quick Multimedia)
 find_package(PkgConfig REQUIRED)
 find_package(Iconv REQUIRED)
 qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh_CN)
@@ -115,6 +115,8 @@ qt_add_executable(
     src/playback_adjustment_projection.hpp
     src/render_export_controller.cpp
     src/render_export_controller.hpp
+    src/semantic_search_controller.cpp
+    src/semantic_search_controller.hpp
     src/reverb_projection.cpp
     src/reverb_projection.hpp
     src/ui_preferences.cpp
@@ -226,6 +228,7 @@ target_link_libraries(
     PRIVATE
         Qt6::Quick
         Qt6::Multimedia
+        Qt6::Concurrent
         echo-desktop-rust
         PkgConfig::FFmpeg
         ${CMAKE_DL_LIBS}
