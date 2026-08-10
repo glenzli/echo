@@ -139,6 +139,7 @@ AudioAsset
 ├── UserState       liked / rating / album membership（用户事实）
 ├── AdjustmentGraph gain / eq / denoise / normalize / trim（非破坏性）
 ├── DerivedRenders  可重建
+├── Publications    用户导出的文件与来源版本证据（不由缓存维护删除）
 └── Relations       people / place / event（用户逐步确认，append-only）
 ```
 
@@ -370,13 +371,24 @@ InferenceBackend
     更新，不进入 Qt 实时回调。编辑面板以同一 C++ 系数计算真实响应曲线，提供六个可直接拖动的
     节点及所选频段的类型、频率、Q、增益精调，所有操作进入同一草稿历史、A/B、保存与整段响度
     分析合同。本切片不伪造实时频谱，也不包含动态 EQ、线性相位、卷积混响或第三方插件宿主。
+  - 首个离线导出切片（2026-08-11）：独立 `OfflineWavRenderer` 复用试听的完整 authored
+    adjustment 执行顺序，但明确排除只用于设备试听安全的 `OutputGuard`；渲染以固定内存流式
+    输出 48 kHz、双声道、24-bit PCM WAV，并对最终量化样本重新计算 Integrated LUFS 与 True
+    Peak 估计。Qt `RenderExportController` 在后台执行、节流发布进度、支持协作取消，并通过
+    `QSaveFile` 原子提交，禁止目标覆盖 immutable Original。Catalog `20260811.3` 新增用户交付
+    文件的 publication provenance：源 Asset、最新已保存 adjustment revision、规范化输出路径、
+    格式、帧数、大小、BLAKE3 内容身份与响度证据；它与可清理／可重建的 cache artifact 分离。
+    编辑器顶部提供专用导出入口与本地文件选择，草稿未保存时拒绝导出，保证结果可追溯；旧
+    `20260811.1`／`.2` Catalog 均可连续原子迁移。本切片尚不包含 RF64、其他编码格式、批量
+    导出、响度合规报告、交付队列恢复或文件历史管理界面。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 
-### 当前状态校准（2026-08-09）
+### 当前状态校准（2026-08-11）
 
 Echo 处于 **M0 已收口、M1 Runtime 音频证据链完成并开始接入 contextual、M2 声音墙进入
-可解释的 AI 聚合与相册候选阶段、M3 进入基础非破坏性处理切片**。Audio Space 已经形成首个可用垂直界面，但人物、地点、声音类型
+可解释的 AI 聚合与相册候选阶段、M3 已形成可试听、可测量、可保存版本并可离线导出的基础
+非破坏性处理闭环**。Audio Space 已经形成首个可用垂直界面，但人物、地点、声音类型
 仍是模型提示或展示维度，不应被描述为已经具备完整识别和关系系统。M4 表示声音相册体验
 成熟，而不是首次出现 Audio Space 页面。
 

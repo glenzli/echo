@@ -16,7 +16,7 @@ use crate::ffi::{
     WaveformArtifactWire, WaveformLevelWire,
 };
 
-fn now_millis() -> i64 {
+pub(crate) fn now_millis() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |duration| {
@@ -941,9 +941,8 @@ impl LibrarySession {
         Ok(start_millis)
     }
 
-    /// Exposes the catalog for contract tests.
-    #[cfg(test)]
-    pub fn catalog(&self) -> &Catalog {
+    /// Shared catalog attachment for adjacent session workflow owners.
+    pub(crate) fn catalog(&self) -> &Catalog {
         &self.catalog
     }
 

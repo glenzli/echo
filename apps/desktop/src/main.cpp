@@ -5,6 +5,7 @@
 #include "inference_preferences.hpp"
 #include "loudness_analysis_controller.hpp"
 #include "playback_controller.hpp"
+#include "render_export_controller.hpp"
 #include "ui_preferences.hpp"
 
 #if defined(Q_OS_MACOS)
@@ -17,6 +18,7 @@
 #include <QQmlEngine>
 #include <QQuickWindow>
 #include <QTimer>
+#include <QUrl>
 
 #include <cstdlib>
 #include <iostream>
@@ -67,6 +69,7 @@ int main(int argc, char* argv[]) {
         DesktopBackend backend(std::move(session));
         PlaybackController player;
         LoudnessAnalysisController loudness_analyzer;
+        RenderExportController render_exporter(backend);
         UiPreferences ui_prefs(application);
         InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
         backend.startWorkers(inference_prefs.runtimeEndpoint());
@@ -80,6 +83,10 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(
             QStringLiteral("loudnessAnalyzer"),
             &loudness_analyzer
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("renderExporter"),
+            &render_exporter
         );
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
         engine.rootContext()->setContextProperty(
@@ -135,6 +142,32 @@ int main(int argc, char* argv[]) {
                 QMetaObject::invokeMethod(root, "debugReplaySoundEditor");
             });
         }
+        if (std::getenv("ECHO_DEBUG_OPEN_EXPORT") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(900, root, [root] {
+                QMetaObject::invokeMethod(root, "debugOpenExportDialog");
+            });
+        }
+        if (const char* export_path = std::getenv("ECHO_DEBUG_EXPORT")) {
+            QObject* root = engine.rootObjects().first();
+            const QUrl destination = QUrl::fromLocalFile(QString::fromUtf8(export_path));
+            QObject::connect(
+                &render_exporter,
+                &RenderExportController::stateChanged,
+                &application,
+                [&render_exporter] {
+                    if (!render_exporter.running()
+                        && (render_exporter.hasResult()
+                            || !render_exporter.errorText().isEmpty())) {
+                        QGuiApplication::exit(render_exporter.hasResult() ? 0 : 1);
+                    }
+                }
+            );
+            QTimer::singleShot(900, root, [root, destination] {
+                QMetaObject::invokeMethod(root, "debugExportSound", Q_ARG(QUrl, destination));
+            });
+            QTimer::singleShot(30'000, &application, [] { QGuiApplication::exit(2); });
+        }
         if (const char* shot = std::getenv("ECHO_DEBUG_SCREENSHOT")) {
             if (auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first())) {
                 const bool replay_editor = std::getenv("ECHO_DEBUG_REPLAY_EDITOR") != nullptr;
@@ -142,6 +175,7 @@ int main(int argc, char* argv[]) {
                                      || std::getenv("ECHO_DEBUG_OPEN_SETTINGS") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_LIBRARY") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
+                                     || std::getenv("ECHO_DEBUG_OPEN_EXPORT") != nullptr
                                      || replay_editor;
                 const int delay = replay_editor ? 5000 : delayed ? 3000 : 800;
                 QTimer::singleShot(delay, window, [window, shot] {

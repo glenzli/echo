@@ -4,6 +4,7 @@
 //! cache paths: they talk to this crate through the generated CXX ABI, and it
 //! owns the durable [`LibrarySession`] lifecycle.
 
+mod render_exports;
 mod session;
 
 use crate::session::LibrarySession;
@@ -103,6 +104,19 @@ mod ffi {
         limiter_enabled: bool,
         limiter_ceiling_centibels: i16,
         limiter_release_millis: u16,
+    }
+
+    /// Completed offline-render evidence crossing the desktop ABI atomically.
+    #[derive(Debug)]
+    struct RenderExportWire {
+        output_path: String,
+        sample_rate: u32,
+        channel_count: u32,
+        bit_depth: u16,
+        frame_count: u64,
+        size_bytes: u64,
+        integrated_lufs: f32,
+        true_peak_dbtp: f32,
     }
 
     /// One indexed keyword facet over the newest contextual evidence.
@@ -239,6 +253,13 @@ mod ffi {
             asset_id: &str,
             adjustment: &AssetAdjustmentWire,
         ) -> Result<()>;
+        /// Records provenance after a WAV has been atomically published.
+        fn session_record_render_export(
+            self: &LibrarySession,
+            asset_id: &str,
+            adjustment_revision_id: i64,
+            evidence: &RenderExportWire,
+        ) -> Result<i64>;
         /// Starts the background worker pool (idempotent).
         fn session_start_workers(self: &LibrarySession, runtime_endpoint: &str) -> Result<()>;
         /// Returns the current analysis stage for one asset.
@@ -371,6 +392,28 @@ impl LibrarySession {
     ) -> Result<(), String> {
         self.set_asset_adjustment(asset_id, adjustment)
             .map_err(|error| error.message)
+    }
+
+    /// Records one completed render publication and its source revision.
+    fn session_record_render_export(
+        &self,
+        asset_id: &str,
+        adjustment_revision_id: i64,
+        evidence: &ffi::RenderExportWire,
+    ) -> Result<i64, String> {
+        self.record_render_export(
+            asset_id,
+            adjustment_revision_id,
+            &evidence.output_path,
+            evidence.sample_rate,
+            evidence.channel_count,
+            evidence.bit_depth,
+            evidence.frame_count,
+            evidence.size_bytes,
+            evidence.integrated_lufs,
+            evidence.true_peak_dbtp,
+        )
+        .map_err(|error| error.message)
     }
 }
 

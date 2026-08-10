@@ -621,3 +621,33 @@ QString DesktopBackend::cacheRoot() const {
     const rust::String path = session_->session_cache_root();
     return QString::fromUtf8(path.data(), path.size());
 }
+
+QString DesktopBackend::recordRenderExport(
+    const QString& assetId,
+    qint64 adjustmentRevisionId,
+    const QString& outputPath,
+    quint32 sampleRate,
+    quint32 channelCount,
+    quint16 bitDepth,
+    quint64 frameCount,
+    quint64 sizeBytes,
+    float integratedLufs,
+    float truePeakDbtp
+) const {
+    try {
+        echo::desktop::RenderExportWire evidence;
+        evidence.output_path = outputPath.toStdString();
+        evidence.sample_rate = sampleRate;
+        evidence.channel_count = channelCount;
+        evidence.bit_depth = bitDepth;
+        evidence.frame_count = frameCount;
+        evidence.size_bytes = sizeBytes;
+        evidence.integrated_lufs = integratedLufs;
+        evidence.true_peak_dbtp = truePeakDbtp;
+        session_
+            ->session_record_render_export(assetId.toStdString(), adjustmentRevisionId, evidence);
+        return {};
+    } catch (const rust::Error& error) {
+        return QString::fromUtf8(error.what());
+    }
+}

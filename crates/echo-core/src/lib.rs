@@ -29,8 +29,8 @@ pub use analysis_queue::contextual_job_id;
 pub use contextual::{
     CONTEXTUAL_JOB_REVISION, CONTEXTUAL_SCHEMA_VERSION, ContextualPayload, record_contextual,
 };
-pub use error::CoreErrorKind;
-pub use import::{ImportOutcome, import_asset, import_asset_with_probe};
+pub use error::{CoreError, CoreErrorKind};
+pub use import::{ImportOutcome, hash_file, import_asset, import_asset_with_probe};
 pub use infer_runtime::{
     ALIGNMENT_INTENT, AlignmentIntent, AlignmentItem, AlignmentPayload, CONTEXTUAL_INTENT,
     ContextualIntent, ContextualResponse, EXPECTED_CONTRACT_VERSION, InferRuntimeClient,

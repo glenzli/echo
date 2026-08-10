@@ -98,16 +98,40 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 2);
+pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 2);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 3);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.2-algorithmic-reverb";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.3-render-exports";
 
 pub(crate) const ADJUSTMENT_EFFECTS_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
     ADD COLUMN reverb_json TEXT NOT NULL DEFAULT
     '{"enabled":false,"mix_percent":18,"pre_delay_millis":20,"decay_millis":1800,"size_percent":55,"damping_percent":45,"low_cut_hertz":120,"high_cut_hertz":10000}';
 "#;
+
+pub(crate) const RENDER_EXPORTS_MIGRATION_SQL: &str = r"
+CREATE TABLE render_exports (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id               TEXT NOT NULL REFERENCES assets(id),
+    adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    output_path            TEXT NOT NULL,
+    format                 TEXT NOT NULL CHECK (format = 'wav_pcm24'),
+    sample_rate            INTEGER NOT NULL CHECK (sample_rate > 0),
+    channel_count          INTEGER NOT NULL CHECK (channel_count > 0),
+    bit_depth              INTEGER NOT NULL CHECK (bit_depth = 24),
+    frame_count            INTEGER NOT NULL CHECK (frame_count > 0),
+    content_hash           TEXT NOT NULL,
+    size_bytes             INTEGER NOT NULL CHECK (size_bytes > 0),
+    integrated_lufs        REAL NOT NULL,
+    true_peak_dbtp         REAL NOT NULL,
+    created_at_millis      INTEGER NOT NULL
+);
+
+CREATE INDEX render_exports_asset_created
+    ON render_exports (asset_id, created_at_millis DESC, id DESC);
+";
 
 pub(crate) const SCHEMA_SQL: &str = "
 CREATE TABLE IF NOT EXISTS catalog_meta (
@@ -261,6 +285,26 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
 
 CREATE INDEX IF NOT EXISTS asset_adjustment_revisions_latest
     ON asset_adjustment_revisions (asset_id, id DESC);
+
+CREATE TABLE IF NOT EXISTS render_exports (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id               TEXT NOT NULL REFERENCES assets(id),
+    adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    output_path            TEXT NOT NULL,
+    format                 TEXT NOT NULL CHECK (format = 'wav_pcm24'),
+    sample_rate            INTEGER NOT NULL CHECK (sample_rate > 0),
+    channel_count          INTEGER NOT NULL CHECK (channel_count > 0),
+    bit_depth              INTEGER NOT NULL CHECK (bit_depth = 24),
+    frame_count            INTEGER NOT NULL CHECK (frame_count > 0),
+    content_hash           TEXT NOT NULL,
+    size_bytes             INTEGER NOT NULL CHECK (size_bytes > 0),
+    integrated_lufs        REAL NOT NULL,
+    true_peak_dbtp         REAL NOT NULL,
+    created_at_millis      INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS render_exports_asset_created
+    ON render_exports (asset_id, created_at_millis DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS asset_source_metadata (
     asset_id           TEXT PRIMARY KEY REFERENCES assets(id),

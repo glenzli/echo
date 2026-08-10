@@ -54,6 +54,18 @@ ApplicationWindow {
         debugAnalysisTimer.start()
     }
 
+    function debugOpenExportDialog() : void {
+        if (audioSpace.selectedAsset === null) return
+        showSoundEditor()
+        soundEditor.openExport()
+    }
+
+    function debugExportSound(destination: url) : void {
+        if (audioSpace.selectedAsset === null) return
+        showSoundEditor()
+        soundEditor.debugExport(destination)
+    }
+
     onWorkspaceIndexChanged: player.stop()
 
     EchoSettingsDialog {

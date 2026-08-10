@@ -111,6 +111,10 @@ qt_add_executable(
     src/playback_controller.hpp
     src/parametric_equalizer_projection.cpp
     src/parametric_equalizer_projection.hpp
+    src/playback_adjustment_projection.cpp
+    src/playback_adjustment_projection.hpp
+    src/render_export_controller.cpp
+    src/render_export_controller.hpp
     src/reverb_projection.cpp
     src/reverb_projection.hpp
     src/ui_preferences.cpp
@@ -164,6 +168,7 @@ qt_add_qml_module(
         qml/SpaceReverbPanel.qml
         qml/SoundEditorTimeline.qml
         qml/SoundEditingWorkspace.qml
+        qml/SoundExportDialog.qml
         qml/SoundCard.qml
         qml/SoundFilmstripItem.qml
         qml/SoundFilterState.qml
@@ -202,6 +207,7 @@ qt_add_qml_module(
         icons/fade-smooth.svg
         icons/fade-equal-power.svg
         icons/equalizer.svg
+        icons/export.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

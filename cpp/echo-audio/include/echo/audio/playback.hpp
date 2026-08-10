@@ -19,6 +19,14 @@ struct PlaybackMeterSnapshot {
     float limiter_reduction_decibels = 0.0F;
 };
 
+/// Selects preview-only safety stages without changing the authored graph.
+/// Offline render disables these stages so the published file contains only
+/// the user's adjustments; device playback keeps both enabled by default.
+struct PlaybackPipelineOptions {
+    bool apply_output_guard = true;
+    bool collect_metering = true;
+};
+
 /// Streaming playback session over one source.
 ///
 /// The realtime contract: a producer thread decodes the source to the
@@ -34,7 +42,8 @@ class PlaybackSession {
     /// @throws std::runtime_error when the source cannot be opened.
     explicit PlaybackSession(
         const std::string& path,
-        PlaybackAdjustment adjustment = PlaybackAdjustment{}
+        PlaybackAdjustment adjustment = PlaybackAdjustment{},
+        PlaybackPipelineOptions options = PlaybackPipelineOptions{}
     );
     ~PlaybackSession();
 

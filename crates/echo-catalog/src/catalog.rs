@@ -10,8 +10,9 @@ use rusqlite::{Connection, OptionalExtension};
 use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
-        ADJUSTMENT_EFFECTS_MIGRATION_SQL, CatalogSchemaRevision, PREVIOUS_SCHEMA_VERSION,
-        SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
+        ADJUSTMENT_EFFECTS_MIGRATION_SQL, CatalogSchemaRevision, LEGACY_SCHEMA_VERSION,
+        PREVIOUS_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL, SCHEMA_IDENTITY, SCHEMA_SQL,
+        SCHEMA_VERSION,
     },
 };
 
@@ -92,7 +93,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_parametric_equalizer_schema(connection)?;
+            migrate_render_exports_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == LEGACY_SCHEMA_VERSION) =>
+        {
+            migrate_adjustment_effects_and_render_exports(connection)?;
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -108,9 +116,28 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
-fn migrate_parametric_equalizer_schema(connection: &Connection) -> Result<(), CatalogError> {
+fn migrate_render_exports_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    transaction.execute_batch(RENDER_EXPORTS_MIGRATION_SQL)?;
+    transaction.execute(
+        "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
+        [SCHEMA_VERSION.to_string()],
+    )?;
+    transaction.execute(
+        "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [SCHEMA_IDENTITY],
+    )?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn migrate_adjustment_effects_and_render_exports(
+    connection: &Connection,
+) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     transaction.execute_batch(ADJUSTMENT_EFFECTS_MIGRATION_SQL)?;
+    transaction.execute_batch(RENDER_EXPORTS_MIGRATION_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

@@ -302,7 +302,7 @@ fn dispatch_contextual(
 
 /// Imports one discovered file: hash, relink or register, probe, journal.
 fn import_file(catalog: &Catalog, _config: &WorkerConfig, path: &Path) -> Result<(), CoreError> {
-    let content_hash = crate::import::hash_source(path)?;
+    let content_hash = crate::import::hash_file(path)?;
     let size = std::fs::metadata(path)
         .map_err(|error| {
             CoreError::new(

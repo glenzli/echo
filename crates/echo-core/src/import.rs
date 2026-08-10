@@ -95,7 +95,7 @@ pub fn import_asset_with_probe(
     source: &Path,
     probe: &dyn Fn(&Path) -> Result<Option<AudioProbe>, CoreError>,
 ) -> Result<ImportOutcome, CoreError> {
-    let content_hash = hash_source(source)?;
+    let content_hash = hash_file(source)?;
     let size_bytes = fs::metadata(source)
         .map_err(|error| {
             CoreError::new(
@@ -176,7 +176,12 @@ fn refresh_path(
     Ok(refreshed)
 }
 
-pub(crate) fn hash_source(source: &Path) -> Result<ContentHash, CoreError> {
+/// Streams a file into Echo's canonical BLAKE3 content identity.
+///
+/// # Errors
+///
+/// Returns [`CoreErrorKind::SourceUnavailable`] when the file cannot be read.
+pub fn hash_file(source: &Path) -> Result<ContentHash, CoreError> {
     let mut file = fs::File::open(source).map_err(|error| {
         CoreError::new(
             CoreErrorKind::SourceUnavailable,

@@ -21,6 +21,7 @@ mod derived_artifact;
 mod error;
 mod inference_run;
 mod job_queue;
+mod render_export;
 mod scan_journal;
 mod scan_root;
 mod schema;
@@ -63,6 +64,10 @@ pub use job_queue::{
     ClaimedJob, FileJobPayload, Job, JobKind, JobState, JobStats, ScanRootJobPayload,
     claim_next_job, complete_job, enqueue_job, fail_job, job_by_id, job_stats, list_failed_jobs,
     recover_interrupted_jobs, requeue_scan_job, retry_job, update_job_progress,
+};
+pub use render_export::{
+    RecordRenderExport, RenderExportFormat, RenderExportRecord, list_render_exports,
+    record_render_export,
 };
 pub use scan_journal::{journal_fingerprint, upsert_journal};
 pub use scan_root::{ScanRoot, add_scan_root, list_scan_roots, remove_scan_root};

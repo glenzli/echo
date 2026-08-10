@@ -208,9 +208,18 @@ Rectangle {
         adjustmentEditor.analyzeOutput()
     }
 
+    function openExport() : void {
+        exportDialog.present()
+    }
+
+    function debugExport(destination: url) : void {
+        exportDialog.debugExport(destination)
+    }
+
     onAssetChanged: {
         player.stop()
         loudnessAnalyzer.cancel()
+        renderExporter.cancel()
         auditionOriginal = false
         loadedPath = ""
         loadedBaseAdjustmentKey = ""
@@ -261,6 +270,13 @@ Rectangle {
                 workspace.loadedAdjustmentKey = ""
             }
         }
+    }
+
+    SoundExportDialog {
+        id: exportDialog
+        asset: workspace.asset
+        draft: adjustmentDraft
+        exporter: renderExporter
     }
 
     Connections {
@@ -430,6 +446,15 @@ Rectangle {
             }
 
             Item { Layout.fillWidth: true }
+
+            EchoButton {
+                text: qsTr("Export")
+                ghost: true
+                enabled: workspace.hasAsset
+                    && workspace.asset.pathStatus !== "missing"
+                    && !renderExporter.running
+                onClicked: workspace.openExport()
+            }
         }
 
         SplitView {

@@ -13,6 +13,7 @@ add_library(
     src/loudness_gain_advisor.cpp
     src/loudness_meter.cpp
     src/offline_loudness_analyzer.cpp
+    src/offline_wav_renderer.cpp
     src/output_guard.cpp
     src/output_limiter.cpp
     src/playback.cpp
@@ -101,6 +102,14 @@ if(BUILD_TESTING)
         echo-offline-loudness-analyzer-test
         tests/offline_loudness_analyzer_test.cpp
     )
+
+    add_executable(
+        echo-offline-wav-renderer-test
+        tests/offline_wav_renderer_test.cpp
+    )
+    target_link_libraries(echo-offline-wav-renderer-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-offline-wav-renderer-test)
+    add_test(NAME echo-offline-wav-renderer-test COMMAND echo-offline-wav-renderer-test)
     target_link_libraries(echo-offline-loudness-analyzer-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-offline-loudness-analyzer-test)
     add_test(

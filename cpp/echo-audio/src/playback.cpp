@@ -183,7 +183,8 @@ class FrameRing {
 
 class PlaybackSession::Impl {
   public:
-    Impl(const std::string& path, PlaybackAdjustment adjustment) : path_(path) {
+    Impl(const std::string& path, PlaybackAdjustment adjustment, PlaybackPipelineOptions options) :
+        path_(path), options_(options) {
         AVFormatContext** format_slot = format_.slot();
         int result = avformat_open_input(format_slot, path.c_str(), nullptr, nullptr);
         if (result < 0) {
@@ -470,8 +471,12 @@ class PlaybackSession::Impl {
             dynamics_processor_->reset();
             reverb_->reset();
             output_limiter_->reset();
-            output_guard_->reset();
-            loudness_meter_->reset();
+            if (options_.apply_output_guard) {
+                output_guard_->reset();
+            }
+            if (options_.collect_metering) {
+                loudness_meter_->reset();
+            }
             momentary_lufs_.store(-70.0F, std::memory_order_release);
             output_peak_dbfs_.store(-70.0F, std::memory_order_release);
             gain_reduction_decibels_.store(0.0F, std::memory_order_release);
@@ -600,11 +605,18 @@ class PlaybackSession::Impl {
                         }
                     }
                     output_limiter_->process_interleaved(scratch, chunk, channel_count_);
-                    output_guard_->process_interleaved(scratch, chunk, channel_count_);
-                    loudness_meter_->process_interleaved(scratch, chunk, channel_count_);
-                    const LoudnessSnapshot loudness = loudness_meter_->snapshot();
-                    momentary_lufs_.store(loudness.momentary_lufs, std::memory_order_release);
-                    output_peak_dbfs_.store(loudness.sample_peak_dbfs, std::memory_order_release);
+                    if (options_.apply_output_guard) {
+                        output_guard_->process_interleaved(scratch, chunk, channel_count_);
+                    }
+                    if (options_.collect_metering) {
+                        loudness_meter_->process_interleaved(scratch, chunk, channel_count_);
+                        const LoudnessSnapshot loudness = loudness_meter_->snapshot();
+                        momentary_lufs_.store(loudness.momentary_lufs, std::memory_order_release);
+                        output_peak_dbfs_.store(
+                            loudness.sample_peak_dbfs,
+                            std::memory_order_release
+                        );
+                    }
                     gain_reduction_decibels_.store(
                         dynamics_processor_->gain_reduction_decibels(),
                         std::memory_order_release
@@ -681,6 +693,7 @@ class PlaybackSession::Impl {
     }
 
     std::string path_;
+    PlaybackPipelineOptions options_;
     FormatContext format_;
     int stream_index_ = 0;
     std::uint64_t duration_millis_ = 0;
@@ -726,8 +739,11 @@ class PlaybackSession::Impl {
     std::atomic<std::uint64_t> consumed_frames_{0};
 };
 
-PlaybackSession::PlaybackSession(const std::string& path, PlaybackAdjustment adjustment) :
-    impl_(std::make_unique<Impl>(path, adjustment)) {
+PlaybackSession::PlaybackSession(
+    const std::string& path,
+    PlaybackAdjustment adjustment,
+    PlaybackPipelineOptions options
+) : impl_(std::make_unique<Impl>(path, adjustment, options)) {
     impl_->start();
 }
 

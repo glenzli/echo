@@ -71,6 +71,21 @@ class DesktopBackend : public QObject {
     quint64 assetCount() const;
     QString catalogPath() const;
     QString cacheRoot() const;
+    /// Worker-thread publication handoff after an atomic render commit.
+    /// Returns an empty string on success or a localized-ready technical
+    /// detail for the controller to present.
+    [[nodiscard]] QString recordRenderExport(
+        const QString& assetId,
+        qint64 adjustmentRevisionId,
+        const QString& outputPath,
+        quint32 sampleRate,
+        quint32 channelCount,
+        quint16 bitDepth,
+        quint64 frameCount,
+        quint64 sizeBytes,
+        float integratedLufs,
+        float truePeakDbtp
+    ) const;
 
   signals:
     void assetsChanged();
