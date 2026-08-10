@@ -12,6 +12,9 @@ constexpr double kLowShelfHertz = 120.0;
 constexpr double kMidPeakHertz = 1000.0;
 constexpr double kMidQuality = 0.8;
 constexpr double kHighShelfHertz = 8000.0;
+constexpr std::int16_t kMinimumGainCentibels = -1200;
+constexpr std::int16_t kMaximumGainCentibels = 1200;
+constexpr std::uint32_t kTransitionMillis = 30;
 
 double amplitude(std::int16_t gain_centibels) {
     return std::pow(10.0, static_cast<double>(gain_centibels) / 4000.0);
@@ -126,6 +129,56 @@ void ThreeBandEqualizer::Section::reset() {
     std::fill(states.begin(), states.end(), State{});
 }
 
+float ThreeBandEqualizer::Bank::process(float sample, std::size_t channel) {
+    if (bypassed) {
+        return sample;
+    }
+    return high.process(mid.process(low.process(sample, channel), channel), channel);
+}
+
+void ThreeBandEqualizer::Bank::reset() {
+    low.reset();
+    mid.reset();
+    high.reset();
+}
+
+void ThreeBandEqualizer::validate(ThreeBandEqualizerAdjustment adjustment) {
+    for (const std::int16_t gain : {
+             adjustment.low_gain_centibels,
+             adjustment.mid_gain_centibels,
+             adjustment.high_gain_centibels,
+         }) {
+        if (gain < kMinimumGainCentibels || gain > kMaximumGainCentibels) {
+            throw std::invalid_argument("equalizer gain is outside the supported range");
+        }
+    }
+}
+
+bool ThreeBandEqualizer::same(
+    ThreeBandEqualizerAdjustment left,
+    ThreeBandEqualizerAdjustment right
+) {
+    return left.low_gain_centibels == right.low_gain_centibels
+           && left.mid_gain_centibels == right.mid_gain_centibels
+           && left.high_gain_centibels == right.high_gain_centibels;
+}
+
+ThreeBandEqualizer::Bank ThreeBandEqualizer::prepare(
+    ThreeBandEqualizerAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    validate(adjustment);
+    return {
+        .adjustment = adjustment,
+        .low = low_shelf(adjustment.low_gain_centibels, sample_rate, channel_count),
+        .mid = peaking(adjustment.mid_gain_centibels, sample_rate, channel_count),
+        .high = high_shelf(adjustment.high_gain_centibels, sample_rate, channel_count),
+        .bypassed = adjustment.low_gain_centibels == 0 && adjustment.mid_gain_centibels == 0
+                    && adjustment.high_gain_centibels == 0,
+    };
+}
+
 ThreeBandEqualizer::ThreeBandEqualizer(
     ThreeBandEqualizerAdjustment adjustment,
     std::uint32_t sample_rate,
@@ -135,28 +188,80 @@ ThreeBandEqualizer::ThreeBandEqualizer(
         || kHighShelfHertz >= static_cast<double>(sample_rate) / 2.0) {
         throw std::invalid_argument("equalizer requires valid audio dimensions");
     }
-    low_ = low_shelf(adjustment.low_gain_centibels, sample_rate, channel_count);
-    mid_ = peaking(adjustment.mid_gain_centibels, sample_rate, channel_count);
-    high_ = high_shelf(adjustment.high_gain_centibels, sample_rate, channel_count);
-    bypassed_ = adjustment.low_gain_centibels == 0 && adjustment.mid_gain_centibels == 0
-                && adjustment.high_gain_centibels == 0;
+    sample_rate_ = sample_rate;
+    channel_count_ = channel_count;
+    transition_total_frames_ =
+        std::max<std::size_t>(1, static_cast<std::size_t>(sample_rate) * kTransitionMillis / 1000);
+    current_ = prepare(adjustment, sample_rate_, channel_count_);
+}
+
+void ThreeBandEqualizer::begin_transition(ThreeBandEqualizerAdjustment adjustment) {
+    if (same(current_.adjustment, adjustment)) {
+        return;
+    }
+    next_ = prepare(adjustment, sample_rate_, channel_count_);
+    transition_frame_ = 0;
+}
+
+void ThreeBandEqualizer::transition_to(ThreeBandEqualizerAdjustment adjustment) {
+    validate(adjustment);
+    if (!next_.has_value()) {
+        begin_transition(adjustment);
+        return;
+    }
+    if (same(next_->adjustment, adjustment)) {
+        pending_.reset();
+        return;
+    }
+    pending_ = adjustment;
 }
 
 float ThreeBandEqualizer::process_sample(float sample, std::size_t channel) {
-    if (bypassed_) {
-        return sample;
+    if (channel >= channel_count_) {
+        throw std::out_of_range("equalizer channel is outside the prepared layout");
     }
-    return high_.process(mid_.process(low_.process(sample, channel), channel), channel);
+    const float current_output = current_.process(sample, channel);
+    if (!next_.has_value()) {
+        return current_output;
+    }
+
+    const float next_output = next_->process(sample, channel);
+    const float progress = std::min(
+        1.0F,
+        static_cast<float>(transition_frame_ + 1) / static_cast<float>(transition_total_frames_)
+    );
+    const float output = current_output + (next_output - current_output) * progress;
+
+    if (channel + 1 == channel_count_) {
+        ++transition_frame_;
+        if (transition_frame_ >= transition_total_frames_) {
+            current_ = std::move(*next_);
+            next_.reset();
+            transition_frame_ = 0;
+            if (pending_.has_value()) {
+                const ThreeBandEqualizerAdjustment pending = *pending_;
+                pending_.reset();
+                begin_transition(pending);
+            }
+        }
+    }
+    return output;
 }
 
 void ThreeBandEqualizer::reset() {
-    low_.reset();
-    mid_.reset();
-    high_.reset();
+    if (pending_.has_value()) {
+        current_ = prepare(*pending_, sample_rate_, channel_count_);
+    } else if (next_.has_value()) {
+        current_ = std::move(*next_);
+    }
+    next_.reset();
+    pending_.reset();
+    transition_frame_ = 0;
+    current_.reset();
 }
 
 bool ThreeBandEqualizer::is_bypassed() const {
-    return bypassed_;
+    return current_.bypassed && !next_.has_value() && !pending_.has_value();
 }
 
 } // namespace echo::audio

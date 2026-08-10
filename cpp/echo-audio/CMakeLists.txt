@@ -7,6 +7,7 @@ add_library(
     src/adjustment.cpp
     src/decode.cpp
     src/low_cut_filter.cpp
+    src/output_guard.cpp
     src/playback.cpp
     src/three_band_equalizer.cpp
     src/waveform.cpp
@@ -53,6 +54,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-low-cut-filter-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-low-cut-filter-test)
     add_test(NAME echo-low-cut-filter-test COMMAND echo-low-cut-filter-test)
+
+    add_executable(
+        echo-output-guard-test
+        tests/output_guard_test.cpp
+    )
+    target_link_libraries(echo-output-guard-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-output-guard-test)
+    add_test(NAME echo-output-guard-test COMMAND echo-output-guard-test)
 
     add_executable(
         echo-three-band-equalizer-test

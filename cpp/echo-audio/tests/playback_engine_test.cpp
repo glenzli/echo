@@ -9,13 +9,19 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 namespace {
 
-std::string synthesize_sine_wav(std::uint32_t sample_rate, double seconds) {
+std::string synthesize_sine_wav(
+    std::uint32_t sample_rate,
+    double seconds,
+    double frequency = 440.0,
+    double amplitude = 12000.0
+) {
     const std::uint16_t channels = 1;
     const std::uint16_t bits = 16;
     const std::uint32_t sample_count =
@@ -46,9 +52,9 @@ std::string synthesize_sine_wav(std::uint32_t sample_rate, double seconds) {
     append("data", 4);
     append(&data_bytes, 4);
     for (std::uint32_t index = 0; index < sample_count; ++index) {
-        const double phase = 2.0 * 3.14159265358979323846 * 440.0 * static_cast<double>(index)
+        const double phase = 2.0 * 3.14159265358979323846 * frequency * static_cast<double>(index)
                              / static_cast<double>(sample_rate);
-        const std::int16_t sample = static_cast<std::int16_t>(std::sin(phase) * 12000.0);
+        const std::int16_t sample = static_cast<std::int16_t>(std::sin(phase) * amplitude);
         append(&sample, 2);
     }
     return wav;
@@ -269,9 +275,73 @@ int main(int argc, char* argv[]) {
             peak = std::max(peak, std::abs(adjusted_buffer[index]));
         }
         expect(peak > 0.05F && peak < 0.22F, "adjusted gain changes decoded amplitude");
+        const std::uint64_t position_before_equalizer_update = adjusted.position_millis();
+        adjusted.update_equalizer({-600, 600, -600});
+        std::vector<float> updated_buffer(8'192, 0.0F);
+        const std::size_t updated = pull_until(adjusted, updated_buffer.data(), 2'048, 200);
+        expect(updated > 0, "live equalizer update keeps returning audio");
+        expect(
+            adjusted.position_millis() > position_before_equalizer_update,
+            "live equalizer update does not restart the playback timeline"
+        );
+        expect(
+            std::all_of(
+                updated_buffer.begin(),
+                updated_buffer.begin()
+                    + static_cast<std::ptrdiff_t>(updated * adjusted.channel_count()),
+                [](float sample) {
+                    return std::isfinite(sample) && sample >= -1.0F && sample <= 1.0F;
+                }
+            ),
+            "live equalizer output stays finite and device-bounded"
+        );
+        bool rejected_update = false;
+        try {
+            adjusted.update_equalizer({0, 0, 1'201});
+        } catch (const std::invalid_argument&) {
+            rejected_update = true;
+        }
+        expect(rejected_update, "live equalizer update preserves the authored gain bounds");
         adjusted.seek(0);
         expect(adjusted.position_millis() >= 500, "adjusted seek clamps to trim start");
         adjusted.stop();
+    }
+
+    // Positive EQ on near-full-scale material must not recreate the former
+    // hard-clipped plateau at the device boundary.
+    {
+        const std::filesystem::path overload_path =
+            std::filesystem::temp_directory_path()
+            / ("echo-playback-overload-"
+               + std::to_string(std::chrono::system_clock::now().time_since_epoch().count())
+               + ".wav");
+        {
+            std::ofstream file(overload_path, std::ios::binary);
+            const std::string wav = synthesize_sine_wav(48'000, 1.0, 1'000.0, 32'000.0);
+            file.write(wav.data(), static_cast<std::streamsize>(wav.size()));
+        }
+        echo::audio::PlaybackSession protected_playback(
+            overload_path.string(),
+            {.equalizer = {
+                 .low_gain_centibels = 1'200,
+                 .mid_gain_centibels = 1'200,
+                 .high_gain_centibels = 1'200
+             }}
+        );
+        std::vector<float> protected_samples(16'384, 0.0F);
+        const std::size_t protected_frames =
+            pull_until(protected_playback, protected_samples.data(), 4'096, 512);
+        float protected_peak = 0.0F;
+        std::size_t hard_clipped = 0;
+        for (std::size_t index = 0; index < protected_frames * protected_playback.channel_count();
+             ++index) {
+            protected_peak = std::max(protected_peak, std::abs(protected_samples[index]));
+            hard_clipped += std::abs(protected_samples[index]) >= 0.9999F ? 1U : 0U;
+        }
+        expect(protected_peak < 1.0F, "overloaded EQ preview stays below full scale");
+        expect(hard_clipped == 0, "overloaded EQ preview has no hard-clipped plateau");
+        protected_playback.stop();
+        std::remove(overload_path.c_str());
     }
 
     // Stop: reads return zero immediately.

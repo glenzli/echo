@@ -49,6 +49,7 @@ ApplicationWindow {
         if (audioSpace.selectedAsset === null) return
         showSoundEditor()
         soundEditor.togglePlayback()
+        debugEqualizerTimer.start()
         debugReplayTimer.start()
     }
 
@@ -137,6 +138,13 @@ ApplicationWindow {
             }
             window.jobsWereActive = active
         }
+    }
+
+    Timer {
+        id: debugEqualizerTimer
+
+        interval: 150
+        onTriggered: soundEditor.debugNudgeEqualizer()
     }
 
     Timer {

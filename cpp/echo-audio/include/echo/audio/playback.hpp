@@ -43,6 +43,10 @@ class PlaybackSession {
     /// Seeks to `millis`; the producer performs the reposition at the next
     /// packet boundary and drains the ring first.
     void seek(std::uint64_t millis);
+    /// Publishes a new EQ target without replacing the decoder or playback
+    /// session. The producer coalesces rapid updates and crossfades filter
+    /// state before the audio reaches the realtime ring.
+    void update_equalizer(ThreeBandEqualizerAdjustment adjustment);
 
     [[nodiscard]] bool is_paused() const;
     [[nodiscard]] bool is_stopped() const;

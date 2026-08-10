@@ -2,6 +2,7 @@
 
 #include "echo/audio/ffmpeg_include.hpp"
 #include "echo/audio/low_cut_filter.hpp"
+#include "echo/audio/output_guard.hpp"
 #include "echo/audio/three_band_equalizer.hpp"
 
 #include <algorithm>
@@ -9,6 +10,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -21,8 +23,45 @@ namespace echo::audio {
 namespace {
 
 constexpr int kCanonicalSampleRate = 48000;
-constexpr std::uint64_t kRingCapacityFrames = kCanonicalSampleRate * 2; // 2 s
+constexpr std::uint64_t kRingCapacityFrames = 4096; // 85 ms at 48 kHz
 constexpr std::uint64_t kSeekWaitTimeoutMillis = 50;
+constexpr std::int16_t kMinimumEqualizerGainCentibels = -1200;
+constexpr std::int16_t kMaximumEqualizerGainCentibels = 1200;
+
+std::uint64_t pack_equalizer(ThreeBandEqualizerAdjustment adjustment) {
+    return static_cast<std::uint64_t>(static_cast<std::uint16_t>(adjustment.low_gain_centibels))
+           | (static_cast<std::uint64_t>(static_cast<std::uint16_t>(adjustment.mid_gain_centibels))
+              << 16U)
+           | (static_cast<std::uint64_t>(static_cast<std::uint16_t>(adjustment.high_gain_centibels))
+              << 32U);
+}
+
+ThreeBandEqualizerAdjustment unpack_equalizer(std::uint64_t packed) {
+    const auto signed_gain = [](std::uint64_t value) {
+        const std::uint16_t encoded = static_cast<std::uint16_t>(value & 0xFFFFU);
+        return encoded <= static_cast<std::uint16_t>(std::numeric_limits<std::int16_t>::max())
+                   ? static_cast<std::int16_t>(encoded)
+                   : static_cast<std::int16_t>(static_cast<std::int32_t>(encoded) - 65'536);
+    };
+    return {
+        .low_gain_centibels = signed_gain(packed),
+        .mid_gain_centibels = signed_gain(packed >> 16U),
+        .high_gain_centibels = signed_gain(packed >> 32U),
+    };
+}
+
+bool valid_equalizer(ThreeBandEqualizerAdjustment adjustment) {
+    for (const std::int16_t gain : {
+             adjustment.low_gain_centibels,
+             adjustment.mid_gain_centibels,
+             adjustment.high_gain_centibels,
+         }) {
+        if (gain < kMinimumEqualizerGainCentibels || gain > kMaximumEqualizerGainCentibels) {
+            return false;
+        }
+    }
+    return true;
+}
 
 std::string av_error_text(int code) {
     char buffer[AV_ERROR_MAX_STRING_SIZE] = {0};
@@ -162,6 +201,10 @@ class FrameRing {
         return write_index - read_index;
     }
 
+    std::size_t writable() const {
+        return capacity_frames_ - available();
+    }
+
   private:
     std::vector<float> data_;
     std::size_t capacity_frames_;
@@ -257,6 +300,9 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
+        applied_equalizer_ = pack_equalizer(adjustment_->equalizer());
+        requested_equalizer_.store(applied_equalizer_, std::memory_order_release);
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -320,6 +366,14 @@ class PlaybackSession::Impl {
                && std::chrono::steady_clock::now() < deadline) {
             std::this_thread::yield();
         }
+    }
+
+    void update_equalizer(ThreeBandEqualizerAdjustment adjustment) {
+        if (!valid_equalizer(adjustment)) {
+            throw std::invalid_argument("playback equalizer gain is outside the supported range");
+        }
+        requested_equalizer_.store(pack_equalizer(adjustment), std::memory_order_release);
+        control_cv_.notify_one();
     }
 
     bool is_paused() const {
@@ -387,6 +441,7 @@ class PlaybackSession::Impl {
             decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
             low_cut_filter_->reset();
             equalizer_->reset();
+            output_guard_->reset();
         }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
         while (ring_->available() > 0 && std::chrono::steady_clock::now() < deadline) {
@@ -452,7 +507,30 @@ class PlaybackSession::Impl {
                         : 0;
                 std::size_t written = 0;
                 while (written < selected_count) {
-                    const std::size_t chunk = std::min(selected_count - written, scratch_frames);
+                    const std::size_t writable = ring_->writable();
+                    if (writable == 0) {
+                        std::unique_lock<std::mutex> lock(control_mutex_);
+                        control_cv_.wait_for(lock, std::chrono::milliseconds(1));
+                        if (stopped_) {
+                            av_freep(&output_data[0]);
+                            av_frame_unref(frame_.get());
+                            return false;
+                        }
+                        if (seek_requested_) {
+                            av_freep(&output_data[0]);
+                            av_frame_unref(frame_.get());
+                            return false;
+                        }
+                        continue;
+                    }
+                    const std::size_t chunk =
+                        std::min({selected_count - written, scratch_frames, writable});
+                    const std::uint64_t requested =
+                        requested_equalizer_.load(std::memory_order_acquire);
+                    if (requested != applied_equalizer_) {
+                        equalizer_->transition_to(unpack_equalizer(requested));
+                        applied_equalizer_ = requested;
+                    }
                     for (std::size_t index = 0; index < chunk; ++index) {
                         const std::uint64_t source_frame =
                             selected_start + static_cast<std::uint64_t>(written + index);
@@ -463,27 +541,11 @@ class PlaybackSession::Impl {
                                 channel
                             );
                             const float equalized = equalizer_->process_sample(filtered, channel);
-                            const float sample = equalized * amplitude;
-                            scratch[index * channel_count_ + channel] =
-                                std::clamp(sample, -1.0F, 1.0F);
+                            scratch[index * channel_count_ + channel] = equalized * amplitude;
                         }
                     }
+                    output_guard_->process_interleaved(scratch, chunk, channel_count_);
                     const std::size_t pushed = ring_->write(scratch, chunk);
-                    if (pushed == 0) {
-                        // Ring full: wait briefly instead of busy-spinning.
-                        // The wait honors pause and stop, so a paused or
-                        // stopped consumer can never trap the producer.
-                        std::unique_lock<std::mutex> lock(control_mutex_);
-                        control_cv_.wait_for(lock, std::chrono::milliseconds(1), [this] {
-                            return !paused_ || stopped_;
-                        });
-                        if (stopped_) {
-                            av_freep(&output_data[0]);
-                            av_frame_unref(frame_.get());
-                            return false;
-                        }
-                        continue;
-                    }
                     written += pushed;
                 }
                 if (frame_end >= adjustment_->end_frame()) {
@@ -563,7 +625,10 @@ class PlaybackSession::Impl {
     std::unique_ptr<PreparedAdjustment> adjustment_;
     std::unique_ptr<LowCutFilter> low_cut_filter_;
     std::unique_ptr<ThreeBandEqualizer> equalizer_;
+    std::unique_ptr<OutputGuard> output_guard_;
     std::uint64_t decoded_frame_cursor_ = 0;
+    std::atomic<std::uint64_t> requested_equalizer_{0};
+    std::uint64_t applied_equalizer_ = 0;
 
     std::thread thread_;
     std::mutex control_mutex_;
@@ -600,6 +665,9 @@ void PlaybackSession::stop() {
 }
 void PlaybackSession::seek(std::uint64_t millis) {
     impl_->seek(millis);
+}
+void PlaybackSession::update_equalizer(ThreeBandEqualizerAdjustment adjustment) {
+    impl_->update_equalizer(adjustment);
 }
 
 bool PlaybackSession::is_paused() const {

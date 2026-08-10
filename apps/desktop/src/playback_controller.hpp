@@ -45,6 +45,8 @@ class PlaybackController : public QObject {
         int eqMidGainCentibels,
         int eqHighGainCentibels
     );
+    Q_INVOKABLE bool
+    updateEqualizer(int eqLowGainCentibels, int eqMidGainCentibels, int eqHighGainCentibels);
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 millis);

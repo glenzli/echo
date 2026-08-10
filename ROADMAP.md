@@ -321,6 +321,12 @@ InferenceBackend
     三段 Biquad 在解码生产线程执行，Seek 会重置状态，实时回调仍只读取已处理 PCM。调整工作台
     将窄纵向基础面板与独立三段均衡面板并排，恢复正常可读字号并降低默认波形高度，为后续真实的
     响度、Dynamics 与降噪 panel owner 留出空间；未实现能力不显示空控件。
+  - 三段均衡试听连续性修正（2026-08-10）：播放中的 EQ 手势不再销毁并重建解码会话；QML 以
+    16 ms 合并窗口发布最新目标，C++ 播放会话通过原子参数邮箱交给解码生产线程，并在两个完整
+    Biquad 状态组之间做 30 ms 线性交叉过渡。预处理 ring 收敛为约 85 ms，保证回调仍只读取已
+    处理 PCM，同时避免两秒旧声音掩盖交互结果。设备输出前增加不属于 authored graph 的安全
+    保护 owner：短攻击／释放包络配合可微软上限，替代 `[-1, 1]` 硬截幅；Seek 同时重置滤波和
+    保护状态。此修正不改变 Catalog schema，也不把安全保护冒充为可编辑 Dynamics／Limiter。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 

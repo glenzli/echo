@@ -14,6 +14,7 @@ Rectangle {
 
     property var waveformLevels: []
     property string loadedPath: ""
+    property string loadedBaseAdjustmentKey: ""
     property string loadedAdjustmentKey: ""
     property bool auditionOriginal: false
 
@@ -58,7 +59,7 @@ Rectangle {
         return values.join(" · ")
     }
 
-    function adjustmentKey() : string {
+    function playbackBaseAdjustmentKey() : string {
         const prefix = auditionOriginal ? "original" : "adjusted"
         return prefix + ":" + adjustmentDraft.trimStartMillis + ":"
             + adjustmentDraft.trimEndMillis + ":"
@@ -67,7 +68,11 @@ Rectangle {
             + (auditionOriginal ? 0 : adjustmentDraft.fadeInCurve) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.gainCentibels) + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.lowCutHertz) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.lowCutHertz)
+    }
+
+    function adjustmentKey() : string {
+        return playbackBaseAdjustmentKey() + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.eqLowGainCentibels) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels)
@@ -94,6 +99,7 @@ Rectangle {
                             auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels,
                             auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels)
         loadedPath = asset.path
+        loadedBaseAdjustmentKey = playbackBaseAdjustmentKey()
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(adjustmentDraft.trimStartMillis,
             Math.min(millis, adjustmentDraft.trimEndMillis))
@@ -119,6 +125,15 @@ Rectangle {
         return editorTimeline.hasTimeSelection
             ? editorTimeline.selectionStartMillis
             : adjustmentDraft.trimStartMillis
+    }
+
+    function scheduleEqualizerPreview() : void {
+        if (auditionOriginal || !player.active || !hasAsset
+                || loadedPath !== asset.path
+                || loadedBaseAdjustmentKey !== playbackBaseAdjustmentKey()) {
+            return
+        }
+        equalizerPreviewTimer.restart()
     }
 
     function togglePlayback() : void {
@@ -147,10 +162,18 @@ Rectangle {
         adjustmentDraft.redo()
     }
 
+    function debugNudgeEqualizer() : void {
+        const next = adjustmentDraft.eqMidGainCentibels >= 1100
+            ? adjustmentDraft.eqMidGainCentibels - 100
+            : adjustmentDraft.eqMidGainCentibels + 100
+        adjustmentDraft.setEqualizerBand("mid", next)
+    }
+
     onAssetChanged: {
         player.stop()
         auditionOriginal = false
         loadedPath = ""
+        loadedBaseAdjustmentKey = ""
         loadedAdjustmentKey = ""
         Qt.callLater(refreshAsset)
     }
@@ -177,7 +200,42 @@ Rectangle {
                                            eqLowGain, eqMidGain, eqHighGain)) {
                 adjustmentDraft.markSaved()
                 workspace.auditionOriginal = false
+                workspace.loadedBaseAdjustmentKey = ""
                 workspace.loadedAdjustmentKey = ""
+            }
+        }
+    }
+
+    Connections {
+        target: adjustmentDraft
+
+        function onEqLowGainCentibelsChanged() : void {
+            workspace.scheduleEqualizerPreview()
+        }
+        function onEqMidGainCentibelsChanged() : void {
+            workspace.scheduleEqualizerPreview()
+        }
+        function onEqHighGainCentibelsChanged() : void {
+            workspace.scheduleEqualizerPreview()
+        }
+    }
+
+    Timer {
+        id: equalizerPreviewTimer
+
+        interval: 16
+        repeat: false
+        onTriggered: {
+            if (workspace.auditionOriginal || !player.active || !workspace.hasAsset
+                    || workspace.loadedPath !== workspace.asset.path
+                    || workspace.loadedBaseAdjustmentKey
+                        !== workspace.playbackBaseAdjustmentKey()) {
+                return
+            }
+            if (player.updateEqualizer(adjustmentDraft.eqLowGainCentibels,
+                                       adjustmentDraft.eqMidGainCentibels,
+                                       adjustmentDraft.eqHighGainCentibels)) {
+                workspace.loadedAdjustmentKey = workspace.adjustmentKey()
             }
         }
     }

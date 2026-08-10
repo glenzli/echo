@@ -73,6 +73,30 @@ void PlaybackController::playAdjusted(
     startSession(path, adjustment);
 }
 
+bool PlaybackController::updateEqualizer(
+    int eqLowGainCentibels,
+    int eqMidGainCentibels,
+    int eqHighGainCentibels
+) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    if (session == nullptr || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200
+        || eqMidGainCentibels < -1200 || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200
+        || eqHighGainCentibels > 1200) {
+        return false;
+    }
+    try {
+        session->update_equalizer({
+            .low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels),
+            .mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels),
+            .high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels),
+        });
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback equalizer: %s", error.what());
+        return false;
+    }
+    return true;
+}
+
 void PlaybackController::startSession(
     const QString& path,
     const echo::audio::PlaybackAdjustment& adjustment
