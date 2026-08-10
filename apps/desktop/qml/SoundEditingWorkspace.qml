@@ -261,16 +261,29 @@ Rectangle {
             Item { Layout.fillWidth: true }
         }
 
-        RowLayout {
+        SplitView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 12
+            orientation: Qt.Vertical
+
+            handle: Rectangle {
+                implicitHeight: 7
+                color: Theme.window
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 44
+                    height: 1
+                    color: Theme.borderStrong
+                }
+            }
 
             SoundEditorTimeline {
                 id: editorTimeline
 
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+                SplitView.fillWidth: true
+                SplitView.fillHeight: true
+                SplitView.minimumHeight: 260
                 waveformLevels: workspace.waveformLevels
                 sourceDurationMillis: adjustmentDraft.sourceDurationMillis
                 trimStartMillis: adjustmentDraft.trimStartMillis
@@ -303,8 +316,10 @@ Rectangle {
             }
 
             SoundAdjustmentEditor {
-                Layout.preferredWidth: 296
-                Layout.fillHeight: true
+                SplitView.fillWidth: true
+                SplitView.preferredHeight: 240
+                SplitView.minimumHeight: 196
+                SplitView.maximumHeight: 300
                 draft: adjustmentDraft
                 hasTimeSelection: editorTimeline.hasTimeSelection
                 selectionStartMillis: editorTimeline.selectionStartMillis

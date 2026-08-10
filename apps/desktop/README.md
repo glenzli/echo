@@ -31,7 +31,10 @@ time projection, logarithmic zoom, horizontal navigation, direct trim and fade
 handles, time selection, the clip-gain dB line, playhead, and transient gesture
 readouts. `SoundAdjustmentDraft.qml` owns validation, gesture-coalesced
 undo/redo history, saved-state comparison, and explicit publication.
-`SoundAdjustmentEditor.qml` is the precision inspector, while
+`SoundAdjustmentEditor.qml` is the horizontally composed bottom precision
+console; the workspace owns its vertical split with the timeline, so the
+waveform and exact controls can be resized without changing draft semantics.
+Meanwhile,
 `SoundEditingWorkspace.qml` owns source, transport, selection looping,
 adjusted/original audition, backend lifecycle, and the small command projection
 consumed by the window chrome. `MainTitleBar.qml` presents editor-wide draft

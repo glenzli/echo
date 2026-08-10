@@ -586,19 +586,9 @@
         <translation>声音调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="131"/>
-        <source>Saved version</source>
-        <translation>已保存版本</translation>
-    </message>
-    <message>
         <location filename="../qml/SoundAdjustmentEditor.qml" line="149"/>
         <source>Save version</source>
         <translation>保存版本</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="129"/>
-        <source>Unsaved changes</source>
-        <translation>有未保存的调整</translation>
     </message>
     <message>
         <location filename="../qml/SoundAdjustmentEditor.qml" line="135"/>
@@ -634,10 +624,6 @@
         <location filename="../qml/SoundAdjustmentEditor.qml" line="167"/>
         <source>Fade out</source>
         <translation>淡出</translation>
-    </message>
-    <message>
-        <source>Time selection</source>
-        <translation>时间选区</translation>
     </message>
     <message>
         <source>Range</source>
