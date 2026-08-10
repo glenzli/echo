@@ -283,6 +283,13 @@ int main(int argc, char* argv[]) {
             peak = std::max(peak, std::abs(adjusted_buffer[index]));
         }
         expect(peak > 0.05F && peak < 0.22F, "adjusted gain changes decoded amplitude");
+        const echo::audio::PlaybackMeterSnapshot meter = adjusted.meter_snapshot();
+        expect(meter.momentary_lufs > -70.0F, "prepared playback publishes real loudness");
+        expect(meter.output_peak_dbfs > -70.0F, "prepared playback publishes output peak");
+        expect(
+            meter.gain_reduction_decibels >= 0.0F,
+            "prepared playback publishes bounded gain reduction"
+        );
         const std::uint64_t position_before_equalizer_update = adjusted.position_millis();
         adjusted.update_equalizer({-600, 600, -600});
         std::vector<float> updated_buffer(8'192, 0.0F);

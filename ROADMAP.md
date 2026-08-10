@@ -334,6 +334,12 @@ InferenceBackend
     播放。调整工作台新增紧凑 Dynamics 面板与真实传递曲线，所有控制进入同一草稿历史、Original
     A/B、显式保存和 Audio Space 已保存版本播放合同。此切片是峰值压缩，不宣称已经具备 LUFS
     响度测量、自动增益、Limiter authored effect、多段压缩或降噪。
+  - 播放响度反馈切片（2026-08-10）：独立 `LoudnessMeter` 在设备安全保护之后读取实际 prepared
+    PCM，以 BS.1770 K-weighting 和精确 400 ms 滚动窗口计算 Momentary LUFS，同时发布带衰减保持的
+    Sample Peak 与压缩器实时 Gain Reduction。测量在解码生产线程执行，Qt 回调仍只复制 ring 中
+    PCM；播放会话经原子快照把三个只读指标交给桌面控制器，Dynamics 面板以紧凑电平条和数值反馈
+    当前听到的处理结果。Seek 会重置测量窗口。此切片不改变 `AdjustmentGraph` 或 Catalog schema，
+    也不把 Momentary LUFS／Sample Peak 描述成整段 Integrated LUFS、True Peak 或响度归一化结果。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 

@@ -25,6 +25,9 @@ class PlaybackController : public QObject {
     Q_PROPERTY(qint64 position READ position NOTIFY positionChanged)
     Q_PROPERTY(qint64 duration READ duration NOTIFY stateChanged)
     Q_PROPERTY(qreal volume READ volume WRITE setVolume NOTIFY volumeChanged)
+    Q_PROPERTY(qreal momentaryLufs READ momentaryLufs NOTIFY meterChanged)
+    Q_PROPERTY(qreal outputPeakDb READ outputPeakDb NOTIFY meterChanged)
+    Q_PROPERTY(qreal gainReductionDb READ gainReductionDb NOTIFY meterChanged)
 
   public:
     explicit PlaybackController(QObject* parent = nullptr);
@@ -71,12 +74,16 @@ class PlaybackController : public QObject {
     qint64 position() const;
     qint64 duration() const;
     qreal volume() const;
+    qreal momentaryLufs() const;
+    qreal outputPeakDb() const;
+    qreal gainReductionDb() const;
     void setVolume(qreal volume);
 
   signals:
     void stateChanged();
     void positionChanged();
     void volumeChanged();
+    void meterChanged();
 
   private:
     void startSession(const QString& path, const echo::audio::PlaybackAdjustment& adjustment);
@@ -92,5 +99,8 @@ class PlaybackController : public QObject {
     std::unique_ptr<QAudioSink> sink_;
     QTimer position_timer_;
     qreal volume_ = 0.8;
+    qreal momentary_lufs_ = -70.0;
+    qreal output_peak_db_ = -70.0;
+    qreal gain_reduction_db_ = 0.0;
     bool ended_ = false;
 };

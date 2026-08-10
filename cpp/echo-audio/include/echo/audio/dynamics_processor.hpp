@@ -22,6 +22,7 @@ class DynamicsProcessor {
 
     [[nodiscard]] CompressorAdjustment adjustment() const;
     [[nodiscard]] float current_gain() const;
+    [[nodiscard]] float gain_reduction_decibels() const;
 
   private:
     void validate(CompressorAdjustment adjustment) const;
@@ -32,7 +33,9 @@ class DynamicsProcessor {
     std::uint32_t sample_rate_ = 0;
     float attack_coefficient_ = 1.0F;
     float release_coefficient_ = 1.0F;
-    float gain_ = 1.0F;
+    float parameter_coefficient_ = 1.0F;
+    float compression_gain_ = 1.0F;
+    float makeup_gain_ = 1.0F;
 };
 
 } // namespace echo::audio

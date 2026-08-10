@@ -28,7 +28,8 @@ void DynamicsProcessor::update(CompressorAdjustment adjustment) {
 }
 
 void DynamicsProcessor::reset() {
-    gain_ = 1.0F;
+    compression_gain_ = 1.0F;
+    makeup_gain_ = 1.0F;
 }
 
 void DynamicsProcessor::process_interleaved(
@@ -44,11 +45,18 @@ void DynamicsProcessor::process_interleaved(
         for (std::size_t channel = 0; channel < channel_count; ++channel) {
             peak = std::max(peak, std::abs(samples[frame * channel_count + channel]));
         }
-        const float target = adjustment_.enabled ? desired_gain(peak) : 1.0F;
-        const float coefficient = target < gain_ ? attack_coefficient_ : release_coefficient_;
-        gain_ += (target - gain_) * coefficient;
+        const float compression_target = adjustment_.enabled ? desired_gain(peak) : 1.0F;
+        const float coefficient =
+            compression_target < compression_gain_ ? attack_coefficient_ : release_coefficient_;
+        compression_gain_ += (compression_target - compression_gain_) * coefficient;
+        const float makeup_target =
+            adjustment_.enabled
+                ? std::pow(10.0F, static_cast<float>(adjustment_.makeup_centibels) / 2000.0F)
+                : 1.0F;
+        makeup_gain_ += (makeup_target - makeup_gain_) * parameter_coefficient_;
+        const float total_gain = compression_gain_ * makeup_gain_;
         for (std::size_t channel = 0; channel < channel_count; ++channel) {
-            samples[frame * channel_count + channel] *= gain_;
+            samples[frame * channel_count + channel] *= total_gain;
         }
     }
 }
@@ -58,7 +66,11 @@ CompressorAdjustment DynamicsProcessor::adjustment() const {
 }
 
 float DynamicsProcessor::current_gain() const {
-    return gain_;
+    return compression_gain_ * makeup_gain_;
+}
+
+float DynamicsProcessor::gain_reduction_decibels() const {
+    return std::max(0.0F, -20.0F * std::log10(std::max(compression_gain_, kMinimumPeak)));
 }
 
 void DynamicsProcessor::validate(CompressorAdjustment adjustment) const {
@@ -79,6 +91,7 @@ void DynamicsProcessor::refresh_coefficients() {
     };
     attack_coefficient_ = smoothing_coefficient(adjustment_.attack_millis);
     release_coefficient_ = smoothing_coefficient(adjustment_.release_millis);
+    parameter_coefficient_ = smoothing_coefficient(20);
 }
 
 float DynamicsProcessor::desired_gain(float peak) const {
@@ -94,8 +107,7 @@ float DynamicsProcessor::desired_gain(float peak) const {
         output_decibels +=
             (1.0F / ratio - 1.0F) * knee_progress * knee_progress / (2.0F * kSoftKneeDecibels);
     }
-    const float makeup = static_cast<float>(adjustment_.makeup_centibels) / 100.0F;
-    return std::pow(10.0F, (output_decibels - input_decibels + makeup) / 20.0F);
+    return std::pow(10.0F, (output_decibels - input_decibels) / 20.0F);
 }
 
 } // namespace echo::audio

@@ -10,6 +10,14 @@
 
 namespace echo::audio {
 
+/// Lock-free producer snapshot for desktop metering. Values describe the
+/// prepared signal before device volume, never the immutable original.
+struct PlaybackMeterSnapshot {
+    float momentary_lufs = -70.0F;
+    float output_peak_dbfs = -70.0F;
+    float gain_reduction_decibels = 0.0F;
+};
+
 /// Streaming playback session over one source.
 ///
 /// The realtime contract: a producer thread decodes the source to the
@@ -60,6 +68,7 @@ class PlaybackSession {
     [[nodiscard]] std::uint32_t channel_count() const;
     /// Frames currently buffered and ready for the audio callback.
     [[nodiscard]] std::size_t buffered_frames() const;
+    [[nodiscard]] PlaybackMeterSnapshot meter_snapshot() const;
 
   private:
     class Impl;

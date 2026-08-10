@@ -183,7 +183,7 @@ Rectangle {
 
     function debugEnableCompressor() : void {
         adjustmentDraft.setCompressorEnabled(true)
-        adjustmentDraft.setCompressorParameter("threshold", -2400)
+        adjustmentDraft.setCompressorParameter("threshold", -4000)
     }
 
     onAssetChanged: {
@@ -443,6 +443,7 @@ Rectangle {
                 SplitView.minimumHeight: 284
                 SplitView.maximumHeight: 350
                 draft: adjustmentDraft
+                meterSource: player
                 hasTimeSelection: editorTimeline.hasTimeSelection
                 selectionStartMillis: editorTimeline.selectionStartMillis
                 selectionEndMillis: editorTimeline.selectionEndMillis

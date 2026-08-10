@@ -11,6 +11,7 @@ Rectangle {
     id: inspector
 
     required property var draft
+    required property var meterSource
     property bool hasTimeSelection: false
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
@@ -144,6 +145,7 @@ Rectangle {
                 Layout.maximumWidth: 350
                 Layout.fillHeight: true
                 draft: inspector.draft
+                meterSource: inspector.meterSource
             }
 
             Item { Layout.fillWidth: true }

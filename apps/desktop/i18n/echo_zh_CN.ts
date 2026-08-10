@@ -477,37 +477,52 @@
 <context>
     <name>DynamicsPanel</name>
     <message>
-        <location filename="../qml/DynamicsPanel.qml" line="45"/>
+        <location filename="../qml/DynamicsPanel.qml" line="50"/>
         <source>Dynamics</source>
         <translation>动态</translation>
     </message>
     <message>
-        <location filename="../qml/DynamicsPanel.qml" line="79"/>
+        <location filename="../qml/DynamicsPanel.qml" line="84"/>
         <source>Reset compressor</source>
         <translation>重置压缩器</translation>
     </message>
     <message>
-        <location filename="../qml/DynamicsPanel.qml" line="170"/>
+        <location filename="../qml/DynamicsPanel.qml" line="167"/>
+        <source>Momentary</source>
+        <translation>瞬时</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="175"/>
+        <source>Peak</source>
+        <translation>峰值</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="183"/>
+        <source>Reduction</source>
+        <translation>衰减</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="209"/>
         <source>Threshold</source>
         <translation>阈值</translation>
     </message>
     <message>
-        <location filename="../qml/DynamicsPanel.qml" line="179"/>
+        <location filename="../qml/DynamicsPanel.qml" line="218"/>
         <source>Ratio</source>
         <translation>压缩比</translation>
     </message>
     <message>
-        <location filename="../qml/DynamicsPanel.qml" line="188"/>
+        <location filename="../qml/DynamicsPanel.qml" line="227"/>
         <source>Attack</source>
         <translation>启动</translation>
     </message>
     <message>
-        <location filename="../qml/DynamicsPanel.qml" line="197"/>
+        <location filename="../qml/DynamicsPanel.qml" line="236"/>
         <source>Release</source>
         <translation>释放</translation>
     </message>
     <message>
-        <location filename="../qml/DynamicsPanel.qml" line="206"/>
+        <location filename="../qml/DynamicsPanel.qml" line="245"/>
         <source>Makeup</source>
         <translation>补偿</translation>
     </message>
@@ -705,27 +720,27 @@
 <context>
     <name>SoundAdjustmentEditor</name>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="43"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="44"/>
         <source>Adjustments</source>
         <translation>声音调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="62"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="63"/>
         <source>Range</source>
         <translation>范围</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="75"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="76"/>
         <source>Revert</source>
         <translation>还原已保存</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="84"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="85"/>
         <source>Clear</source>
         <translation>清空调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="98"/>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="99"/>
         <source>Save version</source>
         <translation>保存版本</translation>
     </message>
@@ -824,32 +839,32 @@
         <translation>选择声音后即可进入调整工作区。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="462"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="463"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="490"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="491"/>
         <source>Audition</source>
         <translation>试听对比</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="496"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="497"/>
         <source>Adjusted</source>
         <translation>调整后</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="503"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="504"/>
         <source>Original</source>
         <translation>原始</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="462"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="463"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="471"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="472"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>

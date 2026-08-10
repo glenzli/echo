@@ -11,6 +11,7 @@ Rectangle {
     id: panel
 
     required property var draft
+    required property var meterSource
 
     implicitWidth: 330
     implicitHeight: 224
@@ -22,6 +23,10 @@ Rectangle {
     function decibels(centibels: int, signed: bool) : string {
         const value = centibels / 100
         return (signed && value > 0 ? "+" : "") + value.toFixed(1) + " dB"
+    }
+
+    function meterText(value: real, unit: string) : string {
+        return value <= -69.9 ? "—" : value.toFixed(1) + " " + unit
     }
 
     ColumnLayout {
@@ -151,6 +156,40 @@ Rectangle {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 38
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            spacing: 10
+
+            MeterReadout {
+                label: qsTr("Momentary")
+                value: panel.meterSource.momentaryLufs
+                minimum: -60
+                maximum: 0
+                valueText: panel.meterText(value, "LUFS")
+                meterColor: Theme.accent
+            }
+            MeterReadout {
+                label: qsTr("Peak")
+                value: panel.meterSource.outputPeakDb
+                minimum: -60
+                maximum: 0
+                valueText: panel.meterText(value, "dBFS")
+                meterColor: value > -1 ? Theme.warningText : Theme.accent
+            }
+            MeterReadout {
+                label: qsTr("Reduction")
+                value: panel.meterSource.gainReductionDb
+                minimum: 0
+                maximum: 24
+                valueText: panel.meterSource.active
+                    ? value.toFixed(1) + " dB" : "—"
+                meterColor: Theme.accentSelectionText
+            }
+        }
+
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
@@ -226,5 +265,56 @@ Rectangle {
         onGestureStarted: panel.draft.beginGesture()
         onGestureFinished: panel.draft.endGesture()
         onEdited: sliderValue => parameterEdited(Math.round(sliderValue))
+    }
+
+    component MeterReadout: Item {
+        id: readout
+
+        property string label: ""
+        property real value: 0
+        property real minimum: 0
+        property real maximum: 1
+        property string valueText: ""
+        property color meterColor: Theme.accent
+        readonly property real meterProgress: Math.max(0, Math.min(1,
+            (value - minimum) / Math.max(0.0001, maximum - minimum)))
+
+        Layout.fillWidth: true
+        Layout.minimumWidth: 72
+        implicitHeight: 34
+
+        Text {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            text: readout.label
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontMeta
+        }
+
+        Text {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            text: readout.valueText
+            color: Theme.textPrimary
+            font.family: "Menlo"
+            font.pixelSize: Theme.fontMeta
+        }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 4
+            radius: 2
+            color: Theme.track
+
+            Rectangle {
+                width: parent.width * readout.meterProgress
+                height: parent.height
+                radius: parent.radius
+                color: readout.meterColor
+                Behavior on width { NumberAnimation { duration: 70 } }
+            }
+        }
     }
 }

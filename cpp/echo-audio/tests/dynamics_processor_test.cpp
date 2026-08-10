@@ -32,6 +32,7 @@ int main() {
         std::vector<float> loud(48'000 * 2, 1.0F);
         compressor.process_interleaved(loud.data(), 48'000, 2);
         expect(std::abs(loud.back()) < 0.5F, "steady signal receives meaningful compression");
+        expect(compressor.gain_reduction_decibels() > 8.0F, "gain reduction is measurable");
         expect(
             std::abs(loud[loud.size() - 1] - loud[loud.size() - 2]) < 1.0E-6F,
             "stereo-linked detector applies identical gain"

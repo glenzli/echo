@@ -8,6 +8,7 @@ add_library(
     src/decode.cpp
     src/dynamics_processor.cpp
     src/low_cut_filter.cpp
+    src/loudness_meter.cpp
     src/output_guard.cpp
     src/playback.cpp
     src/three_band_equalizer.cpp
@@ -63,6 +64,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-low-cut-filter-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-low-cut-filter-test)
     add_test(NAME echo-low-cut-filter-test COMMAND echo-low-cut-filter-test)
+
+    add_executable(
+        echo-loudness-meter-test
+        tests/loudness_meter_test.cpp
+    )
+    target_link_libraries(echo-loudness-meter-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-loudness-meter-test)
+    add_test(NAME echo-loudness-meter-test COMMAND echo-loudness-meter-test)
 
     add_executable(
         echo-output-guard-test

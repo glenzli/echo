@@ -9,6 +9,7 @@
 #include <QMediaDevices>
 #include <QSpan>
 #include <algorithm>
+#include <cmath>
 
 PlaybackController::PlaybackController(QObject* parent) : QObject(parent) {
     position_timer_.setInterval(100);
@@ -194,8 +195,12 @@ void PlaybackController::startSession(
     }
 
     ended_ = false;
+    momentary_lufs_ = -70.0;
+    output_peak_db_ = -70.0;
+    gain_reduction_db_ = 0.0;
     position_timer_.start();
     emit stateChanged();
+    emit meterChanged();
 }
 
 void PlaybackController::fillBuffer(QSpan<float> buffer) {
@@ -240,7 +245,11 @@ void PlaybackController::stop() {
     callback_session_.store(nullptr);
     current_session_.reset();
     ended_ = false;
+    momentary_lufs_ = -70.0;
+    output_peak_db_ = -70.0;
+    gain_reduction_db_ = 0.0;
     emit stateChanged();
+    emit meterChanged();
 }
 
 void PlaybackController::seek(qint64 millis) {
@@ -278,6 +287,18 @@ qreal PlaybackController::volume() const {
     return volume_;
 }
 
+qreal PlaybackController::momentaryLufs() const {
+    return momentary_lufs_;
+}
+
+qreal PlaybackController::outputPeakDb() const {
+    return output_peak_db_;
+}
+
+qreal PlaybackController::gainReductionDb() const {
+    return gain_reduction_db_;
+}
+
 void PlaybackController::setVolume(qreal volume) {
     const qreal clamped = std::clamp(volume, 0.0, 1.0);
     if (qFuzzyCompare(clamped, volume_)) {
@@ -292,6 +313,19 @@ void PlaybackController::setVolume(qreal volume) {
 
 void PlaybackController::pumpPosition() {
     const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    if (session != nullptr) {
+        const echo::audio::PlaybackMeterSnapshot snapshot = session->meter_snapshot();
+        const bool changed =
+            std::abs(momentary_lufs_ - snapshot.momentary_lufs) > 0.05
+            || std::abs(output_peak_db_ - snapshot.output_peak_dbfs) > 0.05
+            || std::abs(gain_reduction_db_ - snapshot.gain_reduction_decibels) > 0.05;
+        if (changed) {
+            momentary_lufs_ = snapshot.momentary_lufs;
+            output_peak_db_ = snapshot.output_peak_dbfs;
+            gain_reduction_db_ = snapshot.gain_reduction_decibels;
+            emit meterChanged();
+        }
+    }
     if (session != nullptr && session->is_ended() && session->buffered_frames() == 0 && !ended_) {
         ended_ = true;
         position_timer_.stop();

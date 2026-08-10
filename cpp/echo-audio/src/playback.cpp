@@ -2,6 +2,7 @@
 
 #include "echo/audio/dynamics_processor.hpp"
 #include "echo/audio/ffmpeg_include.hpp"
+#include "echo/audio/loudness_meter.hpp"
 #include "echo/audio/low_cut_filter.hpp"
 #include "echo/audio/output_guard.hpp"
 #include "echo/audio/three_band_equalizer.hpp"
@@ -304,6 +305,7 @@ class PlaybackSession::Impl {
         dynamics_processor_ =
             std::make_unique<DynamicsProcessor>(adjustment_->compressor(), kCanonicalSampleRate);
         output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
+        loudness_meter_ = std::make_unique<LoudnessMeter>(kCanonicalSampleRate, channel_count_);
         applied_equalizer_ = pack_equalizer(adjustment_->equalizer());
         requested_equalizer_.store(applied_equalizer_, std::memory_order_release);
 
@@ -421,6 +423,14 @@ class PlaybackSession::Impl {
         return channel_count_;
     }
 
+    PlaybackMeterSnapshot meter_snapshot() const {
+        return {
+            .momentary_lufs = momentary_lufs_.load(std::memory_order_acquire),
+            .output_peak_dbfs = output_peak_dbfs_.load(std::memory_order_acquire),
+            .gain_reduction_decibels = gain_reduction_decibels_.load(std::memory_order_acquire),
+        };
+    }
+
     /// Starts the producer thread. Called from the public constructor.
     void start() {
         thread_ = std::thread(&Impl::producer_loop, this);
@@ -457,6 +467,10 @@ class PlaybackSession::Impl {
             equalizer_->reset();
             dynamics_processor_->reset();
             output_guard_->reset();
+            loudness_meter_->reset();
+            momentary_lufs_.store(-70.0F, std::memory_order_release);
+            output_peak_dbfs_.store(-70.0F, std::memory_order_release);
+            gain_reduction_decibels_.store(0.0F, std::memory_order_release);
         }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
         while (ring_->available() > 0 && std::chrono::steady_clock::now() < deadline) {
@@ -574,6 +588,14 @@ class PlaybackSession::Impl {
                         }
                     }
                     output_guard_->process_interleaved(scratch, chunk, channel_count_);
+                    loudness_meter_->process_interleaved(scratch, chunk, channel_count_);
+                    const LoudnessSnapshot loudness = loudness_meter_->snapshot();
+                    momentary_lufs_.store(loudness.momentary_lufs, std::memory_order_release);
+                    output_peak_dbfs_.store(loudness.sample_peak_dbfs, std::memory_order_release);
+                    gain_reduction_decibels_.store(
+                        dynamics_processor_->gain_reduction_decibels(),
+                        std::memory_order_release
+                    );
                     const std::size_t pushed = ring_->write(scratch, chunk);
                     written += pushed;
                 }
@@ -656,12 +678,16 @@ class PlaybackSession::Impl {
     std::unique_ptr<ThreeBandEqualizer> equalizer_;
     std::unique_ptr<DynamicsProcessor> dynamics_processor_;
     std::unique_ptr<OutputGuard> output_guard_;
+    std::unique_ptr<LoudnessMeter> loudness_meter_;
     std::uint64_t decoded_frame_cursor_ = 0;
     std::atomic<std::uint64_t> requested_equalizer_{0};
     std::uint64_t applied_equalizer_ = 0;
     std::mutex dynamics_mutex_;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;
+    std::atomic<float> momentary_lufs_{-70.0F};
+    std::atomic<float> output_peak_dbfs_{-70.0F};
+    std::atomic<float> gain_reduction_decibels_{0.0F};
 
     std::thread thread_;
     std::mutex control_mutex_;
@@ -729,6 +755,9 @@ std::uint32_t PlaybackSession::channel_count() const {
 }
 std::size_t PlaybackSession::buffered_frames() const {
     return impl_->buffered_frames();
+}
+PlaybackMeterSnapshot PlaybackSession::meter_snapshot() const {
+    return impl_->meter_snapshot();
 }
 
 } // namespace echo::audio
