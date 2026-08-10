@@ -15,6 +15,58 @@ pub const MAX_GAIN_CENTIBELS: i16 = 1_200;
 pub const MIN_LOW_CUT_HERTZ: u16 = 20;
 /// Highest supported low-cut frequency in hertz.
 pub const MAX_LOW_CUT_HERTZ: u16 = 240;
+/// Lowest supported gain for one equalizer band, in hundredths of a decibel.
+pub const MIN_EQ_GAIN_CENTIBELS: i16 = -1_200;
+/// Highest supported gain for one equalizer band, in hundredths of a decibel.
+pub const MAX_EQ_GAIN_CENTIBELS: i16 = 1_200;
+
+/// Authored gain for Echo's fixed restoration equalizer bands.
+///
+/// Center frequencies and filter shapes belong to the execution contract;
+/// persistence stores only stable per-band gain intent.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThreeBandEqualizer {
+    low_gain_centibels: i16,
+    mid_gain_centibels: i16,
+    high_gain_centibels: i16,
+}
+
+impl ThreeBandEqualizer {
+    #[must_use]
+    pub const fn new(
+        low_gain_centibels: i16,
+        mid_gain_centibels: i16,
+        high_gain_centibels: i16,
+    ) -> Self {
+        Self {
+            low_gain_centibels,
+            mid_gain_centibels,
+            high_gain_centibels,
+        }
+    }
+
+    #[must_use]
+    pub const fn low_gain_centibels(self) -> i16 {
+        self.low_gain_centibels
+    }
+
+    #[must_use]
+    pub const fn mid_gain_centibels(self) -> i16 {
+        self.mid_gain_centibels
+    }
+
+    #[must_use]
+    pub const fn high_gain_centibels(self) -> i16 {
+        self.high_gain_centibels
+    }
+
+    #[must_use]
+    pub const fn is_flat(self) -> bool {
+        self.low_gain_centibels == 0
+            && self.mid_gain_centibels == 0
+            && self.high_gain_centibels == 0
+    }
+}
 
 /// Stable fade interpolation authored independently for each edge.
 ///
@@ -97,6 +149,7 @@ pub struct AdjustmentEffects {
     pub fade_curves: FadeCurves,
     pub gain_centibels: i16,
     pub low_cut_hertz: u16,
+    pub equalizer: ThreeBandEqualizer,
 }
 
 impl AdjustmentEffects {
@@ -106,7 +159,14 @@ impl AdjustmentEffects {
             fade_curves,
             gain_centibels,
             low_cut_hertz,
+            equalizer: ThreeBandEqualizer::new(0, 0, 0),
         }
+    }
+
+    #[must_use]
+    pub const fn with_equalizer(mut self, equalizer: ThreeBandEqualizer) -> Self {
+        self.equalizer = equalizer;
+        self
     }
 }
 
@@ -121,6 +181,7 @@ pub struct AdjustmentGraph {
     fade_out_curve: FadeCurve,
     gain_centibels: i16,
     low_cut_hertz: u16,
+    equalizer: ThreeBandEqualizer,
 }
 
 impl AdjustmentGraph {
@@ -155,6 +216,15 @@ impl AdjustmentGraph {
         {
             return Err(AdjustmentGraphError::LowCutOutOfRange);
         }
+        for gain in [
+            effects.equalizer.low_gain_centibels,
+            effects.equalizer.mid_gain_centibels,
+            effects.equalizer.high_gain_centibels,
+        ] {
+            if !(MIN_EQ_GAIN_CENTIBELS..=MAX_EQ_GAIN_CENTIBELS).contains(&gain) {
+                return Err(AdjustmentGraphError::EqualizerGainOutOfRange);
+            }
+        }
         Ok(Self {
             trim_start_millis,
             trim_end_millis,
@@ -164,6 +234,7 @@ impl AdjustmentGraph {
             fade_out_curve: effects.fade_curves.fade_out,
             gain_centibels: effects.gain_centibels,
             low_cut_hertz: effects.low_cut_hertz,
+            equalizer: effects.equalizer,
         })
     }
 
@@ -224,6 +295,11 @@ impl AdjustmentGraph {
     pub const fn low_cut_hertz(self) -> u16 {
         self.low_cut_hertz
     }
+
+    #[must_use]
+    pub const fn equalizer(self) -> ThreeBandEqualizer {
+        self.equalizer
+    }
 }
 
 /// Stable validation failures for authored adjustment intent.
@@ -233,6 +309,7 @@ pub enum AdjustmentGraphError {
     OverlappingFades,
     GainOutOfRange,
     LowCutOutOfRange,
+    EqualizerGainOutOfRange,
 }
 
 impl std::fmt::Display for AdjustmentGraphError {
@@ -242,6 +319,9 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::OverlappingFades => "fade durations must fit inside the trim range",
             Self::GainOutOfRange => "gain must be between -24 dB and +12 dB",
             Self::LowCutOutOfRange => "low cut must be off or between 20 Hz and 240 Hz",
+            Self::EqualizerGainOutOfRange => {
+                "equalizer band gain must be between -12 dB and +12 dB"
+            }
         })
     }
 }

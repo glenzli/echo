@@ -45,7 +45,8 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
             FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
             -300,
             80,
-        ),
+        )
+        .with_equalizer(echo_domain::ThreeBandEqualizer::new(300, -150, 225)),
     )
     .expect("graph validates");
     let first = catalog
@@ -55,6 +56,10 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         .with_transaction(|transaction| record_adjustment_graph(transaction, asset_id, graph, 30))
         .expect("duplicate save reads current");
     assert_eq!(duplicate, first);
+    assert_eq!(
+        first.graph.equalizer(),
+        echo_domain::ThreeBandEqualizer::new(300, -150, 225)
+    );
 
     let second_graph = AdjustmentGraph::new(
         10_000,

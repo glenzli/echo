@@ -8,6 +8,7 @@ add_library(
     src/decode.cpp
     src/low_cut_filter.cpp
     src/playback.cpp
+    src/three_band_equalizer.cpp
     src/waveform.cpp
 )
 add_library(Echo::Audio ALIAS echo-audio)
@@ -52,6 +53,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-low-cut-filter-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-low-cut-filter-test)
     add_test(NAME echo-low-cut-filter-test COMMAND echo-low-cut-filter-test)
+
+    add_executable(
+        echo-three-band-equalizer-test
+        tests/three_band_equalizer_test.cpp
+    )
+    target_link_libraries(echo-three-band-equalizer-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-three-band-equalizer-test)
+    add_test(NAME echo-three-band-equalizer-test COMMAND echo-three-band-equalizer-test)
 
     add_executable(
         echo-waveform-engine-test

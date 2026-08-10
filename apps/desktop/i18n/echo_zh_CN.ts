@@ -718,6 +718,29 @@
     </message>
 </context>
 <context>
+    <name>ToneEqualizerPanel</name>
+    <message>
+        <source>Three-band EQ</source>
+        <translation>三段均衡</translation>
+    </message>
+    <message>
+        <source>Reset equalizer</source>
+        <translation>重置均衡器</translation>
+    </message>
+    <message>
+        <source>Low</source>
+        <translation>低频</translation>
+    </message>
+    <message>
+        <source>Mid</source>
+        <translation>中频</translation>
+    </message>
+    <message>
+        <source>High</source>
+        <translation>高频</translation>
+    </message>
+</context>
+<context>
     <name>SoundCard</name>
     <message>
         <location filename="../qml/SoundCard.qml" line="319"/>

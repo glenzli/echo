@@ -1,7 +1,7 @@
 //! Append-only persistence for user-authored, non-destructive sound
 //! adjustments. Originals and analysis evidence are never modified.
 
-use echo_domain::{AdjustmentEffects, AdjustmentGraph, AssetId, FadeCurve};
+use echo_domain::{AdjustmentEffects, AdjustmentGraph, AssetId, FadeCurve, ThreeBandEqualizer};
 use rusqlite::{OptionalExtension, Transaction};
 
 use crate::{CatalogError, CatalogErrorKind};
@@ -42,7 +42,8 @@ pub fn latest_adjustment_graph(
         .query_row(
             "SELECT id, trim_start_millis, trim_end_millis, fade_in_millis, \
              fade_out_millis, fade_in_curve, fade_out_curve, gain_centibels, \
-             low_cut_hertz, created_at_millis \
+             low_cut_hertz, eq_low_gain_centibels, eq_mid_gain_centibels, \
+             eq_high_gain_centibels, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
             [asset_id.to_string()],
@@ -58,6 +59,9 @@ pub fn latest_adjustment_graph(
                     row.get::<_, i64>(7)?,
                     row.get::<_, i64>(8)?,
                     row.get::<_, i64>(9)?,
+                    row.get::<_, i64>(10)?,
+                    row.get::<_, i64>(11)?,
+                    row.get::<_, i64>(12)?,
                 ))
             },
         )
@@ -72,6 +76,9 @@ pub fn latest_adjustment_graph(
         fade_out_curve,
         gain,
         low_cut_hertz,
+        eq_low_gain,
+        eq_mid_gain,
+        eq_high_gain,
         created_at,
     )) = stored
     else {
@@ -88,16 +95,19 @@ pub fn latest_adjustment_graph(
                 stored_curve(fade_in_curve)?,
                 stored_curve(fade_out_curve)?,
             ),
-            i16::try_from(gain).map_err(|_| {
-                CatalogError::new(CatalogErrorKind::Other, "stored adjustment gain is invalid")
-            })?,
+            stored_centibels(gain, "adjustment gain")?,
             u16::try_from(low_cut_hertz).map_err(|_| {
                 CatalogError::new(
                     CatalogErrorKind::Other,
                     "stored low-cut frequency is invalid",
                 )
             })?,
-        ),
+        )
+        .with_equalizer(ThreeBandEqualizer::new(
+            stored_centibels(eq_low_gain, "low equalizer gain")?,
+            stored_centibels(eq_mid_gain, "mid equalizer gain")?,
+            stored_centibels(eq_high_gain, "high equalizer gain")?,
+        )),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
     Ok(Some(AssetAdjustmentRevision {
@@ -144,7 +154,8 @@ pub fn record_adjustment_graph(
             echo_domain::FadeCurves::new(graph.fade_in_curve(), graph.fade_out_curve()),
             graph.gain_centibels(),
             graph.low_cut_hertz(),
-        ),
+        )
+        .with_equalizer(graph.equalizer()),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
     if let Some(current) = latest_adjustment_graph(transaction, asset_id)?
@@ -155,8 +166,9 @@ pub fn record_adjustment_graph(
     transaction.execute(
         "INSERT INTO asset_adjustment_revisions (asset_id, trim_start_millis, \
          trim_end_millis, fade_in_millis, fade_out_millis, fade_in_curve, \
-         fade_out_curve, gain_centibels, low_cut_hertz, created_at_millis) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+         fade_out_curve, gain_centibels, low_cut_hertz, eq_low_gain_centibels, \
+         eq_mid_gain_centibels, eq_high_gain_centibels, created_at_millis) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -167,6 +179,9 @@ pub fn record_adjustment_graph(
             validated.fade_out_curve().catalog_value(),
             i64::from(validated.gain_centibels()),
             i64::from(validated.low_cut_hertz()),
+            i64::from(validated.equalizer().low_gain_centibels()),
+            i64::from(validated.equalizer().mid_gain_centibels()),
+            i64::from(validated.equalizer().high_gain_centibels()),
             now_millis,
         ],
     )?;
@@ -180,6 +195,15 @@ pub fn record_adjustment_graph(
 fn stored_curve(value: i64) -> Result<FadeCurve, CatalogError> {
     FadeCurve::from_catalog_value(value)
         .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))
+}
+
+fn stored_centibels(value: i64, field: &str) -> Result<i16, CatalogError> {
+    i16::try_from(value).map_err(|_| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored {field} is invalid"),
+        )
+    })
 }
 
 fn stored_millis(value: i64) -> Result<u64, CatalogError> {

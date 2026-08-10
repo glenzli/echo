@@ -38,6 +38,9 @@ mod ffi {
         fade_out_curve: u8,
         gain_centibels: i16,
         low_cut_hertz: u16,
+        eq_low_gain_centibels: i16,
+        eq_mid_gain_centibels: i16,
+        eq_high_gain_centibels: i16,
         container_format: String,
         sample_rate: u32,
         channel_count: u32,
@@ -57,6 +60,9 @@ mod ffi {
         fade_out_curve: u8,
         gain_centibels: i16,
         low_cut_hertz: u16,
+        eq_low_gain_centibels: i16,
+        eq_mid_gain_centibels: i16,
+        eq_high_gain_centibels: i16,
     }
 
     /// One indexed keyword facet over the newest contextual evidence.

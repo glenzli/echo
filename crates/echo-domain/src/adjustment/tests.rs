@@ -12,7 +12,8 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
             -350,
             80,
-        ),
+        )
+        .with_equalizer(ThreeBandEqualizer::new(250, -175, 400)),
     )
     .expect("valid graph builds");
     assert_eq!(graph.trim_start_millis(), 1_000);
@@ -23,6 +24,7 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.fade_out_curve(), FadeCurve::EqualPower);
     assert_eq!(graph.gain_centibels(), -350);
     assert_eq!(graph.low_cut_hertz(), 80);
+    assert_eq!(graph.equalizer(), ThreeBandEqualizer::new(250, -175, 400));
 }
 
 #[test]
@@ -67,5 +69,17 @@ fn graph_rejects_out_of_source_and_overlapping_envelopes() {
             AdjustmentEffects::new(FadeCurves::linear(), 0, MIN_LOW_CUT_HERTZ - 1),
         ),
         Err(AdjustmentGraphError::LowCutOutOfRange)
+    );
+    assert_eq!(
+        AdjustmentGraph::new(
+            1_000,
+            0,
+            1_000,
+            0,
+            0,
+            AdjustmentEffects::new(FadeCurves::linear(), 0, 0)
+                .with_equalizer(ThreeBandEqualizer::new(0, MAX_EQ_GAIN_CENTIBELS + 1, 0)),
+        ),
+        Err(AdjustmentGraphError::EqualizerGainOutOfRange)
     );
 }

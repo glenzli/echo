@@ -256,6 +256,8 @@ int main(int argc, char* argv[]) {
             .fade_out_millis = 100,
             .gain_centibels = -600,
             .low_cut_hertz = 80,
+            .equalizer =
+                {.low_gain_centibels = 200, .mid_gain_centibels = -100, .high_gain_centibels = 150},
         };
         echo::audio::PlaybackSession adjusted(path.string(), adjustment);
         std::vector<float> adjusted_buffer(48'000, 0.0F);

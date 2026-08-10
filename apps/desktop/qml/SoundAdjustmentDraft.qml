@@ -17,6 +17,9 @@ QtObject {
     property int fadeOutCurve: 0
     property int gainCentibels: 0
     property int lowCutHertz: 0
+    property int eqLowGainCentibels: 0
+    property int eqMidGainCentibels: 0
+    property int eqHighGainCentibels: 0
 
     property var _savedSnapshot: ({})
     property var _history: []
@@ -36,12 +39,15 @@ QtObject {
         && fadeInMillis === 0 && fadeOutMillis === 0
         && fadeInCurve === 0 && fadeOutCurve === 0
         && gainCentibels === 0 && lowCutHertz === 0
+        && eqLowGainCentibels === 0 && eqMidGainCentibels === 0
+        && eqHighGainCentibels === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis,
                          int fadeIn, int fadeOut,
                          int fadeInCurve, int fadeOutCurve,
-                         int gain, int lowCut)
+                         int gain, int lowCut,
+                         int eqLowGain, int eqMidGain, int eqHighGain)
 
     function clamp(value: real, minimum: real, maximum: real) : real {
         return Math.max(minimum, Math.min(maximum, value))
@@ -56,7 +62,10 @@ QtObject {
             fadeInCurve: fadeInCurve,
             fadeOutCurve: fadeOutCurve,
             gainCentibels: gainCentibels,
-            lowCutHertz: lowCutHertz
+            lowCutHertz: lowCutHertz,
+            eqLowGainCentibels: eqLowGainCentibels,
+            eqMidGainCentibels: eqMidGainCentibels,
+            eqHighGainCentibels: eqHighGainCentibels
         }
     }
 
@@ -69,7 +78,10 @@ QtObject {
             fadeInCurve: Number(value.fadeInCurve),
             fadeOutCurve: Number(value.fadeOutCurve),
             gainCentibels: Number(value.gainCentibels),
-            lowCutHertz: Number(value.lowCutHertz)
+            lowCutHertz: Number(value.lowCutHertz),
+            eqLowGainCentibels: Number(value.eqLowGainCentibels),
+            eqMidGainCentibels: Number(value.eqMidGainCentibels),
+            eqHighGainCentibels: Number(value.eqHighGainCentibels)
         }
     }
 
@@ -83,6 +95,12 @@ QtObject {
             && Number(left.fadeOutCurve) === Number(right.fadeOutCurve)
             && Number(left.gainCentibels) === Number(right.gainCentibels)
             && Number(left.lowCutHertz) === Number(right.lowCutHertz)
+            && Number(left.eqLowGainCentibels)
+                === Number(right.eqLowGainCentibels)
+            && Number(left.eqMidGainCentibels)
+                === Number(right.eqMidGainCentibels)
+            && Number(left.eqHighGainCentibels)
+                === Number(right.eqHighGainCentibels)
     }
 
     function assetSnapshot() : var {
@@ -91,7 +109,9 @@ QtObject {
                 trimStartMillis: 0, trimEndMillis: 0,
                 fadeInMillis: 0, fadeOutMillis: 0,
                 fadeInCurve: 0, fadeOutCurve: 0,
-                gainCentibels: 0, lowCutHertz: 0
+                gainCentibels: 0, lowCutHertz: 0,
+                eqLowGainCentibels: 0, eqMidGainCentibels: 0,
+                eqHighGainCentibels: 0
             }
         }
         const duration = Math.max(0, Number(asset.durationMillis))
@@ -105,7 +125,13 @@ QtObject {
             fadeOutCurve: clamp(Number(asset.fadeOutCurve || 0), 0, 2),
             gainCentibels: clamp(Number(asset.gainCentibels), -2400, 1200),
             lowCutHertz: Number(asset.lowCutHertz) === 0 ? 0
-                : clamp(Number(asset.lowCutHertz), 20, 240)
+                : clamp(Number(asset.lowCutHertz), 20, 240),
+            eqLowGainCentibels: clamp(
+                Number(asset.eqLowGainCentibels || 0), -1200, 1200),
+            eqMidGainCentibels: clamp(
+                Number(asset.eqMidGainCentibels || 0), -1200, 1200),
+            eqHighGainCentibels: clamp(
+                Number(asset.eqHighGainCentibels || 0), -1200, 1200)
         }
     }
 
@@ -119,6 +145,9 @@ QtObject {
         fadeOutCurve = Number(value.fadeOutCurve)
         gainCentibels = Number(value.gainCentibels)
         lowCutHertz = Number(value.lowCutHertz)
+        eqLowGainCentibels = Number(value.eqLowGainCentibels)
+        eqMidGainCentibels = Number(value.eqMidGainCentibels)
+        eqHighGainCentibels = Number(value.eqHighGainCentibels)
         _restoring = false
     }
 
@@ -211,6 +240,22 @@ QtObject {
         pushCurrent()
     }
 
+    function setEqualizerBand(band: string, centibels: int) : void {
+        const gain = Math.round(clamp(centibels, -1200, 1200))
+        if (band === "low") eqLowGainCentibels = gain
+        else if (band === "mid") eqMidGainCentibels = gain
+        else if (band === "high") eqHighGainCentibels = gain
+        else return
+        pushCurrent()
+    }
+
+    function resetEqualizer() : void {
+        eqLowGainCentibels = 0
+        eqMidGainCentibels = 0
+        eqHighGainCentibels = 0
+        pushCurrent()
+    }
+
     function clear() : void {
         applySnapshot({
             trimStartMillis: 0,
@@ -220,7 +265,10 @@ QtObject {
             fadeInCurve: 0,
             fadeOutCurve: 0,
             gainCentibels: 0,
-            lowCutHertz: 0
+            lowCutHertz: 0,
+            eqLowGainCentibels: 0,
+            eqMidGainCentibels: 0,
+            eqHighGainCentibels: 0
         })
         pushCurrent()
     }
@@ -234,7 +282,9 @@ QtObject {
         if (!asset || !dirty) return
         saveRequested(trimStartMillis, trimEndMillis,
             fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve,
-            gainCentibels, lowCutHertz)
+            gainCentibels, lowCutHertz,
+            eqLowGainCentibels, eqMidGainCentibels,
+            eqHighGainCentibels)
     }
 
     function markSaved() : void {

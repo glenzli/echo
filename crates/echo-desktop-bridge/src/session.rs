@@ -61,6 +61,9 @@ struct AdjustmentWireFields {
     fade_out_curve: u8,
     gain_centibels: i16,
     low_cut_hertz: u16,
+    eq_low_gain_centibels: i16,
+    eq_mid_gain_centibels: i16,
+    eq_high_gain_centibels: i16,
 }
 
 fn adjustment_wire_fields(
@@ -78,6 +81,9 @@ fn adjustment_wire_fields(
             fade_out_curve: 0,
             gain_centibels: 0,
             low_cut_hertz: 0,
+            eq_low_gain_centibels: 0,
+            eq_mid_gain_centibels: 0,
+            eq_high_gain_centibels: 0,
         },
         |revision| AdjustmentWireFields {
             revision: revision.revision_id,
@@ -91,6 +97,9 @@ fn adjustment_wire_fields(
                 .expect("fade curve catalog values fit u8"),
             gain_centibels: revision.graph.gain_centibels(),
             low_cut_hertz: revision.graph.low_cut_hertz(),
+            eq_low_gain_centibels: revision.graph.equalizer().low_gain_centibels(),
+            eq_mid_gain_centibels: revision.graph.equalizer().mid_gain_centibels(),
+            eq_high_gain_centibels: revision.graph.equalizer().high_gain_centibels(),
         },
     )
 }
@@ -178,6 +187,9 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         fade_out_curve: adjustment.fade_out_curve,
         gain_centibels: adjustment.gain_centibels,
         low_cut_hertz: adjustment.low_cut_hertz,
+        eq_low_gain_centibels: adjustment.eq_low_gain_centibels,
+        eq_mid_gain_centibels: adjustment.eq_mid_gain_centibels,
+        eq_high_gain_centibels: adjustment.eq_high_gain_centibels,
         container_format,
         sample_rate,
         channel_count,
@@ -386,7 +398,12 @@ impl LibrarySession {
                 ),
                 adjustment.gain_centibels,
                 adjustment.low_cut_hertz,
-            ),
+            )
+            .with_equalizer(echo_domain::ThreeBandEqualizer::new(
+                adjustment.eq_low_gain_centibels,
+                adjustment.eq_mid_gain_centibels,
+                adjustment.eq_high_gain_centibels,
+            )),
         )
         .map_err(|error| SessionError {
             message: error.to_string(),

@@ -15,7 +15,7 @@ Rectangle {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitHeight: 187
+    implicitHeight: 300
     color: Theme.panel
     border.color: Theme.border
 
@@ -119,10 +119,10 @@ Rectangle {
             spacing: 10
 
             BasicAdjustmentPanel {
-                Layout.preferredWidth: Math.min(640,
-                    Math.max(520, inspector.width * 0.46))
-                Layout.minimumWidth: 520
-                Layout.maximumWidth: 660
+                Layout.preferredWidth: Math.min(400,
+                    Math.max(370, inspector.width * 0.265))
+                Layout.minimumWidth: 370
+                Layout.maximumWidth: 410
                 Layout.fillHeight: true
                 draft: inspector.draft
                 hasTimeSelection: inspector.hasTimeSelection
@@ -130,9 +130,15 @@ Rectangle {
                 selectionEndMillis: inspector.selectionEndMillis
             }
 
-            // Advanced panels are composed here only when they own a real
-            // processing capability. Until then this remains usable workspace,
-            // not a row of disabled promises.
+            ToneEqualizerPanel {
+                Layout.preferredWidth: 320
+                Layout.minimumWidth: 286
+                Layout.maximumWidth: 350
+                Layout.fillHeight: true
+                draft: inspector.draft
+            }
+
+            // Future panels are composed here only when they own real DSP.
             Item { Layout.fillWidth: true }
         }
     }

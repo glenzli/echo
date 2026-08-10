@@ -12,6 +12,8 @@ constexpr std::int16_t kMinimumGainCentibels = -2400;
 constexpr std::int16_t kMaximumGainCentibels = 1200;
 constexpr std::uint16_t kMinimumLowCutHertz = 20;
 constexpr std::uint16_t kMaximumLowCutHertz = 240;
+constexpr std::int16_t kMinimumEqualizerGainCentibels = -1200;
+constexpr std::int16_t kMaximumEqualizerGainCentibels = 1200;
 constexpr float kHalfPi = 1.5707963267948966F;
 
 bool valid_curve(FadeCurve curve) {
@@ -80,6 +82,15 @@ PreparedAdjustment::PreparedAdjustment(
             || authored.low_cut_hertz > kMaximumLowCutHertz)) {
         throw std::invalid_argument("adjustment low cut is outside the supported range");
     }
+    for (const std::int16_t gain : {
+             authored.equalizer.low_gain_centibels,
+             authored.equalizer.mid_gain_centibels,
+             authored.equalizer.high_gain_centibels,
+         }) {
+        if (gain < kMinimumEqualizerGainCentibels || gain > kMaximumEqualizerGainCentibels) {
+            throw std::invalid_argument("adjustment equalizer gain is outside the supported range");
+        }
+    }
 
     trim_start_millis_ = authored.trim_start_millis;
     trim_end_millis_ = authored.trim_end_millis;
@@ -91,6 +102,7 @@ PreparedAdjustment::PreparedAdjustment(
     fade_out_curve_ = authored.fade_out_curve;
     gain_amplitude_ = std::pow(10.0F, static_cast<float>(authored.gain_centibels) / 2000.0F);
     low_cut_hertz_ = authored.low_cut_hertz;
+    equalizer_ = authored.equalizer;
 }
 
 std::uint64_t PreparedAdjustment::start_frame() const {
@@ -111,6 +123,10 @@ std::uint64_t PreparedAdjustment::trim_end_millis() const {
 
 std::uint16_t PreparedAdjustment::low_cut_hertz() const {
     return low_cut_hertz_;
+}
+
+ThreeBandEqualizerAdjustment PreparedAdjustment::equalizer() const {
+    return equalizer_;
 }
 
 std::uint64_t PreparedAdjustment::clamp_seek_millis(std::uint64_t millis) const {

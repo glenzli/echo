@@ -18,7 +18,9 @@ int main() {
          .fade_in_curve = echo::audio::FadeCurve::Smooth,
          .fade_out_curve = echo::audio::FadeCurve::EqualPower,
          .gain_centibels = -600,
-         .low_cut_hertz = 80},
+         .low_cut_hertz = 80,
+         .equalizer =
+             {.low_gain_centibels = 250, .mid_gain_centibels = -175, .high_gain_centibels = 300}},
         10'000,
         48'000
     );
@@ -33,6 +35,9 @@ int main() {
     assert(prepared.amplitude_at(60'000) < prepared.amplitude_at(72'000));
     assert(prepared.amplitude_at(420'000) < prepared.amplitude_at(384'000));
     assert(prepared.low_cut_hertz() == 80);
+    assert(prepared.equalizer().low_gain_centibels == 250);
+    assert(prepared.equalizer().mid_gain_centibels == -175);
+    assert(prepared.equalizer().high_gain_centibels == 300);
 
     const echo::audio::PreparedAdjustment linear(
         {.trim_end_millis = 1'000, .fade_in_millis = 1'000},
@@ -73,6 +78,18 @@ int main() {
     try {
         [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_low_cut(
             {.low_cut_hertz = 10},
+            10'000,
+            48'000
+        );
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    rejected = false;
+    try {
+        [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_equalizer(
+            {.equalizer = {.mid_gain_centibels = 1'201}},
             10'000,
             48'000
         );

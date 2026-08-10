@@ -87,6 +87,18 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
         entry.insert(QStringLiteral("lowCutHertz"), static_cast<int>(asset.low_cut_hertz));
         entry.insert(
+            QStringLiteral("eqLowGainCentibels"),
+            static_cast<int>(asset.eq_low_gain_centibels)
+        );
+        entry.insert(
+            QStringLiteral("eqMidGainCentibels"),
+            static_cast<int>(asset.eq_mid_gain_centibels)
+        );
+        entry.insert(
+            QStringLiteral("eqHighGainCentibels"),
+            static_cast<int>(asset.eq_high_gain_centibels)
+        );
+        entry.insert(
             QStringLiteral("containerFormat"),
             QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
         );
@@ -201,12 +213,17 @@ bool DesktopBackend::setAssetAdjustment(
     int fadeInCurve,
     int fadeOutCurve,
     int gainCentibels,
-    int lowCutHertz
+    int lowCutHertz,
+    int eqLowGainCentibels,
+    int eqMidGainCentibels,
+    int eqHighGainCentibels
 ) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200
-        || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))) {
+        || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
+        || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200 || eqMidGainCentibels < -1200
+        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
@@ -220,6 +237,9 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.fade_out_curve = static_cast<std::uint8_t>(fadeOutCurve);
         adjustment.gain_centibels = static_cast<std::int16_t>(gainCentibels);
         adjustment.low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz);
+        adjustment.eq_low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels);
+        adjustment.eq_mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels);
+        adjustment.eq_high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels);
         session_->session_set_asset_adjustment(id.toStdString(), adjustment);
         emit assetsChanged();
         return true;

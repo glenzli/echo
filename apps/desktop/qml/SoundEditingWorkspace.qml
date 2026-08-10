@@ -67,7 +67,10 @@ Rectangle {
             + (auditionOriginal ? 0 : adjustmentDraft.fadeInCurve) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.gainCentibels) + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.lowCutHertz)
+            + (auditionOriginal ? 0 : adjustmentDraft.lowCutHertz) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.eqLowGainCentibels) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels)
     }
 
     function refreshAsset() : void {
@@ -86,7 +89,10 @@ Rectangle {
                             auditionOriginal ? 0 : adjustmentDraft.fadeInCurve,
                             auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve,
                             auditionOriginal ? 0 : adjustmentDraft.gainCentibels,
-                            auditionOriginal ? 0 : adjustmentDraft.lowCutHertz)
+                            auditionOriginal ? 0 : adjustmentDraft.lowCutHertz,
+                            auditionOriginal ? 0 : adjustmentDraft.eqLowGainCentibels,
+                            auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels,
+                            auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(adjustmentDraft.trimStartMillis,
@@ -163,10 +169,12 @@ Rectangle {
         asset: workspace.asset
 
         onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut,
-                                  fadeInCurve, fadeOutCurve, gain, lowCut) {
+                                  fadeInCurve, fadeOutCurve, gain, lowCut,
+                                  eqLowGain, eqMidGain, eqHighGain) {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                            fadeIn, fadeOut, fadeInCurve,
-                                           fadeOutCurve, gain, lowCut)) {
+                                           fadeOutCurve, gain, lowCut,
+                                           eqLowGain, eqMidGain, eqHighGain)) {
                 adjustmentDraft.markSaved()
                 workspace.auditionOriginal = false
                 workspace.loadedAdjustmentKey = ""
@@ -290,7 +298,7 @@ Rectangle {
 
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.minimumHeight: 260
+                SplitView.minimumHeight: 200
                 waveformLevels: workspace.waveformLevels
                 sourceDurationMillis: adjustmentDraft.sourceDurationMillis
                 trimStartMillis: adjustmentDraft.trimStartMillis
@@ -323,9 +331,9 @@ Rectangle {
 
             SoundAdjustmentEditor {
                 SplitView.fillWidth: true
-                SplitView.preferredHeight: 189
-                SplitView.minimumHeight: 181
-                SplitView.maximumHeight: 230
+                SplitView.preferredHeight: 302
+                SplitView.minimumHeight: 284
+                SplitView.maximumHeight: 350
                 draft: adjustmentDraft
                 hasTimeSelection: editorTimeline.hasTimeSelection
                 selectionStartMillis: editorTimeline.selectionStartMillis

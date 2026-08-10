@@ -37,7 +37,7 @@ Item {
             Layout.minimumWidth: field.labelWidth
             text: field.label
             color: field.enabled ? Theme.textSecondary : Theme.textDisabled
-            font.pixelSize: Theme.fontMeta
+            font.pixelSize: Theme.fontSection
             horizontalAlignment: Text.AlignRight
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
@@ -120,7 +120,7 @@ Item {
             text: field.valueText
             color: field.enabled ? Theme.textPrimary : Theme.textDisabled
             font.family: "Menlo"
-            font.pixelSize: Theme.fontMeta
+            font.pixelSize: Theme.fontSection
             font.weight: Font.Medium
             horizontalAlignment: Text.AlignRight
             verticalAlignment: Text.AlignVCenter

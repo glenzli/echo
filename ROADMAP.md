@@ -315,6 +315,12 @@ InferenceBackend
     真实试听，Seek 会重置滤波器状态，Qt 实时回调仍只消费已处理 PCM。编辑器底部精调台提供开关、
     频率滑块、完整 Undo／Redo、显式保存版本与 Original A/B；Audio Space 播放当前已保存参数。
     此切片不把 Low Cut 扩张为尚未实现的参数均衡器，也不包含响度、Dynamics、降噪或导出。
+  - 首个高级恢复切片（2026-08-10）：`AdjustmentGraph` 与 Catalog `20260810.4` 增加固定频段的
+    三段均衡增益（120 Hz 低频搁架、1 kHz 中频峰值、8 kHz 高频搁架，均为 ±12 dB）；Catalog
+    继续 append-only 保存 authored centibel intent，滤波系数与逐声道状态只由 C++ 播放计划准备。
+    三段 Biquad 在解码生产线程执行，Seek 会重置状态，实时回调仍只读取已处理 PCM。调整工作台
+    将窄纵向基础面板与独立三段均衡面板并排，恢复正常可读字号并降低默认波形高度，为后续真实的
+    响度、Dynamics 与降噪 panel owner 留出空间；未实现能力不显示空控件。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 

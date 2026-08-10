@@ -41,12 +41,17 @@ void PlaybackController::playAdjusted(
     int fadeInCurve,
     int fadeOutCurve,
     int gainCentibels,
-    int lowCutHertz
+    int lowCutHertz,
+    int eqLowGainCentibels,
+    int eqMidGainCentibels,
+    int eqHighGainCentibels
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
         || fadeOutCurve > 2 || gainCentibels < -2400 || gainCentibels > 1200
-        || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))) {
+        || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
+        || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200 || eqMidGainCentibels < -1200
+        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200) {
         qWarning("invalid playback adjustment");
         return;
     }
@@ -59,6 +64,11 @@ void PlaybackController::playAdjusted(
         .fade_out_curve = static_cast<echo::audio::FadeCurve>(fadeOutCurve),
         .gain_centibels = static_cast<std::int16_t>(gainCentibels),
         .low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz),
+        .equalizer = {
+            .low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels),
+            .mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels),
+            .high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels),
+        },
     };
     startSession(path, adjustment);
 }

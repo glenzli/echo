@@ -163,6 +163,7 @@ qt_add_qml_module(
         qml/SoundWall.qml
         qml/SoundWallBottomBar.qml
         qml/Theme.qml
+        qml/ToneEqualizerPanel.qml
         qml/WaveformView.qml
     RESOURCES
         icons/play.svg
@@ -187,6 +188,7 @@ qt_add_qml_module(
         icons/fade-linear.svg
         icons/fade-smooth.svg
         icons/fade-equal-power.svg
+        icons/equalizer.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

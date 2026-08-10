@@ -2,6 +2,7 @@
 
 #include "echo/audio/ffmpeg_include.hpp"
 #include "echo/audio/low_cut_filter.hpp"
+#include "echo/audio/three_band_equalizer.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -251,6 +252,11 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        equalizer_ = std::make_unique<ThreeBandEqualizer>(
+            adjustment_->equalizer(),
+            kCanonicalSampleRate,
+            channel_count_
+        );
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -380,6 +386,7 @@ class PlaybackSession::Impl {
             consumed_frames_.store(millis * kCanonicalSampleRate / 1000, std::memory_order_relaxed);
             decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
             low_cut_filter_->reset();
+            equalizer_->reset();
         }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
         while (ring_->available() > 0 && std::chrono::steady_clock::now() < deadline) {
@@ -455,7 +462,8 @@ class PlaybackSession::Impl {
                                 planes[channel][input_offset + written + index],
                                 channel
                             );
-                            const float sample = filtered * amplitude;
+                            const float equalized = equalizer_->process_sample(filtered, channel);
+                            const float sample = equalized * amplitude;
                             scratch[index * channel_count_ + channel] =
                                 std::clamp(sample, -1.0F, 1.0F);
                         }
@@ -554,6 +562,7 @@ class PlaybackSession::Impl {
     std::unique_ptr<FrameRing> ring_;
     std::unique_ptr<PreparedAdjustment> adjustment_;
     std::unique_ptr<LowCutFilter> low_cut_filter_;
+    std::unique_ptr<ThreeBandEqualizer> equalizer_;
     std::uint64_t decoded_frame_cursor_ = 0;
 
     std::thread thread_;

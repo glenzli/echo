@@ -12,6 +12,13 @@ enum class FadeCurve : std::uint8_t {
     EqualPower = 2,
 };
 
+/// Fixed-band equalizer gain intent in hundredths of one decibel.
+struct ThreeBandEqualizerAdjustment {
+    std::int16_t low_gain_centibels = 0;
+    std::int16_t mid_gain_centibels = 0;
+    std::int16_t high_gain_centibels = 0;
+};
+
 /// Authored non-destructive playback adjustments. Milliseconds, centibels,
 /// and hertz are explicit so the cross-language boundary never relies on
 /// floating-point UI units. A zero `trim_end_millis` means source end.
@@ -25,6 +32,7 @@ struct PlaybackAdjustment {
     std::int16_t gain_centibels = 0;
     /// High-pass cutoff in hertz, or zero when disabled.
     std::uint16_t low_cut_hertz = 0;
+    ThreeBandEqualizerAdjustment equalizer;
 };
 
 /// Playback-ready adjustment compiled once before decoding begins.
@@ -44,6 +52,7 @@ class PreparedAdjustment {
     [[nodiscard]] std::uint64_t trim_start_millis() const;
     [[nodiscard]] std::uint64_t trim_end_millis() const;
     [[nodiscard]] std::uint16_t low_cut_hertz() const;
+    [[nodiscard]] ThreeBandEqualizerAdjustment equalizer() const;
     [[nodiscard]] std::uint64_t clamp_seek_millis(std::uint64_t millis) const;
     [[nodiscard]] float amplitude_at(std::uint64_t source_frame) const;
 
@@ -58,6 +67,7 @@ class PreparedAdjustment {
     FadeCurve fade_out_curve_ = FadeCurve::Linear;
     float gain_amplitude_ = 1.0F;
     std::uint16_t low_cut_hertz_ = 0;
+    ThreeBandEqualizerAdjustment equalizer_;
 };
 
 } // namespace echo::audio

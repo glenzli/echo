@@ -98,15 +98,21 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_810, 2);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 3);
+    CatalogSchemaRevision::new(20_260_810, 3);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 4);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.3-low-cut";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.4-three-band-equalizer";
 
-pub(crate) const LOW_CUT_MIGRATION_SQL: &str = "
+pub(crate) const EQUALIZER_MIGRATION_SQL: &str = "
 ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN low_cut_hertz INTEGER NOT NULL DEFAULT 0
-    CHECK (low_cut_hertz = 0 OR low_cut_hertz BETWEEN 20 AND 240);
+    ADD COLUMN eq_low_gain_centibels INTEGER NOT NULL DEFAULT 0
+    CHECK (eq_low_gain_centibels BETWEEN -1200 AND 1200);
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN eq_mid_gain_centibels INTEGER NOT NULL DEFAULT 0
+    CHECK (eq_mid_gain_centibels BETWEEN -1200 AND 1200);
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN eq_high_gain_centibels INTEGER NOT NULL DEFAULT 0
+    CHECK (eq_high_gain_centibels BETWEEN -1200 AND 1200);
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -227,6 +233,12 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     gain_centibels        INTEGER NOT NULL CHECK (gain_centibels BETWEEN -2400 AND 1200),
     low_cut_hertz         INTEGER NOT NULL DEFAULT 0
                           CHECK (low_cut_hertz = 0 OR low_cut_hertz BETWEEN 20 AND 240),
+    eq_low_gain_centibels INTEGER NOT NULL DEFAULT 0
+                          CHECK (eq_low_gain_centibels BETWEEN -1200 AND 1200),
+    eq_mid_gain_centibels INTEGER NOT NULL DEFAULT 0
+                          CHECK (eq_mid_gain_centibels BETWEEN -1200 AND 1200),
+    eq_high_gain_centibels INTEGER NOT NULL DEFAULT 0
+                           CHECK (eq_high_gain_centibels BETWEEN -1200 AND 1200),
     created_at_millis     INTEGER NOT NULL,
     CHECK (fade_in_millis + fade_out_millis <= trim_end_millis - trim_start_millis)
 );

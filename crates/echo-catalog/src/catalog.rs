@@ -10,7 +10,7 @@ use rusqlite::{Connection, OptionalExtension};
 use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
-        CatalogSchemaRevision, LOW_CUT_MIGRATION_SQL, PREVIOUS_SCHEMA_VERSION, SCHEMA_IDENTITY,
+        CatalogSchemaRevision, EQUALIZER_MIGRATION_SQL, PREVIOUS_SCHEMA_VERSION, SCHEMA_IDENTITY,
         SCHEMA_SQL, SCHEMA_VERSION,
     },
 };
@@ -92,7 +92,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_low_cut_schema(connection)?;
+            migrate_equalizer_schema(connection)?;
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -108,9 +108,9 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
-fn migrate_low_cut_schema(connection: &Connection) -> Result<(), CatalogError> {
+fn migrate_equalizer_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
-    transaction.execute_batch(LOW_CUT_MIGRATION_SQL)?;
+    transaction.execute_batch(EQUALIZER_MIGRATION_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],
