@@ -15,7 +15,7 @@ Rectangle {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitWidth: 390
+    implicitWidth: 300
     implicitHeight: 224
     radius: Theme.compactControlRadius
     color: Theme.panelRaised
@@ -120,15 +120,33 @@ Rectangle {
 
         PanelDivider {}
 
-        ControlRow {
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 43
-            title: qsTr("Low cut")
-            iconSource: "qrc:/EchoDesktop/icons/high-pass.svg"
+            Layout.preferredHeight: 57
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            Layout.topMargin: 3
+            Layout.bottomMargin: 3
+            spacing: 0
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 5
+
+                EchoIcon {
+                    source: "qrc:/EchoDesktop/icons/high-pass.svg"
+                    size: 13
+                    color: Theme.textSecondary
+                }
+
+                Text {
+                    text: qsTr("Low cut")
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSection
+                    font.weight: Font.DemiBold
+                }
+
+                Item { Layout.fillWidth: true }
 
                 EchoIconButton {
                     source: panel.draft.lowCutHertz > 0
@@ -137,39 +155,63 @@ Rectangle {
                     toolTipText: panel.draft.lowCutHertz > 0
                         ? qsTr("Disable low cut") : qsTr("Enable low cut")
                     selected: panel.draft.lowCutHertz > 0
-                    buttonSize: 27
-                    iconSize: 15
+                    buttonSize: 23
+                    iconSize: 13
                     onClicked: panel.draft.setLowCut(
                         panel.draft.lowCutHertz === 0 ? 80 : 0)
                 }
+            }
 
-                EchoParameterSlider {
-                    Layout.fillWidth: true
-                    from: 20
-                    to: 240
-                    stepSize: 1
-                    value: panel.draft.lowCutHertz > 0
-                        ? panel.draft.lowCutHertz : 80
-                    valueText: panel.draft.lowCutHertz === 0
-                        ? qsTr("Bypass") : panel.draft.lowCutHertz + " Hz"
-                    accessibleName: qsTr("Low cut")
-                    valueWidth: 56
-                    fillFromMinimum: true
-                    enabled: panel.draft.lowCutHertz > 0
-                    onGestureStarted: panel.draft.beginGesture()
-                    onGestureFinished: panel.draft.endGesture()
-                    onEdited: value => panel.draft.setLowCut(value)
-                }
+            EchoParameterSlider {
+                Layout.fillWidth: true
+                from: 20
+                to: 240
+                stepSize: 1
+                value: panel.draft.lowCutHertz > 0
+                    ? panel.draft.lowCutHertz : 80
+                valueText: panel.draft.lowCutHertz === 0
+                    ? qsTr("Bypass") : panel.draft.lowCutHertz + " Hz"
+                accessibleName: qsTr("Low cut")
+                valueWidth: 56
+                fillFromMinimum: true
+                enabled: panel.draft.lowCutHertz > 0
+                onGestureStarted: panel.draft.beginGesture()
+                onGestureFinished: panel.draft.endGesture()
+                onEdited: value => panel.draft.setLowCut(value)
             }
         }
 
         PanelDivider {}
 
-        ControlRow {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            title: qsTr("Clip gain")
-            iconSource: "qrc:/EchoDesktop/icons/gain.svg"
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            Layout.topMargin: 4
+            Layout.bottomMargin: 5
+            spacing: 1
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 20
+                spacing: 5
+
+                EchoIcon {
+                    source: "qrc:/EchoDesktop/icons/gain.svg"
+                    size: 13
+                    color: Theme.textSecondary
+                }
+
+                Text {
+                    text: qsTr("Clip gain")
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSection
+                    font.weight: Font.DemiBold
+                }
+
+                Item { Layout.fillWidth: true }
+            }
 
             EchoParameterSlider {
                 Layout.fillWidth: true
@@ -224,8 +266,8 @@ Rectangle {
         spacing: 8
 
         RowLayout {
-            Layout.preferredWidth: 68
-            Layout.minimumWidth: 68
+            Layout.preferredWidth: 58
+            Layout.minimumWidth: 58
             spacing: 5
 
             EchoIcon {

@@ -120,7 +120,9 @@ Rectangle {
             spacing: 18
 
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Math.min(340, (panel.width - 58) / 2)
+                Layout.minimumWidth: 236
+                Layout.maximumWidth: 360
                 Layout.fillHeight: true
                 spacing: 1
 
@@ -173,7 +175,9 @@ Rectangle {
             }
 
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Math.min(340, (panel.width - 58) / 2)
+                Layout.minimumWidth: 236
+                Layout.maximumWidth: 360
                 Layout.fillHeight: true
                 spacing: 1
 
@@ -218,6 +222,8 @@ Rectangle {
                     horizontalAlignment: Text.AlignRight
                 }
             }
+
+            Item { Layout.fillWidth: true }
         }
     }
 }

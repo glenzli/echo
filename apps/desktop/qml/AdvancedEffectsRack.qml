@@ -43,7 +43,9 @@ Rectangle {
                     required property int index
                     required property string modelData
 
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: 82
+                    Layout.minimumWidth: 82
+                    Layout.maximumWidth: 82
                     Layout.preferredHeight: 24
                     radius: Theme.compactControlRadius
                     color: rack.currentIndex === index ? Theme.surfaceSelected : "transparent"
@@ -61,6 +63,8 @@ Rectangle {
                     TapHandler { onTapped: rack.currentIndex = parent.index }
                 }
             }
+
+            Item { Layout.fillWidth: true }
         }
 
         Rectangle {

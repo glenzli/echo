@@ -100,156 +100,182 @@ Rectangle {
             color: Theme.border
         }
 
-        Canvas {
-            id: transferCurve
-
-            Layout.fillWidth: true
-            Layout.preferredHeight: 43
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-            Layout.topMargin: 4
-            opacity: panel.draft.compressorEnabled ? 1 : 0.45
-
-            function outputLevel(input) {
-                const threshold = panel.draft.compressorThresholdCentibels / 100
-                const ratio = panel.draft.compressorRatioTenths / 10
-                const offset = input - threshold
-                if (offset > 3) return threshold + offset / ratio
-                if (offset <= -3) return input
-                const knee = offset + 3
-                return input + (1 / ratio - 1) * knee * knee / 12
-            }
-
-            function coordinate(level) {
-                return (level + 60) / 60
-            }
-
-            onPaint: {
-                const context = getContext("2d")
-                context.clearRect(0, 0, width, height)
-                context.strokeStyle = Theme.border
-                context.lineWidth = 1
-                context.beginPath()
-                context.moveTo(0, height)
-                context.lineTo(width, 0)
-                context.stroke()
-                context.strokeStyle = Theme.accent
-                context.lineWidth = 2
-                context.beginPath()
-                for (let input = -60; input <= 0; input += 1) {
-                    const x = coordinate(input) * width
-                    const output = outputLevel(input)
-                        + panel.draft.compressorMakeupCentibels / 100
-                    const y = height - coordinate(Math.max(-60, Math.min(0, output))) * height
-                    if (input === -60) context.moveTo(x, y)
-                    else context.lineTo(x, y)
-                }
-                context.stroke()
-            }
-
-            Connections {
-                target: panel.draft
-                function onCompressorEnabledChanged() { transferCurve.requestPaint() }
-                function onCompressorThresholdCentibelsChanged() { transferCurve.requestPaint() }
-                function onCompressorRatioTenthsChanged() { transferCurve.requestPaint() }
-                function onCompressorMakeupCentibelsChanged() { transferCurve.requestPaint() }
-            }
-        }
-
         RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 38
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-            spacing: 10
-
-            MeterReadout {
-                label: qsTr("Momentary")
-                value: panel.meterSource.momentaryLufs
-                minimum: -60
-                maximum: 0
-                valueText: panel.meterText(value, "LUFS")
-                meterColor: Theme.accent
-            }
-            MeterReadout {
-                label: qsTr("Peak")
-                value: panel.meterSource.outputPeakDb
-                minimum: -60
-                maximum: 0
-                valueText: panel.meterText(value, "dBFS")
-                meterColor: value > -1 ? Theme.warningText : Theme.accent
-            }
-            MeterReadout {
-                label: qsTr("Reduction")
-                value: panel.meterSource.gainReductionDb
-                minimum: 0
-                maximum: 24
-                valueText: panel.meterSource.active
-                    ? value.toFixed(1) + " dB" : "—"
-                meterColor: Theme.accentSelectionText
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.border
-        }
-
-        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: 10
             Layout.rightMargin: 10
-            Layout.topMargin: 3
-            Layout.bottomMargin: 3
-            spacing: 0
+            Layout.topMargin: 7
+            Layout.bottomMargin: 7
+            spacing: 12
 
-            DynamicsRow {
-                label: qsTr("Threshold")
-                from: -6000
-                to: 0
-                stepSize: 10
-                value: panel.draft.compressorThresholdCentibels
-                valueText: panel.decibels(value, false)
-                onParameterEdited: value => panel.draft.setCompressorParameter("threshold", value)
+            ColumnLayout {
+                Layout.preferredWidth: Math.min(290, panel.width * 0.4)
+                Layout.minimumWidth: 210
+                Layout.maximumWidth: 300
+                Layout.fillHeight: true
+                spacing: 7
+
+                Canvas {
+                    id: transferCurve
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 72
+                    opacity: panel.draft.compressorEnabled ? 1 : 0.45
+
+                    function outputLevel(input) {
+                        const threshold = panel.draft.compressorThresholdCentibels / 100
+                        const ratio = panel.draft.compressorRatioTenths / 10
+                        const offset = input - threshold
+                        if (offset > 3) return threshold + offset / ratio
+                        if (offset <= -3) return input
+                        const knee = offset + 3
+                        return input + (1 / ratio - 1) * knee * knee / 12
+                    }
+
+                    function coordinate(level) {
+                        return (level + 60) / 60
+                    }
+
+                    onPaint: {
+                        const context = getContext("2d")
+                        context.clearRect(0, 0, width, height)
+                        context.strokeStyle = Theme.border
+                        context.lineWidth = 1
+                        context.beginPath()
+                        context.moveTo(0, height)
+                        context.lineTo(width, 0)
+                        context.stroke()
+                        context.strokeStyle = Theme.accent
+                        context.lineWidth = 2
+                        context.beginPath()
+                        for (let input = -60; input <= 0; input += 1) {
+                            const x = coordinate(input) * width
+                            const output = outputLevel(input)
+                                + panel.draft.compressorMakeupCentibels / 100
+                            const y = height - coordinate(Math.max(-60,
+                                Math.min(0, output))) * height
+                            if (input === -60) context.moveTo(x, y)
+                            else context.lineTo(x, y)
+                        }
+                        context.stroke()
+                    }
+
+                    Connections {
+                        target: panel.draft
+                        function onCompressorEnabledChanged() {
+                            transferCurve.requestPaint()
+                        }
+                        function onCompressorThresholdCentibelsChanged() {
+                            transferCurve.requestPaint()
+                        }
+                        function onCompressorRatioTenthsChanged() {
+                            transferCurve.requestPaint()
+                        }
+                        function onCompressorMakeupCentibelsChanged() {
+                            transferCurve.requestPaint()
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 38
+                    spacing: 8
+
+                    MeterReadout {
+                        label: qsTr("Momentary")
+                        value: panel.meterSource.momentaryLufs
+                        minimum: -60
+                        maximum: 0
+                        valueText: panel.meterText(value, "LUFS")
+                        meterColor: Theme.accent
+                    }
+                    MeterReadout {
+                        label: qsTr("Peak")
+                        value: panel.meterSource.outputPeakDb
+                        minimum: -60
+                        maximum: 0
+                        valueText: panel.meterText(value, "dBFS")
+                        meterColor: value > -1 ? Theme.warningText : Theme.accent
+                    }
+                    MeterReadout {
+                        label: qsTr("Reduction")
+                        value: panel.meterSource.gainReductionDb
+                        minimum: 0
+                        maximum: 24
+                        valueText: panel.meterSource.active
+                            ? value.toFixed(1) + " dB" : "—"
+                        meterColor: Theme.accentSelectionText
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
             }
-            DynamicsRow {
-                label: qsTr("Ratio")
-                from: 10
-                to: 200
-                stepSize: 1
-                value: panel.draft.compressorRatioTenths
-                valueText: (value / 10).toFixed(1) + ":1"
-                onParameterEdited: value => panel.draft.setCompressorParameter("ratio", value)
+
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                color: Theme.border
             }
-            DynamicsRow {
-                label: qsTr("Attack")
-                from: 1
-                to: 200
-                stepSize: 1
-                value: panel.draft.compressorAttackMillis
-                valueText: Math.round(value) + " ms"
-                onParameterEdited: value => panel.draft.setCompressorParameter("attack", value)
+
+            ColumnLayout {
+                Layout.preferredWidth: 370
+                Layout.minimumWidth: 280
+                Layout.maximumWidth: 420
+                Layout.fillHeight: true
+                spacing: 2
+
+                DynamicsRow {
+                    label: qsTr("Threshold")
+                    from: -6000
+                    to: 0
+                    stepSize: 10
+                    value: panel.draft.compressorThresholdCentibels
+                    valueText: panel.decibels(value, false)
+                    onParameterEdited: value => panel.draft.setCompressorParameter("threshold", value)
+                }
+                DynamicsRow {
+                    label: qsTr("Ratio")
+                    from: 10
+                    to: 200
+                    stepSize: 1
+                    value: panel.draft.compressorRatioTenths
+                    valueText: (value / 10).toFixed(1) + ":1"
+                    onParameterEdited: value => panel.draft.setCompressorParameter("ratio", value)
+                }
+                DynamicsRow {
+                    label: qsTr("Attack")
+                    from: 1
+                    to: 200
+                    stepSize: 1
+                    value: panel.draft.compressorAttackMillis
+                    valueText: Math.round(value) + " ms"
+                    onParameterEdited: value => panel.draft.setCompressorParameter("attack", value)
+                }
+                DynamicsRow {
+                    label: qsTr("Release")
+                    from: 20
+                    to: 2000
+                    stepSize: 10
+                    value: panel.draft.compressorReleaseMillis
+                    valueText: Math.round(value) + " ms"
+                    onParameterEdited: value => panel.draft.setCompressorParameter("release", value)
+                }
+                DynamicsRow {
+                    label: qsTr("Makeup")
+                    from: 0
+                    to: 2400
+                    stepSize: 10
+                    value: panel.draft.compressorMakeupCentibels
+                    valueText: panel.decibels(value, true)
+                    onParameterEdited: value => panel.draft.setCompressorParameter("makeup", value)
+                }
+
+                Item { Layout.fillHeight: true }
             }
-            DynamicsRow {
-                label: qsTr("Release")
-                from: 20
-                to: 2000
-                stepSize: 10
-                value: panel.draft.compressorReleaseMillis
-                valueText: Math.round(value) + " ms"
-                onParameterEdited: value => panel.draft.setCompressorParameter("release", value)
-            }
-            DynamicsRow {
-                label: qsTr("Makeup")
-                from: 0
-                to: 2400
-                stepSize: 10
-                value: panel.draft.compressorMakeupCentibels
-                valueText: panel.decibels(value, true)
-                onParameterEdited: value => panel.draft.setCompressorParameter("makeup", value)
-            }
+
+            Item { Layout.fillWidth: true }
         }
     }
 

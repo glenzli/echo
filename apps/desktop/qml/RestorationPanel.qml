@@ -54,7 +54,9 @@ Rectangle {
             spacing: 16
 
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Math.min(330, (panel.width - 48) / 2)
+                Layout.minimumWidth: 230
+                Layout.maximumWidth: 350
                 Layout.fillHeight: true
                 spacing: 1
 
@@ -128,7 +130,9 @@ Rectangle {
             Rectangle { Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.border }
 
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.preferredWidth: Math.min(330, (panel.width - 48) / 2)
+                Layout.minimumWidth: 230
+                Layout.maximumWidth: 350
                 Layout.fillHeight: true
                 spacing: 1
 
@@ -198,6 +202,8 @@ Rectangle {
                     wrapMode: Text.WordWrap
                 }
             }
+
+            Item { Layout.fillWidth: true }
         }
     }
 }

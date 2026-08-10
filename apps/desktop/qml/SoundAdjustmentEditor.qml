@@ -127,10 +127,10 @@ Rectangle {
             spacing: 10
 
             BasicAdjustmentPanel {
-                Layout.preferredWidth: Math.min(390,
-                    Math.max(350, inspector.width * 0.245))
-                Layout.minimumWidth: 320
-                Layout.maximumWidth: 390
+                Layout.preferredWidth: Math.min(310,
+                    Math.max(286, inspector.width * 0.19))
+                Layout.minimumWidth: 280
+                Layout.maximumWidth: 310
                 Layout.fillHeight: true
                 draft: inspector.draft
                 hasTimeSelection: inspector.hasTimeSelection
@@ -140,7 +140,10 @@ Rectangle {
 
             AdvancedEffectsRack {
                 id: effectsRack
-                Layout.fillWidth: true
+                Layout.preferredWidth: Math.min(840,
+                    Math.max(620, inspector.width - 350))
+                Layout.minimumWidth: 600
+                Layout.maximumWidth: 840
                 Layout.fillHeight: true
                 draft: inspector.draft
                 meterSource: inspector.meterSource
@@ -148,6 +151,8 @@ Rectangle {
                 sourcePath: inspector.sourcePath
                 analysisKey: inspector.analysisKey
             }
+
+            Item { Layout.fillWidth: true }
         }
     }
 }
