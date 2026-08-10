@@ -3,6 +3,7 @@
 #pragma once
 
 #include <QObject>
+#include <QVariantList>
 #include <QVariantMap>
 
 #include <atomic>
@@ -35,9 +36,7 @@ class LoudnessAnalysisController : public QObject {
         int fadeOutCurve,
         int gainCentibels,
         int lowCutHertz,
-        int eqLowGainCentibels,
-        int eqMidGainCentibels,
-        int eqHighGainCentibels,
+        const QVariantList& equalizerBands,
         bool compressorEnabled,
         int compressorThresholdCentibels,
         int compressorRatioTenths,

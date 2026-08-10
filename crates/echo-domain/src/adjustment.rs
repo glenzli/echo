@@ -19,6 +19,13 @@ pub const MAX_LOW_CUT_HERTZ: u16 = 240;
 pub const MIN_EQ_GAIN_CENTIBELS: i16 = -1_200;
 /// Highest supported gain for one equalizer band, in hundredths of a decibel.
 pub const MAX_EQ_GAIN_CENTIBELS: i16 = 1_200;
+/// Echo's authored parametric equalizer has a fixed, bounded band count.
+pub const PARAMETRIC_EQ_BAND_COUNT: usize = 6;
+pub const MIN_EQ_FREQUENCY_HERTZ: u16 = 20;
+pub const MAX_EQ_FREQUENCY_HERTZ: u16 = 20_000;
+/// Parametric equalizer Q is stored in hundredths.
+pub const MIN_EQ_Q_HUNDREDTHS: u16 = 10;
+pub const MAX_EQ_Q_HUNDREDTHS: u16 = 2_000;
 pub const MIN_COMPRESSOR_THRESHOLD_CENTIBELS: i16 = -6_000;
 pub const MAX_COMPRESSOR_THRESHOLD_CENTIBELS: i16 = 0;
 pub const MIN_COMPRESSOR_RATIO_TENTHS: u16 = 10;
@@ -88,51 +95,136 @@ impl LimiterSettings {
     }
 }
 
-/// Authored gain for Echo's fixed restoration equalizer bands.
-///
-/// Center frequencies and filter shapes belong to the execution contract;
-/// persistence stores only stable per-band gain intent.
+/// Stable filter shape for one authored parametric equalizer band.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ThreeBandEqualizer {
-    low_gain_centibels: i16,
-    mid_gain_centibels: i16,
-    high_gain_centibels: i16,
+#[serde(rename_all = "snake_case")]
+pub enum EqualizerFilterKind {
+    #[default]
+    Bell,
+    LowShelf,
+    HighShelf,
+    Notch,
 }
 
-impl ThreeBandEqualizer {
+impl EqualizerFilterKind {
     #[must_use]
-    pub const fn new(
-        low_gain_centibels: i16,
-        mid_gain_centibels: i16,
-        high_gain_centibels: i16,
-    ) -> Self {
-        Self {
-            low_gain_centibels,
-            mid_gain_centibels,
-            high_gain_centibels,
+    pub const fn catalog_value(self) -> i64 {
+        match self {
+            Self::Bell => 0,
+            Self::LowShelf => 1,
+            Self::HighShelf => 2,
+            Self::Notch => 3,
         }
     }
 
+    /// Restores the stable Catalog representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EqualizerFilterKindValueError`] for unknown values.
+    pub const fn from_catalog_value(value: i64) -> Result<Self, EqualizerFilterKindValueError> {
+        match value {
+            0 => Ok(Self::Bell),
+            1 => Ok(Self::LowShelf),
+            2 => Ok(Self::HighShelf),
+            3 => Ok(Self::Notch),
+            _ => Err(EqualizerFilterKindValueError),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EqualizerFilterKindValueError;
+
+impl std::fmt::Display for EqualizerFilterKindValueError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("equalizer filter must be bell, low shelf, high shelf, or notch")
+    }
+}
+
+impl std::error::Error for EqualizerFilterKindValueError {}
+
+/// One stable authored band. Coefficients remain an audio-engine concern.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParametricEqualizerBand {
+    pub enabled: bool,
+    pub filter_kind: EqualizerFilterKind,
+    pub frequency_hertz: u16,
+    pub q_hundredths: u16,
+    pub gain_centibels: i16,
+}
+
+impl ParametricEqualizerBand {
     #[must_use]
-    pub const fn low_gain_centibels(self) -> i16 {
-        self.low_gain_centibels
+    pub const fn new(
+        enabled: bool,
+        filter_kind: EqualizerFilterKind,
+        frequency_hertz: u16,
+        q_hundredths: u16,
+        gain_centibels: i16,
+    ) -> Self {
+        Self {
+            enabled,
+            filter_kind,
+            frequency_hertz,
+            q_hundredths,
+            gain_centibels,
+        }
+    }
+}
+
+/// Six-band authored equalizer intent shared by persistence and execution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParametricEqualizer {
+    bands: [ParametricEqualizerBand; PARAMETRIC_EQ_BAND_COUNT],
+}
+
+impl Default for ParametricEqualizer {
+    fn default() -> Self {
+        Self::flat()
+    }
+}
+
+impl ParametricEqualizer {
+    #[must_use]
+    pub const fn new(bands: [ParametricEqualizerBand; PARAMETRIC_EQ_BAND_COUNT]) -> Self {
+        Self { bands }
     }
 
     #[must_use]
-    pub const fn mid_gain_centibels(self) -> i16 {
-        self.mid_gain_centibels
+    pub const fn flat() -> Self {
+        use EqualizerFilterKind::{Bell, HighShelf, LowShelf};
+        Self::new([
+            ParametricEqualizerBand::new(true, LowShelf, 120, 71, 0),
+            ParametricEqualizerBand::new(false, Bell, 250, 100, 0),
+            ParametricEqualizerBand::new(true, Bell, 1_000, 100, 0),
+            ParametricEqualizerBand::new(false, Bell, 3_000, 100, 0),
+            ParametricEqualizerBand::new(false, Bell, 5_000, 100, 0),
+            ParametricEqualizerBand::new(true, HighShelf, 8_000, 71, 0),
+        ])
+    }
+
+    /// Losslessly lifts Echo's former fixed-band gains into the new topology.
+    #[must_use]
+    pub const fn from_legacy_gains(low: i16, mid: i16, high: i16) -> Self {
+        let mut equalizer = Self::flat();
+        equalizer.bands[0].gain_centibels = low;
+        equalizer.bands[2].gain_centibels = mid;
+        equalizer.bands[5].gain_centibels = high;
+        equalizer
     }
 
     #[must_use]
-    pub const fn high_gain_centibels(self) -> i16 {
-        self.high_gain_centibels
+    pub const fn bands(self) -> [ParametricEqualizerBand; PARAMETRIC_EQ_BAND_COUNT] {
+        self.bands
     }
 
     #[must_use]
-    pub const fn is_flat(self) -> bool {
-        self.low_gain_centibels == 0
-            && self.mid_gain_centibels == 0
-            && self.high_gain_centibels == 0
+    pub fn is_flat(self) -> bool {
+        self.bands.iter().all(|band| {
+            !band.enabled
+                || (band.filter_kind != EqualizerFilterKind::Notch && band.gain_centibels == 0)
+        })
     }
 }
 
@@ -217,7 +309,7 @@ pub struct AdjustmentEffects {
     pub fade_curves: FadeCurves,
     pub gain_centibels: i16,
     pub low_cut_hertz: u16,
-    pub equalizer: ThreeBandEqualizer,
+    pub equalizer: ParametricEqualizer,
     pub compressor: CompressorSettings,
     pub limiter: LimiterSettings,
 }
@@ -229,14 +321,14 @@ impl AdjustmentEffects {
             fade_curves,
             gain_centibels,
             low_cut_hertz,
-            equalizer: ThreeBandEqualizer::new(0, 0, 0),
+            equalizer: ParametricEqualizer::flat(),
             compressor: CompressorSettings::standard(),
             limiter: LimiterSettings::standard(),
         }
     }
 
     #[must_use]
-    pub const fn with_equalizer(mut self, equalizer: ThreeBandEqualizer) -> Self {
+    pub const fn with_equalizer(mut self, equalizer: ParametricEqualizer) -> Self {
         self.equalizer = equalizer;
         self
     }
@@ -265,7 +357,7 @@ pub struct AdjustmentGraph {
     fade_out_curve: FadeCurve,
     gain_centibels: i16,
     low_cut_hertz: u16,
-    equalizer: ThreeBandEqualizer,
+    equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     #[serde(default)]
     limiter: LimiterSettings,
@@ -303,13 +395,13 @@ impl AdjustmentGraph {
         {
             return Err(AdjustmentGraphError::LowCutOutOfRange);
         }
-        for gain in [
-            effects.equalizer.low_gain_centibels,
-            effects.equalizer.mid_gain_centibels,
-            effects.equalizer.high_gain_centibels,
-        ] {
-            if !(MIN_EQ_GAIN_CENTIBELS..=MAX_EQ_GAIN_CENTIBELS).contains(&gain) {
-                return Err(AdjustmentGraphError::EqualizerGainOutOfRange);
+        for band in effects.equalizer.bands {
+            if !(MIN_EQ_GAIN_CENTIBELS..=MAX_EQ_GAIN_CENTIBELS).contains(&band.gain_centibels)
+                || !(MIN_EQ_FREQUENCY_HERTZ..=MAX_EQ_FREQUENCY_HERTZ)
+                    .contains(&band.frequency_hertz)
+                || !(MIN_EQ_Q_HUNDREDTHS..=MAX_EQ_Q_HUNDREDTHS).contains(&band.q_hundredths)
+            {
+                return Err(AdjustmentGraphError::EqualizerBandOutOfRange);
             }
         }
         let compressor = effects.compressor;
@@ -407,7 +499,7 @@ impl AdjustmentGraph {
     }
 
     #[must_use]
-    pub const fn equalizer(self) -> ThreeBandEqualizer {
+    pub const fn equalizer(self) -> ParametricEqualizer {
         self.equalizer
     }
 
@@ -429,7 +521,7 @@ pub enum AdjustmentGraphError {
     OverlappingFades,
     GainOutOfRange,
     LowCutOutOfRange,
-    EqualizerGainOutOfRange,
+    EqualizerBandOutOfRange,
     CompressorOutOfRange,
     LimiterOutOfRange,
 }
@@ -441,8 +533,8 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::OverlappingFades => "fade durations must fit inside the trim range",
             Self::GainOutOfRange => "gain must be between -24 dB and +12 dB",
             Self::LowCutOutOfRange => "low cut must be off or between 20 Hz and 240 Hz",
-            Self::EqualizerGainOutOfRange => {
-                "equalizer band gain must be between -12 dB and +12 dB"
+            Self::EqualizerBandOutOfRange => {
+                "equalizer band frequency, Q, or gain is outside the supported range"
             }
             Self::CompressorOutOfRange => "compressor parameters are outside the supported range",
             Self::LimiterOutOfRange => "limiter parameters are outside the supported range",

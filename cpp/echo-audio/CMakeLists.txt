@@ -15,7 +15,7 @@ add_library(
     src/output_guard.cpp
     src/output_limiter.cpp
     src/playback.cpp
-    src/three_band_equalizer.cpp
+    src/parametric_equalizer.cpp
     src/waveform.cpp
 )
 add_library(Echo::Audio ALIAS echo-audio)
@@ -116,12 +116,12 @@ if(BUILD_TESTING)
     add_test(NAME echo-output-limiter-test COMMAND echo-output-limiter-test)
 
     add_executable(
-        echo-three-band-equalizer-test
-        tests/three_band_equalizer_test.cpp
+        echo-parametric-equalizer-test
+        tests/parametric_equalizer_test.cpp
     )
-    target_link_libraries(echo-three-band-equalizer-test PRIVATE Echo::Audio)
-    echo_audio_enable_warnings(echo-three-band-equalizer-test)
-    add_test(NAME echo-three-band-equalizer-test COMMAND echo-three-band-equalizer-test)
+    target_link_libraries(echo-parametric-equalizer-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-parametric-equalizer-test)
+    add_test(NAME echo-parametric-equalizer-test COMMAND echo-parametric-equalizer-test)
 
     add_executable(
         echo-waveform-engine-test

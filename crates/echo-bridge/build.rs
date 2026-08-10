@@ -23,7 +23,7 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/output_guard.cpp",
     "src/output_limiter.cpp",
     "src/playback.cpp",
-    "src/three_band_equalizer.cpp",
+    "src/parametric_equalizer.cpp",
     "src/waveform.cpp",
 ];
 
@@ -39,7 +39,7 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/output_guard.hpp",
     "include/echo/audio/output_limiter.hpp",
     "include/echo/audio/playback.hpp",
-    "include/echo/audio/three_band_equalizer.hpp",
+    "include/echo/audio/parametric_equalizer.hpp",
     "include/echo/audio/waveform.hpp",
     "src/bridge/cxx_bridge.hpp",
 ];

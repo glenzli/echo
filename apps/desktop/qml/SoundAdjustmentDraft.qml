@@ -17,9 +17,7 @@ QtObject {
     property int fadeOutCurve: 0
     property int gainCentibels: 0
     property int lowCutHertz: 0
-    property int eqLowGainCentibels: 0
-    property int eqMidGainCentibels: 0
-    property int eqHighGainCentibels: 0
+    property var equalizerBands: defaultEqualizerBands()
     property bool compressorEnabled: false
     property int compressorThresholdCentibels: -1800
     property int compressorRatioTenths: 30
@@ -48,8 +46,7 @@ QtObject {
         && fadeInMillis === 0 && fadeOutMillis === 0
         && fadeInCurve === 0 && fadeOutCurve === 0
         && gainCentibels === 0 && lowCutHertz === 0
-        && eqLowGainCentibels === 0 && eqMidGainCentibels === 0
-        && eqHighGainCentibels === 0
+        && equalizerIsFlat()
         && !compressorEnabled
         && !limiterEnabled
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
@@ -58,7 +55,7 @@ QtObject {
                          int fadeIn, int fadeOut,
                          int fadeInCurve, int fadeOutCurve,
                          int gain, int lowCut,
-                         int eqLowGain, int eqMidGain, int eqHighGain,
+                         var equalizerBands,
                          bool compressorEnabled, int compressorThreshold,
                          int compressorRatio, int compressorAttack,
                          int compressorRelease, int compressorMakeup,
@@ -67,6 +64,68 @@ QtObject {
 
     function clamp(value: real, minimum: real, maximum: real) : real {
         return Math.max(minimum, Math.min(maximum, value))
+    }
+
+    function defaultEqualizerBands() : var {
+        return [
+            { enabled: true, filterKind: 1, frequencyHertz: 120,
+              qHundredths: 71, gainCentibels: 0 },
+            { enabled: false, filterKind: 0, frequencyHertz: 250,
+              qHundredths: 100, gainCentibels: 0 },
+            { enabled: true, filterKind: 0, frequencyHertz: 1000,
+              qHundredths: 100, gainCentibels: 0 },
+            { enabled: false, filterKind: 0, frequencyHertz: 3000,
+              qHundredths: 100, gainCentibels: 0 },
+            { enabled: false, filterKind: 0, frequencyHertz: 5000,
+              qHundredths: 100, gainCentibels: 0 },
+            { enabled: true, filterKind: 2, frequencyHertz: 8000,
+              qHundredths: 71, gainCentibels: 0 }
+        ]
+    }
+
+    function copyEqualizerBands(values: var) : var {
+        const source = values && values.length === 6
+            ? values : defaultEqualizerBands()
+        const result = []
+        for (let index = 0; index < source.length; ++index) {
+            const band = source[index]
+            result.push({
+                enabled: Boolean(band.enabled),
+                filterKind: Math.round(clamp(Number(band.filterKind), 0, 3)),
+                frequencyHertz: Math.round(clamp(
+                    Number(band.frequencyHertz), 20, 20000)),
+                qHundredths: Math.round(clamp(
+                    Number(band.qHundredths), 10, 2000)),
+                gainCentibels: Math.round(clamp(
+                    Number(band.gainCentibels), -1200, 1200))
+            })
+        }
+        return result
+    }
+
+    function sameEqualizer(left: var, right: var) : bool {
+        if (!left || !right || left.length !== 6 || right.length !== 6)
+            return false
+        for (let index = 0; index < 6; ++index) {
+            const a = left[index]
+            const b = right[index]
+            if (Boolean(a.enabled) !== Boolean(b.enabled)
+                    || Number(a.filterKind) !== Number(b.filterKind)
+                    || Number(a.frequencyHertz) !== Number(b.frequencyHertz)
+                    || Number(a.qHundredths) !== Number(b.qHundredths)
+                    || Number(a.gainCentibels) !== Number(b.gainCentibels))
+                return false
+        }
+        return true
+    }
+
+    function equalizerIsFlat() : bool {
+        for (let index = 0; index < equalizerBands.length; ++index) {
+            const band = equalizerBands[index]
+            if (band.enabled && (Number(band.filterKind) === 3
+                    || Number(band.gainCentibels) !== 0)) return false
+        }
+        return true
     }
 
     function snapshot() : var {
@@ -79,9 +138,7 @@ QtObject {
             fadeOutCurve: fadeOutCurve,
             gainCentibels: gainCentibels,
             lowCutHertz: lowCutHertz,
-            eqLowGainCentibels: eqLowGainCentibels,
-            eqMidGainCentibels: eqMidGainCentibels,
-            eqHighGainCentibels: eqHighGainCentibels,
+            equalizerBands: copyEqualizerBands(equalizerBands),
             compressorEnabled: compressorEnabled,
             compressorThresholdCentibels: compressorThresholdCentibels,
             compressorRatioTenths: compressorRatioTenths,
@@ -104,9 +161,7 @@ QtObject {
             fadeOutCurve: Number(value.fadeOutCurve),
             gainCentibels: Number(value.gainCentibels),
             lowCutHertz: Number(value.lowCutHertz),
-            eqLowGainCentibels: Number(value.eqLowGainCentibels),
-            eqMidGainCentibels: Number(value.eqMidGainCentibels),
-            eqHighGainCentibels: Number(value.eqHighGainCentibels),
+            equalizerBands: copyEqualizerBands(value.equalizerBands),
             compressorEnabled: Boolean(value.compressorEnabled),
             compressorThresholdCentibels: Number(value.compressorThresholdCentibels),
             compressorRatioTenths: Number(value.compressorRatioTenths),
@@ -129,12 +184,7 @@ QtObject {
             && Number(left.fadeOutCurve) === Number(right.fadeOutCurve)
             && Number(left.gainCentibels) === Number(right.gainCentibels)
             && Number(left.lowCutHertz) === Number(right.lowCutHertz)
-            && Number(left.eqLowGainCentibels)
-                === Number(right.eqLowGainCentibels)
-            && Number(left.eqMidGainCentibels)
-                === Number(right.eqMidGainCentibels)
-            && Number(left.eqHighGainCentibels)
-                === Number(right.eqHighGainCentibels)
+            && sameEqualizer(left.equalizerBands, right.equalizerBands)
             && Boolean(left.compressorEnabled)
                 === Boolean(right.compressorEnabled)
             && Number(left.compressorThresholdCentibels)
@@ -161,8 +211,7 @@ QtObject {
                 fadeInMillis: 0, fadeOutMillis: 0,
                 fadeInCurve: 0, fadeOutCurve: 0,
                 gainCentibels: 0, lowCutHertz: 0,
-                eqLowGainCentibels: 0, eqMidGainCentibels: 0,
-                eqHighGainCentibels: 0,
+                equalizerBands: defaultEqualizerBands(),
                 compressorEnabled: false,
                 compressorThresholdCentibels: -1800,
                 compressorRatioTenths: 30,
@@ -186,12 +235,7 @@ QtObject {
             gainCentibels: clamp(Number(asset.gainCentibels), -2400, 1200),
             lowCutHertz: Number(asset.lowCutHertz) === 0 ? 0
                 : clamp(Number(asset.lowCutHertz), 20, 240),
-            eqLowGainCentibels: clamp(
-                Number(asset.eqLowGainCentibels || 0), -1200, 1200),
-            eqMidGainCentibels: clamp(
-                Number(asset.eqMidGainCentibels || 0), -1200, 1200),
-            eqHighGainCentibels: clamp(
-                Number(asset.eqHighGainCentibels || 0), -1200, 1200),
+            equalizerBands: copyEqualizerBands(asset.equalizerBands),
             compressorEnabled: Boolean(asset.compressorEnabled),
             compressorThresholdCentibels: clamp(
                 Number(asset.compressorThresholdCentibels ?? -1800), -6000, 0),
@@ -221,9 +265,7 @@ QtObject {
         fadeOutCurve = Number(value.fadeOutCurve)
         gainCentibels = Number(value.gainCentibels)
         lowCutHertz = Number(value.lowCutHertz)
-        eqLowGainCentibels = Number(value.eqLowGainCentibels)
-        eqMidGainCentibels = Number(value.eqMidGainCentibels)
-        eqHighGainCentibels = Number(value.eqHighGainCentibels)
+        equalizerBands = copyEqualizerBands(value.equalizerBands)
         compressorEnabled = Boolean(value.compressorEnabled)
         compressorThresholdCentibels = Number(value.compressorThresholdCentibels)
         compressorRatioTenths = Number(value.compressorRatioTenths)
@@ -325,19 +367,24 @@ QtObject {
         pushCurrent()
     }
 
-    function setEqualizerBand(band: string, centibels: int) : void {
-        const gain = Math.round(clamp(centibels, -1200, 1200))
-        if (band === "low") eqLowGainCentibels = gain
-        else if (band === "mid") eqMidGainCentibels = gain
-        else if (band === "high") eqHighGainCentibels = gain
-        else return
+    function setEqualizerBand(index: int, enabled: bool, filterKind: int,
+                              frequencyHertz: int, qHundredths: int,
+                              gainCentibels: int) : void {
+        if (index < 0 || index >= equalizerBands.length) return
+        const next = copyEqualizerBands(equalizerBands)
+        next[index] = {
+            enabled: enabled,
+            filterKind: Math.round(clamp(filterKind, 0, 3)),
+            frequencyHertz: Math.round(clamp(frequencyHertz, 20, 20000)),
+            qHundredths: Math.round(clamp(qHundredths, 10, 2000)),
+            gainCentibels: Math.round(clamp(gainCentibels, -1200, 1200))
+        }
+        equalizerBands = next
         pushCurrent()
     }
 
     function resetEqualizer() : void {
-        eqLowGainCentibels = 0
-        eqMidGainCentibels = 0
-        eqHighGainCentibels = 0
+        equalizerBands = defaultEqualizerBands()
         pushCurrent()
     }
 
@@ -406,9 +453,7 @@ QtObject {
             fadeOutCurve: 0,
             gainCentibels: 0,
             lowCutHertz: 0,
-            eqLowGainCentibels: 0,
-            eqMidGainCentibels: 0,
-            eqHighGainCentibels: 0,
+            equalizerBands: defaultEqualizerBands(),
             compressorEnabled: false,
             compressorThresholdCentibels: -1800,
             compressorRatioTenths: 30,
@@ -431,9 +476,8 @@ QtObject {
         if (!asset || !dirty) return
         saveRequested(trimStartMillis, trimEndMillis,
             fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve,
-            gainCentibels, lowCutHertz,
-            eqLowGainCentibels, eqMidGainCentibels,
-            eqHighGainCentibels, compressorEnabled,
+            gainCentibels, lowCutHertz, copyEqualizerBands(equalizerBands),
+            compressorEnabled,
             compressorThresholdCentibels, compressorRatioTenths,
             compressorAttackMillis, compressorReleaseMillis,
             compressorMakeupCentibels, limiterEnabled,

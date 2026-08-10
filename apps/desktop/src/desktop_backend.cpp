@@ -5,6 +5,46 @@
 #include <QFileInfo>
 #include <QString>
 
+#include "parametric_equalizer_projection.hpp"
+
+namespace {
+
+bool appendEqualizerBands(
+    const QVariantList& values,
+    rust::Vec<echo::desktop::EqualizerBandWire>& destination
+) {
+    const auto adjustment = ParametricEqualizerProjection::fromQml(values);
+    if (!adjustment.has_value()) {
+        return false;
+    }
+    for (const auto& band : adjustment->bands) {
+        echo::desktop::EqualizerBandWire wire;
+        wire.enabled = band.enabled;
+        wire.filter_kind = static_cast<std::uint8_t>(band.filter_kind);
+        wire.frequency_hertz = band.frequency_hertz;
+        wire.q_hundredths = band.q_hundredths;
+        wire.gain_centibels = band.gain_centibels;
+        destination.push_back(wire);
+    }
+    return true;
+}
+
+QVariantList equalizerBandsForQml(const rust::Vec<echo::desktop::EqualizerBandWire>& bands) {
+    QVariantList result;
+    for (const auto& band : bands) {
+        QVariantMap value;
+        value.insert(QStringLiteral("enabled"), band.enabled);
+        value.insert(QStringLiteral("filterKind"), static_cast<int>(band.filter_kind));
+        value.insert(QStringLiteral("frequencyHertz"), static_cast<int>(band.frequency_hertz));
+        value.insert(QStringLiteral("qHundredths"), static_cast<int>(band.q_hundredths));
+        value.insert(QStringLiteral("gainCentibels"), static_cast<int>(band.gain_centibels));
+        result.append(value);
+    }
+    return result;
+}
+
+} // namespace
+
 DesktopBackend::DesktopBackend(rust::Box<echo::desktop::LibrarySession> session, QObject* parent) :
     QObject(parent), session_(std::move(session)) {}
 
@@ -86,18 +126,7 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("fadeOutCurve"), static_cast<int>(asset.fade_out_curve));
         entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
         entry.insert(QStringLiteral("lowCutHertz"), static_cast<int>(asset.low_cut_hertz));
-        entry.insert(
-            QStringLiteral("eqLowGainCentibels"),
-            static_cast<int>(asset.eq_low_gain_centibels)
-        );
-        entry.insert(
-            QStringLiteral("eqMidGainCentibels"),
-            static_cast<int>(asset.eq_mid_gain_centibels)
-        );
-        entry.insert(
-            QStringLiteral("eqHighGainCentibels"),
-            static_cast<int>(asset.eq_high_gain_centibels)
-        );
+        entry.insert(QStringLiteral("equalizerBands"), equalizerBandsForQml(asset.equalizer_bands));
         entry.insert(QStringLiteral("compressorEnabled"), asset.compressor_enabled);
         entry.insert(
             QStringLiteral("compressorThresholdCentibels"),
@@ -244,9 +273,7 @@ bool DesktopBackend::setAssetAdjustment(
     int fadeOutCurve,
     int gainCentibels,
     int lowCutHertz,
-    int eqLowGainCentibels,
-    int eqMidGainCentibels,
-    int eqHighGainCentibels,
+    const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
     int compressorRatioTenths,
@@ -261,8 +288,6 @@ bool DesktopBackend::setAssetAdjustment(
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200
         || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
-        || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200 || eqMidGainCentibels < -1200
-        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200
         || compressorThresholdCentibels < -6000 || compressorThresholdCentibels > 0
         || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
         || compressorAttackMillis > 200 || compressorReleaseMillis < 20
@@ -283,9 +308,10 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.fade_out_curve = static_cast<std::uint8_t>(fadeOutCurve);
         adjustment.gain_centibels = static_cast<std::int16_t>(gainCentibels);
         adjustment.low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz);
-        adjustment.eq_low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels);
-        adjustment.eq_mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels);
-        adjustment.eq_high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels);
+        if (!appendEqualizerBands(equalizerBands, adjustment.equalizer_bands)) {
+            qWarning("parametric equalizer is outside the supported range");
+            return false;
+        }
         adjustment.compressor_enabled = compressorEnabled;
         adjustment.compressor_threshold_centibels =
             static_cast<std::int16_t>(compressorThresholdCentibels);

@@ -10,6 +10,16 @@ use crate::session::LibrarySession;
 
 #[cxx::bridge(namespace = "echo::desktop")]
 mod ffi {
+    /// One authored parametric equalizer band crossing the desktop ABI.
+    #[derive(Debug)]
+    struct EqualizerBandWire {
+        enabled: bool,
+        filter_kind: u8,
+        frequency_hertz: u16,
+        q_hundredths: u16,
+        gain_centibels: i16,
+    }
+
     /// Bounded presentation projection of one asset for the desktop shell.
     #[derive(Debug)]
     struct AssetSummaryWire {
@@ -38,9 +48,7 @@ mod ffi {
         fade_out_curve: u8,
         gain_centibels: i16,
         low_cut_hertz: u16,
-        eq_low_gain_centibels: i16,
-        eq_mid_gain_centibels: i16,
-        eq_high_gain_centibels: i16,
+        equalizer_bands: Vec<EqualizerBandWire>,
         compressor_enabled: bool,
         compressor_threshold_centibels: i16,
         compressor_ratio_tenths: u16,
@@ -69,9 +77,7 @@ mod ffi {
         fade_out_curve: u8,
         gain_centibels: i16,
         low_cut_hertz: u16,
-        eq_low_gain_centibels: i16,
-        eq_mid_gain_centibels: i16,
-        eq_high_gain_centibels: i16,
+        equalizer_bands: Vec<EqualizerBandWire>,
         compressor_enabled: bool,
         compressor_threshold_centibels: i16,
         compressor_ratio_tenths: u16,

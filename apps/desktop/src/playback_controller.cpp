@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "parametric_equalizer_projection.hpp"
+
 PlaybackController::PlaybackController(QObject* parent) : QObject(parent) {
     position_timer_.setInterval(100);
     connect(&position_timer_, &QTimer::timeout, this, &PlaybackController::pumpPosition);
@@ -43,9 +45,7 @@ void PlaybackController::playAdjusted(
     int fadeOutCurve,
     int gainCentibels,
     int lowCutHertz,
-    int eqLowGainCentibels,
-    int eqMidGainCentibels,
-    int eqHighGainCentibels,
+    const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
     int compressorRatioTenths,
@@ -60,8 +60,6 @@ void PlaybackController::playAdjusted(
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
         || fadeOutCurve > 2 || gainCentibels < -2400 || gainCentibels > 1200
         || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
-        || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200 || eqMidGainCentibels < -1200
-        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200
         || compressorThresholdCentibels < -6000 || compressorThresholdCentibels > 0
         || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
         || compressorAttackMillis > 200 || compressorReleaseMillis < 20
@@ -70,6 +68,11 @@ void PlaybackController::playAdjusted(
         || limiterCeilingCentibels > 0 || limiterReleaseMillis < 20
         || limiterReleaseMillis > 1000) {
         qWarning("invalid playback adjustment");
+        return;
+    }
+    const auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
+    if (!equalizer.has_value()) {
+        qWarning("invalid parametric equalizer");
         return;
     }
     const echo::audio::PlaybackAdjustment adjustment{
@@ -81,12 +84,7 @@ void PlaybackController::playAdjusted(
         .fade_out_curve = static_cast<echo::audio::FadeCurve>(fadeOutCurve),
         .gain_centibels = static_cast<std::int16_t>(gainCentibels),
         .low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz),
-        .equalizer =
-            {
-                .low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels),
-                .mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels),
-                .high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels),
-            },
+        .equalizer = *equalizer,
         .compressor =
             {
                 .enabled = compressorEnabled,
@@ -105,28 +103,27 @@ void PlaybackController::playAdjusted(
     startSession(path, adjustment);
 }
 
-bool PlaybackController::updateEqualizer(
-    int eqLowGainCentibels,
-    int eqMidGainCentibels,
-    int eqHighGainCentibels
-) {
+bool PlaybackController::updateEqualizer(const QVariantList& equalizerBands) {
     const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
-    if (session == nullptr || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200
-        || eqMidGainCentibels < -1200 || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200
-        || eqHighGainCentibels > 1200) {
+    const auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
+    if (session == nullptr || !equalizer.has_value()) {
         return false;
     }
     try {
-        session->update_equalizer({
-            .low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels),
-            .mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels),
-            .high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels),
-        });
+        session->update_equalizer(*equalizer);
     } catch (const std::exception& error) {
         qWarning("cannot update playback equalizer: %s", error.what());
         return false;
     }
     return true;
+}
+
+QVariantList
+PlaybackController::equalizerResponse(const QVariantList& equalizerBands, int pointCount) const {
+    const auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
+    return equalizer.has_value()
+               ? ParametricEqualizerProjection::responseCurve(*equalizer, pointCount)
+               : QVariantList{};
 }
 
 bool PlaybackController::updateCompressor(

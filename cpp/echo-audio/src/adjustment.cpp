@@ -14,6 +14,10 @@ constexpr std::uint16_t kMinimumLowCutHertz = 20;
 constexpr std::uint16_t kMaximumLowCutHertz = 240;
 constexpr std::int16_t kMinimumEqualizerGainCentibels = -1200;
 constexpr std::int16_t kMaximumEqualizerGainCentibels = 1200;
+constexpr std::uint16_t kMinimumEqualizerFrequencyHertz = 20;
+constexpr std::uint16_t kMaximumEqualizerFrequencyHertz = 20000;
+constexpr std::uint16_t kMinimumEqualizerQHundredths = 10;
+constexpr std::uint16_t kMaximumEqualizerQHundredths = 2000;
 constexpr std::int16_t kMinimumCompressorThresholdCentibels = -6000;
 constexpr std::int16_t kMaximumCompressorThresholdCentibels = 0;
 constexpr std::uint16_t kMinimumCompressorRatioTenths = 10;
@@ -95,13 +99,14 @@ PreparedAdjustment::PreparedAdjustment(
             || authored.low_cut_hertz > kMaximumLowCutHertz)) {
         throw std::invalid_argument("adjustment low cut is outside the supported range");
     }
-    for (const std::int16_t gain : {
-             authored.equalizer.low_gain_centibels,
-             authored.equalizer.mid_gain_centibels,
-             authored.equalizer.high_gain_centibels,
-         }) {
-        if (gain < kMinimumEqualizerGainCentibels || gain > kMaximumEqualizerGainCentibels) {
-            throw std::invalid_argument("adjustment equalizer gain is outside the supported range");
+    for (const ParametricEqualizerBand& band : authored.equalizer.bands) {
+        if (band.gain_centibels < kMinimumEqualizerGainCentibels
+            || band.gain_centibels > kMaximumEqualizerGainCentibels
+            || band.frequency_hertz < kMinimumEqualizerFrequencyHertz
+            || band.frequency_hertz > kMaximumEqualizerFrequencyHertz
+            || band.q_hundredths < kMinimumEqualizerQHundredths
+            || band.q_hundredths > kMaximumEqualizerQHundredths) {
+            throw std::invalid_argument("adjustment equalizer band is outside the supported range");
         }
     }
     const CompressorAdjustment compressor = authored.compressor;
@@ -160,7 +165,7 @@ std::uint16_t PreparedAdjustment::low_cut_hertz() const {
     return low_cut_hertz_;
 }
 
-ThreeBandEqualizerAdjustment PreparedAdjustment::equalizer() const {
+ParametricEqualizerAdjustment PreparedAdjustment::equalizer() const {
     return equalizer_;
 }
 

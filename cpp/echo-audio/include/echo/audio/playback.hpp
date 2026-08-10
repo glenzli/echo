@@ -55,7 +55,7 @@ class PlaybackSession {
     /// Publishes a new EQ target without replacing the decoder or playback
     /// session. The producer coalesces rapid updates and crossfades filter
     /// state before the audio reaches the realtime ring.
-    void update_equalizer(ThreeBandEqualizerAdjustment adjustment);
+    void update_equalizer(ParametricEqualizerAdjustment adjustment);
     /// Publishes a latest-wins compressor target. The producer applies it to
     /// the persistent detector without restarting playback.
     void update_compressor(CompressorAdjustment adjustment);

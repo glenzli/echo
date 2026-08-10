@@ -109,6 +109,8 @@ qt_add_executable(
     src/desktop_backend.hpp
     src/playback_controller.cpp
     src/playback_controller.hpp
+    src/parametric_equalizer_projection.cpp
+    src/parametric_equalizer_projection.hpp
     src/ui_preferences.cpp
     src/ui_preferences.hpp
     src/inference_preferences.cpp
@@ -152,6 +154,7 @@ qt_add_qml_module(
         qml/LoudnessTargetControl.qml
         qml/MainTitleBar.qml
         qml/MasterOutputPanel.qml
+        qml/ParametricEqGraph.qml
         qml/SoundAdvancedFilterPopup.qml
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml

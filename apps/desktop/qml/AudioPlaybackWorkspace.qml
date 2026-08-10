@@ -36,12 +36,7 @@ Rectangle {
     readonly property int fadeOutCurve: hasAsset ? Number(asset.fadeOutCurve) : 0
     readonly property int gainCentibels: hasAsset ? Number(asset.gainCentibels) : 0
     readonly property int lowCutHertz: hasAsset ? Number(asset.lowCutHertz) : 0
-    readonly property int eqLowGainCentibels: hasAsset
-        ? Number(asset.eqLowGainCentibels) : 0
-    readonly property int eqMidGainCentibels: hasAsset
-        ? Number(asset.eqMidGainCentibels) : 0
-    readonly property int eqHighGainCentibels: hasAsset
-        ? Number(asset.eqHighGainCentibels) : 0
+    readonly property var equalizerBands: hasAsset ? asset.equalizerBands : []
     readonly property bool compressorEnabled: hasAsset
         ? Boolean(asset.compressorEnabled) : false
     readonly property int compressorThresholdCentibels: hasAsset
@@ -108,8 +103,7 @@ Rectangle {
         return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis
             + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve
             + ":" + gainCentibels + ":" + lowCutHertz
-            + ":" + eqLowGainCentibels + ":" + eqMidGainCentibels
-            + ":" + eqHighGainCentibels + ":" + compressorEnabled
+            + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled
             + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths
             + ":" + compressorAttackMillis + ":" + compressorReleaseMillis
             + ":" + compressorMakeupCentibels + ":" + limiterEnabled
@@ -123,8 +117,7 @@ Rectangle {
         player.playAdjusted(asset.path, trimStartMillis, trimEndMillis,
                             fadeInMillis, fadeOutMillis, fadeInCurve,
                             fadeOutCurve, gainCentibels, lowCutHertz,
-                            eqLowGainCentibels, eqMidGainCentibels,
-                            eqHighGainCentibels, compressorEnabled,
+                            equalizerBands, compressorEnabled,
                             compressorThresholdCentibels, compressorRatioTenths,
                             compressorAttackMillis, compressorReleaseMillis,
                             compressorMakeupCentibels, limiterEnabled,

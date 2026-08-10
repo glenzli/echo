@@ -14,6 +14,22 @@ fn fixture_catalog() -> std::path::PathBuf {
     ))
 }
 
+fn test_equalizer_bands() -> Vec<crate::ffi::EqualizerBandWire> {
+    let equalizer = echo_domain::ParametricEqualizer::from_legacy_gains(250, -175, 300);
+    equalizer
+        .bands()
+        .into_iter()
+        .map(|band| crate::ffi::EqualizerBandWire {
+            enabled: band.enabled,
+            filter_kind: u8::try_from(band.filter_kind.catalog_value())
+                .expect("filter values fit u8"),
+            frequency_hertz: band.frequency_hertz,
+            q_hundredths: band.q_hundredths,
+            gain_centibels: band.gain_centibels,
+        })
+        .collect()
+}
+
 fn record_current_contextual_fixture(
     catalog: &echo_catalog::Catalog,
     asset_id: echo_domain::AssetId,
@@ -170,9 +186,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         fade_out_curve: 2,
         gain_centibels: -350,
         low_cut_hertz: 80,
-        eq_low_gain_centibels: 250,
-        eq_mid_gain_centibels: -175,
-        eq_high_gain_centibels: 300,
+        equalizer_bands: test_equalizer_bands(),
         compressor_enabled: true,
         compressor_threshold_centibels: -2_000,
         compressor_ratio_tenths: 40,
@@ -197,9 +211,10 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].fade_out_curve, 2);
     assert_eq!(projected[0].gain_centibels, -350);
     assert_eq!(projected[0].low_cut_hertz, 80);
-    assert_eq!(projected[0].eq_low_gain_centibels, 250);
-    assert_eq!(projected[0].eq_mid_gain_centibels, -175);
-    assert_eq!(projected[0].eq_high_gain_centibels, 300);
+    assert_eq!(projected[0].equalizer_bands.len(), 6);
+    assert_eq!(projected[0].equalizer_bands[0].gain_centibels, 250);
+    assert_eq!(projected[0].equalizer_bands[2].gain_centibels, -175);
+    assert_eq!(projected[0].equalizer_bands[5].gain_centibels, 300);
     assert!(projected[0].compressor_enabled);
     assert_eq!(projected[0].compressor_threshold_centibels, -2_000);
     assert_eq!(projected[0].compressor_ratio_tenths, 40);

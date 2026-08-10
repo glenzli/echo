@@ -10,6 +10,7 @@
 #include <QAudioSink>
 #include <QObject>
 #include <QTimer>
+#include <QVariantList>
 
 #include <atomic>
 #include <memory>
@@ -45,9 +46,7 @@ class PlaybackController : public QObject {
         int fadeOutCurve,
         int gainCentibels,
         int lowCutHertz,
-        int eqLowGainCentibels,
-        int eqMidGainCentibels,
-        int eqHighGainCentibels,
+        const QVariantList& equalizerBands,
         bool compressorEnabled,
         int compressorThresholdCentibels,
         int compressorRatioTenths,
@@ -58,8 +57,9 @@ class PlaybackController : public QObject {
         int limiterCeilingCentibels,
         int limiterReleaseMillis
     );
-    Q_INVOKABLE bool
-    updateEqualizer(int eqLowGainCentibels, int eqMidGainCentibels, int eqHighGainCentibels);
+    Q_INVOKABLE bool updateEqualizer(const QVariantList& equalizerBands);
+    Q_INVOKABLE QVariantList
+    equalizerResponse(const QVariantList& equalizerBands, int pointCount) const;
     Q_INVOKABLE bool updateCompressor(
         bool enabled,
         int thresholdCentibels,

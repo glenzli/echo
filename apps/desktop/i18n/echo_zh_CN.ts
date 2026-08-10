@@ -1307,9 +1307,8 @@
 <context>
     <name>ToneEqualizerPanel</name>
     <message>
-        <location filename="../qml/ToneEqualizerPanel.qml" line="45"/>
-        <source>Three-band EQ</source>
-        <translation>三段均衡</translation>
+        <source>Parametric EQ</source>
+        <translation>参数均衡</translation>
     </message>
     <message>
         <location filename="../qml/ToneEqualizerPanel.qml" line="55"/>
@@ -1317,19 +1316,36 @@
         <translation>重置均衡器</translation>
     </message>
     <message>
-        <location filename="../qml/ToneEqualizerPanel.qml" line="176"/>
-        <source>Low</source>
-        <translation>低频</translation>
+        <source>Band %1</source>
+        <translation>频段 %1</translation>
     </message>
     <message>
-        <location filename="../qml/ToneEqualizerPanel.qml" line="182"/>
-        <source>Mid</source>
-        <translation>中频</translation>
+        <source>Bell</source>
+        <translation>钟形</translation>
     </message>
     <message>
-        <location filename="../qml/ToneEqualizerPanel.qml" line="188"/>
-        <source>High</source>
-        <translation>高频</translation>
+        <source>Low shelf</source>
+        <translation>低频搁架</translation>
+    </message>
+    <message>
+        <source>High shelf</source>
+        <translation>高频搁架</translation>
+    </message>
+    <message>
+        <source>Notch</source>
+        <translation>陷波</translation>
+    </message>
+    <message>
+        <source>Frequency</source>
+        <translation>频率</translation>
+    </message>
+    <message>
+        <source>Q</source>
+        <translation>Q 值</translation>
+    </message>
+    <message>
+        <source>Gain</source>
+        <translation>增益</translation>
     </message>
 </context>
 </TS>

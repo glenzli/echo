@@ -11,9 +11,9 @@ use echo_core::load_or_build_waveform;
 use echo_domain::AssetId;
 
 use crate::ffi::{
-    AnalysisStatusWire, AssetSummaryWire, JobStatsWire, KeywordFacetWire, ScanRootWire,
-    SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire, WaveformArtifactWire,
-    WaveformLevelWire,
+    AnalysisStatusWire, AssetSummaryWire, EqualizerBandWire, JobStatsWire, KeywordFacetWire,
+    ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire,
+    WaveformArtifactWire, WaveformLevelWire,
 };
 
 fn now_millis() -> i64 {
@@ -61,9 +61,7 @@ struct AdjustmentWireFields {
     fade_out_curve: u8,
     gain_centibels: i16,
     low_cut_hertz: u16,
-    eq_low_gain_centibels: i16,
-    eq_mid_gain_centibels: i16,
-    eq_high_gain_centibels: i16,
+    equalizer_bands: Vec<EqualizerBandWire>,
     compressor_enabled: bool,
     compressor_threshold_centibels: i16,
     compressor_ratio_tenths: u16,
@@ -73,6 +71,45 @@ struct AdjustmentWireFields {
     limiter_enabled: bool,
     limiter_ceiling_centibels: i16,
     limiter_release_millis: u16,
+}
+
+fn equalizer_wire_bands(equalizer: echo_domain::ParametricEqualizer) -> Vec<EqualizerBandWire> {
+    equalizer
+        .bands()
+        .into_iter()
+        .map(|band| EqualizerBandWire {
+            enabled: band.enabled,
+            filter_kind: u8::try_from(band.filter_kind.catalog_value())
+                .expect("equalizer filter catalog values fit u8"),
+            frequency_hertz: band.frequency_hertz,
+            q_hundredths: band.q_hundredths,
+            gain_centibels: band.gain_centibels,
+        })
+        .collect()
+}
+
+fn equalizer_from_wire(
+    bands: &[EqualizerBandWire],
+) -> Result<echo_domain::ParametricEqualizer, SessionError> {
+    let authored: Vec<_> = bands
+        .iter()
+        .map(|band| {
+            Ok(echo_domain::ParametricEqualizerBand::new(
+                band.enabled,
+                echo_domain::EqualizerFilterKind::from_catalog_value(i64::from(band.filter_kind))
+                    .map_err(|error| SessionError {
+                    message: error.to_string(),
+                })?,
+                band.frequency_hertz,
+                band.q_hundredths,
+                band.gain_centibels,
+            ))
+        })
+        .collect::<Result<_, SessionError>>()?;
+    let bands = authored.try_into().map_err(|_: Vec<_>| SessionError {
+        message: "parametric equalizer must contain exactly six bands".to_owned(),
+    })?;
+    Ok(echo_domain::ParametricEqualizer::new(bands))
 }
 
 fn adjustment_wire_fields(
@@ -90,9 +127,7 @@ fn adjustment_wire_fields(
             fade_out_curve: 0,
             gain_centibels: 0,
             low_cut_hertz: 0,
-            eq_low_gain_centibels: 0,
-            eq_mid_gain_centibels: 0,
-            eq_high_gain_centibels: 0,
+            equalizer_bands: equalizer_wire_bands(echo_domain::ParametricEqualizer::flat()),
             compressor_enabled: false,
             compressor_threshold_centibels: -1_800,
             compressor_ratio_tenths: 30,
@@ -115,9 +150,7 @@ fn adjustment_wire_fields(
                 .expect("fade curve catalog values fit u8"),
             gain_centibels: revision.graph.gain_centibels(),
             low_cut_hertz: revision.graph.low_cut_hertz(),
-            eq_low_gain_centibels: revision.graph.equalizer().low_gain_centibels(),
-            eq_mid_gain_centibels: revision.graph.equalizer().mid_gain_centibels(),
-            eq_high_gain_centibels: revision.graph.equalizer().high_gain_centibels(),
+            equalizer_bands: equalizer_wire_bands(revision.graph.equalizer()),
             compressor_enabled: revision.graph.compressor().enabled,
             compressor_threshold_centibels: revision.graph.compressor().threshold_centibels,
             compressor_ratio_tenths: revision.graph.compressor().ratio_tenths,
@@ -214,9 +247,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         fade_out_curve: adjustment.fade_out_curve,
         gain_centibels: adjustment.gain_centibels,
         low_cut_hertz: adjustment.low_cut_hertz,
-        eq_low_gain_centibels: adjustment.eq_low_gain_centibels,
-        eq_mid_gain_centibels: adjustment.eq_mid_gain_centibels,
-        eq_high_gain_centibels: adjustment.eq_high_gain_centibels,
+        equalizer_bands: adjustment.equalizer_bands,
         compressor_enabled: adjustment.compressor_enabled,
         compressor_threshold_centibels: adjustment.compressor_threshold_centibels,
         compressor_ratio_tenths: adjustment.compressor_ratio_tenths,
@@ -435,11 +466,7 @@ impl LibrarySession {
                 adjustment.gain_centibels,
                 adjustment.low_cut_hertz,
             )
-            .with_equalizer(echo_domain::ThreeBandEqualizer::new(
-                adjustment.eq_low_gain_centibels,
-                adjustment.eq_mid_gain_centibels,
-                adjustment.eq_high_gain_centibels,
-            ))
+            .with_equalizer(equalizer_from_wire(&adjustment.equalizer_bands)?)
             .with_compressor(echo_domain::CompressorSettings {
                 enabled: adjustment.compressor_enabled,
                 threshold_centibels: adjustment.compressor_threshold_centibels,

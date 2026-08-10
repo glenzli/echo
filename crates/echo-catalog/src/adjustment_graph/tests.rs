@@ -49,7 +49,9 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
             -300,
             80,
         )
-        .with_equalizer(echo_domain::ThreeBandEqualizer::new(300, -150, 225))
+        .with_equalizer(echo_domain::ParametricEqualizer::from_legacy_gains(
+            300, -150, 225,
+        ))
         .with_compressor(CompressorSettings {
             enabled: true,
             threshold_centibels: -2_100,
@@ -74,7 +76,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
     assert_eq!(duplicate, first);
     assert_eq!(
         first.graph.equalizer(),
-        echo_domain::ThreeBandEqualizer::new(300, -150, 225)
+        echo_domain::ParametricEqualizer::from_legacy_gains(300, -150, 225)
     );
     assert_eq!(first.graph.compressor(), graph.compressor());
     assert_eq!(first.graph.limiter(), graph.limiter());

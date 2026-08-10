@@ -98,22 +98,20 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_810, 5);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 6);
+    CatalogSchemaRevision::new(20_260_810, 6);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 1);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.6-output-limiter";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.1-parametric-equalizer";
 
-pub(crate) const LIMITER_MIGRATION_SQL: &str = "
+pub(crate) const PARAMETRIC_EQUALIZER_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN limiter_enabled INTEGER NOT NULL DEFAULT 0
-    CHECK (limiter_enabled IN (0, 1));
-ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100
-    CHECK (limiter_ceiling_centibels BETWEEN -600 AND 0);
-ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN limiter_release_millis INTEGER NOT NULL DEFAULT 100
-    CHECK (limiter_release_millis BETWEEN 20 AND 1000);
-";
+    ADD COLUMN parametric_equalizer_json TEXT NOT NULL DEFAULT
+    '{"bands":[{"enabled":true,"filter_kind":"low_shelf","frequency_hertz":120,"q_hundredths":71,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":250,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"bell","frequency_hertz":1000,"q_hundredths":100,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":3000,"q_hundredths":100,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":5000,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"high_shelf","frequency_hertz":8000,"q_hundredths":71,"gain_centibels":0}]}';
+UPDATE asset_adjustment_revisions SET parametric_equalizer_json = printf(
+    '{"bands":[{"enabled":true,"filter_kind":"low_shelf","frequency_hertz":120,"q_hundredths":71,"gain_centibels":%d},{"enabled":false,"filter_kind":"bell","frequency_hertz":250,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"bell","frequency_hertz":1000,"q_hundredths":100,"gain_centibels":%d},{"enabled":false,"filter_kind":"bell","frequency_hertz":3000,"q_hundredths":100,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":5000,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"high_shelf","frequency_hertz":8000,"q_hundredths":71,"gain_centibels":%d}]}' ,
+    eq_low_gain_centibels, eq_mid_gain_centibels, eq_high_gain_centibels
+);
+"#;
 
 pub(crate) const SCHEMA_SQL: &str = "
 CREATE TABLE IF NOT EXISTS catalog_meta (
@@ -239,6 +237,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                           CHECK (eq_mid_gain_centibels BETWEEN -1200 AND 1200),
     eq_high_gain_centibels INTEGER NOT NULL DEFAULT 0
                            CHECK (eq_high_gain_centibels BETWEEN -1200 AND 1200),
+    parametric_equalizer_json TEXT NOT NULL DEFAULT
+                           '{\"bands\":[{\"enabled\":true,\"filter_kind\":\"low_shelf\",\"frequency_hertz\":120,\"q_hundredths\":71,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":250,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":true,\"filter_kind\":\"bell\",\"frequency_hertz\":1000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":3000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":5000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":true,\"filter_kind\":\"high_shelf\",\"frequency_hertz\":8000,\"q_hundredths\":71,\"gain_centibels\":0}]}',
     compressor_enabled     INTEGER NOT NULL DEFAULT 0
                            CHECK (compressor_enabled IN (0, 1)),
     compressor_threshold_centibels INTEGER NOT NULL DEFAULT -1800

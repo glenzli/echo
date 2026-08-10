@@ -16,6 +16,15 @@
 
 namespace {
 
+echo::audio::ParametricEqualizerAdjustment
+legacyEqualizer(std::int16_t low, std::int16_t mid, std::int16_t high) {
+    echo::audio::ParametricEqualizerAdjustment result;
+    result.bands[0].gain_centibels = low;
+    result.bands[2].gain_centibels = mid;
+    result.bands[5].gain_centibels = high;
+    return result;
+}
+
 std::string synthesize_sine_wav(
     std::uint32_t sample_rate,
     double seconds,
@@ -262,8 +271,7 @@ int main(int argc, char* argv[]) {
             .fade_out_millis = 100,
             .gain_centibels = -600,
             .low_cut_hertz = 80,
-            .equalizer =
-                {.low_gain_centibels = 200, .mid_gain_centibels = -100, .high_gain_centibels = 150},
+            .equalizer = legacyEqualizer(200, -100, 150),
             .compressor =
                 {
                     .enabled = true,
@@ -297,7 +305,7 @@ int main(int argc, char* argv[]) {
             "prepared playback publishes bounded limiter reduction"
         );
         const std::uint64_t position_before_equalizer_update = adjusted.position_millis();
-        adjusted.update_equalizer({-600, 600, -600});
+        adjusted.update_equalizer(legacyEqualizer(-600, 600, -600));
         std::vector<float> updated_buffer(8'192, 0.0F);
         const std::size_t updated = pull_until(adjusted, updated_buffer.data(), 2'048, 200);
         expect(updated > 0, "live equalizer update keeps returning audio");
@@ -318,7 +326,7 @@ int main(int argc, char* argv[]) {
         );
         bool rejected_update = false;
         try {
-            adjusted.update_equalizer({0, 0, 1'201});
+            adjusted.update_equalizer(legacyEqualizer(0, 0, 1'201));
         } catch (const std::invalid_argument&) {
             rejected_update = true;
         }
@@ -383,11 +391,7 @@ int main(int argc, char* argv[]) {
         }
         echo::audio::PlaybackSession protected_playback(
             overload_path.string(),
-            {.equalizer = {
-                 .low_gain_centibels = 1'200,
-                 .mid_gain_centibels = 1'200,
-                 .high_gain_centibels = 1'200
-             }}
+            {.equalizer = legacyEqualizer(1'200, 1'200, 1'200)}
         );
         std::vector<float> protected_samples(16'384, 0.0F);
         const std::size_t protected_frames =

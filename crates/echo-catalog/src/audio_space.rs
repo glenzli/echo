@@ -75,8 +75,7 @@ pub fn list_audio_space(
          m.container_format, m.sample_rate, m.channel_count, m.entries_json, \
          adj.id, adj.trim_start_millis, adj.trim_end_millis, adj.fade_in_millis, \
          adj.fade_out_millis, adj.fade_in_curve, adj.fade_out_curve, \
-         adj.gain_centibels, adj.low_cut_hertz, adj.eq_low_gain_centibels, \
-         adj.eq_mid_gain_centibels, adj.eq_high_gain_centibels, \
+         adj.gain_centibels, adj.low_cut_hertz, adj.parametric_equalizer_json, \
          adj.compressor_enabled, adj.compressor_threshold_centibels, \
          adj.compressor_ratio_tenths, adj.compressor_attack_millis, \
          adj.compressor_release_millis, adj.compressor_makeup_centibels, \
@@ -103,82 +102,7 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
     let duration_millis = row
         .get::<_, Option<i64>>(3)?
         .map(|millis| u64::try_from(millis).expect("stored duration is non-negative"));
-    let adjustment = row.get::<_, Option<i64>>(19)?.map(|revision_id| {
-        let source_duration = duration_millis.expect("adjusted asset has a known duration");
-        let graph = echo_domain::AdjustmentGraph::new(
-            source_duration,
-            u64::try_from(row.get::<_, i64>(20).expect("trim start reads"))
-                .expect("trim start is non-negative"),
-            u64::try_from(row.get::<_, i64>(21).expect("trim end reads"))
-                .expect("trim end is non-negative"),
-            u64::try_from(row.get::<_, i64>(22).expect("fade in reads"))
-                .expect("fade in is non-negative"),
-            u64::try_from(row.get::<_, i64>(23).expect("fade out reads"))
-                .expect("fade out is non-negative"),
-            echo_domain::AdjustmentEffects::new(
-                echo_domain::FadeCurves::new(
-                    echo_domain::FadeCurve::from_catalog_value(
-                        row.get::<_, i64>(24).expect("fade in curve reads"),
-                    )
-                    .expect("fade in curve is valid"),
-                    echo_domain::FadeCurve::from_catalog_value(
-                        row.get::<_, i64>(25).expect("fade out curve reads"),
-                    )
-                    .expect("fade out curve is valid"),
-                ),
-                i16::try_from(row.get::<_, i64>(26).expect("gain reads"))
-                    .expect("gain fits centibels"),
-                u16::try_from(row.get::<_, i64>(27).expect("low cut reads"))
-                    .expect("low cut fits hertz"),
-            )
-            .with_equalizer(echo_domain::ThreeBandEqualizer::new(
-                i16::try_from(row.get::<_, i64>(28).expect("low EQ gain reads"))
-                    .expect("low EQ gain fits centibels"),
-                i16::try_from(row.get::<_, i64>(29).expect("mid EQ gain reads"))
-                    .expect("mid EQ gain fits centibels"),
-                i16::try_from(row.get::<_, i64>(30).expect("high EQ gain reads"))
-                    .expect("high EQ gain fits centibels"),
-            ))
-            .with_compressor(echo_domain::CompressorSettings {
-                enabled: row.get::<_, i64>(31).expect("compressor enabled reads") != 0,
-                threshold_centibels: i16::try_from(
-                    row.get::<_, i64>(32).expect("compressor threshold reads"),
-                )
-                .expect("compressor threshold fits centibels"),
-                ratio_tenths: u16::try_from(row.get::<_, i64>(33).expect("compressor ratio reads"))
-                    .expect("compressor ratio fits tenths"),
-                attack_millis: u16::try_from(
-                    row.get::<_, i64>(34).expect("compressor attack reads"),
-                )
-                .expect("compressor attack fits milliseconds"),
-                release_millis: u16::try_from(
-                    row.get::<_, i64>(35).expect("compressor release reads"),
-                )
-                .expect("compressor release fits milliseconds"),
-                makeup_centibels: i16::try_from(
-                    row.get::<_, i64>(36).expect("compressor makeup reads"),
-                )
-                .expect("compressor makeup fits centibels"),
-            })
-            .with_limiter(echo_domain::LimiterSettings {
-                enabled: row.get::<_, i64>(37).expect("limiter enabled reads") != 0,
-                ceiling_centibels: i16::try_from(
-                    row.get::<_, i64>(38).expect("limiter ceiling reads"),
-                )
-                .expect("limiter ceiling fits centibels"),
-                release_millis: u16::try_from(
-                    row.get::<_, i64>(39).expect("limiter release reads"),
-                )
-                .expect("limiter release fits milliseconds"),
-            }),
-        )
-        .expect("stored adjustment is valid");
-        crate::AssetAdjustmentRevision {
-            revision_id,
-            graph,
-            created_at_millis: row.get(40).expect("adjustment timestamp reads"),
-        }
-    });
+    let adjustment = audio_space_adjustment_from_row(row, duration_millis)?;
     Ok(AudioSpaceAsset {
         id: row.get(0)?,
         path: row.get::<_, String>(1)?.into(),
@@ -215,6 +139,61 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
             None => None,
         },
     })
+}
+
+fn audio_space_adjustment_from_row(
+    row: &rusqlite::Row<'_>,
+    duration_millis: Option<u64>,
+) -> rusqlite::Result<Option<crate::AssetAdjustmentRevision>> {
+    let Some(revision_id) = row.get::<_, Option<i64>>(19)? else {
+        return Ok(None);
+    };
+    let source_duration = duration_millis.expect("adjusted asset has a known duration");
+    let curves = echo_domain::FadeCurves::new(
+        echo_domain::FadeCurve::from_catalog_value(row.get(24)?).expect("fade in curve is valid"),
+        echo_domain::FadeCurve::from_catalog_value(row.get(25)?).expect("fade out curve is valid"),
+    );
+    let effects = echo_domain::AdjustmentEffects::new(
+        curves,
+        i16::try_from(row.get::<_, i64>(26)?).expect("gain fits centibels"),
+        u16::try_from(row.get::<_, i64>(27)?).expect("low cut fits hertz"),
+    )
+    .with_equalizer(
+        serde_json::from_str(&row.get::<_, String>(28)?).expect("stored parametric EQ parses"),
+    )
+    .with_compressor(echo_domain::CompressorSettings {
+        enabled: row.get::<_, i64>(29)? != 0,
+        threshold_centibels: i16::try_from(row.get::<_, i64>(30)?)
+            .expect("compressor threshold fits centibels"),
+        ratio_tenths: u16::try_from(row.get::<_, i64>(31)?).expect("compressor ratio fits tenths"),
+        attack_millis: u16::try_from(row.get::<_, i64>(32)?)
+            .expect("compressor attack fits milliseconds"),
+        release_millis: u16::try_from(row.get::<_, i64>(33)?)
+            .expect("compressor release fits milliseconds"),
+        makeup_centibels: i16::try_from(row.get::<_, i64>(34)?)
+            .expect("compressor makeup fits centibels"),
+    })
+    .with_limiter(echo_domain::LimiterSettings {
+        enabled: row.get::<_, i64>(35)? != 0,
+        ceiling_centibels: i16::try_from(row.get::<_, i64>(36)?)
+            .expect("limiter ceiling fits centibels"),
+        release_millis: u16::try_from(row.get::<_, i64>(37)?)
+            .expect("limiter release fits milliseconds"),
+    });
+    let graph = echo_domain::AdjustmentGraph::new(
+        source_duration,
+        u64::try_from(row.get::<_, i64>(20)?).expect("trim start is non-negative"),
+        u64::try_from(row.get::<_, i64>(21)?).expect("trim end is non-negative"),
+        u64::try_from(row.get::<_, i64>(22)?).expect("fade in is non-negative"),
+        u64::try_from(row.get::<_, i64>(23)?).expect("fade out is non-negative"),
+        effects,
+    )
+    .expect("stored adjustment is valid");
+    Ok(Some(crate::AssetAdjustmentRevision {
+        revision_id,
+        graph,
+        created_at_millis: row.get(38)?,
+    }))
 }
 
 #[cfg(test)]

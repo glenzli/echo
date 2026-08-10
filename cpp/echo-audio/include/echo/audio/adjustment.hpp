@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace echo::audio {
@@ -12,11 +14,33 @@ enum class FadeCurve : std::uint8_t {
     EqualPower = 2,
 };
 
-/// Fixed-band equalizer gain intent in hundredths of one decibel.
-struct ThreeBandEqualizerAdjustment {
-    std::int16_t low_gain_centibels = 0;
-    std::int16_t mid_gain_centibels = 0;
-    std::int16_t high_gain_centibels = 0;
+inline constexpr std::size_t kParametricEqualizerBandCount = 6;
+
+enum class EqualizerFilterKind : std::uint8_t {
+    Bell = 0,
+    LowShelf = 1,
+    HighShelf = 2,
+    Notch = 3,
+};
+
+/// One authored parametric band in stable integer units.
+struct ParametricEqualizerBand {
+    bool enabled = false;
+    EqualizerFilterKind filter_kind = EqualizerFilterKind::Bell;
+    std::uint16_t frequency_hertz = 1000;
+    std::uint16_t q_hundredths = 100;
+    std::int16_t gain_centibels = 0;
+};
+
+struct ParametricEqualizerAdjustment {
+    std::array<ParametricEqualizerBand, kParametricEqualizerBandCount> bands{{
+        {true, EqualizerFilterKind::LowShelf, 120, 71, 0},
+        {false, EqualizerFilterKind::Bell, 250, 100, 0},
+        {true, EqualizerFilterKind::Bell, 1000, 100, 0},
+        {false, EqualizerFilterKind::Bell, 3000, 100, 0},
+        {false, EqualizerFilterKind::Bell, 5000, 100, 0},
+        {true, EqualizerFilterKind::HighShelf, 8000, 71, 0},
+    }};
 };
 
 /// Stereo-linked soft-knee compressor intent. Time values are milliseconds;
@@ -50,7 +74,7 @@ struct PlaybackAdjustment {
     std::int16_t gain_centibels = 0;
     /// High-pass cutoff in hertz, or zero when disabled.
     std::uint16_t low_cut_hertz = 0;
-    ThreeBandEqualizerAdjustment equalizer;
+    ParametricEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
     LimiterAdjustment limiter;
 };
@@ -72,7 +96,7 @@ class PreparedAdjustment {
     [[nodiscard]] std::uint64_t trim_start_millis() const;
     [[nodiscard]] std::uint64_t trim_end_millis() const;
     [[nodiscard]] std::uint16_t low_cut_hertz() const;
-    [[nodiscard]] ThreeBandEqualizerAdjustment equalizer() const;
+    [[nodiscard]] ParametricEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] LimiterAdjustment limiter() const;
     [[nodiscard]] std::uint64_t clamp_seek_millis(std::uint64_t millis) const;
@@ -91,7 +115,7 @@ class PreparedAdjustment {
     FadeCurve fade_out_curve_ = FadeCurve::Linear;
     float gain_amplitude_ = 1.0F;
     std::uint16_t low_cut_hertz_ = 0;
-    ThreeBandEqualizerAdjustment equalizer_;
+    ParametricEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
     LimiterAdjustment limiter_;
 };

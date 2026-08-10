@@ -1,9 +1,10 @@
-//! Real three-band restoration equalizer panel. Authored gain remains in the
-//! adjustment draft; this component owns only response presentation and input.
+//! Compact six-band parametric equalizer. The draft owns authored values;
+//! ParametricEqGraph owns direct manipulation and response presentation.
 
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import EchoDesktop
 
@@ -11,9 +12,11 @@ Rectangle {
     id: panel
 
     required property var draft
+    required property var responseProvider
+    readonly property var selected: draft.equalizerBands[graph.selectedBand]
 
     implicitWidth: 320
-    implicitHeight: 224
+    implicitHeight: 316
     radius: Theme.compactControlRadius
     color: Theme.panelRaised
     border.width: 1
@@ -24,13 +27,25 @@ Rectangle {
         return (decibels >= 0 ? "+" : "") + decibels.toFixed(1) + " dB"
     }
 
+    function formatFrequency(hertz: int) : string {
+        return hertz >= 1000 ? (hertz / 1000).toFixed(hertz < 10000 ? 1 : 0)
+            + " kHz" : hertz + " Hz"
+    }
+
+    function editSelected(enabled: bool, filterKind: int,
+                          frequencyHertz: int, qHundredths: int,
+                          gainCentibels: int) : void {
+        draft.setEqualizerBand(graph.selectedBand, enabled, filterKind,
+            frequencyHertz, qHundredths, gainCentibels)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
+            Layout.preferredHeight: 31
             Layout.leftMargin: 10
             Layout.rightMargin: 7
             spacing: 6
@@ -40,127 +55,68 @@ Rectangle {
                 size: 15
                 color: Theme.textSecondary
             }
-
             Text {
-                text: qsTr("Three-band EQ")
+                text: qsTr("Parametric EQ")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontBody
                 font.weight: Font.DemiBold
             }
-
             Item { Layout.fillWidth: true }
-
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset equalizer")
-                enabled: panel.draft.eqLowGainCentibels !== 0
-                    || panel.draft.eqMidGainCentibels !== 0
-                    || panel.draft.eqHighGainCentibels !== 0
+                enabled: !panel.draft.equalizerIsFlat()
                 buttonSize: 25
                 iconSize: 14
                 onClicked: panel.draft.resetEqualizer()
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.border
-        }
+        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
 
-        Item {
+        ParametricEqGraph {
+            id: graph
             Layout.fillWidth: true
-            Layout.preferredHeight: 78
+            Layout.preferredHeight: 118
             Layout.leftMargin: 10
             Layout.rightMargin: 10
-            Layout.topMargin: 6
-
-            Canvas {
-                id: responseCurve
-                anchors.fill: parent
-
-                function gainY(centibels) {
-                    return height / 2 - centibels / 1200 * (height / 2 - 8)
-                }
-
-                onPaint: {
-                    const context = getContext("2d")
-                    context.clearRect(0, 0, width, height)
-                    context.lineWidth = 1
-                    context.strokeStyle = Theme.border
-                    for (let row = 1; row < 4; ++row) {
-                        const y = row * height / 4
-                        context.beginPath()
-                        context.moveTo(0, y)
-                        context.lineTo(width, y)
-                        context.stroke()
-                    }
-                    for (let column = 1; column < 4; ++column) {
-                        const x = column * width / 4
-                        context.beginPath()
-                        context.moveTo(x, 0)
-                        context.lineTo(x, height)
-                        context.stroke()
-                    }
-
-                    const lowY = gainY(panel.draft.eqLowGainCentibels)
-                    const midY = gainY(panel.draft.eqMidGainCentibels)
-                    const highY = gainY(panel.draft.eqHighGainCentibels)
-                    context.lineWidth = 2
-                    context.strokeStyle = Theme.accent
-                    context.beginPath()
-                    context.moveTo(0, lowY)
-                    context.bezierCurveTo(width * 0.18, lowY,
-                        width * 0.32, midY, width * 0.5, midY)
-                    context.bezierCurveTo(width * 0.68, midY,
-                        width * 0.82, highY, width, highY)
-                    context.stroke()
-                }
-
-                Connections {
-                    target: panel.draft
-                    function onEqLowGainCentibelsChanged() {
-                        responseCurve.requestPaint()
-                    }
-                    function onEqMidGainCentibelsChanged() {
-                        responseCurve.requestPaint()
-                    }
-                    function onEqHighGainCentibelsChanged() {
-                        responseCurve.requestPaint()
-                    }
-                }
-            }
-
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-
-                Text {
-                    text: "120 Hz"
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontMeta
-                }
-                Item { Layout.fillWidth: true }
-                Text {
-                    text: "1 kHz"
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontMeta
-                }
-                Item { Layout.fillWidth: true }
-                Text {
-                    text: "8 kHz"
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontMeta
-                }
-            }
+            Layout.topMargin: 7
+            Layout.bottomMargin: 5
+            draft: panel.draft
+            responseProvider: panel.responseProvider
         }
 
-        Rectangle {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Theme.border
+            Layout.preferredHeight: 29
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            spacing: 6
+
+            CheckBox {
+                checked: Boolean(panel.selected.enabled)
+                text: qsTr("Band %1").arg(graph.selectedBand + 1)
+                onToggled: panel.editSelected(checked,
+                    Number(panel.selected.filterKind),
+                    Number(panel.selected.frequencyHertz),
+                    Number(panel.selected.qHundredths),
+                    Number(panel.selected.gainCentibels))
+            }
+            Item { Layout.fillWidth: true }
+            ComboBox {
+                Layout.preferredWidth: 108
+                model: [qsTr("Bell"), qsTr("Low shelf"),
+                        qsTr("High shelf"), qsTr("Notch")]
+                currentIndex: Number(panel.selected.filterKind)
+                onActivated: index => panel.editSelected(
+                    Boolean(panel.selected.enabled), index,
+                    Number(panel.selected.frequencyHertz),
+                    Number(panel.selected.qHundredths),
+                    Number(panel.selected.gainCentibels))
+            }
         }
+
+        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -171,41 +127,60 @@ Rectangle {
             Layout.bottomMargin: 6
             spacing: 2
 
-            EqualizerRow {
+            EchoParameterSlider {
                 Layout.fillWidth: true
-                label: qsTr("Low")
-                value: panel.draft.eqLowGainCentibels
-                onBandEdited: value => panel.draft.setEqualizerBand("low", value)
+                label: qsTr("Frequency")
+                from: 0
+                to: 1000
+                stepSize: 1
+                value: Math.log(Number(panel.selected.frequencyHertz) / 20)
+                    / Math.log(1000) * 1000
+                valueWidth: 64
+                valueText: panel.formatFrequency(Math.round(
+                    20 * Math.pow(1000, value / 1000)))
+                onGestureStarted: panel.draft.beginGesture()
+                onGestureFinished: panel.draft.endGesture()
+                onEdited: sliderValue => panel.editSelected(
+                    Boolean(panel.selected.enabled), Number(panel.selected.filterKind),
+                    Math.round(20 * Math.pow(1000, sliderValue / 1000)),
+                    Number(panel.selected.qHundredths),
+                    Number(panel.selected.gainCentibels))
             }
-            EqualizerRow {
+            EchoParameterSlider {
                 Layout.fillWidth: true
-                label: qsTr("Mid")
-                value: panel.draft.eqMidGainCentibels
-                onBandEdited: value => panel.draft.setEqualizerBand("mid", value)
+                label: qsTr("Q")
+                from: 10
+                to: 2000
+                stepSize: 5
+                value: Number(panel.selected.qHundredths)
+                valueWidth: 64
+                valueText: (value / 100).toFixed(2)
+                onGestureStarted: panel.draft.beginGesture()
+                onGestureFinished: panel.draft.endGesture()
+                onEdited: sliderValue => panel.editSelected(
+                    Boolean(panel.selected.enabled), Number(panel.selected.filterKind),
+                    Number(panel.selected.frequencyHertz), Math.round(sliderValue),
+                    Number(panel.selected.gainCentibels))
             }
-            EqualizerRow {
+            EchoParameterSlider {
                 Layout.fillWidth: true
-                label: qsTr("High")
-                value: panel.draft.eqHighGainCentibels
-                onBandEdited: value => panel.draft.setEqualizerBand("high", value)
+                label: qsTr("Gain")
+                enabled: Number(panel.selected.filterKind) !== 3
+                from: -1200
+                to: 1200
+                stepSize: 10
+                value: Number(panel.selected.gainCentibels)
+                valueWidth: 64
+                neutralValue: 0
+                showNeutralMarker: true
+                valueText: panel.formatGain(Math.round(value))
+                onGestureStarted: panel.draft.beginGesture()
+                onGestureFinished: panel.draft.endGesture()
+                onEdited: sliderValue => panel.editSelected(
+                    Boolean(panel.selected.enabled), Number(panel.selected.filterKind),
+                    Number(panel.selected.frequencyHertz), Number(panel.selected.qHundredths),
+                    Math.round(sliderValue))
             }
         }
-    }
-
-    component EqualizerRow: EchoParameterSlider {
-        signal bandEdited(int value)
-
-        from: -1200
-        to: 1200
-        stepSize: 10
-        labelWidth: 38
-        valueWidth: 66
-        neutralValue: 0
-        showNeutralMarker: true
-        valueText: panel.formatGain(value)
-        accessibleName: label
-        onGestureStarted: panel.draft.beginGesture()
-        onGestureFinished: panel.draft.endGesture()
-        onEdited: sliderValue => bandEdited(Math.round(sliderValue))
     }
 }

@@ -6,7 +6,7 @@
 #include "echo/audio/low_cut_filter.hpp"
 #include "echo/audio/output_guard.hpp"
 #include "echo/audio/output_limiter.hpp"
-#include "echo/audio/three_band_equalizer.hpp"
+#include "echo/audio/parametric_equalizer.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -28,44 +28,6 @@ namespace {
 constexpr int kCanonicalSampleRate = 48000;
 constexpr std::uint64_t kRingCapacityFrames = 4096; // 85 ms at 48 kHz
 constexpr std::uint64_t kSeekWaitTimeoutMillis = 50;
-constexpr std::int16_t kMinimumEqualizerGainCentibels = -1200;
-constexpr std::int16_t kMaximumEqualizerGainCentibels = 1200;
-
-std::uint64_t pack_equalizer(ThreeBandEqualizerAdjustment adjustment) {
-    return static_cast<std::uint64_t>(static_cast<std::uint16_t>(adjustment.low_gain_centibels))
-           | (static_cast<std::uint64_t>(static_cast<std::uint16_t>(adjustment.mid_gain_centibels))
-              << 16U)
-           | (static_cast<std::uint64_t>(static_cast<std::uint16_t>(adjustment.high_gain_centibels))
-              << 32U);
-}
-
-ThreeBandEqualizerAdjustment unpack_equalizer(std::uint64_t packed) {
-    const auto signed_gain = [](std::uint64_t value) {
-        const std::uint16_t encoded = static_cast<std::uint16_t>(value & 0xFFFFU);
-        return encoded <= static_cast<std::uint16_t>(std::numeric_limits<std::int16_t>::max())
-                   ? static_cast<std::int16_t>(encoded)
-                   : static_cast<std::int16_t>(static_cast<std::int32_t>(encoded) - 65'536);
-    };
-    return {
-        .low_gain_centibels = signed_gain(packed),
-        .mid_gain_centibels = signed_gain(packed >> 16U),
-        .high_gain_centibels = signed_gain(packed >> 32U),
-    };
-}
-
-bool valid_equalizer(ThreeBandEqualizerAdjustment adjustment) {
-    for (const std::int16_t gain : {
-             adjustment.low_gain_centibels,
-             adjustment.mid_gain_centibels,
-             adjustment.high_gain_centibels,
-         }) {
-        if (gain < kMinimumEqualizerGainCentibels || gain > kMaximumEqualizerGainCentibels) {
-            return false;
-        }
-    }
-    return true;
-}
-
 std::string av_error_text(int code) {
     char buffer[AV_ERROR_MAX_STRING_SIZE] = {0};
     av_strerror(code, buffer, sizeof(buffer));
@@ -298,7 +260,7 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
-        equalizer_ = std::make_unique<ThreeBandEqualizer>(
+        equalizer_ = std::make_unique<ParametricEqualizer>(
             adjustment_->equalizer(),
             kCanonicalSampleRate,
             channel_count_
@@ -309,8 +271,7 @@ class PlaybackSession::Impl {
             std::make_unique<OutputLimiter>(adjustment_->limiter(), kCanonicalSampleRate);
         output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
         loudness_meter_ = std::make_unique<LoudnessMeter>(kCanonicalSampleRate, channel_count_);
-        applied_equalizer_ = pack_equalizer(adjustment_->equalizer());
-        requested_equalizer_.store(applied_equalizer_, std::memory_order_release);
+        pending_equalizer_ = adjustment_->equalizer();
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -376,11 +337,17 @@ class PlaybackSession::Impl {
         }
     }
 
-    void update_equalizer(ThreeBandEqualizerAdjustment adjustment) {
-        if (!valid_equalizer(adjustment)) {
-            throw std::invalid_argument("playback equalizer gain is outside the supported range");
+    void update_equalizer(ParametricEqualizerAdjustment adjustment) {
+        [[maybe_unused]] const ParametricEqualizer validation(
+            adjustment,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        {
+            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            pending_equalizer_ = adjustment;
+            equalizer_update_pending_ = true;
         }
-        requested_equalizer_.store(pack_equalizer(adjustment), std::memory_order_release);
         control_cv_.notify_one();
     }
 
@@ -571,14 +538,12 @@ class PlaybackSession::Impl {
                     }
                     const std::size_t chunk =
                         std::min({selected_count - written, scratch_frames, writable});
-                    const std::uint64_t requested =
-                        requested_equalizer_.load(std::memory_order_acquire);
-                    if (requested != applied_equalizer_) {
-                        equalizer_->transition_to(unpack_equalizer(requested));
-                        applied_equalizer_ = requested;
-                    }
                     {
                         std::lock_guard<std::mutex> lock(dynamics_mutex_);
+                        if (equalizer_update_pending_) {
+                            equalizer_->transition_to(pending_equalizer_);
+                            equalizer_update_pending_ = false;
+                        }
                         if (compressor_update_pending_) {
                             dynamics_processor_->update(pending_compressor_);
                             compressor_update_pending_ = false;
@@ -701,15 +666,15 @@ class PlaybackSession::Impl {
     std::unique_ptr<FrameRing> ring_;
     std::unique_ptr<PreparedAdjustment> adjustment_;
     std::unique_ptr<LowCutFilter> low_cut_filter_;
-    std::unique_ptr<ThreeBandEqualizer> equalizer_;
+    std::unique_ptr<ParametricEqualizer> equalizer_;
     std::unique_ptr<DynamicsProcessor> dynamics_processor_;
     std::unique_ptr<OutputLimiter> output_limiter_;
     std::unique_ptr<OutputGuard> output_guard_;
     std::unique_ptr<LoudnessMeter> loudness_meter_;
     std::uint64_t decoded_frame_cursor_ = 0;
-    std::atomic<std::uint64_t> requested_equalizer_{0};
-    std::uint64_t applied_equalizer_ = 0;
     std::mutex dynamics_mutex_;
+    ParametricEqualizerAdjustment pending_equalizer_;
+    bool equalizer_update_pending_ = false;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;
     LimiterAdjustment pending_limiter_;
@@ -755,7 +720,7 @@ void PlaybackSession::stop() {
 void PlaybackSession::seek(std::uint64_t millis) {
     impl_->seek(millis);
 }
-void PlaybackSession::update_equalizer(ThreeBandEqualizerAdjustment adjustment) {
+void PlaybackSession::update_equalizer(ParametricEqualizerAdjustment adjustment) {
     impl_->update_equalizer(adjustment);
 }
 void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {

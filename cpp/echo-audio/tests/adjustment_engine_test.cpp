@@ -4,6 +4,19 @@
 #include <cmath>
 #include <stdexcept>
 
+namespace {
+
+echo::audio::ParametricEqualizerAdjustment
+legacyEqualizer(std::int16_t low, std::int16_t mid, std::int16_t high) {
+    echo::audio::ParametricEqualizerAdjustment result;
+    result.bands[0].gain_centibels = low;
+    result.bands[2].gain_centibels = mid;
+    result.bands[5].gain_centibels = high;
+    return result;
+}
+
+} // namespace
+
 int main() {
     const echo::audio::PreparedAdjustment identity({}, 10'000, 48'000);
     assert(identity.start_frame() == 0);
@@ -19,8 +32,7 @@ int main() {
          .fade_out_curve = echo::audio::FadeCurve::EqualPower,
          .gain_centibels = -600,
          .low_cut_hertz = 80,
-         .equalizer =
-             {.low_gain_centibels = 250, .mid_gain_centibels = -175, .high_gain_centibels = 300},
+         .equalizer = legacyEqualizer(250, -175, 300),
          .compressor =
              {.enabled = true,
               .threshold_centibels = -2000,
@@ -43,9 +55,9 @@ int main() {
     assert(prepared.amplitude_at(60'000) < prepared.amplitude_at(72'000));
     assert(prepared.amplitude_at(420'000) < prepared.amplitude_at(384'000));
     assert(prepared.low_cut_hertz() == 80);
-    assert(prepared.equalizer().low_gain_centibels == 250);
-    assert(prepared.equalizer().mid_gain_centibels == -175);
-    assert(prepared.equalizer().high_gain_centibels == 300);
+    assert(prepared.equalizer().bands[0].gain_centibels == 250);
+    assert(prepared.equalizer().bands[2].gain_centibels == -175);
+    assert(prepared.equalizer().bands[5].gain_centibels == 300);
     assert(prepared.compressor().enabled);
     assert(prepared.compressor().threshold_centibels == -2000);
     assert(prepared.limiter().enabled);
@@ -103,7 +115,7 @@ int main() {
     rejected = false;
     try {
         [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_equalizer(
-            {.equalizer = {.mid_gain_centibels = 1'201}},
+            {.equalizer = legacyEqualizer(0, 1'201, 0)},
             10'000,
             48'000
         );

@@ -73,9 +73,9 @@ Rectangle {
 
     function adjustmentKey() : string {
         return playbackBaseAdjustmentKey() + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.eqLowGainCentibels) + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels) + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels) + ":"
+            + JSON.stringify(auditionOriginal
+                ? adjustmentDraft.defaultEqualizerBands()
+                : adjustmentDraft.equalizerBands) + ":"
             + (auditionOriginal ? false : adjustmentDraft.compressorEnabled) + ":"
             + (auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels) + ":"
             + (auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths) + ":"
@@ -104,9 +104,9 @@ Rectangle {
                             auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve,
                             auditionOriginal ? 0 : adjustmentDraft.gainCentibels,
                             auditionOriginal ? 0 : adjustmentDraft.lowCutHertz,
-                            auditionOriginal ? 0 : adjustmentDraft.eqLowGainCentibels,
-                            auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels,
-                            auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels,
+                            auditionOriginal
+                                ? adjustmentDraft.defaultEqualizerBands()
+                                : adjustmentDraft.equalizerBands,
                             auditionOriginal ? false : adjustmentDraft.compressorEnabled,
                             auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels,
                             auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths,
@@ -181,10 +181,11 @@ Rectangle {
     }
 
     function debugNudgeEqualizer() : void {
-        const next = adjustmentDraft.eqMidGainCentibels >= 1100
-            ? adjustmentDraft.eqMidGainCentibels - 100
-            : adjustmentDraft.eqMidGainCentibels + 100
-        adjustmentDraft.setEqualizerBand("mid", next)
+        const band = adjustmentDraft.equalizerBands[2]
+        const next = band.gainCentibels >= 1100
+            ? band.gainCentibels - 100 : band.gainCentibels + 100
+        adjustmentDraft.setEqualizerBand(2, true, band.filterKind,
+            band.frequencyHertz, band.qHundredths, next)
     }
 
     function debugEnableCompressor() : void {
@@ -221,7 +222,7 @@ Rectangle {
 
         onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut,
                                   fadeInCurve, fadeOutCurve, gain, lowCut,
-                                  eqLowGain, eqMidGain, eqHighGain,
+                                  equalizerBands,
                                   compressorEnabled, compressorThreshold,
                                   compressorRatio, compressorAttack,
                                   compressorRelease, compressorMakeup,
@@ -230,7 +231,7 @@ Rectangle {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                            fadeIn, fadeOut, fadeInCurve,
                                            fadeOutCurve, gain, lowCut,
-                                           eqLowGain, eqMidGain, eqHighGain,
+                                           equalizerBands,
                                            compressorEnabled, compressorThreshold,
                                            compressorRatio, compressorAttack,
                                            compressorRelease, compressorMakeup,
@@ -247,13 +248,7 @@ Rectangle {
     Connections {
         target: adjustmentDraft
 
-        function onEqLowGainCentibelsChanged() : void {
-            workspace.scheduleEffectsPreview()
-        }
-        function onEqMidGainCentibelsChanged() : void {
-            workspace.scheduleEffectsPreview()
-        }
-        function onEqHighGainCentibelsChanged() : void {
+        function onEqualizerBandsChanged() : void {
             workspace.scheduleEffectsPreview()
         }
         function onCompressorEnabledChanged() : void {
@@ -298,9 +293,7 @@ Rectangle {
                 return
             }
             const equalizerUpdated = player.updateEqualizer(
-                adjustmentDraft.eqLowGainCentibels,
-                adjustmentDraft.eqMidGainCentibels,
-                adjustmentDraft.eqHighGainCentibels)
+                adjustmentDraft.equalizerBands)
             const compressorUpdated = player.updateCompressor(
                 adjustmentDraft.compressorEnabled,
                 adjustmentDraft.compressorThresholdCentibels,

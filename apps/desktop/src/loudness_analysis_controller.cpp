@@ -12,6 +12,7 @@
 #include "echo/audio/loudness_gain_advisor.hpp"
 #include "echo/audio/offline_loudness_analyzer.hpp"
 #include "echo/audio/playback.hpp"
+#include "parametric_equalizer_projection.hpp"
 
 namespace {
 
@@ -24,9 +25,7 @@ echo::audio::PlaybackAdjustment make_adjustment(
     int fade_out_curve,
     int gain_centibels,
     int low_cut_hertz,
-    int eq_low_gain_centibels,
-    int eq_mid_gain_centibels,
-    int eq_high_gain_centibels,
+    const QVariantList& equalizer_bands,
     bool compressor_enabled,
     int compressor_threshold_centibels,
     int compressor_ratio_tenths,
@@ -41,9 +40,6 @@ echo::audio::PlaybackAdjustment make_adjustment(
         || fade_out_millis < 0 || fade_in_curve < 0 || fade_in_curve > 2 || fade_out_curve < 0
         || fade_out_curve > 2 || gain_centibels < -2400 || gain_centibels > 1200
         || (low_cut_hertz != 0 && (low_cut_hertz < 20 || low_cut_hertz > 240))
-        || eq_low_gain_centibels < -1200 || eq_low_gain_centibels > 1200
-        || eq_mid_gain_centibels < -1200 || eq_mid_gain_centibels > 1200
-        || eq_high_gain_centibels < -1200 || eq_high_gain_centibels > 1200
         || compressor_threshold_centibels < -6000 || compressor_threshold_centibels > 0
         || compressor_ratio_tenths < 10 || compressor_ratio_tenths > 200
         || compressor_attack_millis < 1 || compressor_attack_millis > 200
@@ -52,6 +48,10 @@ echo::audio::PlaybackAdjustment make_adjustment(
         || limiter_ceiling_centibels < -600 || limiter_ceiling_centibels > 0
         || limiter_release_millis < 20 || limiter_release_millis > 1000) {
         throw std::invalid_argument("loudness analysis adjustment is outside the supported range");
+    }
+    const auto equalizer = ParametricEqualizerProjection::fromQml(equalizer_bands);
+    if (!equalizer.has_value()) {
+        throw std::invalid_argument("parametric equalizer is outside the supported range");
     }
     return {
         .trim_start_millis = static_cast<std::uint64_t>(trim_start_millis),
@@ -62,12 +62,7 @@ echo::audio::PlaybackAdjustment make_adjustment(
         .fade_out_curve = static_cast<echo::audio::FadeCurve>(fade_out_curve),
         .gain_centibels = static_cast<std::int16_t>(gain_centibels),
         .low_cut_hertz = static_cast<std::uint16_t>(low_cut_hertz),
-        .equalizer =
-            {
-                .low_gain_centibels = static_cast<std::int16_t>(eq_low_gain_centibels),
-                .mid_gain_centibels = static_cast<std::int16_t>(eq_mid_gain_centibels),
-                .high_gain_centibels = static_cast<std::int16_t>(eq_high_gain_centibels),
-            },
+        .equalizer = *equalizer,
         .compressor =
             {
                 .enabled = compressor_enabled,
@@ -104,9 +99,7 @@ void LoudnessAnalysisController::analyzeAdjusted(
     int fadeOutCurve,
     int gainCentibels,
     int lowCutHertz,
-    int eqLowGainCentibels,
-    int eqMidGainCentibels,
-    int eqHighGainCentibels,
+    const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
     int compressorRatioTenths,
@@ -128,9 +121,7 @@ void LoudnessAnalysisController::analyzeAdjusted(
             fadeOutCurve,
             gainCentibels,
             lowCutHertz,
-            eqLowGainCentibels,
-            eqMidGainCentibels,
-            eqHighGainCentibels,
+            equalizerBands,
             compressorEnabled,
             compressorThresholdCentibels,
             compressorRatioTenths,

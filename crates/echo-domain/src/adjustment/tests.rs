@@ -13,7 +13,7 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             -350,
             80,
         )
-        .with_equalizer(ThreeBandEqualizer::new(250, -175, 400))
+        .with_equalizer(ParametricEqualizer::from_legacy_gains(250, -175, 400))
         .with_compressor(CompressorSettings {
             enabled: true,
             threshold_centibels: -2_000,
@@ -37,7 +37,10 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.fade_out_curve(), FadeCurve::EqualPower);
     assert_eq!(graph.gain_centibels(), -350);
     assert_eq!(graph.low_cut_hertz(), 80);
-    assert_eq!(graph.equalizer(), ThreeBandEqualizer::new(250, -175, 400));
+    assert_eq!(
+        graph.equalizer(),
+        ParametricEqualizer::from_legacy_gains(250, -175, 400)
+    );
     assert!(graph.compressor().enabled);
     assert_eq!(graph.compressor().ratio_tenths, 40);
     assert_eq!(graph.limiter().ceiling_centibels, -125);
@@ -93,10 +96,11 @@ fn graph_rejects_out_of_source_and_overlapping_envelopes() {
             1_000,
             0,
             0,
-            AdjustmentEffects::new(FadeCurves::linear(), 0, 0)
-                .with_equalizer(ThreeBandEqualizer::new(0, MAX_EQ_GAIN_CENTIBELS + 1, 0)),
+            AdjustmentEffects::new(FadeCurves::linear(), 0, 0).with_equalizer(
+                ParametricEqualizer::from_legacy_gains(0, MAX_EQ_GAIN_CENTIBELS + 1, 0,)
+            ),
         ),
-        Err(AdjustmentGraphError::EqualizerGainOutOfRange)
+        Err(AdjustmentGraphError::EqualizerBandOutOfRange)
     );
     assert_eq!(
         AdjustmentGraph::new(

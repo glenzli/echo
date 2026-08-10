@@ -144,6 +144,7 @@ Rectangle {
                 Layout.maximumWidth: 330
                 Layout.fillHeight: true
                 draft: inspector.draft
+                responseProvider: inspector.meterSource
             }
 
             DynamicsPanel {

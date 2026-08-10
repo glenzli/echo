@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -9,26 +10,24 @@
 
 namespace echo::audio {
 
-/// Prepared three-band restoration equalizer with click-free target changes.
-///
-/// Coefficients and per-channel state are allocated before decoding starts;
-/// target banks are prepared on the decode producer and linearly crossfaded
-/// over a short, fixed interval. The realtime callback never touches this
-/// owner.
-class ThreeBandEqualizer {
+/// Prepared six-band parametric equalizer with click-free target changes.
+class ParametricEqualizer {
   public:
-    ThreeBandEqualizer(
-        ThreeBandEqualizerAdjustment adjustment,
+    ParametricEqualizer(
+        ParametricEqualizerAdjustment adjustment,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );
 
-    /// Queues a new authored target. Rapid superseding changes coalesce to
-    /// the newest target while the active transition finishes.
-    void transition_to(ThreeBandEqualizerAdjustment adjustment);
+    void transition_to(ParametricEqualizerAdjustment adjustment);
     [[nodiscard]] float process_sample(float sample, std::size_t channel);
     void reset();
     [[nodiscard]] bool is_bypassed() const;
+    [[nodiscard]] static double response_decibels(
+        ParametricEqualizerAdjustment adjustment,
+        std::uint32_t sample_rate,
+        double frequency_hertz
+    );
 
   private:
     struct State {
@@ -49,10 +48,8 @@ class ThreeBandEqualizer {
     };
 
     struct Bank {
-        ThreeBandEqualizerAdjustment adjustment;
-        Section low;
-        Section mid;
-        Section high;
+        ParametricEqualizerAdjustment adjustment;
+        std::array<Section, kParametricEqualizerBandCount> sections;
         bool bypassed = true;
 
         [[nodiscard]] float process(float sample, std::size_t channel);
@@ -69,20 +66,19 @@ class ThreeBandEqualizer {
     };
 
     static Section normalized(Coefficients coefficients, std::size_t channel_count);
-    [[nodiscard]] static Section
-    low_shelf(std::int16_t gain_centibels, std::uint32_t sample_rate, std::size_t channel_count);
-    [[nodiscard]] static Section
-    peaking(std::int16_t gain_centibels, std::uint32_t sample_rate, std::size_t channel_count);
-    [[nodiscard]] static Section
-    high_shelf(std::int16_t gain_centibels, std::uint32_t sample_rate, std::size_t channel_count);
-    [[nodiscard]] static Bank prepare(
-        ThreeBandEqualizerAdjustment adjustment,
+    [[nodiscard]] static Section prepare_section(
+        ParametricEqualizerBand band,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );
-    static void validate(ThreeBandEqualizerAdjustment adjustment);
-    static bool same(ThreeBandEqualizerAdjustment left, ThreeBandEqualizerAdjustment right);
-    void begin_transition(ThreeBandEqualizerAdjustment adjustment);
+    [[nodiscard]] static Bank prepare(
+        ParametricEqualizerAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate(ParametricEqualizerAdjustment adjustment, std::uint32_t sample_rate);
+    static bool same(ParametricEqualizerAdjustment left, ParametricEqualizerAdjustment right);
+    void begin_transition(ParametricEqualizerAdjustment adjustment);
 
     std::uint32_t sample_rate_ = 0;
     std::size_t channel_count_ = 0;
@@ -90,7 +86,7 @@ class ThreeBandEqualizer {
     std::size_t transition_frame_ = 0;
     Bank current_;
     std::optional<Bank> next_;
-    std::optional<ThreeBandEqualizerAdjustment> pending_;
+    std::optional<ParametricEqualizerAdjustment> pending_;
 };
 
 } // namespace echo::audio
