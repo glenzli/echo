@@ -310,6 +310,11 @@ InferenceBackend
     手势合并的 Undo／Redo；`SoundAdjustmentDraft` 独立承担校验、历史和显式发布，时间轴与右侧
     精调检查器只负责直接操作和呈现。此切片仍不包含关键帧包络、响度测量、EQ、Dynamics、降噪
     或导出；这些应各自以真实执行器和可验证用户结果进入后续版本图，而不是先放置无效控件。
+  - 编辑器第三个基础切片（2026-08-10）：`AdjustmentGraph` 与 Catalog `20260810.3` 增加可旁路的
+    20–240 Hz Low Cut 参数；二阶 Butterworth 高通在 C++ 解码生产线程按声道维护状态并作用于
+    真实试听，Seek 会重置滤波器状态，Qt 实时回调仍只消费已处理 PCM。编辑器底部精调台提供开关、
+    频率滑块、完整 Undo／Redo、显式保存版本与 Original A/B；Audio Space 播放当前已保存参数。
+    此切片不把 Low Cut 扩张为尚未实现的参数均衡器，也不包含响度、Dynamics、降噪或导出。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 

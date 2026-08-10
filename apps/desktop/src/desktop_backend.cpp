@@ -85,6 +85,7 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("fadeInCurve"), static_cast<int>(asset.fade_in_curve));
         entry.insert(QStringLiteral("fadeOutCurve"), static_cast<int>(asset.fade_out_curve));
         entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
+        entry.insert(QStringLiteral("lowCutHertz"), static_cast<int>(asset.low_cut_hertz));
         entry.insert(
             QStringLiteral("containerFormat"),
             QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
@@ -199,11 +200,13 @@ bool DesktopBackend::setAssetAdjustment(
     qlonglong fadeOutMillis,
     int fadeInCurve,
     int fadeOutCurve,
-    int gainCentibels
+    int gainCentibels,
+    int lowCutHertz
 ) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
-        || gainCentibels < -2400 || gainCentibels > 1200) {
+        || gainCentibels < -2400 || gainCentibels > 1200
+        || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
@@ -216,6 +219,7 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.fade_in_curve = static_cast<std::uint8_t>(fadeInCurve);
         adjustment.fade_out_curve = static_cast<std::uint8_t>(fadeOutCurve);
         adjustment.gain_centibels = static_cast<std::int16_t>(gainCentibels);
+        adjustment.low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz);
         session_->session_set_asset_adjustment(id.toStdString(), adjustment);
         emit assetsChanged();
         return true;

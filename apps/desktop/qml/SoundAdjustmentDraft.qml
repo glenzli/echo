@@ -16,6 +16,7 @@ QtObject {
     property int fadeInCurve: 0
     property int fadeOutCurve: 0
     property int gainCentibels: 0
+    property int lowCutHertz: 0
 
     property var _savedSnapshot: ({})
     property var _history: []
@@ -34,13 +35,13 @@ QtObject {
         && trimEndMillis === sourceDurationMillis
         && fadeInMillis === 0 && fadeOutMillis === 0
         && fadeInCurve === 0 && fadeOutCurve === 0
-        && gainCentibels === 0
+        && gainCentibels === 0 && lowCutHertz === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis,
                          int fadeIn, int fadeOut,
                          int fadeInCurve, int fadeOutCurve,
-                         int gain)
+                         int gain, int lowCut)
 
     function clamp(value: real, minimum: real, maximum: real) : real {
         return Math.max(minimum, Math.min(maximum, value))
@@ -54,7 +55,8 @@ QtObject {
             fadeOutMillis: fadeOutMillis,
             fadeInCurve: fadeInCurve,
             fadeOutCurve: fadeOutCurve,
-            gainCentibels: gainCentibels
+            gainCentibels: gainCentibels,
+            lowCutHertz: lowCutHertz
         }
     }
 
@@ -66,7 +68,8 @@ QtObject {
             fadeOutMillis: Number(value.fadeOutMillis),
             fadeInCurve: Number(value.fadeInCurve),
             fadeOutCurve: Number(value.fadeOutCurve),
-            gainCentibels: Number(value.gainCentibels)
+            gainCentibels: Number(value.gainCentibels),
+            lowCutHertz: Number(value.lowCutHertz)
         }
     }
 
@@ -79,6 +82,7 @@ QtObject {
             && Number(left.fadeInCurve) === Number(right.fadeInCurve)
             && Number(left.fadeOutCurve) === Number(right.fadeOutCurve)
             && Number(left.gainCentibels) === Number(right.gainCentibels)
+            && Number(left.lowCutHertz) === Number(right.lowCutHertz)
     }
 
     function assetSnapshot() : var {
@@ -87,7 +91,7 @@ QtObject {
                 trimStartMillis: 0, trimEndMillis: 0,
                 fadeInMillis: 0, fadeOutMillis: 0,
                 fadeInCurve: 0, fadeOutCurve: 0,
-                gainCentibels: 0
+                gainCentibels: 0, lowCutHertz: 0
             }
         }
         const duration = Math.max(0, Number(asset.durationMillis))
@@ -99,7 +103,9 @@ QtObject {
             fadeOutMillis: Math.max(0, Number(asset.fadeOutMillis)),
             fadeInCurve: clamp(Number(asset.fadeInCurve || 0), 0, 2),
             fadeOutCurve: clamp(Number(asset.fadeOutCurve || 0), 0, 2),
-            gainCentibels: clamp(Number(asset.gainCentibels), -2400, 1200)
+            gainCentibels: clamp(Number(asset.gainCentibels), -2400, 1200),
+            lowCutHertz: Number(asset.lowCutHertz) === 0 ? 0
+                : clamp(Number(asset.lowCutHertz), 20, 240)
         }
     }
 
@@ -112,6 +118,7 @@ QtObject {
         fadeInCurve = Number(value.fadeInCurve)
         fadeOutCurve = Number(value.fadeOutCurve)
         gainCentibels = Number(value.gainCentibels)
+        lowCutHertz = Number(value.lowCutHertz)
         _restoring = false
     }
 
@@ -199,6 +206,11 @@ QtObject {
         pushCurrent()
     }
 
+    function setLowCut(hertz: int) : void {
+        lowCutHertz = hertz === 0 ? 0 : Math.round(clamp(hertz, 20, 240))
+        pushCurrent()
+    }
+
     function clear() : void {
         applySnapshot({
             trimStartMillis: 0,
@@ -207,7 +219,8 @@ QtObject {
             fadeOutMillis: 0,
             fadeInCurve: 0,
             fadeOutCurve: 0,
-            gainCentibels: 0
+            gainCentibels: 0,
+            lowCutHertz: 0
         })
         pushCurrent()
     }
@@ -221,7 +234,7 @@ QtObject {
         if (!asset || !dirty) return
         saveRequested(trimStartMillis, trimEndMillis,
             fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve,
-            gainCentibels)
+            gainCentibels, lowCutHertz)
     }
 
     function markSaved() : void {

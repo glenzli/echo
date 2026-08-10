@@ -59,5 +59,8 @@ The CMake graph builds `echo-desktop-bridge` with Cargo into its own target
 directory and syncs the generated CXX headers into a stable include root
 ([`cmake/sync_cxxbridge_headers.cmake`](cmake/sync_cxxbridge_headers.cmake)).
 Headless smoke: `ECHO_DEBUG_SCREENSHOT=/tmp/echo.png ../.echo-local-build/desktop-dev/apps/desktop/Echo.app/Contents/MacOS/Echo <catalog> <cache>`
+
+Set `ECHO_DEBUG_OPEN_EDITOR=1` with `ECHO_DEBUG_SCREENSHOT` to capture the
+selected sound in the adjustment workspace after the catalog has loaded.
 captures the first window and exits; add `ECHO_DEBUG_AUTOPLAY=/path/file` to
 start playback first.

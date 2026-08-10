@@ -1,8 +1,9 @@
 //! Non-destructive restoration intent for one immutable original.
 //!
-//! The graph stores authored time-domain bounds and simple amplitude
-//! envelopes in stable integer units. Execution-specific sample positions are
-//! prepared by the audio engine and are never persisted as user intent.
+//! The graph stores authored time-domain bounds, amplitude envelopes, and a
+//! bounded low-cut frequency in stable integer units. Execution-specific
+//! sample positions and filter coefficients are prepared by the audio engine
+//! and are never persisted as user intent.
 
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,10 @@ use serde::{Deserialize, Serialize};
 pub const MIN_GAIN_CENTIBELS: i16 = -2_400;
 /// Highest supported output gain in hundredths of one decibel.
 pub const MAX_GAIN_CENTIBELS: i16 = 1_200;
+/// Lowest supported enabled low-cut frequency in hertz.
+pub const MIN_LOW_CUT_HERTZ: u16 = 20;
+/// Highest supported low-cut frequency in hertz.
+pub const MAX_LOW_CUT_HERTZ: u16 = 240;
 
 /// Stable fade interpolation authored independently for each edge.
 ///
@@ -83,6 +88,28 @@ impl FadeCurves {
     }
 }
 
+/// Authored processing that applies inside the selected clip range.
+///
+/// This value keeps effect intent distinct from time-domain trim bounds and
+/// avoids an order-sensitive sequence of scalar effect parameters.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AdjustmentEffects {
+    pub fade_curves: FadeCurves,
+    pub gain_centibels: i16,
+    pub low_cut_hertz: u16,
+}
+
+impl AdjustmentEffects {
+    #[must_use]
+    pub const fn new(fade_curves: FadeCurves, gain_centibels: i16, low_cut_hertz: u16) -> Self {
+        Self {
+            fade_curves,
+            gain_centibels,
+            low_cut_hertz,
+        }
+    }
+}
+
 /// One validated, non-destructive adjustment graph.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AdjustmentGraph {
@@ -93,6 +120,7 @@ pub struct AdjustmentGraph {
     fade_in_curve: FadeCurve,
     fade_out_curve: FadeCurve,
     gain_centibels: i16,
+    low_cut_hertz: u16,
 }
 
 impl AdjustmentGraph {
@@ -108,8 +136,7 @@ impl AdjustmentGraph {
         trim_end_millis: u64,
         fade_in_millis: u64,
         fade_out_millis: u64,
-        fade_curves: FadeCurves,
-        gain_centibels: i16,
+        effects: AdjustmentEffects,
     ) -> Result<Self, AdjustmentGraphError> {
         if source_duration_millis == 0
             || trim_start_millis >= trim_end_millis
@@ -120,17 +147,23 @@ impl AdjustmentGraph {
         if fade_in_millis.saturating_add(fade_out_millis) > trim_end_millis - trim_start_millis {
             return Err(AdjustmentGraphError::OverlappingFades);
         }
-        if !(MIN_GAIN_CENTIBELS..=MAX_GAIN_CENTIBELS).contains(&gain_centibels) {
+        if !(MIN_GAIN_CENTIBELS..=MAX_GAIN_CENTIBELS).contains(&effects.gain_centibels) {
             return Err(AdjustmentGraphError::GainOutOfRange);
+        }
+        if effects.low_cut_hertz != 0
+            && !(MIN_LOW_CUT_HERTZ..=MAX_LOW_CUT_HERTZ).contains(&effects.low_cut_hertz)
+        {
+            return Err(AdjustmentGraphError::LowCutOutOfRange);
         }
         Ok(Self {
             trim_start_millis,
             trim_end_millis,
             fade_in_millis,
             fade_out_millis,
-            fade_in_curve: fade_curves.fade_in,
-            fade_out_curve: fade_curves.fade_out,
-            gain_centibels,
+            fade_in_curve: effects.fade_curves.fade_in,
+            fade_out_curve: effects.fade_curves.fade_out,
+            gain_centibels: effects.gain_centibels,
+            low_cut_hertz: effects.low_cut_hertz,
         })
     }
 
@@ -147,8 +180,7 @@ impl AdjustmentGraph {
             source_duration_millis,
             0,
             0,
-            FadeCurves::linear(),
-            0,
+            AdjustmentEffects::default(),
         )
     }
 
@@ -186,6 +218,12 @@ impl AdjustmentGraph {
     pub const fn gain_centibels(self) -> i16 {
         self.gain_centibels
     }
+
+    /// High-pass cutoff in hertz, or zero when low-cut is disabled.
+    #[must_use]
+    pub const fn low_cut_hertz(self) -> u16 {
+        self.low_cut_hertz
+    }
 }
 
 /// Stable validation failures for authored adjustment intent.
@@ -194,6 +232,7 @@ pub enum AdjustmentGraphError {
     InvalidTrimRange,
     OverlappingFades,
     GainOutOfRange,
+    LowCutOutOfRange,
 }
 
 impl std::fmt::Display for AdjustmentGraphError {
@@ -202,6 +241,7 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::InvalidTrimRange => "trim range must be non-empty and inside the source",
             Self::OverlappingFades => "fade durations must fit inside the trim range",
             Self::GainOutOfRange => "gain must be between -24 dB and +12 dB",
+            Self::LowCutOutOfRange => "low cut must be off or between 20 Hz and 240 Hz",
         })
     }
 }

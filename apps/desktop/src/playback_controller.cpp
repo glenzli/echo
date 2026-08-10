@@ -40,11 +40,13 @@ void PlaybackController::playAdjusted(
     qint64 fadeOutMillis,
     int fadeInCurve,
     int fadeOutCurve,
-    int gainCentibels
+    int gainCentibels,
+    int lowCutHertz
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
-        || fadeOutCurve > 2 || gainCentibels < -2400 || gainCentibels > 1200) {
+        || fadeOutCurve > 2 || gainCentibels < -2400 || gainCentibels > 1200
+        || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))) {
         qWarning("invalid playback adjustment");
         return;
     }
@@ -56,6 +58,7 @@ void PlaybackController::playAdjusted(
         .fade_in_curve = static_cast<echo::audio::FadeCurve>(fadeInCurve),
         .fade_out_curve = static_cast<echo::audio::FadeCurve>(fadeOutCurve),
         .gain_centibels = static_cast<std::int16_t>(gainCentibels),
+        .low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz),
     };
     startSession(path, adjustment);
 }

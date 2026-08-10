@@ -60,6 +60,7 @@ struct AdjustmentWireFields {
     fade_in_curve: u8,
     fade_out_curve: u8,
     gain_centibels: i16,
+    low_cut_hertz: u16,
 }
 
 fn adjustment_wire_fields(
@@ -76,6 +77,7 @@ fn adjustment_wire_fields(
             fade_in_curve: 0,
             fade_out_curve: 0,
             gain_centibels: 0,
+            low_cut_hertz: 0,
         },
         |revision| AdjustmentWireFields {
             revision: revision.revision_id,
@@ -88,6 +90,7 @@ fn adjustment_wire_fields(
             fade_out_curve: u8::try_from(revision.graph.fade_out_curve().catalog_value())
                 .expect("fade curve catalog values fit u8"),
             gain_centibels: revision.graph.gain_centibels(),
+            low_cut_hertz: revision.graph.low_cut_hertz(),
         },
     )
 }
@@ -174,6 +177,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         fade_in_curve: adjustment.fade_in_curve,
         fade_out_curve: adjustment.fade_out_curve,
         gain_centibels: adjustment.gain_centibels,
+        low_cut_hertz: adjustment.low_cut_hertz,
         container_format,
         sample_rate,
         channel_count,
@@ -367,17 +371,22 @@ impl LibrarySession {
             adjustment.trim_end_millis,
             adjustment.fade_in_millis,
             adjustment.fade_out_millis,
-            echo_domain::FadeCurves::new(
-                echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_in_curve))
+            echo_domain::AdjustmentEffects::new(
+                echo_domain::FadeCurves::new(
+                    echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_in_curve))
+                        .map_err(|error| SessionError {
+                            message: error.to_string(),
+                        })?,
+                    echo_domain::FadeCurve::from_catalog_value(i64::from(
+                        adjustment.fade_out_curve,
+                    ))
                     .map_err(|error| SessionError {
                         message: error.to_string(),
                     })?,
-                echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_out_curve))
-                    .map_err(|error| SessionError {
-                        message: error.to_string(),
-                    })?,
+                ),
+                adjustment.gain_centibels,
+                adjustment.low_cut_hertz,
             ),
-            adjustment.gain_centibels,
         )
         .map_err(|error| SessionError {
             message: error.to_string(),

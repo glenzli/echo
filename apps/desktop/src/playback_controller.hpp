@@ -38,7 +38,8 @@ class PlaybackController : public QObject {
         qint64 fadeOutMillis,
         int fadeInCurve,
         int fadeOutCurve,
-        int gainCentibels
+        int gainCentibels,
+        int lowCutHertz
     );
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void stop();

@@ -10,6 +10,8 @@ namespace {
 
 constexpr std::int16_t kMinimumGainCentibels = -2400;
 constexpr std::int16_t kMaximumGainCentibels = 1200;
+constexpr std::uint16_t kMinimumLowCutHertz = 20;
+constexpr std::uint16_t kMaximumLowCutHertz = 240;
 constexpr float kHalfPi = 1.5707963267948966F;
 
 bool valid_curve(FadeCurve curve) {
@@ -73,6 +75,11 @@ PreparedAdjustment::PreparedAdjustment(
     if (!valid_curve(authored.fade_in_curve) || !valid_curve(authored.fade_out_curve)) {
         throw std::invalid_argument("adjustment fade curve is outside the supported range");
     }
+    if (authored.low_cut_hertz != 0
+        && (authored.low_cut_hertz < kMinimumLowCutHertz
+            || authored.low_cut_hertz > kMaximumLowCutHertz)) {
+        throw std::invalid_argument("adjustment low cut is outside the supported range");
+    }
 
     trim_start_millis_ = authored.trim_start_millis;
     trim_end_millis_ = authored.trim_end_millis;
@@ -83,6 +90,7 @@ PreparedAdjustment::PreparedAdjustment(
     fade_in_curve_ = authored.fade_in_curve;
     fade_out_curve_ = authored.fade_out_curve;
     gain_amplitude_ = std::pow(10.0F, static_cast<float>(authored.gain_centibels) / 2000.0F);
+    low_cut_hertz_ = authored.low_cut_hertz;
 }
 
 std::uint64_t PreparedAdjustment::start_frame() const {
@@ -99,6 +107,10 @@ std::uint64_t PreparedAdjustment::trim_start_millis() const {
 
 std::uint64_t PreparedAdjustment::trim_end_millis() const {
     return trim_end_millis_;
+}
+
+std::uint16_t PreparedAdjustment::low_cut_hertz() const {
+    return low_cut_hertz_;
 }
 
 std::uint64_t PreparedAdjustment::clamp_seek_millis(std::uint64_t millis) const {

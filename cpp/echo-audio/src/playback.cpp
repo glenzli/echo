@@ -1,6 +1,7 @@
 #include "echo/audio/playback.hpp"
 
 #include "echo/audio/ffmpeg_include.hpp"
+#include "echo/audio/low_cut_filter.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -245,6 +246,11 @@ class PlaybackSession::Impl {
             fail("cannot initialize resampler: " + av_error_text(result));
         }
         channel_count_ = kPlaybackChannels;
+        low_cut_filter_ = std::make_unique<LowCutFilter>(
+            adjustment_->low_cut_hertz(),
+            kCanonicalSampleRate,
+            channel_count_
+        );
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -373,6 +379,7 @@ class PlaybackSession::Impl {
             }
             consumed_frames_.store(millis * kCanonicalSampleRate / 1000, std::memory_order_relaxed);
             decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
+            low_cut_filter_->reset();
         }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
         while (ring_->available() > 0 && std::chrono::steady_clock::now() < deadline) {
@@ -444,8 +451,11 @@ class PlaybackSession::Impl {
                             selected_start + static_cast<std::uint64_t>(written + index);
                         const float amplitude = adjustment_->amplitude_at(source_frame);
                         for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                            const float sample =
-                                planes[channel][input_offset + written + index] * amplitude;
+                            const float filtered = low_cut_filter_->process_sample(
+                                planes[channel][input_offset + written + index],
+                                channel
+                            );
+                            const float sample = filtered * amplitude;
                             scratch[index * channel_count_ + channel] =
                                 std::clamp(sample, -1.0F, 1.0F);
                         }
@@ -543,6 +553,7 @@ class PlaybackSession::Impl {
     std::unique_ptr<AVFrame, FrameDeleter> frame_;
     std::unique_ptr<FrameRing> ring_;
     std::unique_ptr<PreparedAdjustment> adjustment_;
+    std::unique_ptr<LowCutFilter> low_cut_filter_;
     std::uint64_t decoded_frame_cursor_ = 0;
 
     std::thread thread_;

@@ -14,6 +14,7 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/bridge/cxx_bridge.cpp",
     "src/adjustment.cpp",
     "src/decode.cpp",
+    "src/low_cut_filter.cpp",
     "src/playback.cpp",
     "src/waveform.cpp",
 ];
@@ -21,6 +22,7 @@ const ENGINE_SOURCES: &[&str] = &[
 const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/adjustment.hpp",
     "include/echo/audio/decode.hpp",
+    "include/echo/audio/low_cut_filter.hpp",
     "include/echo/audio/playback.hpp",
     "include/echo/audio/waveform.hpp",
     "src/bridge/cxx_bridge.hpp",

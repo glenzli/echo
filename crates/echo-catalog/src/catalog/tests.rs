@@ -33,22 +33,24 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                     9_000,
                     250,
                     500,
-                    echo_domain::FadeCurves::linear(),
-                    -300,
+                    echo_domain::AdjustmentEffects::new(
+                        echo_domain::FadeCurves::new(
+                            echo_domain::FadeCurve::Smooth,
+                            echo_domain::FadeCurve::EqualPower,
+                        ),
+                        -300,
+                        0,
+                    ),
                 )
                 .expect("fixture adjustment validates"),
                 2,
             )?;
             transaction.execute(
-                "ALTER TABLE asset_adjustment_revisions DROP COLUMN fade_in_curve",
+                "ALTER TABLE asset_adjustment_revisions DROP COLUMN low_cut_hertz",
                 [],
             )?;
             transaction.execute(
-                "ALTER TABLE asset_adjustment_revisions DROP COLUMN fade_out_curve",
-                [],
-            )?;
-            transaction.execute(
-                "UPDATE catalog_meta SET value = '20260810.1' WHERE key = 'schema_version'",
+                "UPDATE catalog_meta SET value = '20260810.2' WHERE key = 'schema_version'",
                 [],
             )?;
             Ok(())
@@ -57,7 +59,7 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
     drop(catalog);
 
     let migrated = open_catalog(&path).expect("previous revision migrates");
-    let (version, asset_count, curve_column_count): (String, i64, i64) = migrated
+    let (version, asset_count, low_cut_column_count): (String, i64, i64) = migrated
         .with_transaction(|transaction| -> Result<_, CatalogError> {
             Ok((
                 transaction.query_row(
@@ -68,16 +70,16 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
                 transaction.query_row("SELECT COUNT(*) FROM assets", [], |row| row.get(0))?,
                 transaction.query_row(
                     "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
-                     WHERE name IN ('fade_in_curve', 'fade_out_curve')",
+                     WHERE name = 'low_cut_hertz'",
                     [],
                     |row| row.get(0),
                 )?,
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260810.2");
+    assert_eq!(version, "20260810.3");
     assert_eq!(asset_count, 1);
-    assert_eq!(curve_column_count, 2);
+    assert_eq!(low_cut_column_count, 1);
     let adjustment = migrated
         .with_transaction(|transaction| {
             let asset_id: String =
@@ -91,11 +93,12 @@ fn previous_catalog_revision_migrates_without_losing_assets() {
         .expect("adjustment survives");
     assert_eq!(
         adjustment.graph.fade_in_curve(),
-        echo_domain::FadeCurve::Linear
+        echo_domain::FadeCurve::Smooth
     );
     assert_eq!(
         adjustment.graph.fade_out_curve(),
-        echo_domain::FadeCurve::Linear
+        echo_domain::FadeCurve::EqualPower
     );
+    assert_eq!(adjustment.graph.low_cut_hertz(), 0);
     let _ = std::fs::remove_dir_all(root);
 }

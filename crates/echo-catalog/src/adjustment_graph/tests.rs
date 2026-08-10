@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use echo_domain::{AdjustmentGraph, ContentHash, FadeCurve, FadeCurves};
+use echo_domain::{AdjustmentEffects, AdjustmentGraph, ContentHash, FadeCurve, FadeCurves};
 
 use super::*;
 use crate::{AssetRegistrationInput, RegisterAsset, open_catalog, register_asset};
@@ -41,8 +41,11 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         9_000,
         250,
         500,
-        FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
-        -300,
+        AdjustmentEffects::new(
+            FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
+            -300,
+            80,
+        ),
     )
     .expect("graph validates");
     let first = catalog
@@ -59,8 +62,11 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         8_000,
         100,
         100,
-        FadeCurves::new(FadeCurve::Linear, FadeCurve::Smooth),
-        0,
+        AdjustmentEffects::new(
+            FadeCurves::new(FadeCurve::Linear, FadeCurve::Smooth),
+            0,
+            120,
+        ),
     )
     .expect("second graph validates");
     let second = catalog

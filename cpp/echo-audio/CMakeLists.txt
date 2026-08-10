@@ -6,6 +6,7 @@ add_library(
     echo-audio STATIC
     src/adjustment.cpp
     src/decode.cpp
+    src/low_cut_filter.cpp
     src/playback.cpp
     src/waveform.cpp
 )
@@ -43,6 +44,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-adjustment-engine-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-adjustment-engine-test)
     add_test(NAME echo-adjustment-engine-test COMMAND echo-adjustment-engine-test)
+
+    add_executable(
+        echo-low-cut-filter-test
+        tests/low_cut_filter_test.cpp
+    )
+    target_link_libraries(echo-low-cut-filter-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-low-cut-filter-test)
+    add_test(NAME echo-low-cut-filter-test COMMAND echo-low-cut-filter-test)
 
     add_executable(
         echo-waveform-engine-test

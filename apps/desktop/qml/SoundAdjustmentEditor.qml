@@ -173,6 +173,71 @@ Rectangle {
 
             AdjustmentSection {
                 Layout.fillWidth: true
+                title: qsTr("Low cut")
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 6
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        EchoButton {
+                            text: inspector.draft.lowCutHertz === 0
+                                ? qsTr("Off") : qsTr("On")
+                            ghost: true
+                            selected: inspector.draft.lowCutHertz > 0
+                            onClicked: inspector.draft.setLowCut(
+                                inspector.draft.lowCutHertz === 0 ? 80 : 0)
+                        }
+                        Item { Layout.fillWidth: true }
+                        Text {
+                            text: inspector.draft.lowCutHertz === 0
+                                ? qsTr("Bypass")
+                                : inspector.draft.lowCutHertz + " Hz"
+                            color: Theme.textPrimary
+                            font.pixelSize: Theme.fontBody
+                            font.weight: Font.DemiBold
+                        }
+                    }
+
+                    Slider {
+                        Layout.fillWidth: true
+                        from: 20
+                        to: 240
+                        stepSize: 1
+                        value: inspector.draft.lowCutHertz > 0
+                            ? inspector.draft.lowCutHertz : 80
+                        enabled: inspector.draft.lowCutHertz > 0
+                        Accessible.name: qsTr("Low cut frequency")
+                        onPressedChanged: {
+                            if (pressed) inspector.draft.beginGesture()
+                            else inspector.draft.endGesture()
+                        }
+                        onMoved: inspector.draft.setLowCut(value)
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            text: "20 Hz"
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
+                        Item { Layout.fillWidth: true }
+                        Text {
+                            text: "240 Hz"
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
+                    }
+                }
+            }
+
+            SectionDivider {}
+
+            AdjustmentSection {
+                Layout.fillWidth: true
                 title: qsTr("Clip gain")
 
                 ColumnLayout {

@@ -66,7 +66,8 @@ Rectangle {
             + (auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.fadeInCurve) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve) + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.gainCentibels)
+            + (auditionOriginal ? 0 : adjustmentDraft.gainCentibels) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.lowCutHertz)
     }
 
     function refreshAsset() : void {
@@ -84,7 +85,8 @@ Rectangle {
                             auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis,
                             auditionOriginal ? 0 : adjustmentDraft.fadeInCurve,
                             auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve,
-                            auditionOriginal ? 0 : adjustmentDraft.gainCentibels)
+                            auditionOriginal ? 0 : adjustmentDraft.gainCentibels,
+                            auditionOriginal ? 0 : adjustmentDraft.lowCutHertz)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(adjustmentDraft.trimStartMillis,
@@ -156,10 +158,10 @@ Rectangle {
         asset: workspace.asset
 
         onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut,
-                                  fadeInCurve, fadeOutCurve, gain) {
+                                  fadeInCurve, fadeOutCurve, gain, lowCut) {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                            fadeIn, fadeOut, fadeInCurve,
-                                           fadeOutCurve, gain)) {
+                                           fadeOutCurve, gain, lowCut)) {
                 adjustmentDraft.markSaved()
                 workspace.auditionOriginal = false
                 workspace.loadedAdjustmentKey = ""

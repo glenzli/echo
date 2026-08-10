@@ -98,18 +98,15 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_810, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 2);
+    CatalogSchemaRevision::new(20_260_810, 2);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 3);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.2-fade-curves";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.3-low-cut";
 
-pub(crate) const FADE_CURVE_MIGRATION_SQL: &str = "
+pub(crate) const LOW_CUT_MIGRATION_SQL: &str = "
 ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN fade_in_curve INTEGER NOT NULL DEFAULT 0
-    CHECK (fade_in_curve IN (0, 1, 2));
-ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN fade_out_curve INTEGER NOT NULL DEFAULT 0
-    CHECK (fade_out_curve IN (0, 1, 2));
+    ADD COLUMN low_cut_hertz INTEGER NOT NULL DEFAULT 0
+    CHECK (low_cut_hertz = 0 OR low_cut_hertz BETWEEN 20 AND 240);
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -228,6 +225,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     fade_in_curve         INTEGER NOT NULL DEFAULT 0 CHECK (fade_in_curve IN (0, 1, 2)),
     fade_out_curve        INTEGER NOT NULL DEFAULT 0 CHECK (fade_out_curve IN (0, 1, 2)),
     gain_centibels        INTEGER NOT NULL CHECK (gain_centibels BETWEEN -2400 AND 1200),
+    low_cut_hertz         INTEGER NOT NULL DEFAULT 0
+                          CHECK (low_cut_hertz = 0 OR low_cut_hertz BETWEEN 20 AND 240),
     created_at_millis     INTEGER NOT NULL,
     CHECK (fade_in_millis + fade_out_millis <= trim_end_millis - trim_start_millis)
 );

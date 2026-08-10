@@ -642,6 +642,26 @@
         <translation>片段增益</translation>
     </message>
     <message>
+        <source>Low cut</source>
+        <translation>低切</translation>
+    </message>
+    <message>
+        <source>Low cut frequency</source>
+        <translation>低切频率</translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>On</source>
+        <translation>开启</translation>
+    </message>
+    <message>
+        <source>Bypass</source>
+        <translation>旁路</translation>
+    </message>
+    <message>
         <source>Output</source>
         <translation>输出</translation>
     </message>

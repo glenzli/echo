@@ -38,7 +38,8 @@ class DesktopBackend : public QObject {
         qlonglong fadeOutMillis,
         int fadeInCurve,
         int fadeOutCurve,
-        int gainCentibels
+        int gainCentibels,
+        int lowCutHertz
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;

@@ -61,11 +61,14 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
                     900,
                     50,
                     100,
-                    echo_domain::FadeCurves::new(
-                        echo_domain::FadeCurve::Smooth,
-                        echo_domain::FadeCurve::EqualPower,
+                    echo_domain::AdjustmentEffects::new(
+                        echo_domain::FadeCurves::new(
+                            echo_domain::FadeCurve::Smooth,
+                            echo_domain::FadeCurve::EqualPower,
+                        ),
+                        -200,
+                        80,
                     ),
-                    -200,
                 )
                 .expect("adjustment validates"),
                 31,

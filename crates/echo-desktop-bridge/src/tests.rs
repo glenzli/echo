@@ -169,6 +169,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         fade_in_curve: 1,
         fade_out_curve: 2,
         gain_centibels: -350,
+        low_cut_hertz: 80,
     };
     session
         .set_asset_adjustment(&asset.id.to_string(), &adjustment)
@@ -183,6 +184,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].fade_in_curve, 1);
     assert_eq!(projected[0].fade_out_curve, 2);
     assert_eq!(projected[0].gain_centibels, -350);
+    assert_eq!(projected[0].low_cut_hertz, 80);
     let _ = std::fs::remove_dir_all(root);
 }
 
