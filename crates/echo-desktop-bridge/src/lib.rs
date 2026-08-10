@@ -202,6 +202,29 @@ mod ffi {
         updated_at_millis: i64,
     }
 
+    /// One bounded durable processing-history row for desktop presentation.
+    #[derive(Debug)]
+    struct ProcessingRecipeHistoryWire {
+        batch_id: String,
+        recipe_id: String,
+        recipe_name: String,
+        recipe_revision_id: String,
+        recipe_revision_number: u32,
+        merge_mode: String,
+        target_count: u64,
+        updated_count: u64,
+        unchanged_count: u64,
+        failed_count: u64,
+        created_at_millis: i64,
+        reverted: bool,
+        revert_id: String,
+        restored_count: u64,
+        revert_unchanged_count: u64,
+        conflict_count: u64,
+        revert_failed_count: u64,
+        reverted_at_millis: i64,
+    }
+
     /// Per-sound outcome from one explicit recipe application batch.
     #[derive(Debug)]
     struct ProcessingRecipeTargetResultWire {
@@ -356,6 +379,10 @@ mod ffi {
         fn session_user_albums(self: &LibrarySession) -> Result<Vec<UserAlbumWire>>;
         /// Lists named reusable processing recipes at their current revision.
         fn session_processing_recipes(self: &LibrarySession) -> Result<Vec<ProcessingRecipeWire>>;
+        /// Lists bounded newest-first processing application history.
+        fn session_processing_recipe_history(
+            self: &LibrarySession,
+        ) -> Result<Vec<ProcessingRecipeHistoryWire>>;
         /// Saves selected processing from one asset-local adjustment revision.
         fn session_create_processing_recipe(
             self: &LibrarySession,
@@ -557,6 +584,14 @@ impl LibrarySession {
     /// Lists current named processing recipe revisions.
     fn session_processing_recipes(&self) -> Result<Vec<ffi::ProcessingRecipeWire>, String> {
         self.processing_recipes().map_err(|error| error.message)
+    }
+
+    /// Lists bounded durable processing application and revert history.
+    fn session_processing_recipe_history(
+        &self,
+    ) -> Result<Vec<ffi::ProcessingRecipeHistoryWire>, String> {
+        self.processing_recipe_history()
+            .map_err(|error| error.message)
     }
 
     /// Saves a reusable recipe from one persisted asset adjustment.

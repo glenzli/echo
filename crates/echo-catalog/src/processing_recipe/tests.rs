@@ -176,6 +176,25 @@ fn batch_application_materializes_local_revisions_and_persists_partial_receipt()
             .iter()
             .all(|target| target.outcome == ProcessingRecipeTargetOutcome::Unchanged)
     );
+    let history = catalog
+        .with_transaction(list_processing_recipe_application_history)
+        .expect("processing history lists");
+    assert_eq!(
+        history
+            .iter()
+            .map(|entry| entry.batch_id)
+            .collect::<Vec<_>>(),
+        vec![repeated.batch_id, receipt.batch_id]
+    );
+    assert_eq!(history[0].target_count, 2);
+    assert_eq!(history[0].updated_count, 0);
+    assert_eq!(history[0].unchanged_count, 2);
+    assert_eq!(history[0].failed_count, 0);
+    assert_eq!(history[1].target_count, 3);
+    assert_eq!(history[1].updated_count, 2);
+    assert_eq!(history[1].unchanged_count, 0);
+    assert_eq!(history[1].failed_count, 1);
+    assert!(history.iter().all(|entry| entry.revert.is_none()));
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -392,6 +411,19 @@ fn rename_and_archive_preserve_identity_revisions_and_application_history() {
             .expect("historical application remains"),
         application
     );
+    let history = catalog
+        .with_transaction(list_processing_recipe_application_history)
+        .expect("archived recipe history lists");
+    assert_eq!(history.len(), 1);
+    assert_eq!(history[0].batch_id, application.batch_id);
+    assert_eq!(history[0].recipe_id, recipe.id);
+    assert_eq!(history[0].recipe_name, "Field dialogue");
+    assert_eq!(
+        history[0].recipe_revision_id,
+        recipe.current_revision.revision_id()
+    );
+    assert_eq!(history[0].recipe_revision_number, 1);
+    assert_eq!(history[0].merge_mode, ProcessingMergeMode::Merge);
     let revision_count = catalog
         .with_transaction(|transaction| -> Result<i64, CatalogError> {
             transaction
@@ -568,6 +600,71 @@ fn batch_revert_restores_safe_targets_once_and_preserves_later_edits() {
             .expect("revert receipt exists"),
         receipt
     );
+    let history = catalog
+        .with_transaction(list_processing_recipe_application_history)
+        .expect("reverted history lists");
+    assert_eq!(history.len(), 1);
+    let entry = &history[0];
+    assert_eq!(entry.batch_id, application.batch_id);
+    assert_eq!(entry.target_count, 5);
+    assert_eq!(entry.updated_count, 3);
+    assert_eq!(entry.unchanged_count, 1);
+    assert_eq!(entry.failed_count, 1);
+    let revert = entry.revert.as_ref().expect("revert summary exists");
+    assert_eq!(revert.revert_id, receipt.revert_id);
+    assert_eq!(revert.restored_count, 2);
+    assert_eq!(revert.unchanged_count, 2);
+    assert_eq!(revert.conflict_count, 1);
+    assert_eq!(revert.failed_count, 0);
+    assert_eq!(revert.created_at_millis, 30);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn processing_history_is_bounded_to_the_hundred_newest_batches() {
+    let root = fixture_root("recipe-history-bound");
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset_id = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok(register(transaction, 28, "/voices/history.wav", 8_000))
+        })
+        .expect("asset registers");
+    let patch = patch_with_low_cut_and_dynamics(100, -2_100);
+    let recipe = catalog
+        .with_transaction(|transaction| {
+            create_processing_recipe(
+                transaction,
+                CreateProcessingRecipe {
+                    name: "History bound",
+                    patch: &patch,
+                },
+                10,
+            )
+        })
+        .expect("recipe creates");
+    let batch_ids = catalog
+        .with_transaction(|transaction| -> Result<Vec<_>, CatalogError> {
+            (0_i64..101)
+                .map(|offset| {
+                    apply_processing_recipe(
+                        transaction,
+                        recipe.id,
+                        &[asset_id],
+                        ProcessingMergeMode::Merge,
+                        20 + offset,
+                    )
+                    .map(|receipt| receipt.batch_id)
+                })
+                .collect()
+        })
+        .expect("application history writes");
+    let history = catalog
+        .with_transaction(list_processing_recipe_application_history)
+        .expect("bounded history lists");
+    assert_eq!(history.len(), 100);
+    assert_eq!(history[0].batch_id, batch_ids[100]);
+    assert_eq!(history[99].batch_id, batch_ids[1]);
+    assert!(history.iter().all(|entry| entry.batch_id != batch_ids[0]));
     let _ = std::fs::remove_dir_all(root);
 }
 

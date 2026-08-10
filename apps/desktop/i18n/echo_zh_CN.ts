@@ -1180,7 +1180,8 @@
         <translation>无法保存处理方案。</translation>
     </message>
     <message><source>Manage processing recipes</source><translation>管理处理方案</translation></message>
-    <message><source>Processing recipe application undone.</source><translation>已撤销本次处理方案应用。</translation></message>
+    <message><source>%1 restored · %2 conflicts · %3 failed</source><translation>已恢复 %1 个 · %2 个冲突 · %3 个失败</translation></message>
+    <message><source>Processing history</source><translation>处理历史</translation></message>
     <message><source>Processing recipe renamed.</source><translation>处理方案已重命名。</translation></message>
     <message><source>Processing recipe version %1 added.</source><translation>已添加处理方案版本 %1。</translation></message>
     <message><source>Processing recipe archived.</source><translation>处理方案已归档。</translation></message>
@@ -1528,6 +1529,7 @@
         <translation>应用处理方案</translation>
     </message>
     <message><source>Manage processing recipes</source><translation>管理处理方案</translation></message>
+    <message><source>Processing history</source><translation>处理历史</translation></message>
     <message>
         <source>Export current results</source>
         <translation>导出当前结果</translation>
@@ -1872,6 +1874,29 @@
         <source>Insert effect · before fade and master</source>
         <translation>插入效果 · 位于淡化与母线之前</translation>
     </message>
+</context>
+<context>
+    <name>ProcessingHistoryDialog</name>
+    <message><source>%1 restored · %2 unchanged · %3 conflicts · %4 failed</source><translation>已恢复 %1 个 · %2 个未变 · %3 个冲突 · %4 个失败</translation></message>
+    <message><source>%1 sounds</source><translation>%1 段声音</translation></message>
+    <message><source>%1 updated · %2 unchanged · %3 failed</source><translation>已更新 %1 个 · %2 个未变 · %3 个失败</translation></message>
+    <message><source>Applied processing recipes will appear here.</source><translation>已应用的处理方案会显示在这里。</translation></message>
+    <message><source>Cancel</source><translation>取消</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Merged selected processing</source><translation>合并所选处理</translation></message>
+    <message><source>No processing history</source><translation>暂无处理历史</translation></message>
+    <message><source>Only sounds untouched since this batch will be restored. Later edits remain unchanged and are reported as conflicts.</source><translation>仅恢复自本批次后未再改动的声音。后续编辑会保持不变，并记为冲突。</translation></message>
+    <message><source>Processing history</source><translation>处理历史</translation></message>
+    <message><source>Processing recipe</source><translation>处理方案</translation></message>
+    <message><source>Recipe applications and their durable undo results</source><translation>处理方案应用及其持久撤销结果</translation></message>
+    <message><source>Replaced current processing</source><translation>替换当前处理</translation></message>
+    <message><source>This view shows the 100 most recent application batches.</source><translation>此处显示最近 100 个应用批次。</translation></message>
+    <message><source>Undo available</source><translation>可撤销</translation></message>
+    <message><source>Undo batch</source><translation>撤销批次</translation></message>
+    <message><source>Undo processing batch?</source><translation>撤销这个处理批次？</translation></message>
+    <message><source>Undone</source><translation>已撤销</translation></message>
+    <message><source>Unknown time</source><translation>时间未知</translation></message>
+    <message><source>Version %1</source><translation>版本 %1</translation></message>
 </context>
 <context>
     <name>ProcessingRecipeManagerDialog</name>

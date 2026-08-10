@@ -80,14 +80,16 @@ pub use long_audio::{
     upsert_long_audio_outline_node,
 };
 pub use processing_recipe::{
-    CreateProcessingRecipe, ProcessingRecipe, ProcessingRecipeApplicationReceipt,
-    ProcessingRecipeApplicationRevertReceipt, ProcessingRecipeRevertTargetOutcome,
+    CreateProcessingRecipe, ProcessingRecipe, ProcessingRecipeApplicationHistoryEntry,
+    ProcessingRecipeApplicationReceipt, ProcessingRecipeApplicationRevertReceipt,
+    ProcessingRecipeApplicationRevertSummary, ProcessingRecipeRevertTargetOutcome,
     ProcessingRecipeRevertTargetReceipt, ProcessingRecipeTargetOutcome,
     ProcessingRecipeTargetReceipt, append_processing_recipe_revision, apply_processing_recipe,
-    archive_processing_recipe, create_processing_recipe, list_processing_recipes,
-    processing_recipe, processing_recipe_application_receipt,
-    processing_recipe_application_revert_receipt, processing_recipe_patch_from_asset,
-    rename_processing_recipe, revert_processing_recipe_application,
+    archive_processing_recipe, create_processing_recipe,
+    list_processing_recipe_application_history, list_processing_recipes, processing_recipe,
+    processing_recipe_application_receipt, processing_recipe_application_revert_receipt,
+    processing_recipe_patch_from_asset, rename_processing_recipe,
+    revert_processing_recipe_application,
 };
 pub use render_export::{
     RecordRenderExport, RenderExportFormat, RenderExportRecord, list_render_exports,

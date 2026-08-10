@@ -19,6 +19,8 @@ Rectangle {
     property bool auditionOriginal: false
     property var processingRecipes: []
     property int processingRecipeModelRevision: 0
+    property var processingHistory: []
+    property int processingHistoryModelRevision: 0
     property string processingRecipeNotice: ""
     property string lastProcessingRecipeBatchId: ""
 
@@ -281,18 +283,37 @@ Rectangle {
             : processingRecipes.length > 0 ? processingRecipes[0].id : ""
     }
 
+    function refreshProcessingHistory() : void {
+        processingHistory = backend.listProcessingRecipeHistory()
+        processingHistoryModelRevision += 1
+    }
+
+    function presentProcessingHistory() : void {
+        refreshProcessingHistory()
+        processingHistoryDialog.present()
+    }
+
     function revertLastProcessingRecipeApplication() : void {
         if (lastProcessingRecipeBatchId.length === 0)
             return
-        const receipt = backend.revertProcessingRecipeApplication(
-            lastProcessingRecipeBatchId)
+        revertProcessingRecipeBatch(lastProcessingRecipeBatchId)
+    }
+
+    function revertProcessingRecipeBatch(batchId: string) : void {
+        if (batchId.length === 0)
+            return
+        const receipt = backend.revertProcessingRecipeApplication(batchId)
         if (!receipt || !receipt.revertId) {
             showProcessingRecipeNotice(
                 qsTr("The processing recipe application could not be undone."))
         } else {
-            lastProcessingRecipeBatchId = ""
-            showProcessingRecipeNotice(qsTr("Processing recipe application undone."))
+            if (lastProcessingRecipeBatchId === batchId)
+                lastProcessingRecipeBatchId = ""
+            showProcessingRecipeNotice(qsTr("%1 restored · %2 conflicts · %3 failed")
+                .arg(receipt.restoredCount).arg(receipt.conflictCount)
+                .arg(receipt.failedCount))
         }
+        refreshProcessingHistory()
     }
 
     function showProcessingRecipeNotice(message: string) : void {
@@ -639,6 +660,15 @@ Rectangle {
                 onClicked: workspace.presentProcessingRecipeManager()
             }
 
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/history.svg"
+                toolTipText: qsTr("Processing history")
+                accessibleName: toolTipText
+                buttonSize: 30
+                iconSize: 16
+                onClicked: workspace.presentProcessingHistory()
+            }
+
             EchoButton {
                 text: qsTr("Export")
                 ghost: true
@@ -809,6 +839,7 @@ Rectangle {
                 recipeId, targetIds, mergeMode)
             if (receipt && receipt.batchId) {
                 workspace.lastProcessingRecipeBatchId = receipt.batchId
+                workspace.refreshProcessingHistory()
                 workspace.showProcessingRecipeNotice(
                     qsTr("Processing recipe applied."))
             } else {
@@ -853,6 +884,14 @@ Rectangle {
                     qsTr("The processing recipe could not be archived."))
             }
         }
+    }
+
+    ProcessingHistoryDialog {
+        id: processingHistoryDialog
+
+        historyModel: workspace.processingHistory
+        modelRevision: workspace.processingHistoryModelRevision
+        onRevertRequested: batchId => workspace.revertProcessingRecipeBatch(batchId)
     }
 
     Popup {

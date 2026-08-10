@@ -498,6 +498,13 @@ InferenceBackend
     回退本身也持久保存批次 identity、时间和逐目标 restored／unchanged／conflict／failed 收据，数据库
     错误仍回滚整个事务。此切片不提供 redo、跨设备同步、live-link 自动传播、批量参数自适应或把
     方案 revision 直接作为播放图；所有试听、分析与导出继续只读取每段声音自己的最新调整版本。
+  - 持久处理历史切片（2026-08-11）：桌面端把既有方案应用批次与一次性回退收据投影为独立的
+    “处理历史”，按批次创建时间倒序显示方案当前名称、实际使用的 immutable revision、合并方式、
+    目标数量以及 updated／unchanged／failed 结果；方案后来改名或归档都不删除历史，审计 identity
+    仍以 recipe／revision／batch 为准。未产生回退收据的批次可从历史中再次发起同一安全回退；一旦
+    回退完成，历史永久显示 restored／unchanged／conflict／failed 汇总，不提供 redo，也不把冲突
+    伪装成成功。此投影直接聚合已有持久表，不复制声音参数、不修改实时链，并以有界最近记录避免
+    桌面一次加载无界审计数据；逐声音诊断与跨设备历史同步留待后续切片。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
   - 用户声音相册首个切片（2026-08-11）：Catalog 将用户相册与成员关系保存为独立 UserState
     事实，名称、封面声音、成员身份和修改时间不依赖可重建 Analysis。Audio Space 左侧把用户相册

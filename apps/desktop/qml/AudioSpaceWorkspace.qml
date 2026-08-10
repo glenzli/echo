@@ -23,6 +23,8 @@ Item {
     property var filteredAssets: []
     property var processingRecipes: []
     property int processingRecipeModelRevision: 0
+    property var processingHistory: []
+    property int processingHistoryModelRevision: 0
     property string processingRecipeNotice: ""
     property string lastProcessingRecipeBatchId: ""
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
@@ -151,6 +153,16 @@ Item {
             : processingRecipes.length > 0 ? processingRecipes[0].id : ""
     }
 
+    function refreshProcessingHistory() : void {
+        processingHistory = backend.listProcessingRecipeHistory()
+        processingHistoryModelRevision += 1
+    }
+
+    function presentProcessingHistory() : void {
+        refreshProcessingHistory()
+        processingHistoryDialog.present()
+    }
+
     function applyProcessingRecipe(recipeId: string, mergeMode: string,
                                    targetIds: var) : void {
         const receipt = backend.applyProcessingRecipe(recipeId, targetIds, mergeMode)
@@ -162,6 +174,7 @@ Item {
                 .arg(receipt.updatedCount).arg(receipt.unchangedCount)
                 .arg(receipt.failedCount)
             lastProcessingRecipeBatchId = receipt.batchId
+            refreshProcessingHistory()
         }
         processingRecipeNoticePopup.open()
         processingRecipeNoticeTimer.restart()
@@ -170,16 +183,23 @@ Item {
     function revertLastProcessingRecipeApplication() : void {
         if (lastProcessingRecipeBatchId.length === 0)
             return
-        const receipt = backend.revertProcessingRecipeApplication(
-            lastProcessingRecipeBatchId)
+        revertProcessingRecipeBatch(lastProcessingRecipeBatchId)
+    }
+
+    function revertProcessingRecipeBatch(batchId: string) : void {
+        if (batchId.length === 0)
+            return
+        const receipt = backend.revertProcessingRecipeApplication(batchId)
         if (!receipt || !receipt.revertId) {
             processingRecipeNotice = qsTr("The processing recipe application could not be undone.")
         } else {
             processingRecipeNotice = qsTr("%1 restored · %2 conflicts · %3 failed")
                 .arg(receipt.restoredCount).arg(receipt.conflictCount)
                 .arg(receipt.failedCount)
-            lastProcessingRecipeBatchId = ""
+            if (lastProcessingRecipeBatchId === batchId)
+                lastProcessingRecipeBatchId = ""
         }
+        refreshProcessingHistory()
         processingRecipeNoticePopup.open()
         processingRecipeNoticeTimer.restart()
     }
@@ -541,6 +561,7 @@ Item {
                     onBatchExportRequested: batchExportDialog.present()
                     onProcessingRecipesRequested: workspace.presentProcessingRecipes()
                     onProcessingRecipeManagementRequested: workspace.presentProcessingRecipeManager()
+                    onProcessingHistoryRequested: workspace.presentProcessingHistory()
                 }
 
                 StackLayout {
@@ -679,6 +700,14 @@ Item {
             processingRecipeNoticePopup.open()
             processingRecipeNoticeTimer.restart()
         }
+    }
+
+    ProcessingHistoryDialog {
+        id: processingHistoryDialog
+
+        historyModel: workspace.processingHistory
+        modelRevision: workspace.processingHistoryModelRevision
+        onRevertRequested: batchId => workspace.revertProcessingRecipeBatch(batchId)
     }
 
     Popup {

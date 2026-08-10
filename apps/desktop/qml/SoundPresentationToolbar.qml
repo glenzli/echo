@@ -22,6 +22,7 @@ ToolBar {
     signal cardWidthRequested(real width)
     signal processingRecipesRequested()
     signal processingRecipeManagementRequested()
+    signal processingHistoryRequested()
     signal batchExportRequested()
 
     implicitHeight: 44
@@ -98,6 +99,15 @@ ToolBar {
             buttonSize: 28
             iconSize: 15
             onClicked: toolbar.processingRecipeManagementRequested()
+        }
+
+        EchoIconButton {
+            source: "qrc:/EchoDesktop/icons/history.svg"
+            toolTipText: qsTr("Processing history")
+            accessibleName: toolTipText
+            buttonSize: 28
+            iconSize: 15
+            onClicked: toolbar.processingHistoryRequested()
         }
 
         EchoIconButton {

@@ -30,6 +30,7 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList listSmartAlbums() const;
     Q_INVOKABLE QVariantList listUserAlbums() const;
     Q_INVOKABLE QVariantList listProcessingRecipes() const;
+    Q_INVOKABLE QVariantList listProcessingRecipeHistory() const;
     Q_INVOKABLE QString createProcessingRecipe(
         const QString& name,
         const QString& sourceAssetId,

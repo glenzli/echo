@@ -88,6 +88,17 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(repeated.updated_count, 0);
     assert_eq!(repeated.unchanged_count, 1);
     assert_eq!(repeated.failed_count, 0);
+    let history = session
+        .processing_recipe_history()
+        .expect("processing history lists");
+    assert_eq!(history.len(), 2);
+    assert_eq!(history[0].batch_id, repeated.batch_id);
+    assert_eq!(history[0].recipe_name, "Dialogue cleanup");
+    assert_eq!(history[0].recipe_revision_number, 1);
+    assert_eq!(history[0].merge_mode, "merge");
+    assert_eq!(history[0].target_count, 1);
+    assert_eq!(history[0].unchanged_count, 1);
+    assert!(!history[0].reverted);
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -185,7 +196,29 @@ fn recipe_management_and_revert_preserve_later_sound_edits() {
             .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
             .is_err()
     );
+    let history = session
+        .processing_recipe_history()
+        .expect("archived processing history lists");
+    assert_managed_history(&history, &first_apply.batch_id, &second_apply.batch_id);
     let _ = std::fs::remove_dir_all(root);
+}
+
+fn assert_managed_history(
+    history: &[crate::ffi::ProcessingRecipeHistoryWire],
+    first_batch_id: &str,
+    second_batch_id: &str,
+) {
+    assert_eq!(history.len(), 2);
+    assert_eq!(history[0].batch_id, second_batch_id);
+    assert_eq!(history[0].recipe_name, "Field restoration");
+    assert_eq!(history[0].recipe_revision_number, 2);
+    assert!(history[0].reverted);
+    assert_eq!(history[0].restored_count, 0);
+    assert_eq!(history[0].conflict_count, 1);
+    assert_eq!(history[1].batch_id, first_batch_id);
+    assert!(history[1].reverted);
+    assert_eq!(history[1].restored_count, 1);
+    assert_eq!(history[1].conflict_count, 0);
 }
 
 fn register(

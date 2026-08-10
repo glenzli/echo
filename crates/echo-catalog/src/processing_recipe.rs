@@ -19,6 +19,7 @@ use crate::{
 
 const MAX_RECIPE_NAME_CHARACTERS: usize = 80;
 const MAX_BATCH_TARGETS: usize = 10_000;
+const PROCESSING_HISTORY_LIMIT: i64 = 100;
 
 /// One named processing recipe and its current immutable revision.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,6 +65,34 @@ pub struct ProcessingRecipeApplicationReceipt {
     pub merge_mode: ProcessingMergeMode,
     pub targets: Vec<ProcessingRecipeTargetReceipt>,
     pub created_at_millis: i64,
+}
+
+/// Durable aggregate of one completed application-batch revert.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcessingRecipeApplicationRevertSummary {
+    pub revert_id: i64,
+    pub restored_count: u64,
+    pub unchanged_count: u64,
+    pub conflict_count: u64,
+    pub failed_count: u64,
+    pub created_at_millis: i64,
+}
+
+/// Bounded newest-first projection of one durable recipe application batch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcessingRecipeApplicationHistoryEntry {
+    pub batch_id: i64,
+    pub recipe_id: ProcessingRecipeId,
+    pub recipe_name: String,
+    pub recipe_revision_id: ProcessingRecipeRevisionId,
+    pub recipe_revision_number: u32,
+    pub merge_mode: ProcessingMergeMode,
+    pub target_count: u64,
+    pub updated_count: u64,
+    pub unchanged_count: u64,
+    pub failed_count: u64,
+    pub created_at_millis: i64,
+    pub revert: Option<ProcessingRecipeApplicationRevertSummary>,
 }
 
 /// Stable result for one target in a once-only application revert.
@@ -416,6 +445,76 @@ pub fn processing_recipe_application_receipt(
     }))
 }
 
+/// Lists the one hundred newest durable application batches and optional
+/// once-only revert summaries. Archived recipes remain visible because their
+/// historical identity and receipts are retained.
+///
+/// # Errors
+///
+/// Returns a Catalog failure when stored identities, enum values, counts, or
+/// revision metadata are invalid.
+pub fn list_processing_recipe_application_history(
+    transaction: &Transaction<'_>,
+) -> Result<Vec<ProcessingRecipeApplicationHistoryEntry>, CatalogError> {
+    let mut statement = transaction.prepare(
+        "WITH application_counts AS (\
+             SELECT batch_id, COUNT(*) AS target_count, \
+                    SUM(CASE WHEN outcome = 'updated' THEN 1 ELSE 0 END) AS updated_count, \
+                    SUM(CASE WHEN outcome = 'unchanged' THEN 1 ELSE 0 END) AS unchanged_count, \
+                    SUM(CASE WHEN outcome = 'failed' THEN 1 ELSE 0 END) AS failed_count \
+             FROM processing_recipe_application_targets GROUP BY batch_id\
+         ), revert_counts AS (\
+             SELECT revert_id, \
+                    SUM(CASE WHEN outcome = 'restored' THEN 1 ELSE 0 END) AS restored_count, \
+                    SUM(CASE WHEN outcome = 'unchanged' THEN 1 ELSE 0 END) AS unchanged_count, \
+                    SUM(CASE WHEN outcome = 'conflict' THEN 1 ELSE 0 END) AS conflict_count, \
+                    SUM(CASE WHEN outcome = 'failed' THEN 1 ELSE 0 END) AS failed_count \
+             FROM processing_recipe_application_revert_targets GROUP BY revert_id\
+         ) \
+         SELECT batch.id, batch.recipe_id, recipe.name, batch.recipe_revision_id, \
+                revision.revision_number, batch.merge_mode, batch.created_at_millis, \
+                COALESCE(application_counts.target_count, 0), \
+                COALESCE(application_counts.updated_count, 0), \
+                COALESCE(application_counts.unchanged_count, 0), \
+                COALESCE(application_counts.failed_count, 0), \
+                revert.id, revert.created_at_millis, \
+                revert_counts.restored_count, revert_counts.unchanged_count, \
+                revert_counts.conflict_count, revert_counts.failed_count \
+         FROM processing_recipe_application_batches AS batch \
+         JOIN processing_recipes AS recipe ON recipe.id = batch.recipe_id \
+         JOIN processing_recipe_revisions AS revision \
+              ON revision.id = batch.recipe_revision_id \
+             AND revision.recipe_id = batch.recipe_id \
+         LEFT JOIN application_counts ON application_counts.batch_id = batch.id \
+         LEFT JOIN processing_recipe_application_reverts AS revert \
+              ON revert.application_batch_id = batch.id \
+         LEFT JOIN revert_counts ON revert_counts.revert_id = revert.id \
+         ORDER BY batch.created_at_millis DESC, batch.id DESC LIMIT ?1",
+    )?;
+    let rows = statement.query_map([PROCESSING_HISTORY_LIMIT], |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+            row.get::<_, String>(3)?,
+            row.get::<_, i64>(4)?,
+            row.get::<_, String>(5)?,
+            row.get::<_, i64>(6)?,
+            row.get::<_, i64>(7)?,
+            row.get::<_, i64>(8)?,
+            row.get::<_, i64>(9)?,
+            row.get::<_, i64>(10)?,
+            row.get::<_, Option<i64>>(11)?,
+            row.get::<_, Option<i64>>(12)?,
+            row.get::<_, Option<i64>>(13)?,
+            row.get::<_, Option<i64>>(14)?,
+            row.get::<_, Option<i64>>(15)?,
+            row.get::<_, Option<i64>>(16)?,
+        ))
+    })?;
+    rows.map(|row| decode_history_entry(row?)).collect()
+}
+
 /// Reverts an application batch at most once using optimistic revision guards.
 ///
 /// A target is restored only when the application originally updated it and
@@ -516,6 +615,25 @@ pub fn processing_recipe_application_revert_receipt(
 }
 
 type StoredRecipeRow = (String, String, i64, i64, String, i64, String, i64);
+type StoredHistoryRow = (
+    i64,
+    String,
+    String,
+    String,
+    i64,
+    String,
+    i64,
+    i64,
+    i64,
+    i64,
+    i64,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+);
 
 fn recipe_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredRecipeRow> {
     Ok((
@@ -555,6 +673,172 @@ fn decode_recipe(stored: StoredRecipeRow) -> Result<ProcessingRecipe, CatalogErr
         created_at_millis: created_at,
         updated_at_millis: updated_at,
     })
+}
+
+fn decode_history_entry(
+    stored: StoredHistoryRow,
+) -> Result<ProcessingRecipeApplicationHistoryEntry, CatalogError> {
+    let (
+        batch_id,
+        recipe_id,
+        recipe_name,
+        revision_id,
+        revision_number,
+        merge_mode,
+        created_at_millis,
+        target_count,
+        updated_count,
+        unchanged_count,
+        failed_count,
+        revert_id,
+        reverted_at_millis,
+        restored_count,
+        revert_unchanged_count,
+        conflict_count,
+        revert_failed_count,
+    ) = stored;
+    if batch_id <= 0 {
+        return Err(recipe_error(
+            "stored processing recipe application batch identity is invalid",
+        ));
+    }
+    validate_recipe_name(&recipe_name)?;
+    validate_timestamp(created_at_millis)?;
+    let recipe_revision_number = u32::try_from(revision_number)
+        .ok()
+        .filter(|number| *number > 0)
+        .ok_or_else(|| recipe_error("stored processing recipe revision number is invalid"))?;
+    let target_count = stored_count(target_count, "application target")?;
+    if target_count == 0 {
+        return Err(recipe_error(
+            "stored processing recipe application has no target receipts",
+        ));
+    }
+    let updated_count = stored_count(updated_count, "updated target")?;
+    let unchanged_count = stored_count(unchanged_count, "unchanged target")?;
+    let failed_count = stored_count(failed_count, "failed target")?;
+    let application_total = updated_count
+        .checked_add(unchanged_count)
+        .and_then(|count| count.checked_add(failed_count))
+        .ok_or_else(|| recipe_error("stored processing recipe application counts overflow"))?;
+    if application_total != target_count {
+        return Err(recipe_error(
+            "stored processing recipe application counts are inconsistent",
+        ));
+    }
+    let revert = decode_history_revert(
+        target_count,
+        (
+            revert_id,
+            reverted_at_millis,
+            restored_count,
+            revert_unchanged_count,
+            conflict_count,
+            revert_failed_count,
+        ),
+    )?;
+    Ok(ProcessingRecipeApplicationHistoryEntry {
+        batch_id,
+        recipe_id: parse_recipe_id(&recipe_id)?,
+        recipe_name,
+        recipe_revision_id: parse_revision_id(&revision_id)?,
+        recipe_revision_number,
+        merge_mode: parse_merge_mode(&merge_mode)?,
+        target_count,
+        updated_count,
+        unchanged_count,
+        failed_count,
+        created_at_millis,
+        revert,
+    })
+}
+
+type StoredHistoryRevert = (
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+    Option<i64>,
+);
+
+fn decode_history_revert(
+    target_count: u64,
+    stored: StoredHistoryRevert,
+) -> Result<Option<ProcessingRecipeApplicationRevertSummary>, CatalogError> {
+    let (
+        revert_id,
+        reverted_at_millis,
+        restored_count,
+        revert_unchanged_count,
+        conflict_count,
+        revert_failed_count,
+    ) = stored;
+    Ok(match revert_id {
+        None => {
+            if reverted_at_millis.is_some()
+                || restored_count.is_some()
+                || revert_unchanged_count.is_some()
+                || conflict_count.is_some()
+                || revert_failed_count.is_some()
+            {
+                return Err(recipe_error(
+                    "stored processing recipe revert projection is inconsistent",
+                ));
+            }
+            None
+        }
+        Some(revert_id) => {
+            if revert_id <= 0 {
+                return Err(recipe_error(
+                    "stored processing recipe revert identity is invalid",
+                ));
+            }
+            let reverted_at_millis = reverted_at_millis.ok_or_else(|| {
+                recipe_error("stored processing recipe revert timestamp is unavailable")
+            })?;
+            validate_timestamp(reverted_at_millis)?;
+            let restored_count = required_history_count(restored_count, "restored target")?;
+            let unchanged_count =
+                required_history_count(revert_unchanged_count, "unchanged revert target")?;
+            let conflict_count = required_history_count(conflict_count, "conflict target")?;
+            let failed_count = required_history_count(revert_failed_count, "failed revert target")?;
+            let revert_total = restored_count
+                .checked_add(unchanged_count)
+                .and_then(|count| count.checked_add(conflict_count))
+                .and_then(|count| count.checked_add(failed_count))
+                .ok_or_else(|| recipe_error("stored processing recipe revert counts overflow"))?;
+            if revert_total != target_count {
+                return Err(recipe_error(
+                    "stored processing recipe revert counts are inconsistent",
+                ));
+            }
+            Some(ProcessingRecipeApplicationRevertSummary {
+                revert_id,
+                restored_count,
+                unchanged_count,
+                conflict_count,
+                failed_count,
+                created_at_millis: reverted_at_millis,
+            })
+        }
+    })
+}
+
+fn stored_count(value: i64, label: &str) -> Result<u64, CatalogError> {
+    u64::try_from(value)
+        .map_err(|_| recipe_error(format!("stored processing recipe {label} count is invalid")))
+}
+
+fn required_history_count(value: Option<i64>, label: &str) -> Result<u64, CatalogError> {
+    stored_count(
+        value.ok_or_else(|| {
+            recipe_error(format!(
+                "stored processing recipe {label} count is unavailable"
+            ))
+        })?,
+        label,
+    )
 }
 
 fn insert_revision(

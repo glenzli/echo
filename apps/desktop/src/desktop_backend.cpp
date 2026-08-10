@@ -492,6 +492,83 @@ QVariantList DesktopBackend::listProcessingRecipes() const {
     return list;
 }
 
+QVariantList DesktopBackend::listProcessingRecipeHistory() const {
+    QVariantList list;
+    try {
+        const auto history = session_->session_processing_recipe_history();
+        for (const auto& item : history) {
+            QVariantMap entry;
+            entry.insert(
+                QStringLiteral("batchId"),
+                QString::fromUtf8(item.batch_id.data(), item.batch_id.size())
+            );
+            entry.insert(
+                QStringLiteral("recipeId"),
+                QString::fromUtf8(item.recipe_id.data(), item.recipe_id.size())
+            );
+            entry.insert(
+                QStringLiteral("recipeName"),
+                QString::fromUtf8(item.recipe_name.data(), item.recipe_name.size())
+            );
+            entry.insert(
+                QStringLiteral("recipeRevisionId"),
+                QString::fromUtf8(item.recipe_revision_id.data(), item.recipe_revision_id.size())
+            );
+            entry.insert(
+                QStringLiteral("recipeRevisionNumber"),
+                static_cast<qulonglong>(item.recipe_revision_number)
+            );
+            entry.insert(
+                QStringLiteral("mergeMode"),
+                QString::fromUtf8(item.merge_mode.data(), item.merge_mode.size())
+            );
+            entry.insert(QStringLiteral("targetCount"), static_cast<qulonglong>(item.target_count));
+            entry.insert(
+                QStringLiteral("updatedCount"),
+                static_cast<qulonglong>(item.updated_count)
+            );
+            entry.insert(
+                QStringLiteral("unchangedCount"),
+                static_cast<qulonglong>(item.unchanged_count)
+            );
+            entry.insert(QStringLiteral("failedCount"), static_cast<qulonglong>(item.failed_count));
+            entry.insert(
+                QStringLiteral("createdAtMillis"),
+                static_cast<qlonglong>(item.created_at_millis)
+            );
+            entry.insert(QStringLiteral("reverted"), item.reverted);
+            entry.insert(
+                QStringLiteral("revertId"),
+                QString::fromUtf8(item.revert_id.data(), item.revert_id.size())
+            );
+            entry.insert(
+                QStringLiteral("restoredCount"),
+                static_cast<qulonglong>(item.restored_count)
+            );
+            entry.insert(
+                QStringLiteral("revertUnchangedCount"),
+                static_cast<qulonglong>(item.revert_unchanged_count)
+            );
+            entry.insert(
+                QStringLiteral("conflictCount"),
+                static_cast<qulonglong>(item.conflict_count)
+            );
+            entry.insert(
+                QStringLiteral("revertFailedCount"),
+                static_cast<qulonglong>(item.revert_failed_count)
+            );
+            entry.insert(
+                QStringLiteral("revertedAtMillis"),
+                static_cast<qlonglong>(item.reverted_at_millis)
+            );
+            list.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list processing recipe history: %s", error.what());
+    }
+    return list;
+}
+
 QString DesktopBackend::createProcessingRecipe(
     const QString& name,
     const QString& sourceAssetId,

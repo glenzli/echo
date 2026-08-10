@@ -10,8 +10,9 @@ use echo_domain::{AssetId, ProcessingComponent, ProcessingMergeMode, ProcessingR
 
 use super::{LibrarySession, SessionError, now_millis};
 use crate::ffi::{
-    ProcessingRecipeApplyReceiptWire, ProcessingRecipeRevertReceiptWire,
-    ProcessingRecipeRevertTargetResultWire, ProcessingRecipeTargetResultWire, ProcessingRecipeWire,
+    ProcessingRecipeApplyReceiptWire, ProcessingRecipeHistoryWire,
+    ProcessingRecipeRevertReceiptWire, ProcessingRecipeRevertTargetResultWire,
+    ProcessingRecipeTargetResultWire, ProcessingRecipeWire,
 };
 
 impl LibrarySession {
@@ -44,6 +45,21 @@ impl LibrarySession {
                 updated_at_millis: recipe.updated_at_millis,
             })
             .collect())
+    }
+
+    /// Lists the bounded durable processing history newest first.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when stored batch, recipe, or revert evidence
+    /// cannot form the strict desktop projection.
+    pub fn processing_recipe_history(
+        &self,
+    ) -> Result<Vec<ProcessingRecipeHistoryWire>, SessionError> {
+        self.catalog
+            .with_transaction(echo_catalog::list_processing_recipe_application_history)
+            .map(|entries| entries.into_iter().map(history_wire).collect())
+            .map_err(SessionError::from)
     }
 
     /// Saves selected processing from one asset's current persisted graph.
@@ -251,6 +267,55 @@ fn parse_recipe_id(recipe_id: &str) -> Result<ProcessingRecipeId, SessionError> 
     ProcessingRecipeId::from_str(recipe_id).map_err(|error| SessionError {
         message: format!("invalid processing recipe id {recipe_id}: {error}"),
     })
+}
+
+fn history_wire(
+    entry: echo_catalog::ProcessingRecipeApplicationHistoryEntry,
+) -> ProcessingRecipeHistoryWire {
+    let (
+        reverted,
+        revert_id,
+        restored_count,
+        revert_unchanged_count,
+        conflict_count,
+        revert_failed_count,
+        reverted_at_millis,
+    ) = match entry.revert {
+        Some(revert) => (
+            true,
+            revert.revert_id.to_string(),
+            revert.restored_count,
+            revert.unchanged_count,
+            revert.conflict_count,
+            revert.failed_count,
+            revert.created_at_millis,
+        ),
+        None => (false, String::new(), 0, 0, 0, 0, 0),
+    };
+    ProcessingRecipeHistoryWire {
+        batch_id: entry.batch_id.to_string(),
+        recipe_id: entry.recipe_id.to_string(),
+        recipe_name: entry.recipe_name,
+        recipe_revision_id: entry.recipe_revision_id.to_string(),
+        recipe_revision_number: entry.recipe_revision_number,
+        merge_mode: match entry.merge_mode {
+            ProcessingMergeMode::Merge => "merge",
+            ProcessingMergeMode::Replace => "replace",
+        }
+        .to_owned(),
+        target_count: entry.target_count,
+        updated_count: entry.updated_count,
+        unchanged_count: entry.unchanged_count,
+        failed_count: entry.failed_count,
+        created_at_millis: entry.created_at_millis,
+        reverted,
+        revert_id,
+        restored_count,
+        revert_unchanged_count,
+        conflict_count,
+        revert_failed_count,
+        reverted_at_millis,
+    }
 }
 
 fn apply_receipt_wire(

@@ -174,6 +174,7 @@ qt_add_qml_module(
         qml/MainTitleBar.qml
         qml/MasterOutputPanel.qml
         qml/ParametricEqGraph.qml
+        qml/ProcessingHistoryDialog.qml
         qml/ProcessingRecipeApplyDialog.qml
         qml/ProcessingRecipeManagerDialog.qml
         qml/ProcessingRecipePicker.qml
@@ -231,6 +232,7 @@ qt_add_qml_module(
         icons/fade-equal-power.svg
         icons/equalizer.svg
         icons/export.svg
+        icons/history.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)
