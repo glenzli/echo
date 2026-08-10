@@ -51,6 +51,7 @@ ApplicationWindow {
         soundEditor.togglePlayback()
         debugEqualizerTimer.start()
         debugReplayTimer.start()
+        debugAnalysisTimer.start()
     }
 
     onWorkspaceIndexChanged: player.stop()
@@ -158,5 +159,12 @@ ApplicationWindow {
             player.stop()
             soundEditor.togglePlayback()
         }
+    }
+
+    Timer {
+        id: debugAnalysisTimer
+
+        interval: 450
+        onTriggered: soundEditor.debugAnalyzeOutput()
     }
 }

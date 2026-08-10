@@ -51,7 +51,10 @@ void PlaybackController::playAdjusted(
     int compressorRatioTenths,
     int compressorAttackMillis,
     int compressorReleaseMillis,
-    int compressorMakeupCentibels
+    int compressorMakeupCentibels,
+    bool limiterEnabled,
+    int limiterCeilingCentibels,
+    int limiterReleaseMillis
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
@@ -63,7 +66,9 @@ void PlaybackController::playAdjusted(
         || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
         || compressorAttackMillis > 200 || compressorReleaseMillis < 20
         || compressorReleaseMillis > 2000 || compressorMakeupCentibels < 0
-        || compressorMakeupCentibels > 2400) {
+        || compressorMakeupCentibels > 2400 || limiterCeilingCentibels < -600
+        || limiterCeilingCentibels > 0 || limiterReleaseMillis < 20
+        || limiterReleaseMillis > 1000) {
         qWarning("invalid playback adjustment");
         return;
     }
@@ -82,13 +87,19 @@ void PlaybackController::playAdjusted(
                 .mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels),
                 .high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels),
             },
-        .compressor = {
-            .enabled = compressorEnabled,
-            .threshold_centibels = static_cast<std::int16_t>(compressorThresholdCentibels),
-            .ratio_tenths = static_cast<std::uint16_t>(compressorRatioTenths),
-            .attack_millis = static_cast<std::uint16_t>(compressorAttackMillis),
-            .release_millis = static_cast<std::uint16_t>(compressorReleaseMillis),
-            .makeup_centibels = static_cast<std::int16_t>(compressorMakeupCentibels),
+        .compressor =
+            {
+                .enabled = compressorEnabled,
+                .threshold_centibels = static_cast<std::int16_t>(compressorThresholdCentibels),
+                .ratio_tenths = static_cast<std::uint16_t>(compressorRatioTenths),
+                .attack_millis = static_cast<std::uint16_t>(compressorAttackMillis),
+                .release_millis = static_cast<std::uint16_t>(compressorReleaseMillis),
+                .makeup_centibels = static_cast<std::int16_t>(compressorMakeupCentibels),
+            },
+        .limiter = {
+            .enabled = limiterEnabled,
+            .ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels),
+            .release_millis = static_cast<std::uint16_t>(limiterReleaseMillis),
         },
     };
     startSession(path, adjustment);
@@ -149,6 +160,25 @@ bool PlaybackController::updateCompressor(
     return true;
 }
 
+bool PlaybackController::updateLimiter(bool enabled, int ceilingCentibels, int releaseMillis) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    if (session == nullptr || ceilingCentibels < -600 || ceilingCentibels > 0 || releaseMillis < 20
+        || releaseMillis > 1000) {
+        return false;
+    }
+    try {
+        session->update_limiter({
+            .enabled = enabled,
+            .ceiling_centibels = static_cast<std::int16_t>(ceilingCentibels),
+            .release_millis = static_cast<std::uint16_t>(releaseMillis),
+        });
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback limiter: %s", error.what());
+        return false;
+    }
+    return true;
+}
+
 void PlaybackController::startSession(
     const QString& path,
     const echo::audio::PlaybackAdjustment& adjustment
@@ -198,6 +228,7 @@ void PlaybackController::startSession(
     momentary_lufs_ = -70.0;
     output_peak_db_ = -70.0;
     gain_reduction_db_ = 0.0;
+    limiter_reduction_db_ = 0.0;
     position_timer_.start();
     emit stateChanged();
     emit meterChanged();
@@ -248,6 +279,7 @@ void PlaybackController::stop() {
     momentary_lufs_ = -70.0;
     output_peak_db_ = -70.0;
     gain_reduction_db_ = 0.0;
+    limiter_reduction_db_ = 0.0;
     emit stateChanged();
     emit meterChanged();
 }
@@ -299,6 +331,10 @@ qreal PlaybackController::gainReductionDb() const {
     return gain_reduction_db_;
 }
 
+qreal PlaybackController::limiterReductionDb() const {
+    return limiter_reduction_db_;
+}
+
 void PlaybackController::setVolume(qreal volume) {
     const qreal clamped = std::clamp(volume, 0.0, 1.0);
     if (qFuzzyCompare(clamped, volume_)) {
@@ -318,11 +354,13 @@ void PlaybackController::pumpPosition() {
         const bool changed =
             std::abs(momentary_lufs_ - snapshot.momentary_lufs) > 0.05
             || std::abs(output_peak_db_ - snapshot.output_peak_dbfs) > 0.05
-            || std::abs(gain_reduction_db_ - snapshot.gain_reduction_decibels) > 0.05;
+            || std::abs(gain_reduction_db_ - snapshot.gain_reduction_decibels) > 0.05
+            || std::abs(limiter_reduction_db_ - snapshot.limiter_reduction_decibels) > 0.05;
         if (changed) {
             momentary_lufs_ = snapshot.momentary_lufs;
             output_peak_db_ = snapshot.output_peak_dbfs;
             gain_reduction_db_ = snapshot.gain_reduction_decibels;
+            limiter_reduction_db_ = snapshot.limiter_reduction_decibels;
             emit meterChanged();
         }
     }

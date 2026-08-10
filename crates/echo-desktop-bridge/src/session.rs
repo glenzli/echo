@@ -70,6 +70,9 @@ struct AdjustmentWireFields {
     compressor_attack_millis: u16,
     compressor_release_millis: u16,
     compressor_makeup_centibels: i16,
+    limiter_enabled: bool,
+    limiter_ceiling_centibels: i16,
+    limiter_release_millis: u16,
 }
 
 fn adjustment_wire_fields(
@@ -96,6 +99,9 @@ fn adjustment_wire_fields(
             compressor_attack_millis: 10,
             compressor_release_millis: 120,
             compressor_makeup_centibels: 0,
+            limiter_enabled: false,
+            limiter_ceiling_centibels: -100,
+            limiter_release_millis: 100,
         },
         |revision| AdjustmentWireFields {
             revision: revision.revision_id,
@@ -118,6 +124,9 @@ fn adjustment_wire_fields(
             compressor_attack_millis: revision.graph.compressor().attack_millis,
             compressor_release_millis: revision.graph.compressor().release_millis,
             compressor_makeup_centibels: revision.graph.compressor().makeup_centibels,
+            limiter_enabled: revision.graph.limiter().enabled,
+            limiter_ceiling_centibels: revision.graph.limiter().ceiling_centibels,
+            limiter_release_millis: revision.graph.limiter().release_millis,
         },
     )
 }
@@ -214,6 +223,9 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         compressor_attack_millis: adjustment.compressor_attack_millis,
         compressor_release_millis: adjustment.compressor_release_millis,
         compressor_makeup_centibels: adjustment.compressor_makeup_centibels,
+        limiter_enabled: adjustment.limiter_enabled,
+        limiter_ceiling_centibels: adjustment.limiter_ceiling_centibels,
+        limiter_release_millis: adjustment.limiter_release_millis,
         container_format,
         sample_rate,
         channel_count,
@@ -435,6 +447,11 @@ impl LibrarySession {
                 attack_millis: adjustment.compressor_attack_millis,
                 release_millis: adjustment.compressor_release_millis,
                 makeup_centibels: adjustment.compressor_makeup_centibels,
+            })
+            .with_limiter(echo_domain::LimiterSettings {
+                enabled: adjustment.limiter_enabled,
+                ceiling_centibels: adjustment.limiter_ceiling_centibels,
+                release_millis: adjustment.limiter_release_millis,
             }),
         )
         .map_err(|error| SessionError {

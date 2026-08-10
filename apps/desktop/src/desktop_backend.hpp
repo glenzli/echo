@@ -48,7 +48,10 @@ class DesktopBackend : public QObject {
         int compressorRatioTenths,
         int compressorAttackMillis,
         int compressorReleaseMillis,
-        int compressorMakeupCentibels
+        int compressorMakeupCentibels,
+        bool limiterEnabled,
+        int limiterCeilingCentibels,
+        int limiterReleaseMillis
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;

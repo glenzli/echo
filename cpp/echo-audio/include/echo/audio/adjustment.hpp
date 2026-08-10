@@ -30,6 +30,13 @@ struct CompressorAdjustment {
     std::int16_t makeup_centibels = 0;
 };
 
+/// Stereo-linked final-output peak limiter intent.
+struct LimiterAdjustment {
+    bool enabled = false;
+    std::int16_t ceiling_centibels = -100;
+    std::uint16_t release_millis = 100;
+};
+
 /// Authored non-destructive playback adjustments. Milliseconds, centibels,
 /// and hertz are explicit so the cross-language boundary never relies on
 /// floating-point UI units. A zero `trim_end_millis` means source end.
@@ -45,6 +52,7 @@ struct PlaybackAdjustment {
     std::uint16_t low_cut_hertz = 0;
     ThreeBandEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
+    LimiterAdjustment limiter;
 };
 
 /// Playback-ready adjustment compiled once before decoding begins.
@@ -66,6 +74,7 @@ class PreparedAdjustment {
     [[nodiscard]] std::uint16_t low_cut_hertz() const;
     [[nodiscard]] ThreeBandEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
+    [[nodiscard]] LimiterAdjustment limiter() const;
     [[nodiscard]] std::uint64_t clamp_seek_millis(std::uint64_t millis) const;
     [[nodiscard]] float amplitude_at(std::uint64_t source_frame) const;
     [[nodiscard]] float gain_amplitude() const;
@@ -84,6 +93,7 @@ class PreparedAdjustment {
     std::uint16_t low_cut_hertz_ = 0;
     ThreeBandEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
+    LimiterAdjustment limiter_;
 };
 
 } // namespace echo::audio

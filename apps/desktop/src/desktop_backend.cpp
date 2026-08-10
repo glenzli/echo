@@ -119,6 +119,15 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("compressorMakeupCentibels"),
             static_cast<int>(asset.compressor_makeup_centibels)
         );
+        entry.insert(QStringLiteral("limiterEnabled"), asset.limiter_enabled);
+        entry.insert(
+            QStringLiteral("limiterCeilingCentibels"),
+            static_cast<int>(asset.limiter_ceiling_centibels)
+        );
+        entry.insert(
+            QStringLiteral("limiterReleaseMillis"),
+            static_cast<int>(asset.limiter_release_millis)
+        );
         entry.insert(
             QStringLiteral("containerFormat"),
             QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
@@ -243,7 +252,10 @@ bool DesktopBackend::setAssetAdjustment(
     int compressorRatioTenths,
     int compressorAttackMillis,
     int compressorReleaseMillis,
-    int compressorMakeupCentibels
+    int compressorMakeupCentibels,
+    bool limiterEnabled,
+    int limiterCeilingCentibels,
+    int limiterReleaseMillis
 ) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
@@ -255,7 +267,9 @@ bool DesktopBackend::setAssetAdjustment(
         || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
         || compressorAttackMillis > 200 || compressorReleaseMillis < 20
         || compressorReleaseMillis > 2000 || compressorMakeupCentibels < 0
-        || compressorMakeupCentibels > 2400) {
+        || compressorMakeupCentibels > 2400 || limiterCeilingCentibels < -600
+        || limiterCeilingCentibels > 0 || limiterReleaseMillis < 20
+        || limiterReleaseMillis > 1000) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
@@ -280,6 +294,9 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.compressor_release_millis = static_cast<std::uint16_t>(compressorReleaseMillis);
         adjustment.compressor_makeup_centibels =
             static_cast<std::int16_t>(compressorMakeupCentibels);
+        adjustment.limiter_enabled = limiterEnabled;
+        adjustment.limiter_ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels);
+        adjustment.limiter_release_millis = static_cast<std::uint16_t>(limiterReleaseMillis);
         session_->session_set_asset_adjustment(id.toStdString(), adjustment);
         emit assetsChanged();
         return true;

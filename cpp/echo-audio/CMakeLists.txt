@@ -7,9 +7,12 @@ add_library(
     src/adjustment.cpp
     src/decode.cpp
     src/dynamics_processor.cpp
+    src/k_weighting_filter.cpp
     src/low_cut_filter.cpp
     src/loudness_meter.cpp
+    src/offline_loudness_analyzer.cpp
     src/output_guard.cpp
+    src/output_limiter.cpp
     src/playback.cpp
     src/three_band_equalizer.cpp
     src/waveform.cpp
@@ -74,12 +77,31 @@ if(BUILD_TESTING)
     add_test(NAME echo-loudness-meter-test COMMAND echo-loudness-meter-test)
 
     add_executable(
+        echo-offline-loudness-analyzer-test
+        tests/offline_loudness_analyzer_test.cpp
+    )
+    target_link_libraries(echo-offline-loudness-analyzer-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-offline-loudness-analyzer-test)
+    add_test(
+        NAME echo-offline-loudness-analyzer-test
+        COMMAND echo-offline-loudness-analyzer-test
+    )
+
+    add_executable(
         echo-output-guard-test
         tests/output_guard_test.cpp
     )
     target_link_libraries(echo-output-guard-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-output-guard-test)
     add_test(NAME echo-output-guard-test COMMAND echo-output-guard-test)
+
+    add_executable(
+        echo-output-limiter-test
+        tests/output_limiter_test.cpp
+    )
+    target_link_libraries(echo-output-limiter-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-output-limiter-test)
+    add_test(NAME echo-output-limiter-test COMMAND echo-output-limiter-test)
 
     add_executable(
         echo-three-band-equalizer-test

@@ -113,6 +113,8 @@ qt_add_executable(
     src/ui_preferences.hpp
     src/inference_preferences.cpp
     src/inference_preferences.hpp
+    src/loudness_analysis_controller.cpp
+    src/loudness_analysis_controller.hpp
     src/mac_titlebar.hpp
 )
 if(APPLE)
@@ -148,6 +150,7 @@ qt_add_qml_module(
         qml/EchoTextField.qml
         qml/InspectorSection.qml
         qml/MainTitleBar.qml
+        qml/MasterOutputPanel.qml
         qml/SoundAdvancedFilterPopup.qml
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml

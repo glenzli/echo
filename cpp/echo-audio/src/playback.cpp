@@ -5,6 +5,7 @@
 #include "echo/audio/loudness_meter.hpp"
 #include "echo/audio/low_cut_filter.hpp"
 #include "echo/audio/output_guard.hpp"
+#include "echo/audio/output_limiter.hpp"
 #include "echo/audio/three_band_equalizer.hpp"
 
 #include <algorithm>
@@ -304,6 +305,8 @@ class PlaybackSession::Impl {
         );
         dynamics_processor_ =
             std::make_unique<DynamicsProcessor>(adjustment_->compressor(), kCanonicalSampleRate);
+        output_limiter_ =
+            std::make_unique<OutputLimiter>(adjustment_->limiter(), kCanonicalSampleRate);
         output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
         loudness_meter_ = std::make_unique<LoudnessMeter>(kCanonicalSampleRate, channel_count_);
         applied_equalizer_ = pack_equalizer(adjustment_->equalizer());
@@ -392,6 +395,16 @@ class PlaybackSession::Impl {
         control_cv_.notify_one();
     }
 
+    void update_limiter(LimiterAdjustment adjustment) {
+        [[maybe_unused]] const OutputLimiter validation(adjustment, kCanonicalSampleRate);
+        {
+            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            pending_limiter_ = adjustment;
+            limiter_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
     bool is_paused() const {
         return paused_.load(std::memory_order_acquire);
     }
@@ -428,6 +441,8 @@ class PlaybackSession::Impl {
             .momentary_lufs = momentary_lufs_.load(std::memory_order_acquire),
             .output_peak_dbfs = output_peak_dbfs_.load(std::memory_order_acquire),
             .gain_reduction_decibels = gain_reduction_decibels_.load(std::memory_order_acquire),
+            .limiter_reduction_decibels =
+                limiter_reduction_decibels_.load(std::memory_order_acquire),
         };
     }
 
@@ -466,11 +481,13 @@ class PlaybackSession::Impl {
             low_cut_filter_->reset();
             equalizer_->reset();
             dynamics_processor_->reset();
+            output_limiter_->reset();
             output_guard_->reset();
             loudness_meter_->reset();
             momentary_lufs_.store(-70.0F, std::memory_order_release);
             output_peak_dbfs_.store(-70.0F, std::memory_order_release);
             gain_reduction_decibels_.store(0.0F, std::memory_order_release);
+            limiter_reduction_decibels_.store(0.0F, std::memory_order_release);
         }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
         while (ring_->available() > 0 && std::chrono::steady_clock::now() < deadline) {
@@ -566,6 +583,10 @@ class PlaybackSession::Impl {
                             dynamics_processor_->update(pending_compressor_);
                             compressor_update_pending_ = false;
                         }
+                        if (limiter_update_pending_) {
+                            output_limiter_->update(pending_limiter_);
+                            limiter_update_pending_ = false;
+                        }
                     }
                     for (std::size_t index = 0; index < chunk; ++index) {
                         for (std::size_t channel = 0; channel < channel_count_; ++channel) {
@@ -587,6 +608,7 @@ class PlaybackSession::Impl {
                             scratch[index * channel_count_ + channel] *= envelope;
                         }
                     }
+                    output_limiter_->process_interleaved(scratch, chunk, channel_count_);
                     output_guard_->process_interleaved(scratch, chunk, channel_count_);
                     loudness_meter_->process_interleaved(scratch, chunk, channel_count_);
                     const LoudnessSnapshot loudness = loudness_meter_->snapshot();
@@ -594,6 +616,10 @@ class PlaybackSession::Impl {
                     output_peak_dbfs_.store(loudness.sample_peak_dbfs, std::memory_order_release);
                     gain_reduction_decibels_.store(
                         dynamics_processor_->gain_reduction_decibels(),
+                        std::memory_order_release
+                    );
+                    limiter_reduction_decibels_.store(
+                        output_limiter_->gain_reduction_decibels(),
                         std::memory_order_release
                     );
                     const std::size_t pushed = ring_->write(scratch, chunk);
@@ -677,6 +703,7 @@ class PlaybackSession::Impl {
     std::unique_ptr<LowCutFilter> low_cut_filter_;
     std::unique_ptr<ThreeBandEqualizer> equalizer_;
     std::unique_ptr<DynamicsProcessor> dynamics_processor_;
+    std::unique_ptr<OutputLimiter> output_limiter_;
     std::unique_ptr<OutputGuard> output_guard_;
     std::unique_ptr<LoudnessMeter> loudness_meter_;
     std::uint64_t decoded_frame_cursor_ = 0;
@@ -685,9 +712,12 @@ class PlaybackSession::Impl {
     std::mutex dynamics_mutex_;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;
+    LimiterAdjustment pending_limiter_;
+    bool limiter_update_pending_ = false;
     std::atomic<float> momentary_lufs_{-70.0F};
     std::atomic<float> output_peak_dbfs_{-70.0F};
     std::atomic<float> gain_reduction_decibels_{0.0F};
+    std::atomic<float> limiter_reduction_decibels_{0.0F};
 
     std::thread thread_;
     std::mutex control_mutex_;
@@ -730,6 +760,9 @@ void PlaybackSession::update_equalizer(ThreeBandEqualizerAdjustment adjustment) 
 }
 void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
     impl_->update_compressor(adjustment);
+}
+void PlaybackSession::update_limiter(LimiterAdjustment adjustment) {
+    impl_->update_limiter(adjustment);
 }
 
 bool PlaybackSession::is_paused() const {

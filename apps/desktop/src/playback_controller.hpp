@@ -28,6 +28,7 @@ class PlaybackController : public QObject {
     Q_PROPERTY(qreal momentaryLufs READ momentaryLufs NOTIFY meterChanged)
     Q_PROPERTY(qreal outputPeakDb READ outputPeakDb NOTIFY meterChanged)
     Q_PROPERTY(qreal gainReductionDb READ gainReductionDb NOTIFY meterChanged)
+    Q_PROPERTY(qreal limiterReductionDb READ limiterReductionDb NOTIFY meterChanged)
 
   public:
     explicit PlaybackController(QObject* parent = nullptr);
@@ -52,7 +53,10 @@ class PlaybackController : public QObject {
         int compressorRatioTenths,
         int compressorAttackMillis,
         int compressorReleaseMillis,
-        int compressorMakeupCentibels
+        int compressorMakeupCentibels,
+        bool limiterEnabled,
+        int limiterCeilingCentibels,
+        int limiterReleaseMillis
     );
     Q_INVOKABLE bool
     updateEqualizer(int eqLowGainCentibels, int eqMidGainCentibels, int eqHighGainCentibels);
@@ -64,6 +68,7 @@ class PlaybackController : public QObject {
         int releaseMillis,
         int makeupCentibels
     );
+    Q_INVOKABLE bool updateLimiter(bool enabled, int ceilingCentibels, int releaseMillis);
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 millis);
@@ -77,6 +82,7 @@ class PlaybackController : public QObject {
     qreal momentaryLufs() const;
     qreal outputPeakDb() const;
     qreal gainReductionDb() const;
+    qreal limiterReductionDb() const;
     void setVolume(qreal volume);
 
   signals:
@@ -102,5 +108,6 @@ class PlaybackController : public QObject {
     qreal momentary_lufs_ = -70.0;
     qreal output_peak_db_ = -70.0;
     qreal gain_reduction_db_ = 0.0;
+    qreal limiter_reduction_db_ = 0.0;
     bool ended_ = false;
 };

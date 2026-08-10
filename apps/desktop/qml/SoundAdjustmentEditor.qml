@@ -12,6 +12,9 @@ Rectangle {
 
     required property var draft
     required property var meterSource
+    required property var analyzer
+    required property string sourcePath
+    required property string analysisKey
     property bool hasTimeSelection: false
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
@@ -26,6 +29,10 @@ Rectangle {
         const seconds = Math.floor((safe % 60000) / 1000)
         const tenths = Math.floor((safe % 1000) / 100)
         return minutes + ":" + String(seconds).padStart(2, "0") + "." + tenths
+    }
+
+    function analyzeOutput() : void {
+        masterOutputPanel.runAnalysis()
     }
 
     ColumnLayout {
@@ -120,10 +127,10 @@ Rectangle {
             spacing: 10
 
             BasicAdjustmentPanel {
-                Layout.preferredWidth: Math.min(400,
-                    Math.max(370, inspector.width * 0.265))
-                Layout.minimumWidth: 370
-                Layout.maximumWidth: 410
+                Layout.preferredWidth: Math.min(390,
+                    Math.max(350, inspector.width * 0.245))
+                Layout.minimumWidth: 320
+                Layout.maximumWidth: 390
                 Layout.fillHeight: true
                 draft: inspector.draft
                 hasTimeSelection: inspector.hasTimeSelection
@@ -132,20 +139,33 @@ Rectangle {
             }
 
             ToneEqualizerPanel {
-                Layout.preferredWidth: 320
-                Layout.minimumWidth: 286
-                Layout.maximumWidth: 350
+                Layout.preferredWidth: 300
+                Layout.minimumWidth: 260
+                Layout.maximumWidth: 330
                 Layout.fillHeight: true
                 draft: inspector.draft
             }
 
             DynamicsPanel {
-                Layout.preferredWidth: 330
-                Layout.minimumWidth: 300
-                Layout.maximumWidth: 350
+                Layout.preferredWidth: 310
+                Layout.minimumWidth: 280
+                Layout.maximumWidth: 335
                 Layout.fillHeight: true
                 draft: inspector.draft
                 meterSource: inspector.meterSource
+            }
+
+            MasterOutputPanel {
+                id: masterOutputPanel
+                Layout.preferredWidth: 276
+                Layout.minimumWidth: 240
+                Layout.maximumWidth: 300
+                Layout.fillHeight: true
+                draft: inspector.draft
+                meterSource: inspector.meterSource
+                analyzer: inspector.analyzer
+                sourcePath: inspector.sourcePath
+                analysisKey: inspector.analysisKey
             }
 
             Item { Layout.fillWidth: true }

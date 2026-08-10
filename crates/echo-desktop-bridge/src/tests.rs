@@ -179,6 +179,9 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         compressor_attack_millis: 12,
         compressor_release_millis: 160,
         compressor_makeup_centibels: 225,
+        limiter_enabled: true,
+        limiter_ceiling_centibels: -125,
+        limiter_release_millis: 160,
     };
     session
         .set_asset_adjustment(&asset.id.to_string(), &adjustment)
@@ -203,6 +206,9 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].compressor_attack_millis, 12);
     assert_eq!(projected[0].compressor_release_millis, 160);
     assert_eq!(projected[0].compressor_makeup_centibels, 225);
+    assert!(projected[0].limiter_enabled);
+    assert_eq!(projected[0].limiter_ceiling_centibels, -125);
+    assert_eq!(projected[0].limiter_release_millis, 160);
     let _ = std::fs::remove_dir_all(root);
 }
 

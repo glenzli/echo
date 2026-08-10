@@ -340,6 +340,15 @@ InferenceBackend
     PCM；播放会话经原子快照把三个只读指标交给桌面控制器，Dynamics 面板以紧凑电平条和数值反馈
     当前听到的处理结果。Seek 会重置测量窗口。此切片不改变 `AdjustmentGraph` 或 Catalog schema，
     也不把 Momentary LUFS／Sample Peak 描述成整段 Integrated LUFS、True Peak 或响度归一化结果。
+  - 总输出与整段分析切片（2026-08-10）：`AdjustmentGraph` 与 Catalog `20260810.6` 增加可旁路的
+    最终输出限制器，稳定保存 Ceiling 与 Release；独立 `OutputLimiter` 在淡入淡出之后、设备安全
+    保护之前，以 64 帧子块预读和四相重建峰值估计驱动立体声联动增益，支持播放中 latest-wins
+    参数更新、Seek 重置与实时衰减反馈。实时表与整段分析共同消费抽出的 `KWeightingFilter`，避免
+    出现两套响度定义；独立后台控制器快速遍历当前调整后的完整预览，以 400 ms／100 ms 分块及
+    BS.1770 绝对／相对门限计算 Integrated LUFS，并给出 4× 重建 True Peak 估计，过程中不占用
+    音频设备、不阻塞 Qt 主线程。总输出面板把限制器控制、实时衰减和显式“分析”结果收在同一
+    区域；结果以完整调整身份防止旧结果冒充当前草稿。本切片尚不提供响度自动归一化、标准合规
+    报告、导出渲染或持久化分析缓存，True Peak 明确是预览估计而非交付认证。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 

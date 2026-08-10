@@ -23,6 +23,10 @@ constexpr std::uint16_t kMaximumCompressorAttackMillis = 200;
 constexpr std::uint16_t kMinimumCompressorReleaseMillis = 20;
 constexpr std::uint16_t kMaximumCompressorReleaseMillis = 2000;
 constexpr std::int16_t kMaximumCompressorMakeupCentibels = 2400;
+constexpr std::int16_t kMinimumLimiterCeilingCentibels = -600;
+constexpr std::int16_t kMaximumLimiterCeilingCentibels = 0;
+constexpr std::uint16_t kMinimumLimiterReleaseMillis = 20;
+constexpr std::uint16_t kMaximumLimiterReleaseMillis = 1000;
 constexpr float kHalfPi = 1.5707963267948966F;
 
 bool valid_curve(FadeCurve curve) {
@@ -113,6 +117,13 @@ PreparedAdjustment::PreparedAdjustment(
         || compressor.makeup_centibels > kMaximumCompressorMakeupCentibels) {
         throw std::invalid_argument("adjustment compressor is outside the supported range");
     }
+    const LimiterAdjustment limiter = authored.limiter;
+    if (limiter.ceiling_centibels < kMinimumLimiterCeilingCentibels
+        || limiter.ceiling_centibels > kMaximumLimiterCeilingCentibels
+        || limiter.release_millis < kMinimumLimiterReleaseMillis
+        || limiter.release_millis > kMaximumLimiterReleaseMillis) {
+        throw std::invalid_argument("adjustment limiter is outside the supported range");
+    }
 
     trim_start_millis_ = authored.trim_start_millis;
     trim_end_millis_ = authored.trim_end_millis;
@@ -126,6 +137,7 @@ PreparedAdjustment::PreparedAdjustment(
     low_cut_hertz_ = authored.low_cut_hertz;
     equalizer_ = authored.equalizer;
     compressor_ = authored.compressor;
+    limiter_ = authored.limiter;
 }
 
 std::uint64_t PreparedAdjustment::start_frame() const {
@@ -154,6 +166,10 @@ ThreeBandEqualizerAdjustment PreparedAdjustment::equalizer() const {
 
 CompressorAdjustment PreparedAdjustment::compressor() const {
     return compressor_;
+}
+
+LimiterAdjustment PreparedAdjustment::limiter() const {
+    return limiter_;
 }
 
 std::uint64_t PreparedAdjustment::clamp_seek_millis(std::uint64_t millis) const {

@@ -21,6 +21,11 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             attack_millis: 12,
             release_millis: 180,
             makeup_centibels: 250,
+        })
+        .with_limiter(LimiterSettings {
+            enabled: true,
+            ceiling_centibels: -125,
+            release_millis: 160,
         }),
     )
     .expect("valid graph builds");
@@ -35,6 +40,7 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.equalizer(), ThreeBandEqualizer::new(250, -175, 400));
     assert!(graph.compressor().enabled);
     assert_eq!(graph.compressor().ratio_tenths, 40);
+    assert_eq!(graph.limiter().ceiling_centibels, -125);
 }
 
 #[test]
@@ -105,5 +111,19 @@ fn graph_rejects_out_of_source_and_overlapping_envelopes() {
             }),
         ),
         Err(AdjustmentGraphError::CompressorOutOfRange)
+    );
+    assert_eq!(
+        AdjustmentGraph::new(
+            1_000,
+            0,
+            1_000,
+            0,
+            0,
+            AdjustmentEffects::default().with_limiter(LimiterSettings {
+                ceiling_centibels: MIN_LIMITER_CEILING_CENTIBELS - 1,
+                ..LimiterSettings::default()
+            }),
+        ),
+        Err(AdjustmentGraphError::LimiterOutOfRange)
     );
 }

@@ -27,7 +27,8 @@ int main() {
               .ratio_tenths = 40,
               .attack_millis = 12,
               .release_millis = 160,
-              .makeup_centibels = 225}},
+              .makeup_centibels = 225},
+         .limiter = {.enabled = true, .ceiling_centibels = -125, .release_millis = 160}},
         10'000,
         48'000
     );
@@ -47,6 +48,8 @@ int main() {
     assert(prepared.equalizer().high_gain_centibels == 300);
     assert(prepared.compressor().enabled);
     assert(prepared.compressor().threshold_centibels == -2000);
+    assert(prepared.limiter().enabled);
+    assert(prepared.limiter().ceiling_centibels == -125);
     assert(std::abs(prepared.gain_amplitude() - 0.501187F) < 0.001F);
     assert(std::abs(prepared.envelope_at(240'000) - 1.0F) < 0.0001F);
 
@@ -113,6 +116,18 @@ int main() {
     try {
         [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_compressor(
             {.compressor = {.ratio_tenths = 201}},
+            10'000,
+            48'000
+        );
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    rejected = false;
+    try {
+        [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_limiter(
+            {.limiter = {.ceiling_centibels = -601}},
             10'000,
             48'000
         );

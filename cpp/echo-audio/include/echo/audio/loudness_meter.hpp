@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "echo/audio/k_weighting_filter.hpp"
+
 namespace echo::audio {
 
 /// One read-only snapshot of the prepared device signal.
@@ -28,36 +30,9 @@ class LoudnessMeter {
     [[nodiscard]] LoudnessSnapshot snapshot() const;
 
   private:
-    struct BiquadState {
-        double x1 = 0.0;
-        double x2 = 0.0;
-        double y1 = 0.0;
-        double y2 = 0.0;
-    };
-
-    struct ChannelState {
-        BiquadState shelf;
-        BiquadState high_pass;
-    };
-
-    struct BiquadCoefficients {
-        double b0 = 1.0;
-        double b1 = 0.0;
-        double b2 = 0.0;
-        double a1 = 0.0;
-        double a2 = 0.0;
-    };
-
-    [[nodiscard]] static BiquadCoefficients high_shelf(std::uint32_t sample_rate);
-    [[nodiscard]] static BiquadCoefficients high_pass(std::uint32_t sample_rate);
-    [[nodiscard]] static double
-    process_biquad(double sample, BiquadState& state, const BiquadCoefficients& coefficients);
-
     std::uint32_t sample_rate_ = 0;
     std::size_t channel_count_ = 0;
-    std::vector<ChannelState> channels_;
-    BiquadCoefficients shelf_;
-    BiquadCoefficients high_pass_;
+    KWeightingFilter weighting_;
     std::vector<double> energy_window_;
     std::size_t energy_cursor_ = 0;
     std::size_t energy_count_ = 0;

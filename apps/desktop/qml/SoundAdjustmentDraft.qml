@@ -26,6 +26,9 @@ QtObject {
     property int compressorAttackMillis: 10
     property int compressorReleaseMillis: 120
     property int compressorMakeupCentibels: 0
+    property bool limiterEnabled: false
+    property int limiterCeilingCentibels: -100
+    property int limiterReleaseMillis: 100
 
     property var _savedSnapshot: ({})
     property var _history: []
@@ -48,6 +51,7 @@ QtObject {
         && eqLowGainCentibels === 0 && eqMidGainCentibels === 0
         && eqHighGainCentibels === 0
         && !compressorEnabled
+        && !limiterEnabled
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis,
@@ -57,7 +61,9 @@ QtObject {
                          int eqLowGain, int eqMidGain, int eqHighGain,
                          bool compressorEnabled, int compressorThreshold,
                          int compressorRatio, int compressorAttack,
-                         int compressorRelease, int compressorMakeup)
+                         int compressorRelease, int compressorMakeup,
+                         bool limiterEnabled, int limiterCeiling,
+                         int limiterRelease)
 
     function clamp(value: real, minimum: real, maximum: real) : real {
         return Math.max(minimum, Math.min(maximum, value))
@@ -81,7 +87,10 @@ QtObject {
             compressorRatioTenths: compressorRatioTenths,
             compressorAttackMillis: compressorAttackMillis,
             compressorReleaseMillis: compressorReleaseMillis,
-            compressorMakeupCentibels: compressorMakeupCentibels
+            compressorMakeupCentibels: compressorMakeupCentibels,
+            limiterEnabled: limiterEnabled,
+            limiterCeilingCentibels: limiterCeilingCentibels,
+            limiterReleaseMillis: limiterReleaseMillis
         }
     }
 
@@ -103,7 +112,10 @@ QtObject {
             compressorRatioTenths: Number(value.compressorRatioTenths),
             compressorAttackMillis: Number(value.compressorAttackMillis),
             compressorReleaseMillis: Number(value.compressorReleaseMillis),
-            compressorMakeupCentibels: Number(value.compressorMakeupCentibels)
+            compressorMakeupCentibels: Number(value.compressorMakeupCentibels),
+            limiterEnabled: Boolean(value.limiterEnabled),
+            limiterCeilingCentibels: Number(value.limiterCeilingCentibels),
+            limiterReleaseMillis: Number(value.limiterReleaseMillis)
         }
     }
 
@@ -135,6 +147,11 @@ QtObject {
                 === Number(right.compressorReleaseMillis)
             && Number(left.compressorMakeupCentibels)
                 === Number(right.compressorMakeupCentibels)
+            && Boolean(left.limiterEnabled) === Boolean(right.limiterEnabled)
+            && Number(left.limiterCeilingCentibels)
+                === Number(right.limiterCeilingCentibels)
+            && Number(left.limiterReleaseMillis)
+                === Number(right.limiterReleaseMillis)
     }
 
     function assetSnapshot() : var {
@@ -151,7 +168,10 @@ QtObject {
                 compressorRatioTenths: 30,
                 compressorAttackMillis: 10,
                 compressorReleaseMillis: 120,
-                compressorMakeupCentibels: 0
+                compressorMakeupCentibels: 0,
+                limiterEnabled: false,
+                limiterCeilingCentibels: -100,
+                limiterReleaseMillis: 100
             }
         }
         const duration = Math.max(0, Number(asset.durationMillis))
@@ -182,7 +202,12 @@ QtObject {
             compressorReleaseMillis: clamp(
                 Number(asset.compressorReleaseMillis ?? 120), 20, 2000),
             compressorMakeupCentibels: clamp(
-                Number(asset.compressorMakeupCentibels ?? 0), 0, 2400)
+                Number(asset.compressorMakeupCentibels ?? 0), 0, 2400),
+            limiterEnabled: Boolean(asset.limiterEnabled),
+            limiterCeilingCentibels: clamp(
+                Number(asset.limiterCeilingCentibels ?? -100), -600, 0),
+            limiterReleaseMillis: clamp(
+                Number(asset.limiterReleaseMillis ?? 100), 20, 1000)
         }
     }
 
@@ -205,6 +230,9 @@ QtObject {
         compressorAttackMillis = Number(value.compressorAttackMillis)
         compressorReleaseMillis = Number(value.compressorReleaseMillis)
         compressorMakeupCentibels = Number(value.compressorMakeupCentibels)
+        limiterEnabled = Boolean(value.limiterEnabled)
+        limiterCeilingCentibels = Number(value.limiterCeilingCentibels)
+        limiterReleaseMillis = Number(value.limiterReleaseMillis)
         _restoring = false
     }
 
@@ -345,6 +373,29 @@ QtObject {
         pushCurrent()
     }
 
+    function setLimiterEnabled(enabled: bool) : void {
+        limiterEnabled = enabled
+        pushCurrent()
+    }
+
+    function setLimiterParameter(parameter: string, value: int) : void {
+        if (parameter === "ceiling") {
+            limiterCeilingCentibels = Math.round(clamp(value, -600, 0))
+        } else if (parameter === "release") {
+            limiterReleaseMillis = Math.round(clamp(value, 20, 1000))
+        } else {
+            return
+        }
+        pushCurrent()
+    }
+
+    function resetLimiter() : void {
+        limiterEnabled = false
+        limiterCeilingCentibels = -100
+        limiterReleaseMillis = 100
+        pushCurrent()
+    }
+
     function clear() : void {
         applySnapshot({
             trimStartMillis: 0,
@@ -363,7 +414,10 @@ QtObject {
             compressorRatioTenths: 30,
             compressorAttackMillis: 10,
             compressorReleaseMillis: 120,
-            compressorMakeupCentibels: 0
+            compressorMakeupCentibels: 0,
+            limiterEnabled: false,
+            limiterCeilingCentibels: -100,
+            limiterReleaseMillis: 100
         })
         pushCurrent()
     }
@@ -382,7 +436,8 @@ QtObject {
             eqHighGainCentibels, compressorEnabled,
             compressorThresholdCentibels, compressorRatioTenths,
             compressorAttackMillis, compressorReleaseMillis,
-            compressorMakeupCentibels)
+            compressorMakeupCentibels, limiterEnabled,
+            limiterCeilingCentibels, limiterReleaseMillis)
     }
 
     function markSaved() : void {

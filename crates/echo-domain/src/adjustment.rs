@@ -28,6 +28,10 @@ pub const MAX_COMPRESSOR_ATTACK_MILLIS: u16 = 200;
 pub const MIN_COMPRESSOR_RELEASE_MILLIS: u16 = 20;
 pub const MAX_COMPRESSOR_RELEASE_MILLIS: u16 = 2_000;
 pub const MAX_COMPRESSOR_MAKEUP_CENTIBELS: i16 = 2_400;
+pub const MIN_LIMITER_CEILING_CENTIBELS: i16 = -600;
+pub const MAX_LIMITER_CEILING_CENTIBELS: i16 = 0;
+pub const MIN_LIMITER_RELEASE_MILLIS: u16 = 20;
+pub const MAX_LIMITER_RELEASE_MILLIS: u16 = 1_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompressorSettings {
@@ -55,6 +59,31 @@ impl CompressorSettings {
             attack_millis: 10,
             release_millis: 120,
             makeup_centibels: 0,
+        }
+    }
+}
+
+/// Authored final-output peak limiter intent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LimiterSettings {
+    pub enabled: bool,
+    pub ceiling_centibels: i16,
+    pub release_millis: u16,
+}
+
+impl Default for LimiterSettings {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl LimiterSettings {
+    #[must_use]
+    pub const fn standard() -> Self {
+        Self {
+            enabled: false,
+            ceiling_centibels: -100,
+            release_millis: 100,
         }
     }
 }
@@ -190,6 +219,7 @@ pub struct AdjustmentEffects {
     pub low_cut_hertz: u16,
     pub equalizer: ThreeBandEqualizer,
     pub compressor: CompressorSettings,
+    pub limiter: LimiterSettings,
 }
 
 impl AdjustmentEffects {
@@ -201,6 +231,7 @@ impl AdjustmentEffects {
             low_cut_hertz,
             equalizer: ThreeBandEqualizer::new(0, 0, 0),
             compressor: CompressorSettings::standard(),
+            limiter: LimiterSettings::standard(),
         }
     }
 
@@ -213,6 +244,12 @@ impl AdjustmentEffects {
     #[must_use]
     pub const fn with_compressor(mut self, compressor: CompressorSettings) -> Self {
         self.compressor = compressor;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_limiter(mut self, limiter: LimiterSettings) -> Self {
+        self.limiter = limiter;
         self
     }
 }
@@ -230,6 +267,8 @@ pub struct AdjustmentGraph {
     low_cut_hertz: u16,
     equalizer: ThreeBandEqualizer,
     compressor: CompressorSettings,
+    #[serde(default)]
+    limiter: LimiterSettings,
 }
 
 impl AdjustmentGraph {
@@ -286,6 +325,14 @@ impl AdjustmentGraph {
         {
             return Err(AdjustmentGraphError::CompressorOutOfRange);
         }
+        let limiter = effects.limiter;
+        if !(MIN_LIMITER_CEILING_CENTIBELS..=MAX_LIMITER_CEILING_CENTIBELS)
+            .contains(&limiter.ceiling_centibels)
+            || !(MIN_LIMITER_RELEASE_MILLIS..=MAX_LIMITER_RELEASE_MILLIS)
+                .contains(&limiter.release_millis)
+        {
+            return Err(AdjustmentGraphError::LimiterOutOfRange);
+        }
         Ok(Self {
             trim_start_millis,
             trim_end_millis,
@@ -297,6 +344,7 @@ impl AdjustmentGraph {
             low_cut_hertz: effects.low_cut_hertz,
             equalizer: effects.equalizer,
             compressor,
+            limiter,
         })
     }
 
@@ -367,6 +415,11 @@ impl AdjustmentGraph {
     pub const fn compressor(self) -> CompressorSettings {
         self.compressor
     }
+
+    #[must_use]
+    pub const fn limiter(self) -> LimiterSettings {
+        self.limiter
+    }
 }
 
 /// Stable validation failures for authored adjustment intent.
@@ -378,6 +431,7 @@ pub enum AdjustmentGraphError {
     LowCutOutOfRange,
     EqualizerGainOutOfRange,
     CompressorOutOfRange,
+    LimiterOutOfRange,
 }
 
 impl std::fmt::Display for AdjustmentGraphError {
@@ -391,6 +445,7 @@ impl std::fmt::Display for AdjustmentGraphError {
                 "equalizer band gain must be between -12 dB and +12 dB"
             }
             Self::CompressorOutOfRange => "compressor parameters are outside the supported range",
+            Self::LimiterOutOfRange => "limiter parameters are outside the supported range",
         })
     }
 }

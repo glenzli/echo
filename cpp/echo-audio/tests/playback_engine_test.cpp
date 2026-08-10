@@ -264,14 +264,16 @@ int main(int argc, char* argv[]) {
             .low_cut_hertz = 80,
             .equalizer =
                 {.low_gain_centibels = 200, .mid_gain_centibels = -100, .high_gain_centibels = 150},
-            .compressor = {
-                .enabled = true,
-                .threshold_centibels = -1800,
-                .ratio_tenths = 30,
-                .attack_millis = 10,
-                .release_millis = 120,
-                .makeup_centibels = 0,
-            },
+            .compressor =
+                {
+                    .enabled = true,
+                    .threshold_centibels = -1800,
+                    .ratio_tenths = 30,
+                    .attack_millis = 10,
+                    .release_millis = 120,
+                    .makeup_centibels = 0,
+                },
+            .limiter = {.enabled = true, .ceiling_centibels = -600, .release_millis = 100},
         };
         echo::audio::PlaybackSession adjusted(path.string(), adjustment);
         std::vector<float> adjusted_buffer(48'000, 0.0F);
@@ -289,6 +291,10 @@ int main(int argc, char* argv[]) {
         expect(
             meter.gain_reduction_decibels >= 0.0F,
             "prepared playback publishes bounded gain reduction"
+        );
+        expect(
+            meter.limiter_reduction_decibels >= 0.0F,
+            "prepared playback publishes bounded limiter reduction"
         );
         const std::uint64_t position_before_equalizer_update = adjusted.position_millis();
         adjusted.update_equalizer({-600, 600, -600});
@@ -340,6 +346,23 @@ int main(int argc, char* argv[]) {
             rejected_update = true;
         }
         expect(rejected_update, "live compressor update preserves the authored bounds");
+        const std::uint64_t position_before_limiter_update = adjusted.position_millis();
+        adjusted.update_limiter(
+            {.enabled = true, .ceiling_centibels = -300, .release_millis = 160}
+        );
+        const std::size_t limiter_updated = pull_until(adjusted, updated_buffer.data(), 512, 200);
+        expect(limiter_updated > 0, "live limiter update keeps returning audio");
+        expect(
+            adjusted.position_millis() > position_before_limiter_update,
+            "live limiter update does not restart the playback timeline"
+        );
+        rejected_update = false;
+        try {
+            adjusted.update_limiter({.ceiling_centibels = -601});
+        } catch (const std::invalid_argument&) {
+            rejected_update = true;
+        }
+        expect(rejected_update, "live limiter update preserves the authored bounds");
         adjusted.seek(0);
         expect(adjusted.position_millis() >= 500, "adjusted seek clamps to trim start");
         adjusted.stop();

@@ -3,6 +3,7 @@
 
 #include "desktop_backend.hpp"
 #include "inference_preferences.hpp"
+#include "loudness_analysis_controller.hpp"
 #include "playback_controller.hpp"
 #include "ui_preferences.hpp"
 
@@ -65,6 +66,7 @@ int main(int argc, char* argv[]) {
 
         DesktopBackend backend(std::move(session));
         PlaybackController player;
+        LoudnessAnalysisController loudness_analyzer;
         UiPreferences ui_prefs(application);
         InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
         backend.startWorkers(inference_prefs.runtimeEndpoint());
@@ -75,6 +77,10 @@ int main(int argc, char* argv[]) {
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("loudnessAnalyzer"),
+            &loudness_analyzer
+        );
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
         engine.rootContext()->setContextProperty(
             QStringLiteral("inferencePrefs"),
@@ -131,12 +137,13 @@ int main(int argc, char* argv[]) {
         }
         if (const char* shot = std::getenv("ECHO_DEBUG_SCREENSHOT")) {
             if (auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first())) {
+                const bool replay_editor = std::getenv("ECHO_DEBUG_REPLAY_EDITOR") != nullptr;
                 const bool delayed = std::getenv("ECHO_DEBUG_AUTOPLAY") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_SETTINGS") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_LIBRARY") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
-                                     || std::getenv("ECHO_DEBUG_REPLAY_EDITOR") != nullptr;
-                const int delay = delayed ? 3000 : 800;
+                                     || replay_editor;
+                const int delay = replay_editor ? 5000 : delayed ? 3000 : 800;
                 QTimer::singleShot(delay, window, [window, shot] {
                     window->grabWindow().save(QString::fromUtf8(shot));
                     QGuiApplication::exit(0);

@@ -16,6 +16,7 @@ struct PlaybackMeterSnapshot {
     float momentary_lufs = -70.0F;
     float output_peak_dbfs = -70.0F;
     float gain_reduction_decibels = 0.0F;
+    float limiter_reduction_decibels = 0.0F;
 };
 
 /// Streaming playback session over one source.
@@ -58,6 +59,8 @@ class PlaybackSession {
     /// Publishes a latest-wins compressor target. The producer applies it to
     /// the persistent detector without restarting playback.
     void update_compressor(CompressorAdjustment adjustment);
+    /// Publishes a latest-wins limiter target without restarting playback.
+    void update_limiter(LimiterAdjustment adjustment);
 
     [[nodiscard]] bool is_paused() const;
     [[nodiscard]] bool is_stopped() const;

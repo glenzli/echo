@@ -54,6 +54,12 @@ Rectangle {
         ? Number(asset.compressorReleaseMillis) : 120
     readonly property int compressorMakeupCentibels: hasAsset
         ? Number(asset.compressorMakeupCentibels) : 0
+    readonly property bool limiterEnabled: hasAsset
+        ? Boolean(asset.limiterEnabled) : false
+    readonly property int limiterCeilingCentibels: hasAsset
+        ? Number(asset.limiterCeilingCentibels) : -100
+    readonly property int limiterReleaseMillis: hasAsset
+        ? Number(asset.limiterReleaseMillis) : 100
 
     color: Theme.panelRaised
     border.color: Theme.border
@@ -106,7 +112,8 @@ Rectangle {
             + ":" + eqHighGainCentibels + ":" + compressorEnabled
             + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths
             + ":" + compressorAttackMillis + ":" + compressorReleaseMillis
-            + ":" + compressorMakeupCentibels
+            + ":" + compressorMakeupCentibels + ":" + limiterEnabled
+            + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis
     }
 
     function playFrom(millis: int) : void {
@@ -120,7 +127,8 @@ Rectangle {
                             eqHighGainCentibels, compressorEnabled,
                             compressorThresholdCentibels, compressorRatioTenths,
                             compressorAttackMillis, compressorReleaseMillis,
-                            compressorMakeupCentibels)
+                            compressorMakeupCentibels, limiterEnabled,
+                            limiterCeilingCentibels, limiterReleaseMillis)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis))

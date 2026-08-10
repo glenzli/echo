@@ -98,30 +98,21 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_810, 4);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 5);
+    CatalogSchemaRevision::new(20_260_810, 5);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_810, 6);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.5-dynamics-compressor";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260810.6-output-limiter";
 
-pub(crate) const DYNAMICS_MIGRATION_SQL: &str = "
+pub(crate) const LIMITER_MIGRATION_SQL: &str = "
 ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN compressor_enabled INTEGER NOT NULL DEFAULT 0
-    CHECK (compressor_enabled IN (0, 1));
+    ADD COLUMN limiter_enabled INTEGER NOT NULL DEFAULT 0
+    CHECK (limiter_enabled IN (0, 1));
 ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN compressor_threshold_centibels INTEGER NOT NULL DEFAULT -1800
-    CHECK (compressor_threshold_centibels BETWEEN -6000 AND 0);
+    ADD COLUMN limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100
+    CHECK (limiter_ceiling_centibels BETWEEN -600 AND 0);
 ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN compressor_ratio_tenths INTEGER NOT NULL DEFAULT 30
-    CHECK (compressor_ratio_tenths BETWEEN 10 AND 200);
-ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN compressor_attack_millis INTEGER NOT NULL DEFAULT 10
-    CHECK (compressor_attack_millis BETWEEN 1 AND 200);
-ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN compressor_release_millis INTEGER NOT NULL DEFAULT 120
-    CHECK (compressor_release_millis BETWEEN 20 AND 2000);
-ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN compressor_makeup_centibels INTEGER NOT NULL DEFAULT 0
-    CHECK (compressor_makeup_centibels BETWEEN 0 AND 2400);
+    ADD COLUMN limiter_release_millis INTEGER NOT NULL DEFAULT 100
+    CHECK (limiter_release_millis BETWEEN 20 AND 1000);
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -260,6 +251,12 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            CHECK (compressor_release_millis BETWEEN 20 AND 2000),
     compressor_makeup_centibels INTEGER NOT NULL DEFAULT 0
                            CHECK (compressor_makeup_centibels BETWEEN 0 AND 2400),
+    limiter_enabled        INTEGER NOT NULL DEFAULT 0
+                           CHECK (limiter_enabled IN (0, 1)),
+    limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100
+                           CHECK (limiter_ceiling_centibels BETWEEN -600 AND 0),
+    limiter_release_millis INTEGER NOT NULL DEFAULT 100
+                           CHECK (limiter_release_millis BETWEEN 20 AND 1000),
     created_at_millis     INTEGER NOT NULL,
     CHECK (fade_in_millis + fade_out_millis <= trim_end_millis - trim_start_millis)
 );

@@ -2,6 +2,7 @@ use std::path::Path;
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, FadeCurve, FadeCurves,
+    LimiterSettings,
 };
 
 use super::*;
@@ -56,6 +57,11 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
             attack_millis: 15,
             release_millis: 180,
             makeup_centibels: 250,
+        })
+        .with_limiter(LimiterSettings {
+            enabled: true,
+            ceiling_centibels: -125,
+            release_millis: 160,
         }),
     )
     .expect("graph validates");
@@ -71,6 +77,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         echo_domain::ThreeBandEqualizer::new(300, -150, 225)
     );
     assert_eq!(first.graph.compressor(), graph.compressor());
+    assert_eq!(first.graph.limiter(), graph.limiter());
 
     let second_graph = AdjustmentGraph::new(
         10_000,

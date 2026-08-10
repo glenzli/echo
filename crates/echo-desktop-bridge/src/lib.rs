@@ -47,6 +47,9 @@ mod ffi {
         compressor_attack_millis: u16,
         compressor_release_millis: u16,
         compressor_makeup_centibels: i16,
+        limiter_enabled: bool,
+        limiter_ceiling_centibels: i16,
+        limiter_release_millis: u16,
         container_format: String,
         sample_rate: u32,
         channel_count: u32,
@@ -75,6 +78,9 @@ mod ffi {
         compressor_attack_millis: u16,
         compressor_release_millis: u16,
         compressor_makeup_centibels: i16,
+        limiter_enabled: bool,
+        limiter_ceiling_centibels: i16,
+        limiter_release_millis: u16,
     }
 
     /// One indexed keyword facet over the newest contextual evidence.

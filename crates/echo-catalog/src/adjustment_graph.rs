@@ -2,7 +2,8 @@
 //! adjustments. Originals and analysis evidence are never modified.
 
 use echo_domain::{
-    AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, FadeCurve, ThreeBandEqualizer,
+    AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, FadeCurve, LimiterSettings,
+    ThreeBandEqualizer,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
@@ -48,7 +49,8 @@ pub fn latest_adjustment_graph(
              eq_high_gain_centibels, compressor_enabled, \
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
-             compressor_makeup_centibels, created_at_millis \
+             compressor_makeup_centibels, limiter_enabled, \
+             limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
             [asset_id.to_string()],
@@ -73,6 +75,9 @@ pub fn latest_adjustment_graph(
                     row.get::<_, i64>(16)?,
                     row.get::<_, i64>(17)?,
                     row.get::<_, i64>(18)?,
+                    row.get::<_, i64>(19)?,
+                    row.get::<_, i64>(20)?,
+                    row.get::<_, i64>(21)?,
                 ))
             },
         )
@@ -96,6 +101,9 @@ pub fn latest_adjustment_graph(
         compressor_attack,
         compressor_release,
         compressor_makeup,
+        limiter_enabled,
+        limiter_ceiling,
+        limiter_release,
         created_at,
     )) = stored
     else {
@@ -132,6 +140,11 @@ pub fn latest_adjustment_graph(
             attack_millis: stored_u16(compressor_attack, "compressor attack")?,
             release_millis: stored_u16(compressor_release, "compressor release")?,
             makeup_centibels: stored_centibels(compressor_makeup, "compressor makeup")?,
+        })
+        .with_limiter(LimiterSettings {
+            enabled: limiter_enabled != 0,
+            ceiling_centibels: stored_centibels(limiter_ceiling, "limiter ceiling")?,
+            release_millis: stored_u16(limiter_release, "limiter release")?,
         }),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
@@ -181,7 +194,8 @@ pub fn record_adjustment_graph(
             graph.low_cut_hertz(),
         )
         .with_equalizer(graph.equalizer())
-        .with_compressor(graph.compressor()),
+        .with_compressor(graph.compressor())
+        .with_limiter(graph.limiter()),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
     if let Some(current) = latest_adjustment_graph(transaction, asset_id)?
@@ -196,9 +210,10 @@ pub fn record_adjustment_graph(
          eq_mid_gain_centibels, eq_high_gain_centibels, compressor_enabled, \
          compressor_threshold_centibels, compressor_ratio_tenths, \
          compressor_attack_millis, compressor_release_millis, \
-         compressor_makeup_centibels, created_at_millis) \
+         compressor_makeup_centibels, limiter_enabled, limiter_ceiling_centibels, \
+         limiter_release_millis, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
-                 ?14, ?15, ?16, ?17, ?18, ?19)",
+                 ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -218,6 +233,9 @@ pub fn record_adjustment_graph(
             i64::from(validated.compressor().attack_millis),
             i64::from(validated.compressor().release_millis),
             i64::from(validated.compressor().makeup_centibels),
+            i64::from(validated.limiter().enabled),
+            i64::from(validated.limiter().ceiling_centibels),
+            i64::from(validated.limiter().release_millis),
             now_millis,
         ],
     )?;

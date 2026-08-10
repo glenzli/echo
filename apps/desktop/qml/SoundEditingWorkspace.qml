@@ -81,7 +81,10 @@ Rectangle {
             + (auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths) + ":"
             + (auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis) + ":"
             + (auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis) + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels)
+            + (auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels) + ":"
+            + (auditionOriginal ? false : adjustmentDraft.limiterEnabled) + ":"
+            + (auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels) + ":"
+            + (auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis)
     }
 
     function refreshAsset() : void {
@@ -109,7 +112,10 @@ Rectangle {
                             auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths,
                             auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis,
                             auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis,
-                            auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels)
+                            auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels,
+                            auditionOriginal ? false : adjustmentDraft.limiterEnabled,
+                            auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels,
+                            auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis)
         loadedPath = asset.path
         loadedBaseAdjustmentKey = playbackBaseAdjustmentKey()
         loadedAdjustmentKey = adjustmentKey()
@@ -186,8 +192,13 @@ Rectangle {
         adjustmentDraft.setCompressorParameter("threshold", -4000)
     }
 
+    function debugAnalyzeOutput() : void {
+        adjustmentEditor.analyzeOutput()
+    }
+
     onAssetChanged: {
         player.stop()
+        loudnessAnalyzer.cancel()
         auditionOriginal = false
         loadedPath = ""
         loadedBaseAdjustmentKey = ""
@@ -213,14 +224,18 @@ Rectangle {
                                   eqLowGain, eqMidGain, eqHighGain,
                                   compressorEnabled, compressorThreshold,
                                   compressorRatio, compressorAttack,
-                                  compressorRelease, compressorMakeup) {
+                                  compressorRelease, compressorMakeup,
+                                  limiterEnabled, limiterCeiling,
+                                  limiterRelease) {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                            fadeIn, fadeOut, fadeInCurve,
                                            fadeOutCurve, gain, lowCut,
                                            eqLowGain, eqMidGain, eqHighGain,
                                            compressorEnabled, compressorThreshold,
                                            compressorRatio, compressorAttack,
-                                           compressorRelease, compressorMakeup)) {
+                                           compressorRelease, compressorMakeup,
+                                           limiterEnabled, limiterCeiling,
+                                           limiterRelease)) {
                 adjustmentDraft.markSaved()
                 workspace.auditionOriginal = false
                 workspace.loadedBaseAdjustmentKey = ""
@@ -259,6 +274,15 @@ Rectangle {
         function onCompressorMakeupCentibelsChanged() : void {
             workspace.scheduleEffectsPreview()
         }
+        function onLimiterEnabledChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
+        function onLimiterCeilingCentibelsChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
+        function onLimiterReleaseMillisChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
     }
 
     Timer {
@@ -284,7 +308,11 @@ Rectangle {
                 adjustmentDraft.compressorAttackMillis,
                 adjustmentDraft.compressorReleaseMillis,
                 adjustmentDraft.compressorMakeupCentibels)
-            if (equalizerUpdated && compressorUpdated) {
+            const limiterUpdated = player.updateLimiter(
+                adjustmentDraft.limiterEnabled,
+                adjustmentDraft.limiterCeilingCentibels,
+                adjustmentDraft.limiterReleaseMillis)
+            if (equalizerUpdated && compressorUpdated && limiterUpdated) {
                 workspace.loadedAdjustmentKey = workspace.adjustmentKey()
             }
         }
@@ -438,12 +466,16 @@ Rectangle {
             }
 
             SoundAdjustmentEditor {
+                id: adjustmentEditor
                 SplitView.fillWidth: true
                 SplitView.preferredHeight: 302
                 SplitView.minimumHeight: 284
                 SplitView.maximumHeight: 350
                 draft: adjustmentDraft
                 meterSource: player
+                analyzer: loudnessAnalyzer
+                sourcePath: workspace.hasAsset ? workspace.asset.path : ""
+                analysisKey: workspace.adjustmentKey()
                 hasTimeSelection: editorTimeline.hasTimeSelection
                 selectionStartMillis: editorTimeline.selectionStartMillis
                 selectionEndMillis: editorTimeline.selectionEndMillis
