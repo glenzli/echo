@@ -1,6 +1,8 @@
 #include "echo/audio/playback.hpp"
 
+#include "echo/audio/adaptive_noise_reducer.hpp"
 #include "echo/audio/algorithmic_reverb.hpp"
+#include "echo/audio/de_esser.hpp"
 #include "echo/audio/dynamics_processor.hpp"
 #include "echo/audio/ffmpeg_include.hpp"
 #include "echo/audio/loudness_meter.hpp"
@@ -262,6 +264,15 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        noise_reducer_ = std::make_unique<AdaptiveNoiseReducer>(
+            adjustment_->restoration().noise_reduction,
+            kCanonicalSampleRate
+        );
+        de_esser_ = std::make_unique<DeEsser>(
+            adjustment_->restoration().de_esser,
+            kCanonicalSampleRate,
+            channel_count_
+        );
         equalizer_ = std::make_unique<ParametricEqualizer>(
             adjustment_->equalizer(),
             kCanonicalSampleRate,
@@ -279,6 +290,7 @@ class PlaybackSession::Impl {
         output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
         loudness_meter_ = std::make_unique<LoudnessMeter>(kCanonicalSampleRate, channel_count_);
         pending_equalizer_ = adjustment_->equalizer();
+        pending_restoration_ = adjustment_->restoration();
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -354,6 +366,24 @@ class PlaybackSession::Impl {
             std::lock_guard<std::mutex> lock(dynamics_mutex_);
             pending_equalizer_ = adjustment;
             equalizer_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
+    void update_restoration(RestorationAdjustment adjustment) {
+        [[maybe_unused]] const AdaptiveNoiseReducer noise_validation(
+            adjustment.noise_reduction,
+            kCanonicalSampleRate
+        );
+        [[maybe_unused]] const DeEsser de_esser_validation(
+            adjustment.de_esser,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        {
+            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            pending_restoration_ = adjustment;
+            restoration_update_pending_ = true;
         }
         control_cv_.notify_one();
     }
@@ -467,6 +497,8 @@ class PlaybackSession::Impl {
             consumed_frames_.store(millis * kCanonicalSampleRate / 1000, std::memory_order_relaxed);
             decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
             low_cut_filter_->reset();
+            noise_reducer_->reset();
+            de_esser_->reset();
             equalizer_->reset();
             dynamics_processor_->reset();
             reverb_->reset();
@@ -570,6 +602,11 @@ class PlaybackSession::Impl {
                             equalizer_->transition_to(pending_equalizer_);
                             equalizer_update_pending_ = false;
                         }
+                        if (restoration_update_pending_) {
+                            noise_reducer_->update(pending_restoration_.noise_reduction);
+                            de_esser_->update(pending_restoration_.de_esser);
+                            restoration_update_pending_ = false;
+                        }
                         if (compressor_update_pending_) {
                             dynamics_processor_->update(pending_compressor_);
                             compressor_update_pending_ = false;
@@ -589,9 +626,17 @@ class PlaybackSession::Impl {
                                 planes[channel][input_offset + written + index],
                                 channel
                             );
-                            const float equalized = equalizer_->process_sample(filtered, channel);
-                            scratch[index * channel_count_ + channel] =
-                                equalized * adjustment_->gain_amplitude();
+                            scratch[index * channel_count_ + channel] = filtered;
+                        }
+                    }
+                    noise_reducer_->process_interleaved(scratch, chunk, channel_count_);
+                    de_esser_->process_interleaved(scratch, chunk, channel_count_);
+                    for (std::size_t index = 0; index < chunk; ++index) {
+                        for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                            const std::size_t sample_index = index * channel_count_ + channel;
+                            scratch[sample_index] =
+                                equalizer_->process_sample(scratch[sample_index], channel)
+                                * adjustment_->gain_amplitude();
                         }
                     }
                     dynamics_processor_->process_interleaved(scratch, chunk, channel_count_);
@@ -705,6 +750,8 @@ class PlaybackSession::Impl {
     std::unique_ptr<FrameRing> ring_;
     std::unique_ptr<PreparedAdjustment> adjustment_;
     std::unique_ptr<LowCutFilter> low_cut_filter_;
+    std::unique_ptr<AdaptiveNoiseReducer> noise_reducer_;
+    std::unique_ptr<DeEsser> de_esser_;
     std::unique_ptr<ParametricEqualizer> equalizer_;
     std::unique_ptr<DynamicsProcessor> dynamics_processor_;
     std::unique_ptr<AlgorithmicReverb> reverb_;
@@ -715,6 +762,8 @@ class PlaybackSession::Impl {
     std::mutex dynamics_mutex_;
     ParametricEqualizerAdjustment pending_equalizer_;
     bool equalizer_update_pending_ = false;
+    RestorationAdjustment pending_restoration_;
+    bool restoration_update_pending_ = false;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;
     ReverbAdjustment pending_reverb_;
@@ -767,6 +816,9 @@ void PlaybackSession::seek(std::uint64_t millis) {
 }
 void PlaybackSession::update_equalizer(ParametricEqualizerAdjustment adjustment) {
     impl_->update_equalizer(adjustment);
+}
+void PlaybackSession::update_restoration(RestorationAdjustment adjustment) {
+    impl_->update_restoration(adjustment);
 }
 void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
     impl_->update_compressor(adjustment);

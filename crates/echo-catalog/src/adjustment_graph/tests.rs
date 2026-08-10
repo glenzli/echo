@@ -1,8 +1,9 @@
 use std::path::Path;
 
 use echo_domain::{
-    AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, FadeCurve, FadeCurves,
-    LimiterSettings, ReverbSettings,
+    AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, DeEsserSettings,
+    FadeCurve, FadeCurves, LimiterSettings, NoiseReductionSettings, RestorationSettings,
+    ReverbSettings,
 };
 
 use super::*;
@@ -96,6 +97,20 @@ fn fully_configured_graph() -> AdjustmentGraph {
             -300,
             80,
         )
+        .with_restoration(RestorationSettings {
+            noise_reduction: NoiseReductionSettings {
+                enabled: true,
+                reduction_centibels: 1_100,
+                sensitivity_percent: 58,
+                smoothing_millis: 300,
+            },
+            de_esser: DeEsserSettings {
+                enabled: true,
+                frequency_hertz: 7_000,
+                threshold_centibels: -2_600,
+                reduction_centibels: 700,
+            },
+        })
         .with_equalizer(echo_domain::ParametricEqualizer::from_legacy_gains(
             300, -150, 225,
         ))

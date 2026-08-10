@@ -151,6 +151,7 @@ fn transcripts_round_trip_through_a_live_catalog() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)] // One full cross-language adjustment contract fixture.
 fn adjustment_revision_round_trips_through_the_live_session() {
     let root = fixture_catalog();
     let session = open_session(
@@ -188,6 +189,14 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         fade_out_curve: 2,
         gain_centibels: -350,
         low_cut_hertz: 80,
+        noise_reduction_enabled: true,
+        noise_reduction_centibels: 1_200,
+        noise_reduction_sensitivity_percent: 62,
+        noise_reduction_smoothing_millis: 320,
+        de_esser_enabled: true,
+        de_esser_frequency_hertz: 7_200,
+        de_esser_threshold_centibels: -2_800,
+        de_esser_reduction_centibels: 750,
         equalizer_bands: test_equalizer_bands(),
         compressor_enabled: true,
         compressor_threshold_centibels: -2_000,
@@ -221,6 +230,14 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].fade_out_curve, 2);
     assert_eq!(projected[0].gain_centibels, -350);
     assert_eq!(projected[0].low_cut_hertz, 80);
+    assert!(projected[0].noise_reduction_enabled);
+    assert_eq!(projected[0].noise_reduction_centibels, 1_200);
+    assert_eq!(projected[0].noise_reduction_sensitivity_percent, 62);
+    assert_eq!(projected[0].noise_reduction_smoothing_millis, 320);
+    assert!(projected[0].de_esser_enabled);
+    assert_eq!(projected[0].de_esser_frequency_hertz, 7_200);
+    assert_eq!(projected[0].de_esser_threshold_centibels, -2_800);
+    assert_eq!(projected[0].de_esser_reduction_centibels, 750);
     assert_eq!(projected[0].equalizer_bands.len(), 6);
     assert_eq!(projected[0].equalizer_bands[0].gain_centibels, 250);
     assert_eq!(projected[0].equalizer_bands[2].gain_centibels, -175);

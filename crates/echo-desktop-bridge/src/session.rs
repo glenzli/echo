@@ -51,6 +51,9 @@ const fn job_state_text(state: echo_catalog::JobState) -> &'static str {
     }
 }
 
+// The CXX ABI intentionally flattens independent bypass switches. Keeping the
+// internal projection equally shaped makes omissions visible at compile time.
+#[allow(clippy::struct_excessive_bools)]
 struct AdjustmentWireFields {
     revision: i64,
     trim_start_millis: u64,
@@ -61,6 +64,14 @@ struct AdjustmentWireFields {
     fade_out_curve: u8,
     gain_centibels: i16,
     low_cut_hertz: u16,
+    noise_reduction_enabled: bool,
+    noise_reduction_centibels: u16,
+    noise_reduction_sensitivity_percent: u8,
+    noise_reduction_smoothing_millis: u16,
+    de_esser_enabled: bool,
+    de_esser_frequency_hertz: u16,
+    de_esser_threshold_centibels: i16,
+    de_esser_reduction_centibels: u16,
     equalizer_bands: Vec<EqualizerBandWire>,
     compressor_enabled: bool,
     compressor_threshold_centibels: i16,
@@ -170,6 +181,14 @@ fn adjustment_wire_fields(
             fade_out_curve: 0,
             gain_centibels: 0,
             low_cut_hertz: 0,
+            noise_reduction_enabled: false,
+            noise_reduction_centibels: 900,
+            noise_reduction_sensitivity_percent: 50,
+            noise_reduction_smoothing_millis: 240,
+            de_esser_enabled: false,
+            de_esser_frequency_hertz: 6_500,
+            de_esser_threshold_centibels: -2_400,
+            de_esser_reduction_centibels: 600,
             equalizer_bands: equalizer_wire_bands(echo_domain::ParametricEqualizer::flat()),
             compressor_enabled: false,
             compressor_threshold_centibels: -1_800,
@@ -201,6 +220,26 @@ fn adjustment_wire_fields(
                 .expect("fade curve catalog values fit u8"),
             gain_centibels: revision.graph.gain_centibels(),
             low_cut_hertz: revision.graph.low_cut_hertz(),
+            noise_reduction_enabled: revision.graph.restoration().noise_reduction.enabled,
+            noise_reduction_centibels: revision
+                .graph
+                .restoration()
+                .noise_reduction
+                .reduction_centibels,
+            noise_reduction_sensitivity_percent: revision
+                .graph
+                .restoration()
+                .noise_reduction
+                .sensitivity_percent,
+            noise_reduction_smoothing_millis: revision
+                .graph
+                .restoration()
+                .noise_reduction
+                .smoothing_millis,
+            de_esser_enabled: revision.graph.restoration().de_esser.enabled,
+            de_esser_frequency_hertz: revision.graph.restoration().de_esser.frequency_hertz,
+            de_esser_threshold_centibels: revision.graph.restoration().de_esser.threshold_centibels,
+            de_esser_reduction_centibels: revision.graph.restoration().de_esser.reduction_centibels,
             equalizer_bands: equalizer_wire_bands(revision.graph.equalizer()),
             compressor_enabled: revision.graph.compressor().enabled,
             compressor_threshold_centibels: revision.graph.compressor().threshold_centibels,
@@ -275,6 +314,14 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         fade_out_curve: adjustment.fade_out_curve,
         gain_centibels: adjustment.gain_centibels,
         low_cut_hertz: adjustment.low_cut_hertz,
+        noise_reduction_enabled: adjustment.noise_reduction_enabled,
+        noise_reduction_centibels: adjustment.noise_reduction_centibels,
+        noise_reduction_sensitivity_percent: adjustment.noise_reduction_sensitivity_percent,
+        noise_reduction_smoothing_millis: adjustment.noise_reduction_smoothing_millis,
+        de_esser_enabled: adjustment.de_esser_enabled,
+        de_esser_frequency_hertz: adjustment.de_esser_frequency_hertz,
+        de_esser_threshold_centibels: adjustment.de_esser_threshold_centibels,
+        de_esser_reduction_centibels: adjustment.de_esser_reduction_centibels,
         equalizer_bands: adjustment.equalizer_bands,
         compressor_enabled: adjustment.compressor_enabled,
         compressor_threshold_centibels: adjustment.compressor_threshold_centibels,
@@ -616,6 +663,20 @@ impl LibrarySession {
                 adjustment.gain_centibels,
                 adjustment.low_cut_hertz,
             )
+            .with_restoration(echo_domain::RestorationSettings {
+                noise_reduction: echo_domain::NoiseReductionSettings {
+                    enabled: adjustment.noise_reduction_enabled,
+                    reduction_centibels: adjustment.noise_reduction_centibels,
+                    sensitivity_percent: adjustment.noise_reduction_sensitivity_percent,
+                    smoothing_millis: adjustment.noise_reduction_smoothing_millis,
+                },
+                de_esser: echo_domain::DeEsserSettings {
+                    enabled: adjustment.de_esser_enabled,
+                    frequency_hertz: adjustment.de_esser_frequency_hertz,
+                    threshold_centibels: adjustment.de_esser_threshold_centibels,
+                    reduction_centibels: adjustment.de_esser_reduction_centibels,
+                },
+            })
             .with_equalizer(equalizer_from_wire(&adjustment.equalizer_bands)?)
             .with_compressor(echo_domain::CompressorSettings {
                 enabled: adjustment.compressor_enabled,

@@ -37,7 +37,7 @@ Rectangle {
             spacing: 2
 
             Repeater {
-                model: [qsTr("EQ"), qsTr("Dynamics"), qsTr("Space"), qsTr("Master")]
+                model: [qsTr("Restore"), qsTr("EQ"), qsTr("Dynamics"), qsTr("Space"), qsTr("Master")]
 
                 delegate: Rectangle {
                     required property int index
@@ -75,33 +75,39 @@ Rectangle {
 
             ToneEqualizerPanel {
                 anchors.fill: parent
-                visible: rack.currentIndex === 0
+                visible: rack.currentIndex === 1
                 draft: rack.draft
                 responseProvider: rack.meterSource
             }
 
             DynamicsPanel {
                 anchors.fill: parent
-                visible: rack.currentIndex === 1
+                visible: rack.currentIndex === 2
                 draft: rack.draft
                 meterSource: rack.meterSource
             }
 
             SpaceReverbPanel {
                 anchors.fill: parent
-                visible: rack.currentIndex === 2
+                visible: rack.currentIndex === 3
                 draft: rack.draft
             }
 
             MasterOutputPanel {
                 id: masterPanel
                 anchors.fill: parent
-                visible: rack.currentIndex === 3
+                visible: rack.currentIndex === 4
                 draft: rack.draft
                 meterSource: rack.meterSource
                 analyzer: rack.analyzer
                 sourcePath: rack.sourcePath
                 analysisKey: rack.analysisKey
+            }
+
+            RestorationPanel {
+                anchors.fill: parent
+                visible: rack.currentIndex === 0
+                draft: rack.draft
             }
         }
     }

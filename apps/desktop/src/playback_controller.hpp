@@ -47,6 +47,7 @@ class PlaybackController : public QObject {
         int fadeOutCurve,
         int gainCentibels,
         int lowCutHertz,
+        const QVariantMap& restoration,
         const QVariantList& equalizerBands,
         bool compressorEnabled,
         int compressorThresholdCentibels,
@@ -60,6 +61,7 @@ class PlaybackController : public QObject {
         int limiterReleaseMillis
     );
     Q_INVOKABLE bool updateEqualizer(const QVariantList& equalizerBands);
+    Q_INVOKABLE bool updateRestoration(const QVariantMap& restoration);
     Q_INVOKABLE QVariantList
     equalizerResponse(const QVariantList& equalizerBands, int pointCount) const;
     Q_INVOKABLE bool updateCompressor(

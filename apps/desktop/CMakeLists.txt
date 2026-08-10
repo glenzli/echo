@@ -119,6 +119,8 @@ qt_add_executable(
     src/semantic_search_controller.hpp
     src/reverb_projection.cpp
     src/reverb_projection.hpp
+    src/restoration_projection.cpp
+    src/restoration_projection.hpp
     src/ui_preferences.cpp
     src/ui_preferences.hpp
     src/inference_preferences.cpp
@@ -164,6 +166,7 @@ qt_add_qml_module(
         qml/MainTitleBar.qml
         qml/MasterOutputPanel.qml
         qml/ParametricEqGraph.qml
+        qml/RestorationPanel.qml
         qml/SoundAdvancedFilterPopup.qml
         qml/SoundAlbumNameDialog.qml
         qml/SoundAlbumRow.qml

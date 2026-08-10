@@ -1,6 +1,7 @@
 #include "playback_adjustment_projection.hpp"
 
 #include "parametric_equalizer_projection.hpp"
+#include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
 
 std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fromQml(
@@ -12,6 +13,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     int fadeOutCurve,
     int gainCentibels,
     int lowCutHertz,
+    const QVariantMap& restorationValue,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
@@ -39,7 +41,8 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     }
     const auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
     const auto reverb = ReverbProjection::fromQml(reverbValue);
-    if (!equalizer.has_value() || !reverb.has_value()) {
+    const auto restoration = RestorationProjection::fromQml(restorationValue);
+    if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()) {
         return std::nullopt;
     }
     return echo::audio::PlaybackAdjustment{
@@ -51,6 +54,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
         .fade_out_curve = static_cast<echo::audio::FadeCurve>(fadeOutCurve),
         .gain_centibels = static_cast<std::int16_t>(gainCentibels),
         .low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz),
+        .restoration = *restoration,
         .equalizer = *equalizer,
         .compressor =
             {

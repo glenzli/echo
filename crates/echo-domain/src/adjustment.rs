@@ -50,6 +50,86 @@ pub const MIN_REVERB_LOW_CUT_HERTZ: u16 = 20;
 pub const MAX_REVERB_LOW_CUT_HERTZ: u16 = 1_000;
 pub const MIN_REVERB_HIGH_CUT_HERTZ: u16 = 1_000;
 pub const MAX_REVERB_HIGH_CUT_HERTZ: u16 = 20_000;
+pub const MAX_NOISE_REDUCTION_CENTIBELS: u16 = 2_400;
+pub const MAX_NOISE_REDUCTION_SENSITIVITY_PERCENT: u8 = 100;
+pub const MIN_NOISE_REDUCTION_SMOOTHING_MILLIS: u16 = 20;
+pub const MAX_NOISE_REDUCTION_SMOOTHING_MILLIS: u16 = 1_000;
+pub const MIN_DE_ESSER_FREQUENCY_HERTZ: u16 = 3_000;
+pub const MAX_DE_ESSER_FREQUENCY_HERTZ: u16 = 12_000;
+pub const MIN_DE_ESSER_THRESHOLD_CENTIBELS: i16 = -6_000;
+pub const MAX_DE_ESSER_THRESHOLD_CENTIBELS: i16 = 0;
+pub const MAX_DE_ESSER_REDUCTION_CENTIBELS: u16 = 1_800;
+
+/// Authored adaptive broadband noise-reduction intent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoiseReductionSettings {
+    pub enabled: bool,
+    pub reduction_centibels: u16,
+    pub sensitivity_percent: u8,
+    pub smoothing_millis: u16,
+}
+
+impl Default for NoiseReductionSettings {
+    fn default() -> Self {
+        Self::gentle()
+    }
+}
+
+impl NoiseReductionSettings {
+    #[must_use]
+    pub const fn gentle() -> Self {
+        Self {
+            enabled: false,
+            reduction_centibels: 900,
+            sensitivity_percent: 50,
+            smoothing_millis: 240,
+        }
+    }
+}
+
+/// Authored high-frequency de-essing intent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeEsserSettings {
+    pub enabled: bool,
+    pub frequency_hertz: u16,
+    pub threshold_centibels: i16,
+    pub reduction_centibels: u16,
+}
+
+impl Default for DeEsserSettings {
+    fn default() -> Self {
+        Self::speech()
+    }
+}
+
+impl DeEsserSettings {
+    #[must_use]
+    pub const fn speech() -> Self {
+        Self {
+            enabled: false,
+            frequency_hertz: 6_500,
+            threshold_centibels: -2_400,
+            reduction_centibels: 600,
+        }
+    }
+}
+
+/// Stable restoration chain authored before tone and dynamics processing.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RestorationSettings {
+    pub noise_reduction: NoiseReductionSettings,
+    pub de_esser: DeEsserSettings,
+}
+
+impl RestorationSettings {
+    #[must_use]
+    pub const fn standard() -> Self {
+        Self {
+            noise_reduction: NoiseReductionSettings::gentle(),
+            de_esser: DeEsserSettings::speech(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompressorSettings {
@@ -356,6 +436,7 @@ pub struct AdjustmentEffects {
     pub fade_curves: FadeCurves,
     pub gain_centibels: i16,
     pub low_cut_hertz: u16,
+    pub restoration: RestorationSettings,
     pub equalizer: ParametricEqualizer,
     pub compressor: CompressorSettings,
     pub reverb: ReverbSettings,
@@ -369,11 +450,18 @@ impl AdjustmentEffects {
             fade_curves,
             gain_centibels,
             low_cut_hertz,
+            restoration: RestorationSettings::standard(),
             equalizer: ParametricEqualizer::flat(),
             compressor: CompressorSettings::standard(),
             reverb: ReverbSettings::studio_room(),
             limiter: LimiterSettings::standard(),
         }
+    }
+
+    #[must_use]
+    pub const fn with_restoration(mut self, restoration: RestorationSettings) -> Self {
+        self.restoration = restoration;
+        self
     }
 
     #[must_use]
@@ -412,6 +500,8 @@ pub struct AdjustmentGraph {
     fade_out_curve: FadeCurve,
     gain_centibels: i16,
     low_cut_hertz: u16,
+    #[serde(default)]
+    restoration: RestorationSettings,
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     #[serde(default)]
@@ -451,6 +541,23 @@ impl AdjustmentGraph {
             && !(MIN_LOW_CUT_HERTZ..=MAX_LOW_CUT_HERTZ).contains(&effects.low_cut_hertz)
         {
             return Err(AdjustmentGraphError::LowCutOutOfRange);
+        }
+        let noise_reduction = effects.restoration.noise_reduction;
+        if noise_reduction.reduction_centibels > MAX_NOISE_REDUCTION_CENTIBELS
+            || noise_reduction.sensitivity_percent > MAX_NOISE_REDUCTION_SENSITIVITY_PERCENT
+            || !(MIN_NOISE_REDUCTION_SMOOTHING_MILLIS..=MAX_NOISE_REDUCTION_SMOOTHING_MILLIS)
+                .contains(&noise_reduction.smoothing_millis)
+        {
+            return Err(AdjustmentGraphError::NoiseReductionOutOfRange);
+        }
+        let de_esser = effects.restoration.de_esser;
+        if !(MIN_DE_ESSER_FREQUENCY_HERTZ..=MAX_DE_ESSER_FREQUENCY_HERTZ)
+            .contains(&de_esser.frequency_hertz)
+            || !(MIN_DE_ESSER_THRESHOLD_CENTIBELS..=MAX_DE_ESSER_THRESHOLD_CENTIBELS)
+                .contains(&de_esser.threshold_centibels)
+            || de_esser.reduction_centibels > MAX_DE_ESSER_REDUCTION_CENTIBELS
+        {
+            return Err(AdjustmentGraphError::DeEsserOutOfRange);
         }
         for band in effects.equalizer.bands {
             if !(MIN_EQ_GAIN_CENTIBELS..=MAX_EQ_GAIN_CENTIBELS).contains(&band.gain_centibels)
@@ -505,6 +612,7 @@ impl AdjustmentGraph {
             fade_out_curve: effects.fade_curves.fade_out,
             gain_centibels: effects.gain_centibels,
             low_cut_hertz: effects.low_cut_hertz,
+            restoration: effects.restoration,
             equalizer: effects.equalizer,
             compressor,
             reverb,
@@ -571,6 +679,11 @@ impl AdjustmentGraph {
     }
 
     #[must_use]
+    pub const fn restoration(self) -> RestorationSettings {
+        self.restoration
+    }
+
+    #[must_use]
     pub const fn equalizer(self) -> ParametricEqualizer {
         self.equalizer
     }
@@ -598,6 +711,8 @@ pub enum AdjustmentGraphError {
     OverlappingFades,
     GainOutOfRange,
     LowCutOutOfRange,
+    NoiseReductionOutOfRange,
+    DeEsserOutOfRange,
     EqualizerBandOutOfRange,
     CompressorOutOfRange,
     ReverbOutOfRange,
@@ -611,6 +726,10 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::OverlappingFades => "fade durations must fit inside the trim range",
             Self::GainOutOfRange => "gain must be between -24 dB and +12 dB",
             Self::LowCutOutOfRange => "low cut must be off or between 20 Hz and 240 Hz",
+            Self::NoiseReductionOutOfRange => {
+                "noise reduction parameters are outside the supported range"
+            }
+            Self::DeEsserOutOfRange => "de-esser parameters are outside the supported range",
             Self::EqualizerBandOutOfRange => {
                 "equalizer band frequency, Q, or gain is outside the supported range"
             }

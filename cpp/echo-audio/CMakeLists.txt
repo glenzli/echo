@@ -4,10 +4,12 @@ pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavut
 
 add_library(
     echo-audio STATIC
+    src/adaptive_noise_reducer.cpp
     src/analysis_proxy.cpp
     src/algorithmic_reverb.cpp
     src/adjustment.cpp
     src/decode.cpp
+    src/de_esser.cpp
     src/dynamics_processor.cpp
     src/k_weighting_filter.cpp
     src/low_cut_filter.cpp
@@ -48,6 +50,22 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(
+        echo-adaptive-noise-reducer-test
+        tests/adaptive_noise_reducer_test.cpp
+    )
+    target_link_libraries(echo-adaptive-noise-reducer-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-adaptive-noise-reducer-test)
+    add_test(NAME echo-adaptive-noise-reducer-test COMMAND echo-adaptive-noise-reducer-test)
+
+    add_executable(
+        echo-de-esser-test
+        tests/de_esser_test.cpp
+    )
+    target_link_libraries(echo-de-esser-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-de-esser-test)
+    add_test(NAME echo-de-esser-test COMMAND echo-de-esser-test)
+
     add_executable(
         echo-analysis-proxy-test
         tests/analysis_proxy_test.cpp

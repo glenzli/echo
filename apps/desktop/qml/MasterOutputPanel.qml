@@ -40,7 +40,7 @@ Rectangle {
             draft.fadeInMillis, draft.fadeOutMillis,
             draft.fadeInCurve, draft.fadeOutCurve,
             draft.gainCentibels, draft.lowCutHertz,
-            draft.equalizerBands, draft.compressorEnabled,
+            draft.restorationValue(), draft.equalizerBands, draft.compressorEnabled,
             draft.compressorThresholdCentibels, draft.compressorRatioTenths,
             draft.compressorAttackMillis, draft.compressorReleaseMillis,
             draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled,

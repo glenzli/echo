@@ -12,10 +12,12 @@ use std::{
 
 const ENGINE_SOURCES: &[&str] = &[
     "src/bridge/cxx_bridge.cpp",
+    "src/adaptive_noise_reducer.cpp",
     "src/analysis_proxy.cpp",
     "src/algorithmic_reverb.cpp",
     "src/adjustment.cpp",
     "src/decode.cpp",
+    "src/de_esser.cpp",
     "src/dynamics_processor.cpp",
     "src/k_weighting_filter.cpp",
     "src/low_cut_filter.cpp",
@@ -31,10 +33,12 @@ const ENGINE_SOURCES: &[&str] = &[
 ];
 
 const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
+    "include/echo/audio/adaptive_noise_reducer.hpp",
     "include/echo/audio/analysis_proxy.hpp",
     "include/echo/audio/algorithmic_reverb.hpp",
     "include/echo/audio/adjustment.hpp",
     "include/echo/audio/decode.hpp",
+    "include/echo/audio/de_esser.hpp",
     "include/echo/audio/dynamics_processor.hpp",
     "include/echo/audio/k_weighting_filter.hpp",
     "include/echo/audio/low_cut_filter.hpp",

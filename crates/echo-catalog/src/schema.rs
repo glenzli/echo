@@ -98,18 +98,26 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 5);
+    CatalogSchemaRevision::new(20_260_811, 6);
 pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 4);
+    CatalogSchemaRevision::new(20_260_811, 5);
 pub(crate) const OLDER_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 3);
+    CatalogSchemaRevision::new(20_260_811, 4);
 pub(crate) const OLDEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 2);
+    CatalogSchemaRevision::new(20_260_811, 3);
 pub(crate) const ANCIENT_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 2);
+pub(crate) const PRIMITIVE_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 6);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 7);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.6-semantic-search";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.7-restoration-chain";
+
+pub(crate) const RESTORATION_CHAIN_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN restoration_json TEXT NOT NULL DEFAULT
+    '{"noise_reduction":{"enabled":false,"reduction_centibels":900,"sensitivity_percent":50,"smoothing_millis":240},"de_esser":{"enabled":false,"frequency_hertz":6500,"threshold_centibels":-2400,"reduction_centibels":600}}';
+"#;
 
 pub(crate) const SEMANTIC_SEARCH_MIGRATION_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS semantic_documents (
@@ -433,6 +441,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            CHECK (compressor_makeup_centibels BETWEEN 0 AND 2400),
     reverb_json             TEXT NOT NULL DEFAULT
                            '{\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
+    restoration_json        TEXT NOT NULL DEFAULT
+                           '{\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
     limiter_enabled        INTEGER NOT NULL DEFAULT 0
                            CHECK (limiter_enabled IN (0, 1)),
     limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100

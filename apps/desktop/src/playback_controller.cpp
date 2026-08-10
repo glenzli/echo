@@ -13,6 +13,7 @@
 
 #include "parametric_equalizer_projection.hpp"
 #include "playback_adjustment_projection.hpp"
+#include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
 
 PlaybackController::PlaybackController(QObject* parent) : QObject(parent) {
@@ -47,6 +48,7 @@ void PlaybackController::playAdjusted(
     int fadeOutCurve,
     int gainCentibels,
     int lowCutHertz,
+    const QVariantMap& restorationValue,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
@@ -68,6 +70,7 @@ void PlaybackController::playAdjusted(
         fadeOutCurve,
         gainCentibels,
         lowCutHertz,
+        restorationValue,
         equalizerBands,
         compressorEnabled,
         compressorThresholdCentibels,
@@ -85,6 +88,21 @@ void PlaybackController::playAdjusted(
         return;
     }
     startSession(path, *adjustment);
+}
+
+bool PlaybackController::updateRestoration(const QVariantMap& restorationValue) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto restoration = RestorationProjection::fromQml(restorationValue);
+    if (session == nullptr || !restoration.has_value()) {
+        return false;
+    }
+    try {
+        session->update_restoration(*restoration);
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback restoration: %s", error.what());
+        return false;
+    }
+    return true;
 }
 
 bool PlaybackController::updateReverb(const QVariantMap& reverbValue) {

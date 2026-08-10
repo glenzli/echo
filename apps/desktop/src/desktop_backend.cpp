@@ -126,6 +126,32 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("fadeOutCurve"), static_cast<int>(asset.fade_out_curve));
         entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
         entry.insert(QStringLiteral("lowCutHertz"), static_cast<int>(asset.low_cut_hertz));
+        entry.insert(QStringLiteral("noiseReductionEnabled"), asset.noise_reduction_enabled);
+        entry.insert(
+            QStringLiteral("noiseReductionCentibels"),
+            static_cast<int>(asset.noise_reduction_centibels)
+        );
+        entry.insert(
+            QStringLiteral("noiseReductionSensitivityPercent"),
+            static_cast<int>(asset.noise_reduction_sensitivity_percent)
+        );
+        entry.insert(
+            QStringLiteral("noiseReductionSmoothingMillis"),
+            static_cast<int>(asset.noise_reduction_smoothing_millis)
+        );
+        entry.insert(QStringLiteral("deEsserEnabled"), asset.de_esser_enabled);
+        entry.insert(
+            QStringLiteral("deEsserFrequencyHertz"),
+            static_cast<int>(asset.de_esser_frequency_hertz)
+        );
+        entry.insert(
+            QStringLiteral("deEsserThresholdCentibels"),
+            static_cast<int>(asset.de_esser_threshold_centibels)
+        );
+        entry.insert(
+            QStringLiteral("deEsserReductionCentibels"),
+            static_cast<int>(asset.de_esser_reduction_centibels)
+        );
         entry.insert(QStringLiteral("equalizerBands"), equalizerBandsForQml(asset.equalizer_bands));
         entry.insert(QStringLiteral("compressorEnabled"), asset.compressor_enabled);
         entry.insert(
@@ -399,6 +425,14 @@ bool DesktopBackend::setAssetAdjustment(
     int fadeOutCurve,
     int gainCentibels,
     int lowCutHertz,
+    bool noiseReductionEnabled,
+    int noiseReductionCentibels,
+    int noiseReductionSensitivityPercent,
+    int noiseReductionSmoothingMillis,
+    bool deEsserEnabled,
+    int deEsserFrequencyHertz,
+    int deEsserThresholdCentibels,
+    int deEsserReductionCentibels,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
@@ -422,6 +456,12 @@ bool DesktopBackend::setAssetAdjustment(
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200
         || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
+        || noiseReductionCentibels < 0 || noiseReductionCentibels > 2400
+        || noiseReductionSensitivityPercent < 0 || noiseReductionSensitivityPercent > 100
+        || noiseReductionSmoothingMillis < 20 || noiseReductionSmoothingMillis > 1000
+        || deEsserFrequencyHertz < 3000 || deEsserFrequencyHertz > 12000
+        || deEsserThresholdCentibels < -6000 || deEsserThresholdCentibels > 0
+        || deEsserReductionCentibels < 0 || deEsserReductionCentibels > 1800
         || compressorThresholdCentibels < -6000 || compressorThresholdCentibels > 0
         || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
         || compressorAttackMillis > 200 || compressorReleaseMillis < 20
@@ -447,6 +487,18 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.fade_out_curve = static_cast<std::uint8_t>(fadeOutCurve);
         adjustment.gain_centibels = static_cast<std::int16_t>(gainCentibels);
         adjustment.low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz);
+        adjustment.noise_reduction_enabled = noiseReductionEnabled;
+        adjustment.noise_reduction_centibels = static_cast<std::uint16_t>(noiseReductionCentibels);
+        adjustment.noise_reduction_sensitivity_percent =
+            static_cast<std::uint8_t>(noiseReductionSensitivityPercent);
+        adjustment.noise_reduction_smoothing_millis =
+            static_cast<std::uint16_t>(noiseReductionSmoothingMillis);
+        adjustment.de_esser_enabled = deEsserEnabled;
+        adjustment.de_esser_frequency_hertz = static_cast<std::uint16_t>(deEsserFrequencyHertz);
+        adjustment.de_esser_threshold_centibels =
+            static_cast<std::int16_t>(deEsserThresholdCentibels);
+        adjustment.de_esser_reduction_centibels =
+            static_cast<std::uint16_t>(deEsserReductionCentibels);
         if (!appendEqualizerBands(equalizerBands, adjustment.equalizer_bands)) {
             qWarning("parametric equalizer is outside the supported range");
             return false;

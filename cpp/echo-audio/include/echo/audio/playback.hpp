@@ -65,6 +65,8 @@ class PlaybackSession {
     /// session. The producer coalesces rapid updates and crossfades filter
     /// state before the audio reaches the realtime ring.
     void update_equalizer(ParametricEqualizerAdjustment adjustment);
+    /// Publishes latest-wins restoration targets without restarting playback.
+    void update_restoration(RestorationAdjustment adjustment);
     /// Publishes a latest-wins compressor target. The producer applies it to
     /// the persistent detector without restarting playback.
     void update_compressor(CompressorAdjustment adjustment);

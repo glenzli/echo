@@ -99,6 +99,17 @@ PreparedAdjustment::PreparedAdjustment(
             || authored.low_cut_hertz > kMaximumLowCutHertz)) {
         throw std::invalid_argument("adjustment low cut is outside the supported range");
     }
+    const NoiseReductionAdjustment noise_reduction = authored.restoration.noise_reduction;
+    if (noise_reduction.reduction_centibels > 2400 || noise_reduction.sensitivity_percent > 100
+        || noise_reduction.smoothing_millis < 20 || noise_reduction.smoothing_millis > 1000) {
+        throw std::invalid_argument("adjustment noise reduction is outside the supported range");
+    }
+    const DeEsserAdjustment de_esser = authored.restoration.de_esser;
+    if (de_esser.frequency_hertz < 3000 || de_esser.frequency_hertz > 12000
+        || de_esser.threshold_centibels < -6000 || de_esser.threshold_centibels > 0
+        || de_esser.reduction_centibels > 1800) {
+        throw std::invalid_argument("adjustment de-esser is outside the supported range");
+    }
     for (const ParametricEqualizerBand& band : authored.equalizer.bands) {
         if (band.gain_centibels < kMinimumEqualizerGainCentibels
             || band.gain_centibels > kMaximumEqualizerGainCentibels
@@ -148,6 +159,7 @@ PreparedAdjustment::PreparedAdjustment(
     fade_out_curve_ = authored.fade_out_curve;
     gain_amplitude_ = std::pow(10.0F, static_cast<float>(authored.gain_centibels) / 2000.0F);
     low_cut_hertz_ = authored.low_cut_hertz;
+    restoration_ = authored.restoration;
     equalizer_ = authored.equalizer;
     compressor_ = authored.compressor;
     reverb_ = authored.reverb;
@@ -172,6 +184,10 @@ std::uint64_t PreparedAdjustment::trim_end_millis() const {
 
 std::uint16_t PreparedAdjustment::low_cut_hertz() const {
     return low_cut_hertz_;
+}
+
+RestorationAdjustment PreparedAdjustment::restoration() const {
+    return restoration_;
 }
 
 ParametricEqualizerAdjustment PreparedAdjustment::equalizer() const {

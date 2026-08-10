@@ -40,6 +40,7 @@ class RenderExportController : public QObject {
         int fadeOutCurve,
         int gainCentibels,
         int lowCutHertz,
+        const QVariantMap& restoration,
         const QVariantList& equalizerBands,
         bool compressorEnabled,
         int compressorThresholdCentibels,

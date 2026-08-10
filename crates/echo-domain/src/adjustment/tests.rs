@@ -13,6 +13,20 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             -350,
             80,
         )
+        .with_restoration(RestorationSettings {
+            noise_reduction: NoiseReductionSettings {
+                enabled: true,
+                reduction_centibels: 1_200,
+                sensitivity_percent: 62,
+                smoothing_millis: 320,
+            },
+            de_esser: DeEsserSettings {
+                enabled: true,
+                frequency_hertz: 7_200,
+                threshold_centibels: -2_800,
+                reduction_centibels: 750,
+            },
+        })
         .with_equalizer(ParametricEqualizer::from_legacy_gains(250, -175, 400))
         .with_compressor(CompressorSettings {
             enabled: true,
@@ -47,6 +61,11 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.fade_out_curve(), FadeCurve::EqualPower);
     assert_eq!(graph.gain_centibels(), -350);
     assert_eq!(graph.low_cut_hertz(), 80);
+    assert_eq!(
+        graph.restoration().noise_reduction.reduction_centibels,
+        1_200
+    );
+    assert_eq!(graph.restoration().de_esser.frequency_hertz, 7_200);
     assert_eq!(
         graph.equalizer(),
         ParametricEqualizer::from_legacy_gains(250, -175, 400)
@@ -155,5 +174,32 @@ fn graph_rejects_out_of_source_and_overlapping_envelopes() {
             }),
         ),
         Err(AdjustmentGraphError::LimiterOutOfRange)
+    );
+}
+
+#[test]
+fn graph_rejects_restoration_parameters_outside_the_authored_contract() {
+    let invalid_noise = AdjustmentEffects::default().with_restoration(RestorationSettings {
+        noise_reduction: NoiseReductionSettings {
+            smoothing_millis: MIN_NOISE_REDUCTION_SMOOTHING_MILLIS - 1,
+            ..NoiseReductionSettings::default()
+        },
+        ..RestorationSettings::default()
+    });
+    assert_eq!(
+        AdjustmentGraph::new(1_000, 0, 1_000, 0, 0, invalid_noise),
+        Err(AdjustmentGraphError::NoiseReductionOutOfRange)
+    );
+
+    let invalid_de_esser = AdjustmentEffects::default().with_restoration(RestorationSettings {
+        de_esser: DeEsserSettings {
+            frequency_hertz: MIN_DE_ESSER_FREQUENCY_HERTZ - 1,
+            ..DeEsserSettings::default()
+        },
+        ..RestorationSettings::default()
+    });
+    assert_eq!(
+        AdjustmentGraph::new(1_000, 0, 1_000, 0, 0, invalid_de_esser),
+        Err(AdjustmentGraphError::DeEsserOutOfRange)
     );
 }

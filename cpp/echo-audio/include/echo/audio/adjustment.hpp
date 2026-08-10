@@ -54,6 +54,25 @@ struct CompressorAdjustment {
     std::int16_t makeup_centibels = 0;
 };
 
+struct NoiseReductionAdjustment {
+    bool enabled = false;
+    std::uint16_t reduction_centibels = 900;
+    std::uint8_t sensitivity_percent = 50;
+    std::uint16_t smoothing_millis = 240;
+};
+
+struct DeEsserAdjustment {
+    bool enabled = false;
+    std::uint16_t frequency_hertz = 6500;
+    std::int16_t threshold_centibels = -2400;
+    std::uint16_t reduction_centibels = 600;
+};
+
+struct RestorationAdjustment {
+    NoiseReductionAdjustment noise_reduction;
+    DeEsserAdjustment de_esser;
+};
+
 /// Stereo-linked final-output peak limiter intent.
 struct LimiterAdjustment {
     bool enabled = false;
@@ -86,6 +105,7 @@ struct PlaybackAdjustment {
     std::int16_t gain_centibels = 0;
     /// High-pass cutoff in hertz, or zero when disabled.
     std::uint16_t low_cut_hertz = 0;
+    RestorationAdjustment restoration;
     ParametricEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
     ReverbAdjustment reverb;
@@ -109,6 +129,7 @@ class PreparedAdjustment {
     [[nodiscard]] std::uint64_t trim_start_millis() const;
     [[nodiscard]] std::uint64_t trim_end_millis() const;
     [[nodiscard]] std::uint16_t low_cut_hertz() const;
+    [[nodiscard]] RestorationAdjustment restoration() const;
     [[nodiscard]] ParametricEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] ReverbAdjustment reverb() const;
@@ -129,6 +150,7 @@ class PreparedAdjustment {
     FadeCurve fade_out_curve_ = FadeCurve::Linear;
     float gain_amplitude_ = 1.0F;
     std::uint16_t low_cut_hertz_ = 0;
+    RestorationAdjustment restoration_;
     ParametricEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
     ReverbAdjustment reverb_;

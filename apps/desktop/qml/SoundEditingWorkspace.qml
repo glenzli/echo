@@ -74,6 +74,13 @@ Rectangle {
     function adjustmentKey() : string {
         return playbackBaseAdjustmentKey() + ":"
             + JSON.stringify(auditionOriginal
+                ? { noiseEnabled: false, noiseReductionCentibels: 900,
+                    noiseSensitivityPercent: 50, noiseSmoothingMillis: 240,
+                    deEsserEnabled: false, deEsserFrequencyHertz: 6500,
+                    deEsserThresholdCentibels: -2400,
+                    deEsserReductionCentibels: 600 }
+                : adjustmentDraft.restorationValue()) + ":"
+            + JSON.stringify(auditionOriginal
                 ? adjustmentDraft.defaultEqualizerBands()
                 : adjustmentDraft.equalizerBands) + ":"
             + (auditionOriginal ? false : adjustmentDraft.compressorEnabled) + ":"
@@ -109,6 +116,14 @@ Rectangle {
                             auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve,
                             auditionOriginal ? 0 : adjustmentDraft.gainCentibels,
                             auditionOriginal ? 0 : adjustmentDraft.lowCutHertz,
+                            auditionOriginal
+                                ? { noiseEnabled: false, noiseReductionCentibels: 900,
+                                    noiseSensitivityPercent: 50,
+                                    noiseSmoothingMillis: 240, deEsserEnabled: false,
+                                    deEsserFrequencyHertz: 6500,
+                                    deEsserThresholdCentibels: -2400,
+                                    deEsserReductionCentibels: 600 }
+                                : adjustmentDraft.restorationValue(),
                             auditionOriginal
                                 ? adjustmentDraft.defaultEqualizerBands()
                                 : adjustmentDraft.equalizerBands,
@@ -242,6 +257,10 @@ Rectangle {
 
         onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut,
                                   fadeInCurve, fadeOutCurve, gain, lowCut,
+                                  noiseEnabled, noiseReduction,
+                                  noiseSensitivity, noiseSmoothing,
+                                  deEsserEnabled, deEsserFrequency,
+                                  deEsserThreshold, deEsserReduction,
                                   equalizerBands,
                                   compressorEnabled, compressorThreshold,
                                   compressorRatio, compressorAttack,
@@ -254,6 +273,10 @@ Rectangle {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                            fadeIn, fadeOut, fadeInCurve,
                                            fadeOutCurve, gain, lowCut,
+                                           noiseEnabled, noiseReduction,
+                                           noiseSensitivity, noiseSmoothing,
+                                           deEsserEnabled, deEsserFrequency,
+                                           deEsserThreshold, deEsserReduction,
                                            equalizerBands,
                                            compressorEnabled, compressorThreshold,
                                            compressorRatio, compressorAttack,
@@ -285,6 +308,14 @@ Rectangle {
         function onEqualizerBandsChanged() : void {
             workspace.scheduleEffectsPreview()
         }
+        function onNoiseReductionEnabledChanged() : void { workspace.scheduleEffectsPreview() }
+        function onNoiseReductionCentibelsChanged() : void { workspace.scheduleEffectsPreview() }
+        function onNoiseReductionSensitivityPercentChanged() : void { workspace.scheduleEffectsPreview() }
+        function onNoiseReductionSmoothingMillisChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeEsserEnabledChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeEsserFrequencyHertzChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeEsserThresholdCentibelsChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeEsserReductionCentibelsChanged() : void { workspace.scheduleEffectsPreview() }
         function onCompressorEnabledChanged() : void {
             workspace.scheduleEffectsPreview()
         }
@@ -336,6 +367,8 @@ Rectangle {
             }
             const equalizerUpdated = player.updateEqualizer(
                 adjustmentDraft.equalizerBands)
+            const restorationUpdated = player.updateRestoration(
+                adjustmentDraft.restorationValue())
             const compressorUpdated = player.updateCompressor(
                 adjustmentDraft.compressorEnabled,
                 adjustmentDraft.compressorThresholdCentibels,
@@ -348,7 +381,8 @@ Rectangle {
                 adjustmentDraft.limiterCeilingCentibels,
                 adjustmentDraft.limiterReleaseMillis)
             const reverbUpdated = player.updateReverb(adjustmentDraft.reverbValue())
-            if (equalizerUpdated && compressorUpdated && reverbUpdated && limiterUpdated) {
+            if (restorationUpdated && equalizerUpdated && compressorUpdated
+                    && reverbUpdated && limiterUpdated) {
                 workspace.loadedAdjustmentKey = workspace.adjustmentKey()
             }
         }

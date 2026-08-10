@@ -17,6 +17,14 @@ QtObject {
     property int fadeOutCurve: 0
     property int gainCentibels: 0
     property int lowCutHertz: 0
+    property bool noiseReductionEnabled: false
+    property int noiseReductionCentibels: 900
+    property int noiseReductionSensitivityPercent: 50
+    property int noiseReductionSmoothingMillis: 240
+    property bool deEsserEnabled: false
+    property int deEsserFrequencyHertz: 6500
+    property int deEsserThresholdCentibels: -2400
+    property int deEsserReductionCentibels: 600
     property var equalizerBands: defaultEqualizerBands()
     property bool compressorEnabled: false
     property int compressorThresholdCentibels: -1800
@@ -54,6 +62,7 @@ QtObject {
         && fadeInMillis === 0 && fadeOutMillis === 0
         && fadeInCurve === 0 && fadeOutCurve === 0
         && gainCentibels === 0 && lowCutHertz === 0
+        && !noiseReductionEnabled && !deEsserEnabled
         && equalizerIsFlat()
         && !compressorEnabled
         && !reverbEnabled
@@ -64,6 +73,10 @@ QtObject {
                          int fadeIn, int fadeOut,
                          int fadeInCurve, int fadeOutCurve,
                          int gain, int lowCut,
+                         bool noiseEnabled, int noiseReduction,
+                         int noiseSensitivity, int noiseSmoothing,
+                         bool deEsserEnabled, int deEsserFrequency,
+                         int deEsserThreshold, int deEsserReduction,
                          var equalizerBands,
                          bool compressorEnabled, int compressorThreshold,
                          int compressorRatio, int compressorAttack,
@@ -151,6 +164,14 @@ QtObject {
             fadeOutCurve: fadeOutCurve,
             gainCentibels: gainCentibels,
             lowCutHertz: lowCutHertz,
+            noiseReductionEnabled: noiseReductionEnabled,
+            noiseReductionCentibels: noiseReductionCentibels,
+            noiseReductionSensitivityPercent: noiseReductionSensitivityPercent,
+            noiseReductionSmoothingMillis: noiseReductionSmoothingMillis,
+            deEsserEnabled: deEsserEnabled,
+            deEsserFrequencyHertz: deEsserFrequencyHertz,
+            deEsserThresholdCentibels: deEsserThresholdCentibels,
+            deEsserReductionCentibels: deEsserReductionCentibels,
             equalizerBands: copyEqualizerBands(equalizerBands),
             compressorEnabled: compressorEnabled,
             compressorThresholdCentibels: compressorThresholdCentibels,
@@ -182,6 +203,14 @@ QtObject {
             fadeOutCurve: Number(value.fadeOutCurve),
             gainCentibels: Number(value.gainCentibels),
             lowCutHertz: Number(value.lowCutHertz),
+            noiseReductionEnabled: Boolean(value.noiseReductionEnabled),
+            noiseReductionCentibels: Number(value.noiseReductionCentibels),
+            noiseReductionSensitivityPercent: Number(value.noiseReductionSensitivityPercent),
+            noiseReductionSmoothingMillis: Number(value.noiseReductionSmoothingMillis),
+            deEsserEnabled: Boolean(value.deEsserEnabled),
+            deEsserFrequencyHertz: Number(value.deEsserFrequencyHertz),
+            deEsserThresholdCentibels: Number(value.deEsserThresholdCentibels),
+            deEsserReductionCentibels: Number(value.deEsserReductionCentibels),
             equalizerBands: copyEqualizerBands(value.equalizerBands),
             compressorEnabled: Boolean(value.compressorEnabled),
             compressorThresholdCentibels: Number(value.compressorThresholdCentibels),
@@ -213,6 +242,14 @@ QtObject {
             && Number(left.fadeOutCurve) === Number(right.fadeOutCurve)
             && Number(left.gainCentibels) === Number(right.gainCentibels)
             && Number(left.lowCutHertz) === Number(right.lowCutHertz)
+            && Boolean(left.noiseReductionEnabled) === Boolean(right.noiseReductionEnabled)
+            && Number(left.noiseReductionCentibels) === Number(right.noiseReductionCentibels)
+            && Number(left.noiseReductionSensitivityPercent) === Number(right.noiseReductionSensitivityPercent)
+            && Number(left.noiseReductionSmoothingMillis) === Number(right.noiseReductionSmoothingMillis)
+            && Boolean(left.deEsserEnabled) === Boolean(right.deEsserEnabled)
+            && Number(left.deEsserFrequencyHertz) === Number(right.deEsserFrequencyHertz)
+            && Number(left.deEsserThresholdCentibels) === Number(right.deEsserThresholdCentibels)
+            && Number(left.deEsserReductionCentibels) === Number(right.deEsserReductionCentibels)
             && sameEqualizer(left.equalizerBands, right.equalizerBands)
             && Boolean(left.compressorEnabled)
                 === Boolean(right.compressorEnabled)
@@ -248,6 +285,14 @@ QtObject {
                 fadeInMillis: 0, fadeOutMillis: 0,
                 fadeInCurve: 0, fadeOutCurve: 0,
                 gainCentibels: 0, lowCutHertz: 0,
+                noiseReductionEnabled: false,
+                noiseReductionCentibels: 900,
+                noiseReductionSensitivityPercent: 50,
+                noiseReductionSmoothingMillis: 240,
+                deEsserEnabled: false,
+                deEsserFrequencyHertz: 6500,
+                deEsserThresholdCentibels: -2400,
+                deEsserReductionCentibels: 600,
                 equalizerBands: defaultEqualizerBands(),
                 compressorEnabled: false,
                 compressorThresholdCentibels: -1800,
@@ -280,6 +325,14 @@ QtObject {
             gainCentibels: clamp(Number(asset.gainCentibels), -2400, 1200),
             lowCutHertz: Number(asset.lowCutHertz) === 0 ? 0
                 : clamp(Number(asset.lowCutHertz), 20, 240),
+            noiseReductionEnabled: Boolean(asset.noiseReductionEnabled),
+            noiseReductionCentibels: clamp(Number(asset.noiseReductionCentibels ?? 900), 0, 2400),
+            noiseReductionSensitivityPercent: clamp(Number(asset.noiseReductionSensitivityPercent ?? 50), 0, 100),
+            noiseReductionSmoothingMillis: clamp(Number(asset.noiseReductionSmoothingMillis ?? 240), 20, 1000),
+            deEsserEnabled: Boolean(asset.deEsserEnabled),
+            deEsserFrequencyHertz: clamp(Number(asset.deEsserFrequencyHertz ?? 6500), 3000, 12000),
+            deEsserThresholdCentibels: clamp(Number(asset.deEsserThresholdCentibels ?? -2400), -6000, 0),
+            deEsserReductionCentibels: clamp(Number(asset.deEsserReductionCentibels ?? 600), 0, 1800),
             equalizerBands: copyEqualizerBands(asset.equalizerBands),
             compressorEnabled: Boolean(asset.compressorEnabled),
             compressorThresholdCentibels: clamp(
@@ -324,6 +377,14 @@ QtObject {
         fadeOutCurve = Number(value.fadeOutCurve)
         gainCentibels = Number(value.gainCentibels)
         lowCutHertz = Number(value.lowCutHertz)
+        noiseReductionEnabled = Boolean(value.noiseReductionEnabled)
+        noiseReductionCentibels = Number(value.noiseReductionCentibels)
+        noiseReductionSensitivityPercent = Number(value.noiseReductionSensitivityPercent)
+        noiseReductionSmoothingMillis = Number(value.noiseReductionSmoothingMillis)
+        deEsserEnabled = Boolean(value.deEsserEnabled)
+        deEsserFrequencyHertz = Number(value.deEsserFrequencyHertz)
+        deEsserThresholdCentibels = Number(value.deEsserThresholdCentibels)
+        deEsserReductionCentibels = Number(value.deEsserReductionCentibels)
         equalizerBands = copyEqualizerBands(value.equalizerBands)
         compressorEnabled = Boolean(value.compressorEnabled)
         compressorThresholdCentibels = Number(value.compressorThresholdCentibels)
@@ -431,6 +492,50 @@ QtObject {
 
     function setLowCut(hertz: int) : void {
         lowCutHertz = hertz === 0 ? 0 : Math.round(clamp(hertz, 20, 240))
+        pushCurrent()
+    }
+
+    function restorationValue() : var {
+        return {
+            noiseEnabled: noiseReductionEnabled,
+            noiseReductionCentibels: noiseReductionCentibels,
+            noiseSensitivityPercent: noiseReductionSensitivityPercent,
+            noiseSmoothingMillis: noiseReductionSmoothingMillis,
+            deEsserEnabled: deEsserEnabled,
+            deEsserFrequencyHertz: deEsserFrequencyHertz,
+            deEsserThresholdCentibels: deEsserThresholdCentibels,
+            deEsserReductionCentibels: deEsserReductionCentibels
+        }
+    }
+
+    function setRestorationParameter(parameter: string, value: int) : void {
+        if (parameter === "noiseReduction") {
+            noiseReductionCentibels = Math.round(clamp(value, 0, 2400))
+        } else if (parameter === "noiseSensitivity") {
+            noiseReductionSensitivityPercent = Math.round(clamp(value, 0, 100))
+        } else if (parameter === "noiseSmoothing") {
+            noiseReductionSmoothingMillis = Math.round(clamp(value, 20, 1000))
+        } else if (parameter === "deEsserFrequency") {
+            deEsserFrequencyHertz = Math.round(clamp(value, 3000, 12000))
+        } else if (parameter === "deEsserThreshold") {
+            deEsserThresholdCentibels = Math.round(clamp(value, -6000, 0))
+        } else if (parameter === "deEsserReduction") {
+            deEsserReductionCentibels = Math.round(clamp(value, 0, 1800))
+        } else {
+            return
+        }
+        pushCurrent()
+    }
+
+    function resetRestoration() : void {
+        noiseReductionEnabled = false
+        noiseReductionCentibels = 900
+        noiseReductionSensitivityPercent = 50
+        noiseReductionSmoothingMillis = 240
+        deEsserEnabled = false
+        deEsserFrequencyHertz = 6500
+        deEsserThresholdCentibels = -2400
+        deEsserReductionCentibels = 600
         pushCurrent()
     }
 
@@ -573,6 +678,14 @@ QtObject {
             fadeOutCurve: 0,
             gainCentibels: 0,
             lowCutHertz: 0,
+            noiseReductionEnabled: false,
+            noiseReductionCentibels: 900,
+            noiseReductionSensitivityPercent: 50,
+            noiseReductionSmoothingMillis: 240,
+            deEsserEnabled: false,
+            deEsserFrequencyHertz: 6500,
+            deEsserThresholdCentibels: -2400,
+            deEsserReductionCentibels: 600,
             equalizerBands: defaultEqualizerBands(),
             compressorEnabled: false,
             compressorThresholdCentibels: -1800,
@@ -604,7 +717,12 @@ QtObject {
         if (!asset || !dirty) return
         saveRequested(trimStartMillis, trimEndMillis,
             fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve,
-            gainCentibels, lowCutHertz, copyEqualizerBands(equalizerBands),
+            gainCentibels, lowCutHertz,
+            noiseReductionEnabled, noiseReductionCentibels,
+            noiseReductionSensitivityPercent, noiseReductionSmoothingMillis,
+            deEsserEnabled, deEsserFrequencyHertz,
+            deEsserThresholdCentibels, deEsserReductionCentibels,
+            copyEqualizerBands(equalizerBands),
             compressorEnabled,
             compressorThresholdCentibels, compressorRatioTenths,
             compressorAttackMillis, compressorReleaseMillis,

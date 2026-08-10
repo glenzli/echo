@@ -5,6 +5,11 @@
     <name>AdvancedEffectsRack</name>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="40"/>
+        <source>Restore</source>
+        <translation>修复</translation>
+    </message>
+    <message>
+        <location filename="../qml/AdvancedEffectsRack.qml" line="40"/>
         <source>EQ</source>
         <translation>均衡</translation>
     </message>
@@ -1549,6 +1554,69 @@
         <location filename="../qml/SoundWallBottomBar.qml" line="124"/>
         <source>Open advanced filters</source>
         <translation>打开复合筛选</translation>
+    </message>
+</context>
+<context>
+    <name>RestorationPanel</name>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="39"/>
+        <source>Restoration</source>
+        <translation>声音修复</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="51"/>
+        <source>Reset restoration</source>
+        <translation>重置修复</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="70"/>
+        <source>Adaptive noise reduction</source>
+        <translation>自适应降噪</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="100"/>
+        <source>Reduction</source>
+        <translation>降噪量</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="111"/>
+        <source>Sensitivity</source>
+        <translation>灵敏度</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="122"/>
+        <source>Release</source>
+        <translation>释放</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="134"/>
+        <source>Smoothly lowers steady background noise between foreground sounds.</source>
+        <translation>在前景声音的间隙中平滑降低稳定背景噪声。</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="153"/>
+        <source>De-esser</source>
+        <translation>去齿音</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="183"/>
+        <source>Frequency</source>
+        <translation>频率</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="194"/>
+        <source>Threshold</source>
+        <translation>阈值</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="205"/>
+        <source>Limit</source>
+        <translation>衰减上限</translation>
+    </message>
+    <message>
+        <location filename="../qml/RestorationPanel.qml" line="217"/>
+        <source>Softens harsh sibilance without turning down the whole voice.</source>
+        <translation>柔化刺耳齿音，同时不压低整段人声。</translation>
     </message>
 </context>
 <context>

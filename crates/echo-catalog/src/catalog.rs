@@ -12,9 +12,10 @@ use crate::{
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION, CatalogSchemaRevision,
         LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
-        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
-        SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION, SEMANTIC_SEARCH_MIGRATION_SQL,
-        USER_ALBUMS_MIGRATION_SQL,
+        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
+        PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
+        RESTORATION_CHAIN_MIGRATION_SQL, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
+        SEMANTIC_SEARCH_MIGRATION_SQL, USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -95,33 +96,40 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_semantic_search_schema(connection)?;
+            migrate_restoration_chain_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == LEGACY_SCHEMA_VERSION) =>
         {
-            migrate_long_audio_schema(connection)?;
+            migrate_semantic_search_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == OLDER_COMPATIBLE_SCHEMA_VERSION) =>
         {
-            migrate_user_albums_and_long_audio(connection)?;
+            migrate_long_audio_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == OLDEST_COMPATIBLE_SCHEMA_VERSION) =>
         {
-            migrate_render_exports_user_albums_and_long_audio(connection)?;
+            migrate_user_albums_and_long_audio(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == ANCIENT_COMPATIBLE_SCHEMA_VERSION) =>
+        {
+            migrate_render_exports_user_albums_and_long_audio(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == PRIMITIVE_COMPATIBLE_SCHEMA_VERSION) =>
         {
             migrate_adjustment_effects_render_exports_user_albums_and_long_audio(connection)?;
         }
@@ -139,9 +147,18 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
+fn migrate_restoration_chain_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_restoration_chain_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
 fn migrate_semantic_search_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
+    apply_restoration_chain_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -151,6 +168,7 @@ fn migrate_long_audio_schema(connection: &Connection) -> Result<(), CatalogError
     let transaction = connection.unchecked_transaction()?;
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
+    apply_restoration_chain_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -161,6 +179,7 @@ fn migrate_user_albums_and_long_audio(connection: &Connection) -> Result<(), Cat
     transaction.execute_batch(USER_ALBUMS_MIGRATION_SQL)?;
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
+    apply_restoration_chain_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -174,6 +193,7 @@ fn migrate_render_exports_user_albums_and_long_audio(
     transaction.execute_batch(USER_ALBUMS_MIGRATION_SQL)?;
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
+    apply_restoration_chain_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -188,6 +208,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
     transaction.execute_batch(USER_ALBUMS_MIGRATION_SQL)?;
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
+    apply_restoration_chain_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -203,6 +224,21 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_restoration_chain_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'restoration_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    if column_count == 0 {
+        transaction.execute_batch(RESTORATION_CHAIN_MIGRATION_SQL)?;
+    }
     Ok(())
 }
 
