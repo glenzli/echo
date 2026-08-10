@@ -11,15 +11,21 @@ pub use responses::{
     CONTEXTUAL_INTENT, ContextualIntent, ContextualResponse, MAX_CONTEXTUAL_INPUT_BYTES,
 };
 
-use std::{collections::BTreeMap, fmt, path::Path, time::Duration};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    path::Path,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use ureq::unversioned::multipart::Form;
 
-use crate::TranscriptPayload;
+use crate::{TranscriptPayload, infer_runtime_discovery::EndpointResolver};
 
-pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.1";
+pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.2";
 pub const TRANSCRIPTION_INTENT: &str = "audio.transcribe";
 pub const ALIGNMENT_INTENT: &str = "audio.align";
 pub const MAX_AUDIO_UPLOAD_BYTES: u64 = 25 * 1024 * 1024;
@@ -266,12 +272,17 @@ impl InferRuntimeError {
 #[derive(Debug, Clone)]
 pub struct InferRuntimeClient {
     config: InferRuntimeConfig,
+    endpoint_resolver: Arc<Mutex<EndpointResolver>>,
 }
 
 impl InferRuntimeClient {
     #[must_use]
-    pub const fn new(config: InferRuntimeConfig) -> Self {
-        Self { config }
+    pub fn new(config: InferRuntimeConfig) -> Self {
+        let endpoint_resolver = Arc::new(Mutex::new(EndpointResolver::new(&config.base_url)));
+        Self {
+            config,
+            endpoint_resolver,
+        }
     }
 
     /// Discovers and verifies the immutable candidate contract.
@@ -284,10 +295,12 @@ impl InferRuntimeClient {
         let response = ureq::get(&url)
             .config()
             .timeout_global(Some(Duration::from_secs(3)))
+            .proxy(None)
+            .max_redirects(0)
             .http_status_as_error(false)
             .build()
             .call()
-            .map_err(transport_error)?;
+            .map_err(|error| self.transport_error(error))?;
         let (_, body) = checked_json_response(response)?;
         let manifest: ContractManifest = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
@@ -435,10 +448,12 @@ impl InferRuntimeClient {
             .header("Authorization", self.authorization())
             .config()
             .timeout_global(Some(Duration::from_secs(5)))
+            .proxy(None)
+            .max_redirects(0)
             .http_status_as_error(false)
             .build()
             .call()
-            .map_err(transport_error)?;
+            .map_err(|error| self.transport_error(error))?;
         let (_, body) = checked_json_response(response)?;
         serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
@@ -455,10 +470,12 @@ impl InferRuntimeClient {
             .header("Authorization", self.authorization())
             .config()
             .timeout_global(Some(Duration::from_mins(30)))
+            .proxy(None)
+            .max_redirects(0)
             .http_status_as_error(false)
             .build()
             .send(form)
-            .map_err(transport_error)?;
+            .map_err(|error| self.transport_error(error))?;
         checked_json_response(response).map(|(_, body)| body)
     }
 
@@ -501,15 +518,36 @@ impl InferRuntimeClient {
     }
 
     fn url(&self, path: &str) -> Result<String, InferRuntimeError> {
-        let base = self.config.base_url.trim().trim_end_matches('/');
-        if !(base.starts_with("http://") || base.starts_with("https://")) {
-            return Err(InferRuntimeError::new(
-                InferRuntimeErrorKind::Protocol,
-                "invalid_runtime_endpoint",
-                None,
-            ));
+        let endpoint = self
+            .endpoint_resolver
+            .lock()
+            .map_err(|_| {
+                InferRuntimeError::new(
+                    InferRuntimeErrorKind::Protocol,
+                    "runtime_endpoint_state_unavailable",
+                    None,
+                )
+            })?
+            .resolve()
+            .map_err(|_| {
+                InferRuntimeError::new(
+                    InferRuntimeErrorKind::Protocol,
+                    "invalid_runtime_endpoint",
+                    None,
+                )
+            })?;
+        Ok(format!("{}{path}", endpoint.origin))
+    }
+
+    fn transport_error(&self, _: ureq::Error) -> InferRuntimeError {
+        if let Ok(mut resolver) = self.endpoint_resolver.lock() {
+            resolver.connection_failed();
         }
-        Ok(format!("{base}{path}"))
+        InferRuntimeError::new(
+            InferRuntimeErrorKind::Unavailable,
+            "runtime_unavailable",
+            None,
+        )
     }
 }
 
@@ -593,14 +631,6 @@ fn status_fallback_code(status: u16) -> &'static str {
         504 => "deadline_exceeded",
         _ => "runtime_http_error",
     }
-}
-
-fn transport_error(_: ureq::Error) -> InferRuntimeError {
-    InferRuntimeError::new(
-        InferRuntimeErrorKind::Unavailable,
-        "runtime_unavailable",
-        None,
-    )
 }
 
 fn validate_succeeded_job(

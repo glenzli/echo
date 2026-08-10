@@ -81,6 +81,41 @@ struct AdjustmentWireFields {
     limiter_release_millis: u16,
 }
 
+struct SourceMetadataWireFields {
+    container_format: String,
+    sample_rate: u32,
+    channel_count: u32,
+    title: String,
+    location: String,
+    created_at: String,
+}
+
+fn source_metadata_wire_fields(
+    metadata: Option<&echo_catalog::SourceMetadata>,
+) -> SourceMetadataWireFields {
+    metadata.map_or_else(
+        || SourceMetadataWireFields {
+            container_format: String::new(),
+            sample_rate: 0,
+            channel_count: 0,
+            title: String::new(),
+            location: String::new(),
+            created_at: String::new(),
+        },
+        |metadata| SourceMetadataWireFields {
+            container_format: metadata.container_format.clone(),
+            sample_rate: metadata.sample_rate,
+            channel_count: metadata.channel_count,
+            title: metadata_entry(&metadata.entries, &["title", "stream.title"]),
+            location: metadata_entry_containing(&metadata.entries, "location"),
+            created_at: metadata_entry(
+                &metadata.entries,
+                &["creation_time", "stream.creation_time"],
+            ),
+        },
+    )
+}
+
 fn equalizer_wire_bands(equalizer: echo_domain::ParametricEqualizer) -> Vec<EqualizerBandWire> {
     equalizer
         .bands()
@@ -213,38 +248,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
             serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
         })
         .map_or_else(String::new, |payload| payload.text);
-    let (
-        container_format,
-        sample_rate,
-        channel_count,
-        source_title,
-        source_location,
-        source_created_at,
-    ) = asset.source_metadata.as_ref().map_or_else(
-        || {
-            (
-                String::new(),
-                0,
-                0,
-                String::new(),
-                String::new(),
-                String::new(),
-            )
-        },
-        |metadata| {
-            (
-                metadata.container_format.clone(),
-                metadata.sample_rate,
-                metadata.channel_count,
-                metadata_entry(&metadata.entries, &["title", "stream.title"]),
-                metadata_entry_containing(&metadata.entries, "location"),
-                metadata_entry(
-                    &metadata.entries,
-                    &["creation_time", "stream.creation_time"],
-                ),
-            )
-        },
-    );
+    let source_metadata = source_metadata_wire_fields(asset.source_metadata.as_ref());
     AssetSummaryWire {
         id: asset.id,
         path: asset.path.to_string_lossy().into_owned(),
@@ -289,12 +293,12 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         limiter_enabled: adjustment.limiter_enabled,
         limiter_ceiling_centibels: adjustment.limiter_ceiling_centibels,
         limiter_release_millis: adjustment.limiter_release_millis,
-        container_format,
-        sample_rate,
-        channel_count,
-        source_title,
-        source_location,
-        source_created_at,
+        container_format: source_metadata.container_format,
+        sample_rate: source_metadata.sample_rate,
+        channel_count: source_metadata.channel_count,
+        source_title: source_metadata.title,
+        source_location: source_metadata.location,
+        source_created_at: source_metadata.created_at,
     }
 }
 

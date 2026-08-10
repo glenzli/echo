@@ -586,6 +586,11 @@
         <translation>Runtime 地址</translation>
     </message>
     <message>
+        <location filename="../qml/EchoSettingsDialog.qml" line="324"/>
+        <source>Automatic (Infra Discovery)</source>
+        <translation>自动发现（Infra Discovery）</translation>
+    </message>
+    <message>
         <location filename="../qml/EchoSettingsDialog.qml" line="351"/>
         <source>Contract</source>
         <translation>合同</translation>

@@ -321,7 +321,7 @@ Dialog {
                                 Layout.fillWidth: true
                                 text: dialog.inferencePrefs !== null
                                     ? dialog.inferencePrefs.runtimeEndpoint : ""
-                                placeholderText: "http://127.0.0.1:8787"
+                                placeholderText: qsTr("Automatic (Infra Discovery)")
                                 onEditingFinished: {
                                     if (dialog.inferencePrefs !== null) {
                                         dialog.inferencePrefs.runtimeEndpoint = text
@@ -348,7 +348,7 @@ Dialog {
 
                                 Repeater {
                                     model: [
-                                        { label: qsTr("Contract"), value: "0.1.0-candidate.1" },
+                                        { label: qsTr("Contract"), value: "0.1.0-candidate.2" },
                                         { label: qsTr("Intents"), value: "audio.transcribe · audio.align" },
                                         { label: qsTr("Placement"), value: qsTr("Local only") },
                                         { label: qsTr("Consumer credential"),

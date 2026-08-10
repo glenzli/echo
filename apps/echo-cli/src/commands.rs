@@ -61,7 +61,7 @@ pub(crate) enum Command {
         catalog: std::path::PathBuf,
         /// Recording file to transcribe.
         source: std::path::PathBuf,
-        /// Infer Runtime endpoint (default: `ECHO_INFER_ENDPOINT` or local 8787).
+        /// Infer Runtime endpoint (default: env override, Discovery, then local 8787).
         #[arg(long)]
         endpoint: Option<String>,
     },
@@ -84,7 +84,7 @@ pub(crate) enum Command {
         /// Cache root (default: `ECHO_CACHE` or `cache`).
         #[arg(long)]
         cache: Option<std::path::PathBuf>,
-        /// Infer Runtime endpoint (default: `ECHO_INFER_ENDPOINT` or local 8787).
+        /// Infer Runtime endpoint (default: env override, Discovery, then local 8787).
         #[arg(long)]
         endpoint: Option<String>,
         /// Worker threads (default 2).

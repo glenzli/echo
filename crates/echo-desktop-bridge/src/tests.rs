@@ -275,7 +275,7 @@ fn alignment_refines_matching_segment_boundaries_without_mutating_text() {
             { "text": "界", "start": 1.12, "end": 1.44 }
         ],
         "runtime": {
-            "contract_version": "0.1.0-candidate.1",
+            "contract_version": "0.1.0-candidate.2",
             "job": {
                 "id": "align-1", "app_id": "echo", "intent": "audio.align",
                 "provider": "mlx-audio-local", "deployment": "aligner",

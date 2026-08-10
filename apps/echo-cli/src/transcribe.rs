@@ -59,5 +59,5 @@ pub(crate) fn run_transcribe(
 }
 
 pub(crate) fn default_runtime_endpoint() -> String {
-    std::env::var("ECHO_INFER_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:8787".to_owned())
+    std::env::var("ECHO_INFER_ENDPOINT").unwrap_or_default()
 }

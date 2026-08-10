@@ -6,7 +6,6 @@
 namespace {
 
 constexpr auto kRuntimeEndpointKey = "inference/runtimeEndpoint";
-constexpr auto kDefaultRuntimeEndpoint = "http://127.0.0.1:8787";
 
 } // namespace
 
@@ -18,15 +17,12 @@ InferencePreferences::InferencePreferences(bool credentialAvailable, QObject* pa
         config_dir + QStringLiteral("/echo.conf"),
         QSettings::IniFormat
     );
-    const QString environment_endpoint = QString::fromLocal8Bit(qgetenv("ECHO_INFER_ENDPOINT"));
+    const QString environment_endpoint =
+        QString::fromLocal8Bit(qgetenv("ECHO_INFER_ENDPOINT")).trimmed();
     runtime_endpoint_ =
-        settings_
-            ->value(
-                QString::fromLatin1(kRuntimeEndpointKey),
-                environment_endpoint.isEmpty() ? QString::fromLatin1(kDefaultRuntimeEndpoint)
-                                               : environment_endpoint
-            )
-            .toString();
+        environment_endpoint.isEmpty()
+            ? settings_->value(QString::fromLatin1(kRuntimeEndpointKey)).toString().trimmed()
+            : environment_endpoint;
 }
 
 QString InferencePreferences::runtimeEndpoint() const {
@@ -34,12 +30,23 @@ QString InferencePreferences::runtimeEndpoint() const {
 }
 
 void InferencePreferences::setRuntimeEndpoint(const QString& endpoint) {
+    const QString environment_endpoint =
+        QString::fromLocal8Bit(qgetenv("ECHO_INFER_ENDPOINT")).trimmed();
+    if (!environment_endpoint.isEmpty()) {
+        runtime_endpoint_ = environment_endpoint;
+        emit runtimeEndpointChanged();
+        return;
+    }
     const QString normalized = endpoint.trimmed();
-    if (normalized.isEmpty() || normalized == runtime_endpoint_) {
+    if (normalized == runtime_endpoint_) {
         return;
     }
     runtime_endpoint_ = normalized;
-    settings_->setValue(QString::fromLatin1(kRuntimeEndpointKey), runtime_endpoint_);
+    if (runtime_endpoint_.isEmpty()) {
+        settings_->remove(QString::fromLatin1(kRuntimeEndpointKey));
+    } else {
+        settings_->setValue(QString::fromLatin1(kRuntimeEndpointKey), runtime_endpoint_);
+    }
     emit runtimeEndpointChanged();
 }
 

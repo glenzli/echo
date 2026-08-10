@@ -105,10 +105,12 @@ impl InferRuntimeClient {
             .header("Authorization", self.authorization())
             .config()
             .timeout_global(Some(Duration::from_mins(30)))
+            .proxy(None)
+            .max_redirects(0)
             .http_status_as_error(false)
             .build()
             .send_json(&request)
-            .map_err(super::transport_error)?;
+            .map_err(|error| self.transport_error(error))?;
         let (_, body) = super::checked_json_response(response)?;
         let response: Value = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(

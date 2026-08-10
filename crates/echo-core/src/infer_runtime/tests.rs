@@ -10,7 +10,7 @@ use super::*;
 #[test]
 fn transcription_requires_contract_and_job_provenance() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
         json_response(
             r#"{"id":"job-echo-1","model":"audio.transcribe","language":"zh","text":"你好","segments":[{"text":"你好","start_time":0.1,"end_time":0.8,"words":[{"text":"你好","start_time":0.1,"end_time":0.8}]}]}"#,
         ),
@@ -43,7 +43,7 @@ fn transcription_requires_contract_and_job_provenance() {
 #[test]
 fn transcription_accepts_null_segments_from_runtime() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
         json_response(
             r#"{"id":"job-echo-null-segments","model":"audio.transcribe","language":"zh","text":"fixture text","segments":null,"usage":{"total_tokens":1}}"#,
         ),
@@ -75,7 +75,7 @@ fn transcription_accepts_null_segments_from_runtime() {
 #[test]
 fn transcription_keeps_recognized_items_from_openapi_extensions() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
         json_response(
             r#"{"id":"job-echo-extension","model":"audio.transcribe","language":{"label":"Chinese"},"text":"fixture text","segments":[{"text":"provider-specific untimed item"},{"text":"timed fixture","start":0.2,"end":0.9}],"usage":{"total_tokens":1}}"#,
         ),
@@ -104,7 +104,7 @@ fn transcription_keeps_recognized_items_from_openapi_extensions() {
 #[test]
 fn stable_runtime_error_ignores_provider_message() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
         response(
             "503 Service Unavailable",
             r#"{"error":{"code":"provider_unavailable","message":"sensitive provider detail"}}"#,
@@ -127,6 +127,27 @@ fn stable_runtime_error_ignores_provider_message() {
 
     std::fs::remove_file(source).expect("fixture removes");
     server.join().expect("server exits");
+}
+
+#[test]
+fn contract_redirect_is_not_followed() {
+    let (base_url, server) = serve(vec![response_with_headers(
+        "302 Found",
+        "Location: /redirected\r\n",
+        r#"{"error":{"code":"moved","message":"must not follow"}}"#,
+    )]);
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let error = client
+        .contract_version()
+        .expect_err("redirect is returned to the consumer");
+
+    assert_eq!(error.kind, InferRuntimeErrorKind::Rejected);
+    assert_eq!(error.code, "moved");
+    server.join().expect("server exits after one request");
 }
 
 fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<()>) {
@@ -176,8 +197,12 @@ fn json_response(body: &str) -> String {
 }
 
 fn response(status: &str, body: &str) -> String {
+    response_with_headers(status, "", body)
+}
+
+fn response_with_headers(status: &str, headers: &str, body: &str) -> String {
     format!(
-        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     )
 }

@@ -14,6 +14,7 @@ mod error;
 mod import;
 mod infer_runtime;
 mod infer_runtime_credentials;
+mod infer_runtime_discovery;
 mod metadata_queue;
 mod scanner;
 mod util;

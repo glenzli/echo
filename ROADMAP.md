@@ -95,10 +95,15 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 物理模型路由、下载器或驻留进程管理。正式接入采用 Infer Build 已有的
 `audio.transcribe` / `audio.align` 任务接口，不预建没有消费方的第二套调度机制。
 
-正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.1` 合同与 inference API `8787`，
-以独立、非资源管理员的 Echo App 身份调用。Echo 只从自身的 owner-only 安全存储读取
-bearer token；明文不跨 Rust/C++/QML 边界，也不写入设置、通用日志或命令行参数。Runtime consumer
-独立拥有合同探测、严格 multipart、HTTP status／`error.code` 分类和 Job snapshot 解码；
+正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.2` 合同，以独立、非资源管理员的 Echo
+App 身份调用。endpoint 选择顺序固定为显式 `ECHO_INFER_ENDPOINT`／产品设置 override、
+`infra.discovery.registration@20260810.1` 中精确匹配的 `infer-runtime.consumer` loopback offer、
+迁移期 `http://127.0.0.1:8787` 兼容兜底；generation 变化、lease 到期或连接失败后重新发现。
+所有 Consumer HTTP 请求禁用 proxy 与 automatic redirect，且只接受 canonical numeric loopback
+origin。固定端口兜底仅在 Runtime publisher 新版本完成重启与 soak、所有登记 Consumer 均完成
+适配后删除。Echo 只从自身的 owner-only 安全存储读取 bearer token；明文不跨 Rust/C++/QML
+边界，也不写入设置、通用日志或命令行参数。Runtime consumer 独立拥有合同探测、严格
+multipart、HTTP status／`error.code` 分类和 Job snapshot 解码；
 Echo 的后台 worker 只提交产品 Intent、记录本地任务状态并把 Runtime 的 Job／Attempt／
 模型构建证据写入 Catalog。Runtime 不可用不得阻断扫描、波形、播放或 Library 浏览。
 
@@ -241,8 +246,9 @@ InferenceBackend
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
   - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
     导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
-  - 已完成（正式 Runtime 切片，2026-08-09）：Echo 以独立非管理员 App 身份消费
-    `0.1.0-candidate.1`；后台队列依次提交 `audio.transcribe` 与 `audio.align`，读取 App-scoped
+  - 已完成（正式 Runtime 切片，2026-08-09；Discovery 迁移 2026-08-11）：Echo 以独立
+    非管理员 App 身份消费 `0.1.0-candidate.2`，并通过 owner-only leased registration 发现本机
+    Consumer endpoint；后台队列依次提交 `audio.transcribe` 与 `audio.align`，读取 App-scoped
     Job/Attempt，并把合同版本、provider/deployment、physical model/build 与稳定错误码写入
     Catalog。桌面读取层以最新对齐证据细化段落时间，无法可靠匹配时保留原转写时间。
   - 默认分析策略（2026-08-09 校准）：新录音完成注册后持久入队 waveform 与

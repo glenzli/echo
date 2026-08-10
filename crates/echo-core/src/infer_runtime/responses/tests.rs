@@ -33,7 +33,7 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
     })
     .to_string();
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
         json_response(&response_body),
         json_response(&job_snapshot("initial")),
     ]);
@@ -93,7 +93,7 @@ fn contextual_response_rejects_fallback_attempt_evidence() {
     })
     .to_string();
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.1"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
         json_response(&response_body),
         json_response(&job_snapshot("fallback")),
     ]);
