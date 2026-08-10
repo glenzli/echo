@@ -62,5 +62,8 @@ Headless smoke: `ECHO_DEBUG_SCREENSHOT=/tmp/echo.png ../.echo-local-build/deskto
 
 Set `ECHO_DEBUG_OPEN_EDITOR=1` with `ECHO_DEBUG_SCREENSHOT` to capture the
 selected sound in the adjustment workspace after the catalog has loaded.
+Set `ECHO_DEBUG_REPLAY_EDITOR=1` to start, stop, and restart that adjusted
+sound before capture; the transport timestamp proves the replacement session
+is consumed by the packaged audio sink.
 captures the first window and exits; add `ECHO_DEBUG_AUTOPLAY=/path/file` to
 start playback first.

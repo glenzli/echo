@@ -101,6 +101,11 @@ Rectangle {
         }
     }
 
+    function ownsActivePlayback() : bool {
+        return player.active && hasAsset && loadedPath === asset.path
+            && loadedAdjustmentKey === adjustmentKey()
+    }
+
     onAssetChanged: {
         if (asset && loadedPath.length > 0 && loadedPath !== asset.path) {
             player.stop()
@@ -239,15 +244,14 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: 18
                 levels: preview.waveformLevels
-                progress: preview.hasAsset && preview.loadedPath === preview.asset.path
-                        && player.duration > 0
+                progress: preview.ownsActivePlayback() && player.duration > 0
                     ? player.position / player.duration : 0
             }
 
             MouseArea {
                 anchors.fill: parent
                 enabled: preview.hasAsset && player.duration > 0
-                    && preview.loadedPath === preview.asset.path
+                    && preview.ownsActivePlayback()
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: function(mouse) {
                     const target = Math.round(mouse.x / width * player.duration)
@@ -272,7 +276,7 @@ Rectangle {
 
             EchoIconButton {
                 source: preview.hasAsset && player.playing
-                        && preview.loadedPath === preview.asset.path
+                        && preview.ownsActivePlayback()
                     ? "qrc:/EchoDesktop/icons/pause.svg"
                     : "qrc:/EchoDesktop/icons/play.svg"
                 toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
@@ -280,8 +284,7 @@ Rectangle {
                 buttonSize: 38
                 iconSize: 19
                 onClicked: {
-                    if (preview.loadedPath !== preview.asset.path
-                            || preview.loadedAdjustmentKey !== preview.adjustmentKey()) {
+                    if (!preview.ownsActivePlayback()) {
                         preview.playFrom(preview.trimStartMillis)
                     } else {
                         player.togglePause()
@@ -292,7 +295,7 @@ Rectangle {
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/stop.svg"
                 toolTipText: qsTr("Stop")
-                enabled: preview.hasAsset && preview.loadedPath === preview.asset.path
+                enabled: preview.ownsActivePlayback()
                 buttonSize: 34
                 iconSize: 16
                 onClicked: player.stop()
@@ -310,8 +313,7 @@ Rectangle {
                 from: preview.trimStartMillis
                 to: Math.max(preview.trimStartMillis + 1, preview.trimEndMillis)
                 value: player.duration > 0 ? player.position : 0
-                enabled: preview.hasAsset && player.duration > 0
-                    && preview.loadedPath === preview.asset.path
+                enabled: preview.ownsActivePlayback() && player.duration > 0
                 onMoved: player.seek(value)
             }
         }
@@ -409,8 +411,7 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (preview.loadedPath !== preview.asset.path
-                                    || preview.loadedAdjustmentKey !== preview.adjustmentKey()) {
+                            if (!preview.ownsActivePlayback()) {
                                 preview.playFrom(modelData.start * 1000)
                             } else {
                                 player.seek(modelData.start * 1000)

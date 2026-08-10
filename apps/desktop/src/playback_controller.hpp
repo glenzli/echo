@@ -21,6 +21,7 @@ class PlaybackController : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool playing READ isPlaying NOTIFY stateChanged)
     Q_PROPERTY(bool paused READ isPaused NOTIFY stateChanged)
+    Q_PROPERTY(bool active READ isActive NOTIFY stateChanged)
     Q_PROPERTY(qint64 position READ position NOTIFY positionChanged)
     Q_PROPERTY(qint64 duration READ duration NOTIFY stateChanged)
     Q_PROPERTY(qreal volume READ volume WRITE setVolume NOTIFY volumeChanged)
@@ -47,6 +48,7 @@ class PlaybackController : public QObject {
 
     bool isPlaying() const;
     bool isPaused() const;
+    bool isActive() const;
     qint64 position() const;
     qint64 duration() const;
     qreal volume() const;

@@ -45,6 +45,13 @@ ApplicationWindow {
         }
     }
 
+    function debugReplaySoundEditor() : void {
+        if (audioSpace.selectedAsset === null) return
+        showSoundEditor()
+        soundEditor.togglePlayback()
+        debugReplayTimer.start()
+    }
+
     onWorkspaceIndexChanged: player.stop()
 
     EchoSettingsDialog {
@@ -129,6 +136,16 @@ ApplicationWindow {
                 backend.refresh()
             }
             window.jobsWereActive = active
+        }
+    }
+
+    Timer {
+        id: debugReplayTimer
+
+        interval: 350
+        onTriggered: {
+            player.stop()
+            soundEditor.togglePlayback()
         }
     }
 }

@@ -94,9 +94,14 @@ Rectangle {
         if (start > adjustmentDraft.trimStartMillis) player.seek(start)
     }
 
+    function ownsActivePlayback() : bool {
+        return player.active && hasAsset && loadedPath === asset.path
+            && loadedAdjustmentKey === adjustmentKey()
+    }
+
     function seekOrLoad(millis: int) : void {
         if (!hasAsset) return
-        if (loadedPath !== asset.path || loadedAdjustmentKey !== adjustmentKey()) {
+        if (!ownsActivePlayback()) {
             playFrom(millis)
         } else {
             player.seek(Math.max(adjustmentDraft.trimStartMillis,
@@ -112,7 +117,7 @@ Rectangle {
 
     function togglePlayback() : void {
         if (!hasAsset || asset.pathStatus === "missing") return
-        if (loadedPath !== asset.path || loadedAdjustmentKey !== adjustmentKey()) {
+        if (!ownsActivePlayback()) {
             playFrom(defaultPlaybackStart())
         } else {
             player.togglePause()
@@ -123,7 +128,7 @@ Rectangle {
         if (auditionOriginal === enabled) return
         const resumeAt = loadedPath === (hasAsset ? asset.path : "")
             ? player.position : defaultPlaybackStart()
-        const wasLoaded = hasAsset && loadedPath === asset.path
+        const wasLoaded = ownsActivePlayback()
         auditionOriginal = enabled
         if (wasLoaded) playFrom(resumeAt)
     }
@@ -296,10 +301,9 @@ Rectangle {
                 fadeOutCurve: adjustmentDraft.fadeOutCurve
                 gainCentibels: adjustmentDraft.gainCentibels
                 playbackPositionMillis: workspace.hasAsset
-                        && workspace.loadedPath === workspace.asset.path
+                        && workspace.ownsActivePlayback()
                     ? player.position : adjustmentDraft.trimStartMillis
-                isPlaying: workspace.hasAsset && workspace.loadedPath === workspace.asset.path
-                    && player.playing
+                isPlaying: workspace.ownsActivePlayback() && player.playing
                 enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
 
                 onTrimRequested: function(startMillis, endMillis) {
@@ -336,7 +340,7 @@ Rectangle {
 
             EchoIconButton {
                 source: workspace.hasAsset && player.playing
-                        && workspace.loadedPath === workspace.asset.path
+                        && workspace.ownsActivePlayback()
                     ? "qrc:/EchoDesktop/icons/pause.svg"
                     : "qrc:/EchoDesktop/icons/play.svg"
                 toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
@@ -349,7 +353,7 @@ Rectangle {
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/stop.svg"
                 toolTipText: qsTr("Stop")
-                enabled: workspace.hasAsset && workspace.loadedPath === workspace.asset.path
+                enabled: workspace.ownsActivePlayback()
                 buttonSize: 36
                 iconSize: 16
                 onClicked: player.stop()

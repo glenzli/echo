@@ -175,6 +175,10 @@ bool PlaybackController::isPaused() const {
     return current_session_ != nullptr && current_session_->is_paused();
 }
 
+bool PlaybackController::isActive() const {
+    return current_session_ != nullptr && !ended_;
+}
+
 qint64 PlaybackController::position() const {
     const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
     return session != nullptr ? static_cast<qint64>(session->position_millis()) : 0;
