@@ -3,7 +3,7 @@
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, FadeCurve, LimiterSettings,
-    ParametricEqualizer,
+    ParametricEqualizer, ReverbSettings,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
@@ -34,6 +34,7 @@ struct StoredAdjustment {
     compressor_attack: i64,
     compressor_release: i64,
     compressor_makeup: i64,
+    reverb_json: String,
     limiter_enabled: i64,
     limiter_ceiling: i64,
     limiter_release: i64,
@@ -71,7 +72,7 @@ pub fn latest_adjustment_graph(
              low_cut_hertz, parametric_equalizer_json, compressor_enabled, \
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
-             compressor_makeup_centibels, limiter_enabled, \
+             compressor_makeup_centibels, reverb_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
@@ -102,10 +103,11 @@ fn stored_adjustment_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Store
         compressor_attack: row.get(13)?,
         compressor_release: row.get(14)?,
         compressor_makeup: row.get(15)?,
-        limiter_enabled: row.get(16)?,
-        limiter_ceiling: row.get(17)?,
-        limiter_release: row.get(18)?,
-        created_at: row.get(19)?,
+        reverb_json: row.get(16)?,
+        limiter_enabled: row.get(17)?,
+        limiter_ceiling: row.get(18)?,
+        limiter_release: row.get(19)?,
+        created_at: row.get(20)?,
     })
 }
 
@@ -144,6 +146,7 @@ fn restore_adjustment_graph(
             release_millis: stored_u16(stored.compressor_release, "compressor release")?,
             makeup_centibels: stored_centibels(stored.compressor_makeup, "compressor makeup")?,
         })
+        .with_reverb(stored_reverb(&stored.reverb_json)?)
         .with_limiter(LimiterSettings {
             enabled: stored.limiter_enabled != 0,
             ceiling_centibels: stored_centibels(stored.limiter_ceiling, "limiter ceiling")?,
@@ -198,6 +201,7 @@ pub fn record_adjustment_graph(
         )
         .with_equalizer(graph.equalizer())
         .with_compressor(graph.compressor())
+        .with_reverb(graph.reverb())
         .with_limiter(graph.limiter()),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
@@ -214,10 +218,10 @@ pub fn record_adjustment_graph(
          compressor_enabled, \
          compressor_threshold_centibels, compressor_ratio_tenths, \
          compressor_attack_millis, compressor_release_millis, \
-         compressor_makeup_centibels, limiter_enabled, limiter_ceiling_centibels, \
+         compressor_makeup_centibels, reverb_json, limiter_enabled, limiter_ceiling_centibels, \
          limiter_release_millis, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
-                 ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)",
+                 ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -241,6 +245,10 @@ pub fn record_adjustment_graph(
             i64::from(validated.compressor().attack_millis),
             i64::from(validated.compressor().release_millis),
             i64::from(validated.compressor().makeup_centibels),
+            serde_json::to_string(&validated.reverb()).map_err(|error| CatalogError::new(
+                CatalogErrorKind::Other,
+                format!("cannot encode reverb: {error}"),
+            ))?,
             i64::from(validated.limiter().enabled),
             i64::from(validated.limiter().ceiling_centibels),
             i64::from(validated.limiter().release_millis),
@@ -264,6 +272,15 @@ fn stored_equalizer(value: &str) -> Result<ParametricEqualizer, CatalogError> {
         CatalogError::new(
             CatalogErrorKind::Other,
             format!("stored parametric equalizer is invalid: {error}"),
+        )
+    })
+}
+
+fn stored_reverb(value: &str) -> Result<ReverbSettings, CatalogError> {
+    serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored reverb is invalid: {error}"),
         )
     })
 }

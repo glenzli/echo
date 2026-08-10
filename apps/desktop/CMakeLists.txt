@@ -111,6 +111,8 @@ qt_add_executable(
     src/playback_controller.hpp
     src/parametric_equalizer_projection.cpp
     src/parametric_equalizer_projection.hpp
+    src/reverb_projection.cpp
+    src/reverb_projection.hpp
     src/ui_preferences.cpp
     src/ui_preferences.hpp
     src/inference_preferences.cpp
@@ -140,6 +142,7 @@ qt_add_qml_module(
         qml/AudioLibraryWorkspace.qml
         qml/AudioLibrarySidebar.qml
         qml/AudioPlaybackWorkspace.qml
+        qml/AdvancedEffectsRack.qml
         qml/AudioSpaceWorkspace.qml
         qml/BasicAdjustmentPanel.qml
         qml/DynamicsPanel.qml
@@ -158,6 +161,7 @@ qt_add_qml_module(
         qml/SoundAdvancedFilterPopup.qml
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
+        qml/SpaceReverbPanel.qml
         qml/SoundEditorTimeline.qml
         qml/SoundEditingWorkspace.qml
         qml/SoundCard.qml

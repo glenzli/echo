@@ -2,7 +2,7 @@ use std::path::Path;
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, FadeCurve, FadeCurves,
-    LimiterSettings,
+    LimiterSettings, ReverbSettings,
 };
 
 use super::*;
@@ -60,6 +60,16 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
             release_millis: 180,
             makeup_centibels: 250,
         })
+        .with_reverb(ReverbSettings {
+            enabled: true,
+            mix_percent: 24,
+            pre_delay_millis: 28,
+            decay_millis: 2_400,
+            size_percent: 68,
+            damping_percent: 52,
+            low_cut_hertz: 150,
+            high_cut_hertz: 9_000,
+        })
         .with_limiter(LimiterSettings {
             enabled: true,
             ceiling_centibels: -125,
@@ -79,6 +89,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         echo_domain::ParametricEqualizer::from_legacy_gains(300, -150, 225)
     );
     assert_eq!(first.graph.compressor(), graph.compressor());
+    assert_eq!(first.graph.reverb(), graph.reverb());
     assert_eq!(first.graph.limiter(), graph.limiter());
 
     let second_graph = AdjustmentGraph::new(

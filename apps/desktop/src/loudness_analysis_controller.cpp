@@ -13,6 +13,7 @@
 #include "echo/audio/offline_loudness_analyzer.hpp"
 #include "echo/audio/playback.hpp"
 #include "parametric_equalizer_projection.hpp"
+#include "reverb_projection.hpp"
 
 namespace {
 
@@ -32,6 +33,7 @@ echo::audio::PlaybackAdjustment make_adjustment(
     int compressor_attack_millis,
     int compressor_release_millis,
     int compressor_makeup_centibels,
+    const QVariantMap& reverb_value,
     bool limiter_enabled,
     int limiter_ceiling_centibels,
     int limiter_release_millis
@@ -50,8 +52,9 @@ echo::audio::PlaybackAdjustment make_adjustment(
         throw std::invalid_argument("loudness analysis adjustment is outside the supported range");
     }
     const auto equalizer = ParametricEqualizerProjection::fromQml(equalizer_bands);
-    if (!equalizer.has_value()) {
-        throw std::invalid_argument("parametric equalizer is outside the supported range");
+    const auto reverb = ReverbProjection::fromQml(reverb_value);
+    if (!equalizer.has_value() || !reverb.has_value()) {
+        throw std::invalid_argument("equalizer or reverb is outside the supported range");
     }
     return {
         .trim_start_millis = static_cast<std::uint64_t>(trim_start_millis),
@@ -72,6 +75,7 @@ echo::audio::PlaybackAdjustment make_adjustment(
                 .release_millis = static_cast<std::uint16_t>(compressor_release_millis),
                 .makeup_centibels = static_cast<std::int16_t>(compressor_makeup_centibels),
             },
+        .reverb = *reverb,
         .limiter = {
             .enabled = limiter_enabled,
             .ceiling_centibels = static_cast<std::int16_t>(limiter_ceiling_centibels),
@@ -106,6 +110,7 @@ void LoudnessAnalysisController::analyzeAdjusted(
     int compressorAttackMillis,
     int compressorReleaseMillis,
     int compressorMakeupCentibels,
+    const QVariantMap& reverb,
     bool limiterEnabled,
     int limiterCeilingCentibels,
     int limiterReleaseMillis
@@ -128,6 +133,7 @@ void LoudnessAnalysisController::analyzeAdjusted(
             compressorAttackMillis,
             compressorReleaseMillis,
             compressorMakeupCentibels,
+            reverb,
             limiterEnabled,
             limiterCeilingCentibels,
             limiterReleaseMillis

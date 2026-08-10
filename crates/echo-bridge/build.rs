@@ -12,6 +12,7 @@ use std::{
 
 const ENGINE_SOURCES: &[&str] = &[
     "src/bridge/cxx_bridge.cpp",
+    "src/algorithmic_reverb.cpp",
     "src/adjustment.cpp",
     "src/decode.cpp",
     "src/dynamics_processor.cpp",
@@ -28,6 +29,7 @@ const ENGINE_SOURCES: &[&str] = &[
 ];
 
 const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
+    "include/echo/audio/algorithmic_reverb.hpp",
     "include/echo/audio/adjustment.hpp",
     "include/echo/audio/decode.hpp",
     "include/echo/audio/dynamics_processor.hpp",

@@ -43,7 +43,7 @@ Rectangle {
             draft.equalizerBands, draft.compressorEnabled,
             draft.compressorThresholdCentibels, draft.compressorRatioTenths,
             draft.compressorAttackMillis, draft.compressorReleaseMillis,
-            draft.compressorMakeupCentibels, draft.limiterEnabled,
+            draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled,
             draft.limiterCeilingCentibels, draft.limiterReleaseMillis)
     }
 

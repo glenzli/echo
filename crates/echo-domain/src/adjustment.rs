@@ -39,6 +39,17 @@ pub const MIN_LIMITER_CEILING_CENTIBELS: i16 = -600;
 pub const MAX_LIMITER_CEILING_CENTIBELS: i16 = 0;
 pub const MIN_LIMITER_RELEASE_MILLIS: u16 = 20;
 pub const MAX_LIMITER_RELEASE_MILLIS: u16 = 1_000;
+pub const MAX_REVERB_MIX_PERCENT: u8 = 100;
+pub const MAX_REVERB_PRE_DELAY_MILLIS: u16 = 200;
+pub const MIN_REVERB_DECAY_MILLIS: u16 = 100;
+pub const MAX_REVERB_DECAY_MILLIS: u16 = 12_000;
+pub const MIN_REVERB_SIZE_PERCENT: u8 = 10;
+pub const MAX_REVERB_SIZE_PERCENT: u8 = 100;
+pub const MAX_REVERB_DAMPING_PERCENT: u8 = 100;
+pub const MIN_REVERB_LOW_CUT_HERTZ: u16 = 20;
+pub const MAX_REVERB_LOW_CUT_HERTZ: u16 = 1_000;
+pub const MIN_REVERB_HIGH_CUT_HERTZ: u16 = 1_000;
+pub const MAX_REVERB_HIGH_CUT_HERTZ: u16 = 20_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompressorSettings {
@@ -91,6 +102,42 @@ impl LimiterSettings {
             enabled: false,
             ceiling_centibels: -100,
             release_millis: 100,
+        }
+    }
+}
+
+/// Authored algorithmic room intent. The audio engine owns delay lines and
+/// filter coefficients; the Catalog only persists these stable controls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReverbSettings {
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub pre_delay_millis: u16,
+    pub decay_millis: u16,
+    pub size_percent: u8,
+    pub damping_percent: u8,
+    pub low_cut_hertz: u16,
+    pub high_cut_hertz: u16,
+}
+
+impl Default for ReverbSettings {
+    fn default() -> Self {
+        Self::studio_room()
+    }
+}
+
+impl ReverbSettings {
+    #[must_use]
+    pub const fn studio_room() -> Self {
+        Self {
+            enabled: false,
+            mix_percent: 18,
+            pre_delay_millis: 20,
+            decay_millis: 1_800,
+            size_percent: 55,
+            damping_percent: 45,
+            low_cut_hertz: 120,
+            high_cut_hertz: 10_000,
         }
     }
 }
@@ -311,6 +358,7 @@ pub struct AdjustmentEffects {
     pub low_cut_hertz: u16,
     pub equalizer: ParametricEqualizer,
     pub compressor: CompressorSettings,
+    pub reverb: ReverbSettings,
     pub limiter: LimiterSettings,
 }
 
@@ -323,6 +371,7 @@ impl AdjustmentEffects {
             low_cut_hertz,
             equalizer: ParametricEqualizer::flat(),
             compressor: CompressorSettings::standard(),
+            reverb: ReverbSettings::studio_room(),
             limiter: LimiterSettings::standard(),
         }
     }
@@ -336,6 +385,12 @@ impl AdjustmentEffects {
     #[must_use]
     pub const fn with_compressor(mut self, compressor: CompressorSettings) -> Self {
         self.compressor = compressor;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_reverb(mut self, reverb: ReverbSettings) -> Self {
+        self.reverb = reverb;
         self
     }
 
@@ -359,6 +414,8 @@ pub struct AdjustmentGraph {
     low_cut_hertz: u16,
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
+    #[serde(default)]
+    reverb: ReverbSettings,
     #[serde(default)]
     limiter: LimiterSettings,
 }
@@ -425,6 +482,20 @@ impl AdjustmentGraph {
         {
             return Err(AdjustmentGraphError::LimiterOutOfRange);
         }
+        let reverb = effects.reverb;
+        if reverb.mix_percent > MAX_REVERB_MIX_PERCENT
+            || reverb.pre_delay_millis > MAX_REVERB_PRE_DELAY_MILLIS
+            || !(MIN_REVERB_DECAY_MILLIS..=MAX_REVERB_DECAY_MILLIS).contains(&reverb.decay_millis)
+            || !(MIN_REVERB_SIZE_PERCENT..=MAX_REVERB_SIZE_PERCENT).contains(&reverb.size_percent)
+            || reverb.damping_percent > MAX_REVERB_DAMPING_PERCENT
+            || !(MIN_REVERB_LOW_CUT_HERTZ..=MAX_REVERB_LOW_CUT_HERTZ)
+                .contains(&reverb.low_cut_hertz)
+            || !(MIN_REVERB_HIGH_CUT_HERTZ..=MAX_REVERB_HIGH_CUT_HERTZ)
+                .contains(&reverb.high_cut_hertz)
+            || reverb.low_cut_hertz >= reverb.high_cut_hertz
+        {
+            return Err(AdjustmentGraphError::ReverbOutOfRange);
+        }
         Ok(Self {
             trim_start_millis,
             trim_end_millis,
@@ -436,6 +507,7 @@ impl AdjustmentGraph {
             low_cut_hertz: effects.low_cut_hertz,
             equalizer: effects.equalizer,
             compressor,
+            reverb,
             limiter,
         })
     }
@@ -509,6 +581,11 @@ impl AdjustmentGraph {
     }
 
     #[must_use]
+    pub const fn reverb(self) -> ReverbSettings {
+        self.reverb
+    }
+
+    #[must_use]
     pub const fn limiter(self) -> LimiterSettings {
         self.limiter
     }
@@ -523,6 +600,7 @@ pub enum AdjustmentGraphError {
     LowCutOutOfRange,
     EqualizerBandOutOfRange,
     CompressorOutOfRange,
+    ReverbOutOfRange,
     LimiterOutOfRange,
 }
 
@@ -537,6 +615,7 @@ impl std::fmt::Display for AdjustmentGraphError {
                 "equalizer band frequency, Q, or gain is outside the supported range"
             }
             Self::CompressorOutOfRange => "compressor parameters are outside the supported range",
+            Self::ReverbOutOfRange => "reverb parameters are outside the supported range",
             Self::LimiterOutOfRange => "limiter parameters are outside the supported range",
         })
     }

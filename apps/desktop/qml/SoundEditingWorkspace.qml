@@ -82,6 +82,11 @@ Rectangle {
             + (auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis) + ":"
             + (auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels) + ":"
+            + JSON.stringify(auditionOriginal
+                ? { enabled: false, mixPercent: 18, preDelayMillis: 20,
+                    decayMillis: 1800, sizePercent: 55, dampingPercent: 45,
+                    lowCutHertz: 120, highCutHertz: 10000 }
+                : adjustmentDraft.reverbValue()) + ":"
             + (auditionOriginal ? false : adjustmentDraft.limiterEnabled) + ":"
             + (auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels) + ":"
             + (auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis)
@@ -113,6 +118,12 @@ Rectangle {
                             auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis,
                             auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis,
                             auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels,
+                            auditionOriginal
+                                ? { enabled: false, mixPercent: 18, preDelayMillis: 20,
+                                    decayMillis: 1800, sizePercent: 55,
+                                    dampingPercent: 45, lowCutHertz: 120,
+                                    highCutHertz: 10000 }
+                                : adjustmentDraft.reverbValue(),
                             auditionOriginal ? false : adjustmentDraft.limiterEnabled,
                             auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels,
                             auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis)
@@ -226,6 +237,9 @@ Rectangle {
                                   compressorEnabled, compressorThreshold,
                                   compressorRatio, compressorAttack,
                                   compressorRelease, compressorMakeup,
+                                  reverbEnabled, reverbMix, reverbPreDelay,
+                                  reverbDecay, reverbSize, reverbDamping,
+                                  reverbLowCut, reverbHighCut,
                                   limiterEnabled, limiterCeiling,
                                   limiterRelease) {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
@@ -235,6 +249,10 @@ Rectangle {
                                            compressorEnabled, compressorThreshold,
                                            compressorRatio, compressorAttack,
                                            compressorRelease, compressorMakeup,
+                                           reverbEnabled, reverbMix,
+                                           reverbPreDelay, reverbDecay,
+                                           reverbSize, reverbDamping,
+                                           reverbLowCut, reverbHighCut,
                                            limiterEnabled, limiterCeiling,
                                            limiterRelease)) {
                 adjustmentDraft.markSaved()
@@ -269,6 +287,14 @@ Rectangle {
         function onCompressorMakeupCentibelsChanged() : void {
             workspace.scheduleEffectsPreview()
         }
+        function onReverbEnabledChanged() : void { workspace.scheduleEffectsPreview() }
+        function onReverbMixPercentChanged() : void { workspace.scheduleEffectsPreview() }
+        function onReverbPreDelayMillisChanged() : void { workspace.scheduleEffectsPreview() }
+        function onReverbDecayMillisChanged() : void { workspace.scheduleEffectsPreview() }
+        function onReverbSizePercentChanged() : void { workspace.scheduleEffectsPreview() }
+        function onReverbDampingPercentChanged() : void { workspace.scheduleEffectsPreview() }
+        function onReverbLowCutHertzChanged() : void { workspace.scheduleEffectsPreview() }
+        function onReverbHighCutHertzChanged() : void { workspace.scheduleEffectsPreview() }
         function onLimiterEnabledChanged() : void {
             workspace.scheduleEffectsPreview()
         }
@@ -305,7 +331,8 @@ Rectangle {
                 adjustmentDraft.limiterEnabled,
                 adjustmentDraft.limiterCeilingCentibels,
                 adjustmentDraft.limiterReleaseMillis)
-            if (equalizerUpdated && compressorUpdated && limiterUpdated) {
+            const reverbUpdated = player.updateReverb(adjustmentDraft.reverbValue())
+            if (equalizerUpdated && compressorUpdated && reverbUpdated && limiterUpdated) {
                 workspace.loadedAdjustmentKey = workspace.adjustmentKey()
             }
         }

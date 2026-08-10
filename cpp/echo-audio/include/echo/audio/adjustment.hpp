@@ -61,6 +61,18 @@ struct LimiterAdjustment {
     std::uint16_t release_millis = 100;
 };
 
+/// Algorithmic room controls in stable integer units.
+struct ReverbAdjustment {
+    bool enabled = false;
+    std::uint8_t mix_percent = 18;
+    std::uint16_t pre_delay_millis = 20;
+    std::uint16_t decay_millis = 1800;
+    std::uint8_t size_percent = 55;
+    std::uint8_t damping_percent = 45;
+    std::uint16_t low_cut_hertz = 120;
+    std::uint16_t high_cut_hertz = 10000;
+};
+
 /// Authored non-destructive playback adjustments. Milliseconds, centibels,
 /// and hertz are explicit so the cross-language boundary never relies on
 /// floating-point UI units. A zero `trim_end_millis` means source end.
@@ -76,6 +88,7 @@ struct PlaybackAdjustment {
     std::uint16_t low_cut_hertz = 0;
     ParametricEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
+    ReverbAdjustment reverb;
     LimiterAdjustment limiter;
 };
 
@@ -98,6 +111,7 @@ class PreparedAdjustment {
     [[nodiscard]] std::uint16_t low_cut_hertz() const;
     [[nodiscard]] ParametricEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
+    [[nodiscard]] ReverbAdjustment reverb() const;
     [[nodiscard]] LimiterAdjustment limiter() const;
     [[nodiscard]] std::uint64_t clamp_seek_millis(std::uint64_t millis) const;
     [[nodiscard]] float amplitude_at(std::uint64_t source_frame) const;
@@ -117,6 +131,7 @@ class PreparedAdjustment {
     std::uint16_t low_cut_hertz_ = 0;
     ParametricEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
+    ReverbAdjustment reverb_;
     LimiterAdjustment limiter_;
 };
 

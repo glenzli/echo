@@ -1,6 +1,6 @@
 use super::*;
 
-fn previous_parametric_equalizer_schema_fixture() -> (std::path::PathBuf, std::path::PathBuf) {
+fn previous_adjustment_effects_schema_fixture() -> (std::path::PathBuf, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("echo-schema-migration-{}", std::process::id()));
     let path = root.join("catalog.sqlite");
     let catalog = open_catalog(&path).expect("current catalog opens");
@@ -45,11 +45,11 @@ fn previous_parametric_equalizer_schema_fixture() -> (std::path::PathBuf, std::p
                 2,
             )?;
             transaction.execute(
-                "ALTER TABLE asset_adjustment_revisions DROP COLUMN parametric_equalizer_json",
+                "ALTER TABLE asset_adjustment_revisions DROP COLUMN reverb_json",
                 [],
             )?;
             transaction.execute(
-                "UPDATE catalog_meta SET value = '20260810.6' WHERE key = 'schema_version'",
+                "UPDATE catalog_meta SET value = '20260811.1' WHERE key = 'schema_version'",
                 [],
             )?;
             Ok(())
@@ -60,10 +60,10 @@ fn previous_parametric_equalizer_schema_fixture() -> (std::path::PathBuf, std::p
 }
 
 #[test]
-fn previous_catalog_revision_migrates_parametric_equalizer_without_losing_assets() {
-    let (root, path) = previous_parametric_equalizer_schema_fixture();
+fn previous_catalog_revision_adds_reverb_without_losing_assets() {
+    let (root, path) = previous_adjustment_effects_schema_fixture();
     let migrated = open_catalog(&path).expect("previous revision migrates");
-    let (version, asset_count, equalizer_column_count): (String, i64, i64) = migrated
+    let (version, asset_count, reverb_column_count): (String, i64, i64) = migrated
         .with_transaction(|transaction| -> Result<_, CatalogError> {
             Ok((
                 transaction.query_row(
@@ -74,16 +74,16 @@ fn previous_catalog_revision_migrates_parametric_equalizer_without_losing_assets
                 transaction.query_row("SELECT COUNT(*) FROM assets", [], |row| row.get(0))?,
                 transaction.query_row(
                     "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
-                     WHERE name = 'parametric_equalizer_json'",
+                     WHERE name = 'reverb_json'",
                     [],
                     |row| row.get(0),
                 )?,
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.1");
+    assert_eq!(version, "20260811.2");
     assert_eq!(asset_count, 1);
-    assert_eq!(equalizer_column_count, 1);
+    assert_eq!(reverb_column_count, 1);
     let adjustment = migrated
         .with_transaction(|transaction| {
             let asset_id: String =

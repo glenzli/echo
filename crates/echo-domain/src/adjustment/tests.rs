@@ -22,6 +22,16 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             release_millis: 180,
             makeup_centibels: 250,
         })
+        .with_reverb(ReverbSettings {
+            enabled: true,
+            mix_percent: 24,
+            pre_delay_millis: 28,
+            decay_millis: 2_400,
+            size_percent: 68,
+            damping_percent: 52,
+            low_cut_hertz: 150,
+            high_cut_hertz: 9_000,
+        })
         .with_limiter(LimiterSettings {
             enabled: true,
             ceiling_centibels: -125,
@@ -43,6 +53,8 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     );
     assert!(graph.compressor().enabled);
     assert_eq!(graph.compressor().ratio_tenths, 40);
+    assert_eq!(graph.reverb().decay_millis, 2_400);
+    assert_eq!(graph.reverb().mix_percent, 24);
     assert_eq!(graph.limiter().ceiling_centibels, -125);
 }
 
@@ -115,6 +127,20 @@ fn graph_rejects_out_of_source_and_overlapping_envelopes() {
             }),
         ),
         Err(AdjustmentGraphError::CompressorOutOfRange)
+    );
+    assert_eq!(
+        AdjustmentGraph::new(
+            1_000,
+            0,
+            1_000,
+            0,
+            0,
+            AdjustmentEffects::default().with_reverb(ReverbSettings {
+                decay_millis: MIN_REVERB_DECAY_MILLIS - 1,
+                ..ReverbSettings::default()
+            }),
+        ),
+        Err(AdjustmentGraphError::ReverbOutOfRange)
     );
     assert_eq!(
         AdjustmentGraph::new(

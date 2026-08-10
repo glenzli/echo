@@ -193,6 +193,14 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         compressor_attack_millis: 12,
         compressor_release_millis: 160,
         compressor_makeup_centibels: 225,
+        reverb_enabled: true,
+        reverb_mix_percent: 24,
+        reverb_pre_delay_millis: 28,
+        reverb_decay_millis: 2_400,
+        reverb_size_percent: 68,
+        reverb_damping_percent: 52,
+        reverb_low_cut_hertz: 150,
+        reverb_high_cut_hertz: 9_000,
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
@@ -221,6 +229,14 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].compressor_attack_millis, 12);
     assert_eq!(projected[0].compressor_release_millis, 160);
     assert_eq!(projected[0].compressor_makeup_centibels, 225);
+    assert!(projected[0].reverb_enabled);
+    assert_eq!(projected[0].reverb_mix_percent, 24);
+    assert_eq!(projected[0].reverb_pre_delay_millis, 28);
+    assert_eq!(projected[0].reverb_decay_millis, 2_400);
+    assert_eq!(projected[0].reverb_size_percent, 68);
+    assert_eq!(projected[0].reverb_damping_percent, 52);
+    assert_eq!(projected[0].reverb_low_cut_hertz, 150);
+    assert_eq!(projected[0].reverb_high_cut_hertz, 9_000);
     assert!(projected[0].limiter_enabled);
     assert_eq!(projected[0].limiter_ceiling_centibels, -125);
     assert_eq!(projected[0].limiter_release_millis, 160);

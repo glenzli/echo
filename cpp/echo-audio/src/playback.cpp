@@ -1,5 +1,6 @@
 #include "echo/audio/playback.hpp"
 
+#include "echo/audio/algorithmic_reverb.hpp"
 #include "echo/audio/dynamics_processor.hpp"
 #include "echo/audio/ffmpeg_include.hpp"
 #include "echo/audio/loudness_meter.hpp"
@@ -267,6 +268,11 @@ class PlaybackSession::Impl {
         );
         dynamics_processor_ =
             std::make_unique<DynamicsProcessor>(adjustment_->compressor(), kCanonicalSampleRate);
+        reverb_ = std::make_unique<AlgorithmicReverb>(
+            adjustment_->reverb(),
+            kCanonicalSampleRate,
+            channel_count_
+        );
         output_limiter_ =
             std::make_unique<OutputLimiter>(adjustment_->limiter(), kCanonicalSampleRate);
         output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
@@ -372,6 +378,20 @@ class PlaybackSession::Impl {
         control_cv_.notify_one();
     }
 
+    void update_reverb(ReverbAdjustment adjustment) {
+        [[maybe_unused]] const AlgorithmicReverb validation(
+            adjustment,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        {
+            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            pending_reverb_ = adjustment;
+            reverb_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
     bool is_paused() const {
         return paused_.load(std::memory_order_acquire);
     }
@@ -448,6 +468,7 @@ class PlaybackSession::Impl {
             low_cut_filter_->reset();
             equalizer_->reset();
             dynamics_processor_->reset();
+            reverb_->reset();
             output_limiter_->reset();
             output_guard_->reset();
             loudness_meter_->reset();
@@ -552,6 +573,10 @@ class PlaybackSession::Impl {
                             output_limiter_->update(pending_limiter_);
                             limiter_update_pending_ = false;
                         }
+                        if (reverb_update_pending_) {
+                            reverb_->update(pending_reverb_);
+                            reverb_update_pending_ = false;
+                        }
                     }
                     for (std::size_t index = 0; index < chunk; ++index) {
                         for (std::size_t channel = 0; channel < channel_count_; ++channel) {
@@ -565,6 +590,7 @@ class PlaybackSession::Impl {
                         }
                     }
                     dynamics_processor_->process_interleaved(scratch, chunk, channel_count_);
+                    reverb_->process_interleaved(scratch, chunk, channel_count_);
                     for (std::size_t index = 0; index < chunk; ++index) {
                         const std::uint64_t source_frame =
                             selected_start + static_cast<std::uint64_t>(written + index);
@@ -668,6 +694,7 @@ class PlaybackSession::Impl {
     std::unique_ptr<LowCutFilter> low_cut_filter_;
     std::unique_ptr<ParametricEqualizer> equalizer_;
     std::unique_ptr<DynamicsProcessor> dynamics_processor_;
+    std::unique_ptr<AlgorithmicReverb> reverb_;
     std::unique_ptr<OutputLimiter> output_limiter_;
     std::unique_ptr<OutputGuard> output_guard_;
     std::unique_ptr<LoudnessMeter> loudness_meter_;
@@ -677,6 +704,8 @@ class PlaybackSession::Impl {
     bool equalizer_update_pending_ = false;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;
+    ReverbAdjustment pending_reverb_;
+    bool reverb_update_pending_ = false;
     LimiterAdjustment pending_limiter_;
     bool limiter_update_pending_ = false;
     std::atomic<float> momentary_lufs_{-70.0F};
@@ -725,6 +754,9 @@ void PlaybackSession::update_equalizer(ParametricEqualizerAdjustment adjustment)
 }
 void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
     impl_->update_compressor(adjustment);
+}
+void PlaybackSession::update_reverb(ReverbAdjustment adjustment) {
+    impl_->update_reverb(adjustment);
 }
 void PlaybackSession::update_limiter(LimiterAdjustment adjustment) {
     impl_->update_limiter(adjustment);

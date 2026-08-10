@@ -32,7 +32,7 @@ Rectangle {
     }
 
     function analyzeOutput() : void {
-        masterOutputPanel.runAnalysis()
+        effectsRack.runAnalysis()
     }
 
     ColumnLayout {
@@ -138,29 +138,9 @@ Rectangle {
                 selectionEndMillis: inspector.selectionEndMillis
             }
 
-            ToneEqualizerPanel {
-                Layout.preferredWidth: 300
-                Layout.minimumWidth: 260
-                Layout.maximumWidth: 330
-                Layout.fillHeight: true
-                draft: inspector.draft
-                responseProvider: inspector.meterSource
-            }
-
-            DynamicsPanel {
-                Layout.preferredWidth: 310
-                Layout.minimumWidth: 280
-                Layout.maximumWidth: 335
-                Layout.fillHeight: true
-                draft: inspector.draft
-                meterSource: inspector.meterSource
-            }
-
-            MasterOutputPanel {
-                id: masterOutputPanel
-                Layout.preferredWidth: 292
-                Layout.minimumWidth: 274
-                Layout.maximumWidth: 310
+            AdvancedEffectsRack {
+                id: effectsRack
+                Layout.fillWidth: true
                 Layout.fillHeight: true
                 draft: inspector.draft
                 meterSource: inspector.meterSource
@@ -168,8 +148,6 @@ Rectangle {
                 sourcePath: inspector.sourcePath
                 analysisKey: inspector.analysisKey
             }
-
-            Item { Layout.fillWidth: true }
         }
     }
 }

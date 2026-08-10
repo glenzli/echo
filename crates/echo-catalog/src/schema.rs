@@ -98,19 +98,15 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_810, 6);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 1);
+    CatalogSchemaRevision::new(20_260_811, 1);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 2);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.1-parametric-equalizer";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.2-algorithmic-reverb";
 
-pub(crate) const PARAMETRIC_EQUALIZER_MIGRATION_SQL: &str = r#"
+pub(crate) const ADJUSTMENT_EFFECTS_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
-    ADD COLUMN parametric_equalizer_json TEXT NOT NULL DEFAULT
-    '{"bands":[{"enabled":true,"filter_kind":"low_shelf","frequency_hertz":120,"q_hundredths":71,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":250,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"bell","frequency_hertz":1000,"q_hundredths":100,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":3000,"q_hundredths":100,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":5000,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"high_shelf","frequency_hertz":8000,"q_hundredths":71,"gain_centibels":0}]}';
-UPDATE asset_adjustment_revisions SET parametric_equalizer_json = printf(
-    '{"bands":[{"enabled":true,"filter_kind":"low_shelf","frequency_hertz":120,"q_hundredths":71,"gain_centibels":%d},{"enabled":false,"filter_kind":"bell","frequency_hertz":250,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"bell","frequency_hertz":1000,"q_hundredths":100,"gain_centibels":%d},{"enabled":false,"filter_kind":"bell","frequency_hertz":3000,"q_hundredths":100,"gain_centibels":0},{"enabled":false,"filter_kind":"bell","frequency_hertz":5000,"q_hundredths":100,"gain_centibels":0},{"enabled":true,"filter_kind":"high_shelf","frequency_hertz":8000,"q_hundredths":71,"gain_centibels":%d}]}' ,
-    eq_low_gain_centibels, eq_mid_gain_centibels, eq_high_gain_centibels
-);
+    ADD COLUMN reverb_json TEXT NOT NULL DEFAULT
+    '{"enabled":false,"mix_percent":18,"pre_delay_millis":20,"decay_millis":1800,"size_percent":55,"damping_percent":45,"low_cut_hertz":120,"high_cut_hertz":10000}';
 "#;
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -251,6 +247,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            CHECK (compressor_release_millis BETWEEN 20 AND 2000),
     compressor_makeup_centibels INTEGER NOT NULL DEFAULT 0
                            CHECK (compressor_makeup_centibels BETWEEN 0 AND 2400),
+    reverb_json             TEXT NOT NULL DEFAULT
+                           '{\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
     limiter_enabled        INTEGER NOT NULL DEFAULT 0
                            CHECK (limiter_enabled IN (0, 1)),
     limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100

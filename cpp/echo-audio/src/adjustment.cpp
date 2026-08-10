@@ -129,6 +129,14 @@ PreparedAdjustment::PreparedAdjustment(
         || limiter.release_millis > kMaximumLimiterReleaseMillis) {
         throw std::invalid_argument("adjustment limiter is outside the supported range");
     }
+    const ReverbAdjustment reverb = authored.reverb;
+    if (reverb.mix_percent > 100 || reverb.pre_delay_millis > 200 || reverb.decay_millis < 100
+        || reverb.decay_millis > 12000 || reverb.size_percent < 10 || reverb.size_percent > 100
+        || reverb.damping_percent > 100 || reverb.low_cut_hertz < 20 || reverb.low_cut_hertz > 1000
+        || reverb.high_cut_hertz < 1000 || reverb.high_cut_hertz > 20000
+        || reverb.low_cut_hertz >= reverb.high_cut_hertz) {
+        throw std::invalid_argument("adjustment reverb is outside the supported range");
+    }
 
     trim_start_millis_ = authored.trim_start_millis;
     trim_end_millis_ = authored.trim_end_millis;
@@ -142,6 +150,7 @@ PreparedAdjustment::PreparedAdjustment(
     low_cut_hertz_ = authored.low_cut_hertz;
     equalizer_ = authored.equalizer;
     compressor_ = authored.compressor;
+    reverb_ = authored.reverb;
     limiter_ = authored.limiter;
 }
 
@@ -171,6 +180,10 @@ ParametricEqualizerAdjustment PreparedAdjustment::equalizer() const {
 
 CompressorAdjustment PreparedAdjustment::compressor() const {
     return compressor_;
+}
+
+ReverbAdjustment PreparedAdjustment::reverb() const {
+    return reverb_;
 }
 
 LimiterAdjustment PreparedAdjustment::limiter() const {

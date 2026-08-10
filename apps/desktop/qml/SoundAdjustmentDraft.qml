@@ -24,6 +24,14 @@ QtObject {
     property int compressorAttackMillis: 10
     property int compressorReleaseMillis: 120
     property int compressorMakeupCentibels: 0
+    property bool reverbEnabled: false
+    property int reverbMixPercent: 18
+    property int reverbPreDelayMillis: 20
+    property int reverbDecayMillis: 1800
+    property int reverbSizePercent: 55
+    property int reverbDampingPercent: 45
+    property int reverbLowCutHertz: 120
+    property int reverbHighCutHertz: 10000
     property bool limiterEnabled: false
     property int limiterCeilingCentibels: -100
     property int limiterReleaseMillis: 100
@@ -48,6 +56,7 @@ QtObject {
         && gainCentibels === 0 && lowCutHertz === 0
         && equalizerIsFlat()
         && !compressorEnabled
+        && !reverbEnabled
         && !limiterEnabled
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
@@ -59,6 +68,10 @@ QtObject {
                          bool compressorEnabled, int compressorThreshold,
                          int compressorRatio, int compressorAttack,
                          int compressorRelease, int compressorMakeup,
+                         bool reverbEnabled, int reverbMix,
+                         int reverbPreDelay, int reverbDecay,
+                         int reverbSize, int reverbDamping,
+                         int reverbLowCut, int reverbHighCut,
                          bool limiterEnabled, int limiterCeiling,
                          int limiterRelease)
 
@@ -145,6 +158,14 @@ QtObject {
             compressorAttackMillis: compressorAttackMillis,
             compressorReleaseMillis: compressorReleaseMillis,
             compressorMakeupCentibels: compressorMakeupCentibels,
+            reverbEnabled: reverbEnabled,
+            reverbMixPercent: reverbMixPercent,
+            reverbPreDelayMillis: reverbPreDelayMillis,
+            reverbDecayMillis: reverbDecayMillis,
+            reverbSizePercent: reverbSizePercent,
+            reverbDampingPercent: reverbDampingPercent,
+            reverbLowCutHertz: reverbLowCutHertz,
+            reverbHighCutHertz: reverbHighCutHertz,
             limiterEnabled: limiterEnabled,
             limiterCeilingCentibels: limiterCeilingCentibels,
             limiterReleaseMillis: limiterReleaseMillis
@@ -168,6 +189,14 @@ QtObject {
             compressorAttackMillis: Number(value.compressorAttackMillis),
             compressorReleaseMillis: Number(value.compressorReleaseMillis),
             compressorMakeupCentibels: Number(value.compressorMakeupCentibels),
+            reverbEnabled: Boolean(value.reverbEnabled),
+            reverbMixPercent: Number(value.reverbMixPercent),
+            reverbPreDelayMillis: Number(value.reverbPreDelayMillis),
+            reverbDecayMillis: Number(value.reverbDecayMillis),
+            reverbSizePercent: Number(value.reverbSizePercent),
+            reverbDampingPercent: Number(value.reverbDampingPercent),
+            reverbLowCutHertz: Number(value.reverbLowCutHertz),
+            reverbHighCutHertz: Number(value.reverbHighCutHertz),
             limiterEnabled: Boolean(value.limiterEnabled),
             limiterCeilingCentibels: Number(value.limiterCeilingCentibels),
             limiterReleaseMillis: Number(value.limiterReleaseMillis)
@@ -197,6 +226,14 @@ QtObject {
                 === Number(right.compressorReleaseMillis)
             && Number(left.compressorMakeupCentibels)
                 === Number(right.compressorMakeupCentibels)
+            && Boolean(left.reverbEnabled) === Boolean(right.reverbEnabled)
+            && Number(left.reverbMixPercent) === Number(right.reverbMixPercent)
+            && Number(left.reverbPreDelayMillis) === Number(right.reverbPreDelayMillis)
+            && Number(left.reverbDecayMillis) === Number(right.reverbDecayMillis)
+            && Number(left.reverbSizePercent) === Number(right.reverbSizePercent)
+            && Number(left.reverbDampingPercent) === Number(right.reverbDampingPercent)
+            && Number(left.reverbLowCutHertz) === Number(right.reverbLowCutHertz)
+            && Number(left.reverbHighCutHertz) === Number(right.reverbHighCutHertz)
             && Boolean(left.limiterEnabled) === Boolean(right.limiterEnabled)
             && Number(left.limiterCeilingCentibels)
                 === Number(right.limiterCeilingCentibels)
@@ -218,6 +255,14 @@ QtObject {
                 compressorAttackMillis: 10,
                 compressorReleaseMillis: 120,
                 compressorMakeupCentibels: 0,
+                reverbEnabled: false,
+                reverbMixPercent: 18,
+                reverbPreDelayMillis: 20,
+                reverbDecayMillis: 1800,
+                reverbSizePercent: 55,
+                reverbDampingPercent: 45,
+                reverbLowCutHertz: 120,
+                reverbHighCutHertz: 10000,
                 limiterEnabled: false,
                 limiterCeilingCentibels: -100,
                 limiterReleaseMillis: 100
@@ -247,6 +292,20 @@ QtObject {
                 Number(asset.compressorReleaseMillis ?? 120), 20, 2000),
             compressorMakeupCentibels: clamp(
                 Number(asset.compressorMakeupCentibels ?? 0), 0, 2400),
+            reverbEnabled: Boolean(asset.reverbEnabled),
+            reverbMixPercent: clamp(Number(asset.reverbMixPercent ?? 18), 0, 100),
+            reverbPreDelayMillis: clamp(
+                Number(asset.reverbPreDelayMillis ?? 20), 0, 200),
+            reverbDecayMillis: clamp(
+                Number(asset.reverbDecayMillis ?? 1800), 100, 12000),
+            reverbSizePercent: clamp(
+                Number(asset.reverbSizePercent ?? 55), 10, 100),
+            reverbDampingPercent: clamp(
+                Number(asset.reverbDampingPercent ?? 45), 0, 100),
+            reverbLowCutHertz: clamp(
+                Number(asset.reverbLowCutHertz ?? 120), 20, 1000),
+            reverbHighCutHertz: clamp(
+                Number(asset.reverbHighCutHertz ?? 10000), 1000, 20000),
             limiterEnabled: Boolean(asset.limiterEnabled),
             limiterCeilingCentibels: clamp(
                 Number(asset.limiterCeilingCentibels ?? -100), -600, 0),
@@ -272,6 +331,14 @@ QtObject {
         compressorAttackMillis = Number(value.compressorAttackMillis)
         compressorReleaseMillis = Number(value.compressorReleaseMillis)
         compressorMakeupCentibels = Number(value.compressorMakeupCentibels)
+        reverbEnabled = Boolean(value.reverbEnabled)
+        reverbMixPercent = Number(value.reverbMixPercent)
+        reverbPreDelayMillis = Number(value.reverbPreDelayMillis)
+        reverbDecayMillis = Number(value.reverbDecayMillis)
+        reverbSizePercent = Number(value.reverbSizePercent)
+        reverbDampingPercent = Number(value.reverbDampingPercent)
+        reverbLowCutHertz = Number(value.reverbLowCutHertz)
+        reverbHighCutHertz = Number(value.reverbHighCutHertz)
         limiterEnabled = Boolean(value.limiterEnabled)
         limiterCeilingCentibels = Number(value.limiterCeilingCentibels)
         limiterReleaseMillis = Number(value.limiterReleaseMillis)
@@ -420,6 +487,59 @@ QtObject {
         pushCurrent()
     }
 
+    function reverbValue() : var {
+        return {
+            enabled: reverbEnabled,
+            mixPercent: reverbMixPercent,
+            preDelayMillis: reverbPreDelayMillis,
+            decayMillis: reverbDecayMillis,
+            sizePercent: reverbSizePercent,
+            dampingPercent: reverbDampingPercent,
+            lowCutHertz: reverbLowCutHertz,
+            highCutHertz: reverbHighCutHertz
+        }
+    }
+
+    function setReverbEnabled(enabled: bool) : void {
+        reverbEnabled = enabled
+        pushCurrent()
+    }
+
+    function setReverbParameter(parameter: string, value: int) : void {
+        if (parameter === "mix") {
+            reverbMixPercent = Math.round(clamp(value, 0, 100))
+        } else if (parameter === "preDelay") {
+            reverbPreDelayMillis = Math.round(clamp(value, 0, 200))
+        } else if (parameter === "decay") {
+            reverbDecayMillis = Math.round(clamp(value, 100, 12000))
+        } else if (parameter === "size") {
+            reverbSizePercent = Math.round(clamp(value, 10, 100))
+        } else if (parameter === "damping") {
+            reverbDampingPercent = Math.round(clamp(value, 0, 100))
+        } else if (parameter === "lowCut") {
+            reverbLowCutHertz = Math.round(clamp(
+                value, 20, Math.min(1000, reverbHighCutHertz - 1)))
+        } else if (parameter === "highCut") {
+            reverbHighCutHertz = Math.round(clamp(
+                value, Math.max(1000, reverbLowCutHertz + 1), 20000))
+        } else {
+            return
+        }
+        pushCurrent()
+    }
+
+    function resetReverb() : void {
+        reverbEnabled = false
+        reverbMixPercent = 18
+        reverbPreDelayMillis = 20
+        reverbDecayMillis = 1800
+        reverbSizePercent = 55
+        reverbDampingPercent = 45
+        reverbLowCutHertz = 120
+        reverbHighCutHertz = 10000
+        pushCurrent()
+    }
+
     function setLimiterEnabled(enabled: bool) : void {
         limiterEnabled = enabled
         pushCurrent()
@@ -460,6 +580,14 @@ QtObject {
             compressorAttackMillis: 10,
             compressorReleaseMillis: 120,
             compressorMakeupCentibels: 0,
+            reverbEnabled: false,
+            reverbMixPercent: 18,
+            reverbPreDelayMillis: 20,
+            reverbDecayMillis: 1800,
+            reverbSizePercent: 55,
+            reverbDampingPercent: 45,
+            reverbLowCutHertz: 120,
+            reverbHighCutHertz: 10000,
             limiterEnabled: false,
             limiterCeilingCentibels: -100,
             limiterReleaseMillis: 100
@@ -480,7 +608,10 @@ QtObject {
             compressorEnabled,
             compressorThresholdCentibels, compressorRatioTenths,
             compressorAttackMillis, compressorReleaseMillis,
-            compressorMakeupCentibels, limiterEnabled,
+            compressorMakeupCentibels,
+            reverbEnabled, reverbMixPercent, reverbPreDelayMillis,
+            reverbDecayMillis, reverbSizePercent, reverbDampingPercent,
+            reverbLowCutHertz, reverbHighCutHertz, limiterEnabled,
             limiterCeilingCentibels, limiterReleaseMillis)
     }
 

@@ -43,6 +43,7 @@ class LoudnessAnalysisController : public QObject {
         int compressorAttackMillis,
         int compressorReleaseMillis,
         int compressorMakeupCentibels,
+        const QVariantMap& reverb,
         bool limiterEnabled,
         int limiterCeilingCentibels,
         int limiterReleaseMillis

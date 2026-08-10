@@ -12,6 +12,7 @@
 #include <cmath>
 
 #include "parametric_equalizer_projection.hpp"
+#include "reverb_projection.hpp"
 
 PlaybackController::PlaybackController(QObject* parent) : QObject(parent) {
     position_timer_.setInterval(100);
@@ -52,6 +53,7 @@ void PlaybackController::playAdjusted(
     int compressorAttackMillis,
     int compressorReleaseMillis,
     int compressorMakeupCentibels,
+    const QVariantMap& reverbValue,
     bool limiterEnabled,
     int limiterCeilingCentibels,
     int limiterReleaseMillis
@@ -71,8 +73,9 @@ void PlaybackController::playAdjusted(
         return;
     }
     const auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
-    if (!equalizer.has_value()) {
-        qWarning("invalid parametric equalizer");
+    const auto reverb = ReverbProjection::fromQml(reverbValue);
+    if (!equalizer.has_value() || !reverb.has_value()) {
+        qWarning("invalid equalizer or reverb");
         return;
     }
     const echo::audio::PlaybackAdjustment adjustment{
@@ -94,6 +97,7 @@ void PlaybackController::playAdjusted(
                 .release_millis = static_cast<std::uint16_t>(compressorReleaseMillis),
                 .makeup_centibels = static_cast<std::int16_t>(compressorMakeupCentibels),
             },
+        .reverb = *reverb,
         .limiter = {
             .enabled = limiterEnabled,
             .ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels),
@@ -101,6 +105,21 @@ void PlaybackController::playAdjusted(
         },
     };
     startSession(path, adjustment);
+}
+
+bool PlaybackController::updateReverb(const QVariantMap& reverbValue) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto reverb = ReverbProjection::fromQml(reverbValue);
+    if (session == nullptr || !reverb.has_value()) {
+        return false;
+    }
+    try {
+        session->update_reverb(*reverb);
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback reverb: %s", error.what());
+        return false;
+    }
+    return true;
 }
 
 bool PlaybackController::updateEqualizer(const QVariantList& equalizerBands) {

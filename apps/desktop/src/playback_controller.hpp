@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include <atomic>
 #include <memory>
@@ -53,6 +54,7 @@ class PlaybackController : public QObject {
         int compressorAttackMillis,
         int compressorReleaseMillis,
         int compressorMakeupCentibels,
+        const QVariantMap& reverb,
         bool limiterEnabled,
         int limiterCeilingCentibels,
         int limiterReleaseMillis
@@ -69,6 +71,7 @@ class PlaybackController : public QObject {
         int makeupCentibels
     );
     Q_INVOKABLE bool updateLimiter(bool enabled, int ceilingCentibels, int releaseMillis);
+    Q_INVOKABLE bool updateReverb(const QVariantMap& reverb);
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 millis);

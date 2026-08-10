@@ -1348,4 +1348,74 @@
         <translation>增益</translation>
     </message>
 </context>
+<context>
+    <name>AdvancedEffectsRack</name>
+    <message>
+        <source>EQ</source>
+        <translation>均衡</translation>
+    </message>
+    <message>
+        <source>Dynamics</source>
+        <translation>动态</translation>
+    </message>
+    <message>
+        <source>Space</source>
+        <translation>空间</translation>
+    </message>
+    <message>
+        <source>Master</source>
+        <translation>母线</translation>
+    </message>
+</context>
+<context>
+    <name>SpaceReverbPanel</name>
+    <message>
+        <source>Algorithmic room</source>
+        <translation>算法空间</translation>
+    </message>
+    <message>
+        <source>LIVE</source>
+        <translation>实时</translation>
+    </message>
+    <message>
+        <source>BYPASS</source>
+        <translation>旁路</translation>
+    </message>
+    <message>
+        <source>Reset room</source>
+        <translation>重置空间效果</translation>
+    </message>
+    <message>
+        <source>Mix</source>
+        <translation>混合</translation>
+    </message>
+    <message>
+        <source>Pre-delay</source>
+        <translation>预延迟</translation>
+    </message>
+    <message>
+        <source>Decay</source>
+        <translation>衰减</translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation>空间尺寸</translation>
+    </message>
+    <message>
+        <source>Damping</source>
+        <translation>阻尼</translation>
+    </message>
+    <message>
+        <source>Low cut</source>
+        <translation>低切</translation>
+    </message>
+    <message>
+        <source>High cut</source>
+        <translation>高切</translation>
+    </message>
+    <message>
+        <source>Insert effect · before fade and master</source>
+        <translation>插入效果 · 位于淡化与母线之前</translation>
+    </message>
+</context>
 </TS>

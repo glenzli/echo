@@ -148,6 +148,35 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("compressorMakeupCentibels"),
             static_cast<int>(asset.compressor_makeup_centibels)
         );
+        entry.insert(QStringLiteral("reverbEnabled"), asset.reverb_enabled);
+        entry.insert(
+            QStringLiteral("reverbMixPercent"),
+            static_cast<int>(asset.reverb_mix_percent)
+        );
+        entry.insert(
+            QStringLiteral("reverbPreDelayMillis"),
+            static_cast<int>(asset.reverb_pre_delay_millis)
+        );
+        entry.insert(
+            QStringLiteral("reverbDecayMillis"),
+            static_cast<int>(asset.reverb_decay_millis)
+        );
+        entry.insert(
+            QStringLiteral("reverbSizePercent"),
+            static_cast<int>(asset.reverb_size_percent)
+        );
+        entry.insert(
+            QStringLiteral("reverbDampingPercent"),
+            static_cast<int>(asset.reverb_damping_percent)
+        );
+        entry.insert(
+            QStringLiteral("reverbLowCutHertz"),
+            static_cast<int>(asset.reverb_low_cut_hertz)
+        );
+        entry.insert(
+            QStringLiteral("reverbHighCutHertz"),
+            static_cast<int>(asset.reverb_high_cut_hertz)
+        );
         entry.insert(QStringLiteral("limiterEnabled"), asset.limiter_enabled);
         entry.insert(
             QStringLiteral("limiterCeilingCentibels"),
@@ -280,6 +309,14 @@ bool DesktopBackend::setAssetAdjustment(
     int compressorAttackMillis,
     int compressorReleaseMillis,
     int compressorMakeupCentibels,
+    bool reverbEnabled,
+    int reverbMixPercent,
+    int reverbPreDelayMillis,
+    int reverbDecayMillis,
+    int reverbSizePercent,
+    int reverbDampingPercent,
+    int reverbLowCutHertz,
+    int reverbHighCutHertz,
     bool limiterEnabled,
     int limiterCeilingCentibels,
     int limiterReleaseMillis
@@ -293,8 +330,13 @@ bool DesktopBackend::setAssetAdjustment(
         || compressorAttackMillis > 200 || compressorReleaseMillis < 20
         || compressorReleaseMillis > 2000 || compressorMakeupCentibels < 0
         || compressorMakeupCentibels > 2400 || limiterCeilingCentibels < -600
-        || limiterCeilingCentibels > 0 || limiterReleaseMillis < 20
-        || limiterReleaseMillis > 1000) {
+        || limiterCeilingCentibels > 0 || limiterReleaseMillis < 20 || limiterReleaseMillis > 1000
+        || reverbMixPercent < 0 || reverbMixPercent > 100 || reverbPreDelayMillis < 0
+        || reverbPreDelayMillis > 200 || reverbDecayMillis < 100 || reverbDecayMillis > 12000
+        || reverbSizePercent < 10 || reverbSizePercent > 100 || reverbDampingPercent < 0
+        || reverbDampingPercent > 100 || reverbLowCutHertz < 20 || reverbLowCutHertz > 1000
+        || reverbHighCutHertz < 1000 || reverbHighCutHertz > 20000
+        || reverbLowCutHertz >= reverbHighCutHertz) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
@@ -320,6 +362,14 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.compressor_release_millis = static_cast<std::uint16_t>(compressorReleaseMillis);
         adjustment.compressor_makeup_centibels =
             static_cast<std::int16_t>(compressorMakeupCentibels);
+        adjustment.reverb_enabled = reverbEnabled;
+        adjustment.reverb_mix_percent = static_cast<std::uint8_t>(reverbMixPercent);
+        adjustment.reverb_pre_delay_millis = static_cast<std::uint16_t>(reverbPreDelayMillis);
+        adjustment.reverb_decay_millis = static_cast<std::uint16_t>(reverbDecayMillis);
+        adjustment.reverb_size_percent = static_cast<std::uint8_t>(reverbSizePercent);
+        adjustment.reverb_damping_percent = static_cast<std::uint8_t>(reverbDampingPercent);
+        adjustment.reverb_low_cut_hertz = static_cast<std::uint16_t>(reverbLowCutHertz);
+        adjustment.reverb_high_cut_hertz = static_cast<std::uint16_t>(reverbHighCutHertz);
         adjustment.limiter_enabled = limiterEnabled;
         adjustment.limiter_ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels);
         adjustment.limiter_release_millis = static_cast<std::uint16_t>(limiterReleaseMillis);

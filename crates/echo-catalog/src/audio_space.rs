@@ -79,6 +79,7 @@ pub fn list_audio_space(
          adj.compressor_enabled, adj.compressor_threshold_centibels, \
          adj.compressor_ratio_tenths, adj.compressor_attack_millis, \
          adj.compressor_release_millis, adj.compressor_makeup_centibels, \
+         adj.reverb_json, \
          adj.limiter_enabled, adj.limiter_ceiling_centibels, \
          adj.limiter_release_millis, \
          adj.created_at_millis \
@@ -173,11 +174,12 @@ fn audio_space_adjustment_from_row(
         makeup_centibels: i16::try_from(row.get::<_, i64>(34)?)
             .expect("compressor makeup fits centibels"),
     })
+    .with_reverb(serde_json::from_str(&row.get::<_, String>(35)?).expect("stored reverb parses"))
     .with_limiter(echo_domain::LimiterSettings {
-        enabled: row.get::<_, i64>(35)? != 0,
-        ceiling_centibels: i16::try_from(row.get::<_, i64>(36)?)
+        enabled: row.get::<_, i64>(36)? != 0,
+        ceiling_centibels: i16::try_from(row.get::<_, i64>(37)?)
             .expect("limiter ceiling fits centibels"),
-        release_millis: u16::try_from(row.get::<_, i64>(37)?)
+        release_millis: u16::try_from(row.get::<_, i64>(38)?)
             .expect("limiter release fits milliseconds"),
     });
     let graph = echo_domain::AdjustmentGraph::new(
@@ -192,7 +194,7 @@ fn audio_space_adjustment_from_row(
     Ok(Some(crate::AssetAdjustmentRevision {
         revision_id,
         graph,
-        created_at_millis: row.get(38)?,
+        created_at_millis: row.get(39)?,
     }))
 }
 

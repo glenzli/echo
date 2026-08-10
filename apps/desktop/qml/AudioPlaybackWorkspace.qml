@@ -49,6 +49,16 @@ Rectangle {
         ? Number(asset.compressorReleaseMillis) : 120
     readonly property int compressorMakeupCentibels: hasAsset
         ? Number(asset.compressorMakeupCentibels) : 0
+    readonly property var reverbValue: ({
+        enabled: hasAsset ? Boolean(asset.reverbEnabled) : false,
+        mixPercent: hasAsset ? Number(asset.reverbMixPercent) : 18,
+        preDelayMillis: hasAsset ? Number(asset.reverbPreDelayMillis) : 20,
+        decayMillis: hasAsset ? Number(asset.reverbDecayMillis) : 1800,
+        sizePercent: hasAsset ? Number(asset.reverbSizePercent) : 55,
+        dampingPercent: hasAsset ? Number(asset.reverbDampingPercent) : 45,
+        lowCutHertz: hasAsset ? Number(asset.reverbLowCutHertz) : 120,
+        highCutHertz: hasAsset ? Number(asset.reverbHighCutHertz) : 10000
+    })
     readonly property bool limiterEnabled: hasAsset
         ? Boolean(asset.limiterEnabled) : false
     readonly property int limiterCeilingCentibels: hasAsset
@@ -106,7 +116,8 @@ Rectangle {
             + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled
             + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths
             + ":" + compressorAttackMillis + ":" + compressorReleaseMillis
-            + ":" + compressorMakeupCentibels + ":" + limiterEnabled
+            + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue)
+            + ":" + limiterEnabled
             + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis
     }
 
@@ -120,7 +131,7 @@ Rectangle {
                             equalizerBands, compressorEnabled,
                             compressorThresholdCentibels, compressorRatioTenths,
                             compressorAttackMillis, compressorReleaseMillis,
-                            compressorMakeupCentibels, limiterEnabled,
+                            compressorMakeupCentibels, reverbValue, limiterEnabled,
                             limiterCeilingCentibels, limiterReleaseMillis)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
