@@ -1,5 +1,5 @@
-//! Affinity operations for the selected sound. Cards expose Like and rating
-//! state but do not mutate it; presentation switching lives in the top bar.
+//! User-owned operations for the selected sound: affinity and explicit album
+//! membership. The album popup remains with its trigger and placement owner.
 
 import QtQuick
 import QtQuick.Controls
@@ -10,8 +10,11 @@ Rectangle {
     id: toolbar
 
     required property var asset
+    required property var userAlbums
 
     signal affinityRequested(bool liked, int rating)
+    signal albumMembershipRequested(var album, bool included)
+    signal createAlbumRequested()
 
     visible: asset !== null
     implicitWidth: operations.implicitWidth + 20
@@ -113,5 +116,70 @@ Rectangle {
             }
         }
 
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 20
+            color: Theme.border
+        }
+
+        Button {
+            id: albumButton
+
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 30
+            padding: 0
+            focusPolicy: Qt.NoFocus
+            onClicked: albumMenu.popup(albumButton, 0, -albumMenu.implicitHeight - 6)
+
+            ToolTip.visible: hovered
+            ToolTip.text: qsTr("Add to album")
+            ToolTip.delay: 500
+            Accessible.name: ToolTip.text
+
+            background: Rectangle {
+                radius: Theme.compactControlRadius
+                color: albumButton.hovered ? Theme.buttonGhostHover : Theme.transparent
+            }
+
+            contentItem: Text {
+                text: "▱+"
+                color: Theme.textSecondary
+                font.pixelSize: 13
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
+
+    }
+
+    Menu {
+        id: albumMenu
+
+        Repeater {
+            model: toolbar.userAlbums
+
+            delegate: MenuItem {
+                required property var modelData
+
+                text: modelData.name
+                checkable: true
+                checked: toolbar.asset !== null
+                    && modelData.memberIds.includes(toolbar.asset.id)
+                onTriggered: toolbar.albumMembershipRequested(modelData, checked)
+            }
+        }
+
+        MenuItem {
+            visible: toolbar.userAlbums.length === 0
+            enabled: false
+            text: qsTr("No albums yet")
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            text: qsTr("New album…")
+            onTriggered: toolbar.createAlbumRequested()
+        }
     }
 }

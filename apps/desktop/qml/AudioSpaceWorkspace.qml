@@ -21,7 +21,6 @@ Item {
     property bool speechOnly: false
     property var allAssets: []
     property var filteredAssets: []
-    property var smartAlbums: []
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
 
     readonly property int visibleAssetCount: filteredAssets.length
@@ -33,6 +32,11 @@ Item {
     SoundFilterState {
         id: advancedFilterState
         assets: workspace.allAssets
+    }
+
+    SoundAlbumState {
+        id: albumState
+        catalogBackend: backend
     }
 
     function fileName(path: string) : string {
@@ -50,11 +54,8 @@ Item {
             }
         }
         allAssets = assets
-        smartAlbums = backend.listSmartAlbums()
-        if (selectedFilter.startsWith("album:")
-                && albumForKey(selectedFilter.substring(6)) === null) {
-            selectedFilter = "all"
-        }
+        albumState.refresh()
+        reconcileAlbumFilter()
         refilter()
         if (reconciled !== null) {
             selectedAsset = reconciled
@@ -65,13 +66,14 @@ Item {
         }
     }
 
-    function albumForKey(key: string) : var {
-        for (const album of smartAlbums) {
-            if (album.key === key) {
-                return album
-            }
+    function reconcileAlbumFilter() : void {
+        if (selectedFilter.startsWith("user-album:")) {
+            const albumId = Number(selectedFilter.substring(11))
+            if (albumState.userAlbum(albumId) === null) selectedFilter = "all"
+        } else if (selectedFilter.startsWith("suggested-album:")) {
+            const key = selectedFilter.substring(16)
+            if (albumState.suggestedAlbum(key) === null) selectedFilter = "all"
         }
-        return null
     }
 
     function collectionTitle() : string {
@@ -80,8 +82,12 @@ Item {
         if (selectedFilter === "five-star") return qsTr("5 stars")
         if (selectedFilter === "has-speech") return qsTr("With speech")
         if (selectedFilter === "missing") return qsTr("Missing originals")
-        if (selectedFilter.startsWith("album:")) {
-            const album = albumForKey(selectedFilter.substring(6))
+        if (selectedFilter.startsWith("user-album:")) {
+            const album = albumState.userAlbum(Number(selectedFilter.substring(11)))
+            if (album !== null) return album.name
+        }
+        if (selectedFilter.startsWith("suggested-album:")) {
+            const album = albumState.suggestedAlbum(selectedFilter.substring(16))
             if (album !== null) return album.label
         }
         return qsTr("All sounds")
@@ -106,8 +112,12 @@ Item {
         if (selectedFilter === "missing") {
             return asset.pathStatus === "missing"
         }
-        if (selectedFilter.startsWith("album:")) {
-            const album = albumForKey(selectedFilter.substring(6))
+        if (selectedFilter.startsWith("user-album:")) {
+            const album = albumState.userAlbum(Number(selectedFilter.substring(11)))
+            return album !== null && album.memberIds.includes(asset.id)
+        }
+        if (selectedFilter.startsWith("suggested-album:")) {
+            const album = albumState.suggestedAlbum(selectedFilter.substring(16))
             return album !== null && album.memberIds.includes(asset.id)
         }
         return false
@@ -226,9 +236,47 @@ Item {
         backend.setAssetAffinity(asset.id, liked, rating)
     }
 
+    function createAlbum(name: string, memberIds: var) : void {
+        const albumId = albumState.createAlbum(name, memberIds)
+        if (albumId >= 0) {
+            selectedFilter = "user-album:" + albumId
+            refilter()
+        }
+    }
+
+    function renameAlbum(albumId: var, name: string) : void {
+        albumState.renameAlbum(albumId, name)
+    }
+
+    function deleteAlbum(albumId: var) : void {
+        if (albumState.deleteAlbum(albumId)
+                && selectedFilter === "user-album:" + albumId) {
+            selectedFilter = "all"
+            refilter()
+        }
+    }
+
+    function saveSuggestedAlbum(album: var, name: string) : void {
+        createAlbum(name, album.memberIds)
+    }
+
+    function setAlbumMembership(asset: var, album: var, included: bool) : void {
+        if (asset === null) return
+        albumState.setMembership(album.id, asset.id, included)
+    }
+
     function openAsset(asset: var) : void {
         selectedAsset = asset
         viewMode = "focus"
+    }
+
+    function debugOpenNewAlbumDialog() : void {
+        librarySidebar.beginCreate([])
+    }
+
+    function debugCreateAlbum(name: string) : void {
+        const members = selectedAsset !== null ? [selectedAsset.id] : []
+        createAlbum(name, members)
     }
 
     function selectSearchHit(hit: var) : void {
@@ -252,6 +300,14 @@ Item {
         function onFiltersChanged() : void { workspace.refilter() }
     }
 
+    Connections {
+        target: albumState
+        function onAlbumsRefreshed() : void {
+            workspace.reconcileAlbumFilter()
+            workspace.refilter()
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -262,14 +318,28 @@ Item {
             spacing: 0
 
             AudioLibrarySidebar {
+                id: librarySidebar
+
                 Layout.preferredWidth: 220
                 Layout.minimumWidth: 205
                 Layout.fillHeight: true
                 assets: workspace.allAssets
-                smartAlbums: workspace.smartAlbums
+                userAlbums: albumState.userAlbums
+                suggestedAlbums: albumState.suggestedAlbums
                 selectedFilter: workspace.selectedFilter
+                albumError: albumState.errorMessage
                 onFilterRequested: key => workspace.selectFilter(key)
                 onManageLibraryRequested: workspace.openLibraryRequested()
+                onCreateAlbumRequested: function(name, memberIds) {
+                    workspace.createAlbum(name, memberIds)
+                }
+                onRenameAlbumRequested: function(albumId, name) {
+                    workspace.renameAlbum(albumId, name)
+                }
+                onDeleteAlbumRequested: albumId => workspace.deleteAlbum(albumId)
+                onSaveSuggestedAlbumRequested: function(album, name) {
+                    workspace.saveSuggestedAlbum(album, name)
+                }
             }
 
             ColumnLayout {
@@ -303,11 +373,18 @@ Item {
                         searchText: workspace.searchText
                         preferredCardWidth: workspace.preferredCardWidth
                         density: workspace.cardDensity
+                        userAlbums: albumState.userAlbums
                         onAssetSelected: asset => workspace.selectedAsset = asset
                         onAssetOpened: asset => workspace.openAsset(asset)
                         onAffinityRequested: function(asset, liked, rating) {
                             workspace.updateAffinity(asset, liked, rating)
                         }
+                        onAlbumMembershipRequested: function(asset, album, included) {
+                            workspace.setAlbumMembership(asset, album, included)
+                        }
+                        onCreateAlbumRequested: librarySidebar.beginCreate(
+                            workspace.selectedAsset !== null
+                                ? [workspace.selectedAsset.id] : [])
                     }
 
                     SoundFocusView {
@@ -318,10 +395,17 @@ Item {
                         assets: workspace.filteredAssets
                         selectedAsset: workspace.selectedAsset
                         jobStats: workspace.jobStats
+                        userAlbums: albumState.userAlbums
                         onAssetSelected: asset => workspace.selectedAsset = asset
                         onAffinityRequested: function(asset, liked, rating) {
                             workspace.updateAffinity(asset, liked, rating)
                         }
+                        onAlbumMembershipRequested: function(asset, album, included) {
+                            workspace.setAlbumMembership(asset, album, included)
+                        }
+                        onCreateAlbumRequested: librarySidebar.beginCreate(
+                            workspace.selectedAsset !== null
+                                ? [workspace.selectedAsset.id] : [])
                     }
                 }
             }

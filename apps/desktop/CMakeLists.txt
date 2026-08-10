@@ -163,6 +163,9 @@ qt_add_qml_module(
         qml/MasterOutputPanel.qml
         qml/ParametricEqGraph.qml
         qml/SoundAdvancedFilterPopup.qml
+        qml/SoundAlbumNameDialog.qml
+        qml/SoundAlbumRow.qml
+        qml/SoundAlbumState.qml
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
         qml/SpaceReverbPanel.qml

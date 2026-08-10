@@ -27,6 +27,12 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList listAssets() const;
     Q_INVOKABLE QVariantList listKeywordFacets() const;
     Q_INVOKABLE QVariantList listSmartAlbums() const;
+    Q_INVOKABLE QVariantList listUserAlbums() const;
+    Q_INVOKABLE qlonglong createUserAlbum(const QString& name, const QVariantList& memberIds);
+    Q_INVOKABLE bool renameUserAlbum(qlonglong albumId, const QString& name);
+    Q_INVOKABLE bool deleteUserAlbum(qlonglong albumId);
+    Q_INVOKABLE bool
+    setUserAlbumMembership(qlonglong albumId, const QString& assetId, bool included);
     Q_INVOKABLE QVariantList waveformForAsset(const QString& id) const;
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
     Q_INVOKABLE bool setAssetAffinity(const QString& id, bool liked, int rating);
@@ -89,6 +95,7 @@ class DesktopBackend : public QObject {
 
   signals:
     void assetsChanged();
+    void albumsChanged();
     void jobsChanged();
 
   private:

@@ -1,6 +1,7 @@
 //! Session contract tests: transcripts query against a real catalog.
 
 mod smart_album_contract;
+mod user_album_contract;
 
 use crate::session::{aligned_segments, open_session};
 

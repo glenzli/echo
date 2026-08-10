@@ -138,6 +138,18 @@ mod ffi {
         member_asset_ids: Vec<String>,
     }
 
+    /// One user-authored album and its explicit member facts.
+    #[derive(Debug)]
+    struct UserAlbumWire {
+        id: i64,
+        name: String,
+        cover_asset_id: String,
+        count: u64,
+        member_asset_ids: Vec<String>,
+        created_at_millis: i64,
+        updated_at_millis: i64,
+    }
+
     /// One pyramid level of a cached waveform artifact.
     #[derive(Debug)]
     struct WaveformLevelWire {
@@ -222,6 +234,29 @@ mod ffi {
         fn session_keyword_facets(self: &LibrarySession) -> Result<Vec<KeywordFacetWire>>;
         /// Lists explainable cross-asset album candidates.
         fn session_smart_albums(self: &LibrarySession) -> Result<Vec<SmartAlbumWire>>;
+        /// Lists user-authored albums and explicit membership.
+        fn session_user_albums(self: &LibrarySession) -> Result<Vec<UserAlbumWire>>;
+        /// Creates an empty user album or atomically snapshots a suggestion.
+        fn session_create_user_album(
+            self: &LibrarySession,
+            name: &str,
+            member_asset_ids: &[String],
+        ) -> Result<i64>;
+        /// Renames a user album.
+        fn session_rename_user_album(
+            self: &LibrarySession,
+            album_id: i64,
+            name: &str,
+        ) -> Result<()>;
+        /// Deletes a user album without touching its sounds.
+        fn session_delete_user_album(self: &LibrarySession, album_id: i64) -> Result<()>;
+        /// Adds or removes one explicit album member.
+        fn session_set_user_album_membership(
+            self: &LibrarySession,
+            album_id: i64,
+            asset_id: &str,
+            included: bool,
+        ) -> Result<bool>;
         /// Total registered asset count.
         fn session_asset_count(self: &LibrarySession) -> u64;
         /// The catalog file path.
@@ -322,6 +357,44 @@ impl LibrarySession {
     /// Lists explainable cross-asset album candidates.
     fn session_smart_albums(&self) -> Result<Vec<ffi::SmartAlbumWire>, String> {
         self.smart_albums().map_err(|error| error.message)
+    }
+
+    /// Lists user-authored albums.
+    fn session_user_albums(&self) -> Result<Vec<ffi::UserAlbumWire>, String> {
+        self.user_albums().map_err(|error| error.message)
+    }
+
+    /// Creates one user album with an optional member snapshot.
+    fn session_create_user_album(
+        &self,
+        name: &str,
+        member_asset_ids: &[String],
+    ) -> Result<i64, String> {
+        self.create_user_album(name, member_asset_ids)
+            .map_err(|error| error.message)
+    }
+
+    /// Renames one user album.
+    fn session_rename_user_album(&self, album_id: i64, name: &str) -> Result<(), String> {
+        self.rename_user_album(album_id, name)
+            .map_err(|error| error.message)
+    }
+
+    /// Deletes one user album.
+    fn session_delete_user_album(&self, album_id: i64) -> Result<(), String> {
+        self.delete_user_album(album_id)
+            .map_err(|error| error.message)
+    }
+
+    /// Adds or removes one explicit album member.
+    fn session_set_user_album_membership(
+        &self,
+        album_id: i64,
+        asset_id: &str,
+        included: bool,
+    ) -> Result<bool, String> {
+        self.set_user_album_membership(album_id, asset_id, included)
+            .map_err(|error| error.message)
     }
 
     /// Total registered asset count.

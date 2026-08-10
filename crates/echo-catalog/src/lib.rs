@@ -7,7 +7,8 @@
 //! [`asset_registration`] for idempotent source registration, [`analysis`]
 //! for append-only analysis evidence, [`job_queue`] for the persistent
 //! background work queue, [`adjustment_graph`] for authored non-destructive
-//! revisions, and [`scan_root`] for the directories Echo watches.
+//! revisions, [`user_albums`] for durable user-authored collections, and
+//! [`scan_root`] for the directories Echo watches.
 
 mod adjustment_graph;
 mod analysis;
@@ -28,6 +29,7 @@ mod schema;
 mod search;
 mod smart_albums;
 mod source_metadata;
+mod user_albums;
 
 pub use adjustment_graph::{
     AssetAdjustmentRevision, latest_adjustment_graph, record_adjustment_graph,
@@ -81,6 +83,10 @@ pub use smart_albums::{
 pub use source_metadata::{
     SourceMetadata, SourceMetadataEntry, list_assets_missing_source_metadata,
     record_source_metadata,
+};
+pub use user_albums::{
+    CreateUserAlbum, UserAlbum, UserAlbumId, create_user_album, delete_user_album,
+    list_user_albums, rename_user_album, set_user_album_membership,
 };
 
 #[cfg(test)]

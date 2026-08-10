@@ -60,6 +60,16 @@ ApplicationWindow {
         soundEditor.openExport()
     }
 
+    function debugOpenAlbumDialog() : void {
+        showAudioSpace()
+        audioSpace.debugOpenNewAlbumDialog()
+    }
+
+    function debugCreateAlbum(name: string) : void {
+        showAudioSpace()
+        audioSpace.debugCreateAlbum(name)
+    }
+
     function debugExportSound(destination: url) : void {
         if (audioSpace.selectedAsset === null) return
         showSoundEditor()

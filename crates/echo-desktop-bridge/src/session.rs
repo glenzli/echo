@@ -13,7 +13,7 @@ use echo_domain::AssetId;
 use crate::ffi::{
     AnalysisStatusWire, AssetSummaryWire, EqualizerBandWire, JobStatsWire, KeywordFacetWire,
     ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire,
-    WaveformArtifactWire, WaveformLevelWire,
+    UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 pub(crate) fn now_millis() -> i64 {
@@ -423,6 +423,120 @@ impl LibrarySession {
                     .collect(),
             })
             .collect())
+    }
+
+    /// Lists user-authored albums and their explicit member identities.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the Catalog projection fails.
+    pub fn user_albums(&self) -> Result<Vec<UserAlbumWire>, SessionError> {
+        let albums = self
+            .catalog
+            .with_transaction(echo_catalog::list_user_albums)
+            .map_err(SessionError::from)?;
+        Ok(albums
+            .into_iter()
+            .map(|album| UserAlbumWire {
+                id: album.id,
+                name: album.name,
+                cover_asset_id: album
+                    .cover_asset_id
+                    .map_or_else(String::new, |asset_id| asset_id.to_string()),
+                count: u64::try_from(album.member_asset_ids.len()).unwrap_or(u64::MAX),
+                member_asset_ids: album
+                    .member_asset_ids
+                    .into_iter()
+                    .map(|asset_id| asset_id.to_string())
+                    .collect(),
+                created_at_millis: album.created_at_millis,
+                updated_at_millis: album.updated_at_millis,
+            })
+            .collect())
+    }
+
+    /// Creates an empty user album or atomically snapshots suggested members.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the name, an asset identity, or the
+    /// Catalog write is invalid.
+    pub fn create_user_album(
+        &self,
+        name: &str,
+        member_asset_ids: &[String],
+    ) -> Result<i64, SessionError> {
+        let members = member_asset_ids
+            .iter()
+            .map(|asset_id| {
+                AssetId::from_str(asset_id).map_err(|error| SessionError {
+                    message: format!("invalid album member id {asset_id}: {error}"),
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::create_user_album(
+                    transaction,
+                    echo_catalog::CreateUserAlbum {
+                        name,
+                        member_asset_ids: &members,
+                    },
+                    now_millis(),
+                )
+            })
+            .map_err(SessionError::from)
+    }
+
+    /// Renames one user album.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the album, name, or write is invalid.
+    pub fn rename_user_album(&self, album_id: i64, name: &str) -> Result<(), SessionError> {
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::rename_user_album(transaction, album_id, name, now_millis())
+            })
+            .map_err(SessionError::from)
+    }
+
+    /// Deletes one user album without touching any asset.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the album is unknown or the write fails.
+    pub fn delete_user_album(&self, album_id: i64) -> Result<(), SessionError> {
+        self.catalog
+            .with_transaction(|transaction| echo_catalog::delete_user_album(transaction, album_id))
+            .map_err(SessionError::from)
+    }
+
+    /// Adds or removes one explicit album member.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when an identity is invalid or the write fails.
+    pub fn set_user_album_membership(
+        &self,
+        album_id: i64,
+        asset_id: &str,
+        included: bool,
+    ) -> Result<bool, SessionError> {
+        let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid album member id {asset_id}: {error}"),
+        })?;
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::set_user_album_membership(
+                    transaction,
+                    album_id,
+                    asset_id,
+                    included,
+                    now_millis(),
+                )
+            })
+            .map_err(SessionError::from)
     }
 
     /// Stores user-owned Like and rating state for one sound.

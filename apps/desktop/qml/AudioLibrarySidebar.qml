@@ -1,5 +1,5 @@
-//! Sound Library navigation. System collections and smart albums are a stable
-//! browse index; folder management remains in AudioLibraryWorkspace.
+//! Sound Library navigation. User albums are durable facts, while suggested
+//! albums remain a separate, rebuildable browse index.
 
 import QtQuick
 import QtQuick.Controls
@@ -10,11 +10,22 @@ Rectangle {
     id: sidebar
 
     required property var assets
-    required property var smartAlbums
+    required property var userAlbums
+    required property var suggestedAlbums
     required property string selectedFilter
+    property string albumError: ""
 
     signal filterRequested(string key)
     signal manageLibraryRequested()
+    signal createAlbumRequested(string name, var memberIds)
+    signal renameAlbumRequested(var albumId, string name)
+    signal deleteAlbumRequested(var albumId)
+    signal saveSuggestedAlbumRequested(var album, string name)
+
+    property string albumEditorMode: ""
+    property var albumEditorTarget: null
+    property var pendingDeleteAlbum: null
+    property var pendingInitialMemberIds: []
 
     color: Theme.panel
 
@@ -51,6 +62,18 @@ Rectangle {
             }
         }
         return count
+    }
+
+    function editAlbum(mode: string, target: var, title: string,
+                       action: string, name: string) : void {
+        albumEditorMode = mode
+        albumEditorTarget = target
+        albumNameDialog.show(title, action, name)
+    }
+
+    function beginCreate(memberIds: var) : void {
+        pendingInitialMemberIds = memberIds || []
+        editAlbum("create", null, qsTr("New album"), qsTr("Create"), "")
     }
 
     Rectangle {
@@ -152,7 +175,7 @@ Rectangle {
                     Layout.leftMargin: 7
                     Layout.topMargin: 2
                     Layout.bottomMargin: 4
-                    text: qsTr("SUGGESTED ALBUMS")
+                    text: qsTr("ALBUMS")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     font.bold: true
@@ -160,18 +183,96 @@ Rectangle {
                 }
 
                 Repeater {
-                    model: sidebar.smartAlbums
+                    model: sidebar.userAlbums
 
-                    delegate: SoundLibraryRow {
+                    delegate: SoundAlbumRow {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        label: modelData.name
+                        count: modelData.count
+                        selected: sidebar.selectedFilter === "user-album:" + modelData.id
+                        onActivated: sidebar.filterRequested("user-album:" + modelData.id)
+                        onRenameRequested: sidebar.editAlbum(
+                            "rename", modelData, qsTr("Rename album"),
+                            qsTr("Rename"), modelData.name)
+                        onDeleteRequested: {
+                            sidebar.pendingDeleteAlbum = modelData
+                            deleteDialog.open()
+                        }
+                    }
+                }
+
+                Button {
+                    Layout.fillWidth: true
+                    implicitHeight: 32
+                    padding: 0
+                    focusPolicy: Qt.NoFocus
+                    onClicked: sidebar.beginCreate([])
+
+                    background: Rectangle {
+                        radius: Theme.controlRadius
+                        color: parent.hovered ? Theme.buttonGhostHover : Theme.transparent
+                    }
+
+                    contentItem: RowLayout {
+                        spacing: 8
+
+                        Text {
+                            Layout.preferredWidth: 17
+                            text: "+"
+                            color: Theme.accent
+                            font.pixelSize: 17
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("New album")
+                            color: Theme.textSecondary
+                            font.pixelSize: Theme.fontBody
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 7
+                    Layout.rightMargin: 7
+                    Layout.topMargin: 6
+                    Layout.bottomMargin: 6
+                    Layout.preferredHeight: 1
+                    color: Theme.border
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 7
+                    Layout.bottomMargin: 4
+                    text: qsTr("SUGGESTED")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    font.bold: true
+                    font.letterSpacing: 1.3
+                }
+
+                Repeater {
+                    model: sidebar.suggestedAlbums
+
+                    delegate: SoundAlbumRow {
                         required property var modelData
 
                         Layout.fillWidth: true
                         label: modelData.label
                         subtitle: sidebar.albumReason(modelData)
-                        glyph: "▱"
+                        suggested: true
                         count: modelData.count
-                        selected: sidebar.selectedFilter === "album:" + modelData.key
-                        onActivated: sidebar.filterRequested("album:" + modelData.key)
+                        selected: sidebar.selectedFilter === "suggested-album:" + modelData.key
+                        onActivated: sidebar.filterRequested(
+                            "suggested-album:" + modelData.key)
+                        onSaveRequested: sidebar.editAlbum(
+                            "save-suggestion", modelData, qsTr("Save suggested album"),
+                            qsTr("Save"), modelData.label)
                     }
                 }
 
@@ -179,12 +280,24 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 8
                     Layout.rightMargin: 8
-                    visible: sidebar.smartAlbums.length === 0
+                    visible: sidebar.suggestedAlbums.length === 0
                     text: qsTr("Album suggestions will appear when at least two sounds share time, place, event, or people.")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     wrapMode: Text.WordWrap
                     lineHeight: 1.25
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 8
+                    Layout.rightMargin: 8
+                    Layout.topMargin: 6
+                    visible: sidebar.albumError.length > 0
+                    text: sidebar.albumError
+                    color: Theme.warningText
+                    font.pixelSize: Theme.fontMeta
+                    wrapMode: Text.WordWrap
                 }
             }
         }
@@ -219,6 +332,90 @@ Rectangle {
                     text: qsTr("Manage folders")
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontBody
+                }
+            }
+        }
+    }
+
+    SoundAlbumNameDialog {
+        id: albumNameDialog
+
+        onSubmitted: function(name) {
+            if (sidebar.albumEditorMode === "create") {
+                sidebar.createAlbumRequested(name, sidebar.pendingInitialMemberIds)
+            } else if (sidebar.albumEditorMode === "rename"
+                       && sidebar.albumEditorTarget !== null) {
+                sidebar.renameAlbumRequested(sidebar.albumEditorTarget.id, name)
+            } else if (sidebar.albumEditorMode === "save-suggestion"
+                       && sidebar.albumEditorTarget !== null) {
+                sidebar.saveSuggestedAlbumRequested(sidebar.albumEditorTarget, name)
+            }
+        }
+    }
+
+    Dialog {
+        id: deleteDialog
+
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        width: 380
+        height: 190
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        padding: 0
+
+        background: Rectangle {
+            radius: 12
+            color: Theme.panelRaised
+            border.width: 1
+            border.color: Theme.borderStrong
+        }
+
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 12
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Delete album?")
+                color: Theme.textPrimary
+                font.pixelSize: 16
+                font.bold: true
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("The sounds and their original files will not be deleted.")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                EchoButton {
+                    text: qsTr("Cancel")
+                    ghost: true
+                    onClicked: deleteDialog.close()
+                }
+
+                EchoButton {
+                    text: qsTr("Delete")
+                    backgroundColor: "#b64d52"
+                    onClicked: {
+                        if (sidebar.pendingDeleteAlbum !== null) {
+                            sidebar.deleteAlbumRequested(sidebar.pendingDeleteAlbum.id)
+                        }
+                        deleteDialog.close()
+                    }
                 }
             }
         }

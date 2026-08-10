@@ -14,6 +14,7 @@ Rectangle {
     required property string searchText
     required property int preferredCardWidth
     required property string density
+    required property var userAlbums
 
     readonly property int cardHeight: density === "overview"
         ? 184 : density === "rich" ? 292 : 228
@@ -21,6 +22,8 @@ Rectangle {
     signal assetSelected(var asset)
     signal assetOpened(var asset)
     signal affinityRequested(var asset, bool liked, int rating)
+    signal albumMembershipRequested(var asset, var album, bool included)
+    signal createAlbumRequested()
 
     color: Theme.window
 
@@ -116,9 +119,14 @@ Rectangle {
         anchors.rightMargin: 20
         anchors.bottomMargin: 18
         asset: wall.selectedAsset
+        userAlbums: wall.userAlbums
         z: 20
         onAffinityRequested: function(liked, rating) {
             wall.affinityRequested(wall.selectedAsset, liked, rating)
         }
+        onAlbumMembershipRequested: function(album, included) {
+            wall.albumMembershipRequested(wall.selectedAsset, album, included)
+        }
+        onCreateAlbumRequested: wall.createAlbumRequested()
     }
 }

@@ -130,6 +130,19 @@ int main(int argc, char* argv[]) {
                 QMetaObject::invokeMethod(root, "openLibrary");
             });
         }
+        if (std::getenv("ECHO_DEBUG_OPEN_ALBUM") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(750, root, [root] {
+                QMetaObject::invokeMethod(root, "debugOpenAlbumDialog");
+            });
+        }
+        if (const char* album_name = std::getenv("ECHO_DEBUG_CREATE_ALBUM")) {
+            QObject* root = engine.rootObjects().first();
+            const QString name = QString::fromUtf8(album_name);
+            QTimer::singleShot(900, root, [root, name] {
+                QMetaObject::invokeMethod(root, "debugCreateAlbum", Q_ARG(QString, name));
+            });
+        }
         if (std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr) {
             QObject* root = engine.rootObjects().first();
             QTimer::singleShot(750, root, [root] {
@@ -174,6 +187,8 @@ int main(int argc, char* argv[]) {
                 const bool delayed = std::getenv("ECHO_DEBUG_AUTOPLAY") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_SETTINGS") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_LIBRARY") != nullptr
+                                     || std::getenv("ECHO_DEBUG_OPEN_ALBUM") != nullptr
+                                     || std::getenv("ECHO_DEBUG_CREATE_ALBUM") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EXPORT") != nullptr
                                      || replay_editor;

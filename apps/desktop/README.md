@@ -47,6 +47,13 @@ QML never opens SQLite, calls FFmpeg, or interprets cache paths. Theme tokens
 live in [`qml/Theme.qml`](qml/Theme.qml); components follow the series naming
 convention (`EchoButton`, ...) shared with Shadow.
 
+Sound albums remain split by authority. `SoundAlbumState.qml` owns the live
+projection and mutation lifecycle for durable user albums and rebuildable
+suggestions; `AudioLibrarySidebar.qml` owns creation, rename, delete, and
+suggestion-confirmation presentation; `SoundSelectionToolbar.qml` owns the
+selected sound's membership popup. `AudioSpaceWorkspace.qml` only composes
+those owners into filtering and selection.
+
 ## Build and run
 
 ```sh

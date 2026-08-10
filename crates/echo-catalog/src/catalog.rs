@@ -11,8 +11,8 @@ use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, CatalogSchemaRevision, LEGACY_SCHEMA_VERSION,
-        PREVIOUS_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL, SCHEMA_IDENTITY, SCHEMA_SQL,
-        SCHEMA_VERSION,
+        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
+        SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION, USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -93,14 +93,21 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_render_exports_schema(connection)?;
+            migrate_user_albums_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == LEGACY_SCHEMA_VERSION) =>
         {
-            migrate_adjustment_effects_and_render_exports(connection)?;
+            migrate_render_exports_and_user_albums(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == OLDEST_COMPATIBLE_SCHEMA_VERSION) =>
+        {
+            migrate_adjustment_effects_render_exports_and_user_albums(connection)?;
         }
         Some(version) => {
             return Err(CatalogError::new(
@@ -116,9 +123,9 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
-fn migrate_render_exports_schema(connection: &Connection) -> Result<(), CatalogError> {
+fn migrate_user_albums_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
-    transaction.execute_batch(RENDER_EXPORTS_MIGRATION_SQL)?;
+    transaction.execute_batch(USER_ALBUMS_MIGRATION_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],
@@ -132,12 +139,30 @@ fn migrate_render_exports_schema(connection: &Connection) -> Result<(), CatalogE
     Ok(())
 }
 
-fn migrate_adjustment_effects_and_render_exports(
+fn migrate_render_exports_and_user_albums(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    transaction.execute_batch(RENDER_EXPORTS_MIGRATION_SQL)?;
+    transaction.execute_batch(USER_ALBUMS_MIGRATION_SQL)?;
+    transaction.execute(
+        "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
+        [SCHEMA_VERSION.to_string()],
+    )?;
+    transaction.execute(
+        "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [SCHEMA_IDENTITY],
+    )?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn migrate_adjustment_effects_render_exports_and_user_albums(
     connection: &Connection,
 ) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     transaction.execute_batch(ADJUSTMENT_EFFECTS_MIGRATION_SQL)?;
     transaction.execute_batch(RENDER_EXPORTS_MIGRATION_SQL)?;
+    transaction.execute_batch(USER_ALBUMS_MIGRATION_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

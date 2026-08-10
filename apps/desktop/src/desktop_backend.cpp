@@ -273,6 +273,103 @@ QVariantList DesktopBackend::listSmartAlbums() const {
     return list;
 }
 
+QVariantList DesktopBackend::listUserAlbums() const {
+    QVariantList list;
+    try {
+        const auto albums = session_->session_user_albums();
+        for (const auto& album : albums) {
+            QVariantMap entry;
+            entry.insert(QStringLiteral("id"), static_cast<qlonglong>(album.id));
+            entry.insert(
+                QStringLiteral("name"),
+                QString::fromUtf8(album.name.data(), album.name.size())
+            );
+            entry.insert(
+                QStringLiteral("coverAssetId"),
+                QString::fromUtf8(album.cover_asset_id.data(), album.cover_asset_id.size())
+            );
+            entry.insert(QStringLiteral("count"), static_cast<qulonglong>(album.count));
+            entry.insert(
+                QStringLiteral("createdAtMillis"),
+                static_cast<qlonglong>(album.created_at_millis)
+            );
+            entry.insert(
+                QStringLiteral("updatedAtMillis"),
+                static_cast<qlonglong>(album.updated_at_millis)
+            );
+            QVariantList memberIds;
+            for (const auto& memberId : album.member_asset_ids) {
+                memberIds.append(QString::fromUtf8(memberId.data(), memberId.size()));
+            }
+            entry.insert(QStringLiteral("memberIds"), memberIds);
+            list.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list user albums: %s", error.what());
+    }
+    return list;
+}
+
+qlonglong DesktopBackend::createUserAlbum(const QString& name, const QVariantList& memberIds) {
+    rust::Vec<rust::String> members;
+    members.reserve(static_cast<std::size_t>(memberIds.size()));
+    for (const auto& memberId : memberIds) {
+        members.push_back(memberId.toString().toStdString());
+    }
+    try {
+        const auto memberSlice = rust::Slice<const rust::String>(members.data(), members.size());
+        const auto albumId = session_->session_create_user_album(name.toStdString(), memberSlice);
+        emit albumsChanged();
+        return static_cast<qlonglong>(albumId);
+    } catch (const rust::Error& error) {
+        qWarning("cannot create user album: %s", error.what());
+        return -1;
+    }
+}
+
+bool DesktopBackend::renameUserAlbum(qlonglong albumId, const QString& name) {
+    try {
+        session_->session_rename_user_album(static_cast<std::int64_t>(albumId), name.toStdString());
+        emit albumsChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot rename user album: %s", error.what());
+        return false;
+    }
+}
+
+bool DesktopBackend::deleteUserAlbum(qlonglong albumId) {
+    try {
+        session_->session_delete_user_album(static_cast<std::int64_t>(albumId));
+        emit albumsChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot delete user album: %s", error.what());
+        return false;
+    }
+}
+
+bool DesktopBackend::setUserAlbumMembership(
+    qlonglong albumId,
+    const QString& assetId,
+    bool included
+) {
+    try {
+        const bool changed = session_->session_set_user_album_membership(
+            static_cast<std::int64_t>(albumId),
+            assetId.toStdString(),
+            included
+        );
+        if (changed) {
+            emit albumsChanged();
+        }
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot update user album membership: %s", error.what());
+        return false;
+    }
+}
+
 bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating) {
     if (rating < 0 || rating > 5) {
         qWarning("asset rating is outside zero to five");

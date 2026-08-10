@@ -27,89 +27,145 @@
 <context>
     <name>AudioLibrarySidebar</name>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="35"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="46"/>
         <source>Related by AI</source>
         <translation>AI 关联</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="74"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="76"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="231"/>
+        <source>New album</source>
+        <translation>新建相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="76"/>
+        <source>Create</source>
+        <translation>创建</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="97"/>
         <source>LIBRARY</source>
         <translation>资料库</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="85"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="108"/>
         <source>All sounds</source>
         <translation>所有声音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="86"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="109"/>
         <source>Recently added</source>
         <translation>最近加入</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="87"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="110"/>
         <source>Liked</source>
         <translation>喜欢</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="88"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="111"/>
         <source>5 stars</source>
         <translation>5 星</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="107"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="130"/>
         <source>SMART COLLECTIONS</source>
         <translation>智能分类</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="118"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="141"/>
         <source>With speech</source>
         <translation>包含人声</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="121"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="144"/>
         <source>Missing originals</source>
         <translation>原始文件缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="155"/>
-        <source>SUGGESTED ALBUMS</source>
-        <translation>建议相册</translation>
-    </message>
-    <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="183"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="284"/>
         <source>Album suggestions will appear when at least two sounds share time, place, event, or people.</source>
         <translation>当至少两段声音在时间、地点、事件或人物方面有关联时，相册建议会出现在这里。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="24"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="35"/>
         <source>Shared recording day</source>
         <translation>录制于同一天</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="24"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="35"/>
         <source>Embedded location</source>
         <translation>相同的嵌入地点</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="27"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="38"/>
         <source>Shared AI place</source>
         <translation>AI 推断的相同地点</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="30"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="41"/>
         <source>Shared AI event</source>
         <translation>AI 推断的相同事件</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="33"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="44"/>
         <source>Shared AI people hint</source>
         <translation>AI 推断的相同人物提示</translation>
     </message>
     <message>
-        <location filename="../qml/AudioLibrarySidebar.qml" line="219"/>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="178"/>
+        <source>ALBUMS</source>
+        <translation>声音相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="197"/>
+        <source>Rename album</source>
+        <translation>重命名相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="198"/>
+        <source>Rename</source>
+        <translation>重命名</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="252"/>
+        <source>SUGGESTED</source>
+        <translation>建议相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="274"/>
+        <source>Save suggested album</source>
+        <translation>保存建议相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="275"/>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="332"/>
         <source>Manage folders</source>
         <translation>管理目录</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="382"/>
+        <source>Delete album?</source>
+        <translation>删除相册？</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="390"/>
+        <source>The sounds and their original files will not be deleted.</source>
+        <translation>其中的声音及其原始文件不会被删除。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="405"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="411"/>
+        <source>Delete</source>
+        <translation>删除</translation>
     </message>
 </context>
 <context>
@@ -385,32 +441,32 @@
 <context>
     <name>AudioSpaceWorkspace</name>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="87"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="93"/>
         <source>All sounds</source>
         <translation>所有声音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="78"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="80"/>
         <source>Recently added</source>
         <translation>最近加入</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="79"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="81"/>
         <source>Liked</source>
         <translation>喜欢</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="80"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="82"/>
         <source>5 stars</source>
         <translation>5 星</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="81"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="83"/>
         <source>With speech</source>
         <translation>包含人声</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="82"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="84"/>
         <source>Missing originals</source>
         <translation>原始文件缺失</translation>
     </message>
@@ -928,6 +984,70 @@
     </message>
 </context>
 <context>
+    <name>SoundAlbumNameDialog</name>
+    <message>
+        <location filename="../qml/SoundAlbumNameDialog.qml" line="62"/>
+        <source>Album name</source>
+        <translation>相册名称</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumNameDialog.qml" line="84"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumNameDialog.qml" line="97"/>
+        <source>Enter an album name.</source>
+        <translation>请输入相册名称。</translation>
+    </message>
+</context>
+<context>
+    <name>SoundAlbumRow</name>
+    <message>
+        <location filename="../qml/SoundAlbumRow.qml" line="99"/>
+        <source>Save as album</source>
+        <translation>保存为相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumRow.qml" line="99"/>
+        <source>Album actions</source>
+        <translation>相册操作</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumRow.qml" line="121"/>
+        <source>Rename</source>
+        <translation>重命名</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumRow.qml" line="126"/>
+        <source>Delete album</source>
+        <translation>删除相册</translation>
+    </message>
+</context>
+<context>
+    <name>SoundAlbumState</name>
+    <message>
+        <location filename="../qml/SoundAlbumState.qml" line="48"/>
+        <source>The album could not be created. Its name may already be in use.</source>
+        <translation>无法创建相册，该名称可能已被使用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumState.qml" line="56"/>
+        <source>The album could not be renamed. Its name may already be in use.</source>
+        <translation>无法重命名相册，该名称可能已被使用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumState.qml" line="65"/>
+        <source>The album could not be deleted.</source>
+        <translation>无法删除相册。</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundAlbumState.qml" line="74"/>
+        <source>The sound could not be moved into the album.</source>
+        <translation>无法更改声音的相册归属。</translation>
+    </message>
+</context>
+<context>
     <name>SoundCard</name>
     <message>
         <location filename="../qml/SoundCard.qml" line="319"/>
@@ -958,47 +1078,47 @@
         <translation>%1 声道</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="389"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="393"/>
         <source>Select a sound in Audio Space</source>
         <translation>请先在声音空间中选择声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="398"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="402"/>
         <source>Choose a sound before opening adjustments.</source>
         <translation>选择声音后即可进入调整工作区。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="447"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="451"/>
         <source>Export</source>
         <translation>导出</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="536"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="540"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="564"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="568"/>
         <source>Audition</source>
         <translation>试听对比</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="570"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="574"/>
         <source>Adjusted</source>
         <translation>调整后</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="577"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="581"/>
         <source>Original</source>
         <translation>原始</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="536"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="540"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="545"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="549"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
@@ -1076,68 +1196,68 @@
 <context>
     <name>SoundExportDialog</name>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="64"/>
-        <location filename="../qml/SoundExportDialog.qml" line="255"/>
+        <location filename="../qml/SoundExportDialog.qml" line="69"/>
+        <location filename="../qml/SoundExportDialog.qml" line="260"/>
         <source>Export WAV</source>
         <translation>导出 WAV</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="67"/>
+        <location filename="../qml/SoundExportDialog.qml" line="72"/>
         <source>WAV audio (*.wav)</source>
         <translation>WAV 音频（*.wav）</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="98"/>
+        <location filename="../qml/SoundExportDialog.qml" line="103"/>
         <source>Export adjusted sound</source>
         <translation>导出调整后的声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="114"/>
+        <location filename="../qml/SoundExportDialog.qml" line="119"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="150"/>
+        <location filename="../qml/SoundExportDialog.qml" line="155"/>
         <source>WAV · 24-bit PCM · 48 kHz · Stereo</source>
         <translation>WAV · 24 位 PCM · 48 kHz · 立体声</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="160"/>
+        <location filename="../qml/SoundExportDialog.qml" line="165"/>
         <source>Choose where to save the rendered file</source>
         <translation>选择渲染文件的保存位置</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="168"/>
+        <location filename="../qml/SoundExportDialog.qml" line="173"/>
         <source>Choose…</source>
         <translation>选择…</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="179"/>
+        <location filename="../qml/SoundExportDialog.qml" line="184"/>
         <source>Save the current adjustments before exporting so the file keeps an exact source revision.</source>
         <translation>请先保存当前调整，再进行导出，以便文件保留准确的来源版本。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="194"/>
+        <location filename="../qml/SoundExportDialog.qml" line="199"/>
         <source>Rendering in the background…</source>
         <translation>正在后台渲染…</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="220"/>
+        <location filename="../qml/SoundExportDialog.qml" line="225"/>
         <source>WAV created, but Echo could not save its source record.</source>
         <translation>WAV 已生成，但 Echo 无法保存其来源记录。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="234"/>
+        <location filename="../qml/SoundExportDialog.qml" line="239"/>
         <source>Echo could not export this sound. Check the destination and try again.</source>
         <translation>Echo 无法导出这段声音。请检查保存位置后重试。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="221"/>
+        <location filename="../qml/SoundExportDialog.qml" line="226"/>
         <source>WAV created · %1 LUFS · %2 dBTP</source>
         <translation>WAV 已生成 · %1 LUFS · %2 dBTP</translation>
     </message>
     <message>
-        <location filename="../qml/SoundExportDialog.qml" line="248"/>
+        <location filename="../qml/SoundExportDialog.qml" line="253"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -1145,7 +1265,7 @@
 <context>
     <name>SoundFocusView</name>
     <message>
-        <location filename="../qml/SoundFocusView.qml" line="128"/>
+        <location filename="../qml/SoundFocusView.qml" line="136"/>
         <source>No sounds match these filters</source>
         <translation>没有声音符合这些筛选条件</translation>
     </message>
@@ -1315,45 +1435,60 @@
 <context>
     <name>SoundSelectionToolbar</name>
     <message>
-        <location filename="../qml/SoundSelectionToolbar.qml" line="25"/>
+        <location filename="../qml/SoundSelectionToolbar.qml" line="28"/>
         <source>Selected sound actions</source>
         <translation>所选声音操作</translation>
     </message>
     <message>
-        <location filename="../qml/SoundSelectionToolbar.qml" line="50"/>
+        <location filename="../qml/SoundSelectionToolbar.qml" line="53"/>
         <source>Remove Like</source>
         <translation>取消喜欢</translation>
     </message>
     <message>
-        <location filename="../qml/SoundSelectionToolbar.qml" line="50"/>
+        <location filename="../qml/SoundSelectionToolbar.qml" line="53"/>
         <source>Like</source>
         <translation>喜欢</translation>
     </message>
     <message>
-        <location filename="../qml/SoundSelectionToolbar.qml" line="93"/>
+        <location filename="../qml/SoundSelectionToolbar.qml" line="96"/>
         <source>Set %1 stars</source>
         <translation>设为 %1 星</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundSelectionToolbar.qml" line="135"/>
+        <source>Add to album</source>
+        <translation>添加到相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundSelectionToolbar.qml" line="175"/>
+        <source>No albums yet</source>
+        <translation>尚无相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundSelectionToolbar.qml" line="181"/>
+        <source>New album…</source>
+        <translation>新建相册…</translation>
     </message>
 </context>
 <context>
     <name>SoundWall</name>
     <message>
-        <location filename="../qml/SoundWall.qml" line="92"/>
+        <location filename="../qml/SoundWall.qml" line="95"/>
         <source>No matching sounds</source>
         <translation>没有匹配的声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWall.qml" line="92"/>
+        <location filename="../qml/SoundWall.qml" line="95"/>
         <source>This collection is empty</source>
         <translation>这个分类还是空的</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWall.qml" line="102"/>
+        <location filename="../qml/SoundWall.qml" line="105"/>
         <source>Try another word, event, or filename.</source>
         <translation>试试其他文字、事件或文件名。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundWall.qml" line="103"/>
+        <location filename="../qml/SoundWall.qml" line="106"/>
         <source>Imported recordings will appear here as sound cards.</source>
         <translation>导入的录音会以声音卡片的形式出现在这里。</translation>
     </message>

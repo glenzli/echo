@@ -98,12 +98,14 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 2);
+    CatalogSchemaRevision::new(20_260_811, 3);
 pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 2);
+pub(crate) const OLDEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 3);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 4);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.3-render-exports";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.4-user-albums";
 
 pub(crate) const ADJUSTMENT_EFFECTS_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -131,6 +133,26 @@ CREATE TABLE render_exports (
 
 CREATE INDEX render_exports_asset_created
     ON render_exports (asset_id, created_at_millis DESC, id DESC);
+";
+
+pub(crate) const USER_ALBUMS_MIGRATION_SQL: &str = r"
+CREATE TABLE user_albums (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    name               TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    cover_asset_id     TEXT REFERENCES assets(id),
+    created_at_millis  INTEGER NOT NULL,
+    updated_at_millis  INTEGER NOT NULL
+);
+
+CREATE TABLE user_album_members (
+    album_id           INTEGER NOT NULL REFERENCES user_albums(id),
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    added_at_millis    INTEGER NOT NULL,
+    PRIMARY KEY (album_id, asset_id)
+);
+
+CREATE INDEX user_album_members_asset
+    ON user_album_members (asset_id, album_id);
 ";
 
 pub(crate) const SCHEMA_SQL: &str = "
@@ -238,6 +260,24 @@ CREATE TABLE IF NOT EXISTS asset_user_state (
     rating             INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
     updated_at_millis  INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS user_albums (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    name               TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    cover_asset_id     TEXT REFERENCES assets(id),
+    created_at_millis  INTEGER NOT NULL,
+    updated_at_millis  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_album_members (
+    album_id           INTEGER NOT NULL REFERENCES user_albums(id),
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    added_at_millis    INTEGER NOT NULL,
+    PRIMARY KEY (album_id, asset_id)
+);
+
+CREATE INDEX IF NOT EXISTS user_album_members_asset
+    ON user_album_members (asset_id, album_id);
 
 CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     id                    INTEGER PRIMARY KEY AUTOINCREMENT,

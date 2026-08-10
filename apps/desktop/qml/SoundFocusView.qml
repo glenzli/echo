@@ -12,9 +12,12 @@ Rectangle {
     required property var assets
     required property var selectedAsset
     required property var jobStats
+    required property var userAlbums
 
     signal assetSelected(var asset)
     signal affinityRequested(var asset, bool liked, int rating)
+    signal albumMembershipRequested(var asset, var album, bool included)
+    signal createAlbumRequested()
 
     color: Theme.window
 
@@ -62,10 +65,15 @@ Rectangle {
         anchors.rightMargin: 20
         anchors.bottomMargin: 14
         asset: focusView.selectedAsset
+        userAlbums: focusView.userAlbums
         z: 20
         onAffinityRequested: function(liked, rating) {
             focusView.affinityRequested(focusView.selectedAsset, liked, rating)
         }
+        onAlbumMembershipRequested: function(album, included) {
+            focusView.albumMembershipRequested(focusView.selectedAsset, album, included)
+        }
+        onCreateAlbumRequested: focusView.createAlbumRequested()
     }
 
     Rectangle {
