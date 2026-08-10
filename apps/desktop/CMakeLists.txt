@@ -149,6 +149,7 @@ qt_add_qml_module(
         qml/EchoSettingsDialog.qml
         qml/EchoTextField.qml
         qml/InspectorSection.qml
+        qml/LoudnessTargetControl.qml
         qml/MainTitleBar.qml
         qml/MasterOutputPanel.qml
         qml/SoundAdvancedFilterPopup.qml

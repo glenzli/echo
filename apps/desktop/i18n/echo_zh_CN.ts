@@ -662,6 +662,49 @@
     </message>
 </context>
 <context>
+    <name>LoudnessTargetControl</name>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="39"/>
+        <source>Analyze to calculate gain</source>
+        <translation>分析后计算增益</translation>
+    </message>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="40"/>
+        <source>No gain advice for silence</source>
+        <translation>静音无法计算增益建议</translation>
+    </message>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="47"/>
+        <source>Clip gain range limits target</source>
+        <translation>片段增益范围限制了目标</translation>
+    </message>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="48"/>
+        <source>True-peak headroom limits target</source>
+        <translation>真峰值余量限制了目标</translation>
+    </message>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="49"/>
+        <source>Target is reachable transparently</source>
+        <translation>无需额外限幅即可达到目标</translation>
+    </message>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="50"/>
+        <source>Reanalyze after applying</source>
+        <translation>应用后请重新分析</translation>
+    </message>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="70"/>
+        <source>Target</source>
+        <translation>目标</translation>
+    </message>
+    <message>
+        <location filename="../qml/LoudnessTargetControl.qml" line="146"/>
+        <source>Apply</source>
+        <translation>应用</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
         <location filename="../qml/Main.qml" line="19"/>

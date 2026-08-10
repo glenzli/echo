@@ -9,6 +9,7 @@ add_library(
     src/dynamics_processor.cpp
     src/k_weighting_filter.cpp
     src/low_cut_filter.cpp
+    src/loudness_gain_advisor.cpp
     src/loudness_meter.cpp
     src/offline_loudness_analyzer.cpp
     src/output_guard.cpp
@@ -67,6 +68,17 @@ if(BUILD_TESTING)
     target_link_libraries(echo-low-cut-filter-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-low-cut-filter-test)
     add_test(NAME echo-low-cut-filter-test COMMAND echo-low-cut-filter-test)
+
+    add_executable(
+        echo-loudness-gain-advisor-test
+        tests/loudness_gain_advisor_test.cpp
+    )
+    target_link_libraries(echo-loudness-gain-advisor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-loudness-gain-advisor-test)
+    add_test(
+        NAME echo-loudness-gain-advisor-test
+        COMMAND echo-loudness-gain-advisor-test
+    )
 
     add_executable(
         echo-loudness-meter-test

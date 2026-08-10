@@ -19,7 +19,7 @@ Rectangle {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitHeight: 300
+    implicitHeight: 340
     color: Theme.panel
     border.color: Theme.border
 
@@ -157,9 +157,9 @@ Rectangle {
 
             MasterOutputPanel {
                 id: masterOutputPanel
-                Layout.preferredWidth: 276
-                Layout.minimumWidth: 240
-                Layout.maximumWidth: 300
+                Layout.preferredWidth: 292
+                Layout.minimumWidth: 274
+                Layout.maximumWidth: 310
                 Layout.fillHeight: true
                 draft: inspector.draft
                 meterSource: inspector.meterSource

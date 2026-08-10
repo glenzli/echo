@@ -19,7 +19,7 @@ Rectangle {
         && analyzer.resultKey === analysisKey
 
     implicitWidth: 286
-    implicitHeight: 224
+    implicitHeight: 286
     radius: Theme.compactControlRadius
     color: Theme.panelRaised
     border.width: 1
@@ -216,7 +216,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredHeight: 54
             Layout.leftMargin: 10
             Layout.rightMargin: 10
             Layout.topMargin: 4
@@ -246,6 +246,20 @@ Rectangle {
                     ? panel.analyzer.truePeakDbtp.toFixed(1) : "—"
                 unit: "dBTP"
             }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.border
+        }
+
+        LoudnessTargetControl {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            draft: panel.draft
+            analyzer: panel.analyzer
+            analysisCurrent: panel.analysisCurrent
         }
     }
 

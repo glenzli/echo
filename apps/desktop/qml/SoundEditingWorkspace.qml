@@ -468,9 +468,9 @@ Rectangle {
             SoundAdjustmentEditor {
                 id: adjustmentEditor
                 SplitView.fillWidth: true
-                SplitView.preferredHeight: 302
-                SplitView.minimumHeight: 284
-                SplitView.maximumHeight: 350
+                SplitView.preferredHeight: 342
+                SplitView.minimumHeight: 324
+                SplitView.maximumHeight: 390
                 draft: adjustmentDraft
                 meterSource: player
                 analyzer: loudnessAnalyzer

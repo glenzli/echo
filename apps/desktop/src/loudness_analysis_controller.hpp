@@ -3,6 +3,7 @@
 #pragma once
 
 #include <QObject>
+#include <QVariantMap>
 
 #include <atomic>
 #include <cstdint>
@@ -48,6 +49,8 @@ class LoudnessAnalysisController : public QObject {
         int limiterReleaseMillis
     );
     Q_INVOKABLE void cancel();
+    Q_INVOKABLE QVariantMap
+    gainAdvice(qreal targetLufs, qreal truePeakCeilingDbtp, int currentGainCentibels) const;
 
     [[nodiscard]] bool running() const;
     [[nodiscard]] bool hasResult() const;

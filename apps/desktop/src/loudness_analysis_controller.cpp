@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "echo/audio/loudness_gain_advisor.hpp"
 #include "echo/audio/offline_loudness_analyzer.hpp"
 #include "echo/audio/playback.hpp"
 
@@ -259,6 +260,47 @@ void LoudnessAnalysisController::cancel() {
         running_ = false;
         emit stateChanged();
     }
+}
+
+QVariantMap LoudnessAnalysisController::gainAdvice(
+    qreal targetLufs,
+    qreal truePeakCeilingDbtp,
+    int currentGainCentibels
+) const {
+    QVariantMap projection{
+        {QStringLiteral("available"), false},
+        {QStringLiteral("peakConstrained"), false},
+        {QStringLiteral("gainRangeConstrained"), false},
+        {QStringLiteral("targetReached"), false},
+        {QStringLiteral("gainDeltaCentibels"), 0},
+        {QStringLiteral("resultingGainCentibels"), currentGainCentibels},
+        {QStringLiteral("estimatedIntegratedLufs"), integrated_lufs_},
+        {QStringLiteral("estimatedTruePeakDbtp"), true_peak_dbtp_},
+    };
+    if (!has_result_ || currentGainCentibels < -2400 || currentGainCentibels > 1200) {
+        return projection;
+    }
+    try {
+        const echo::audio::LoudnessGainAdvice advice = echo::audio::LoudnessGainAdvisor::advise({
+            .integrated_lufs = static_cast<float>(integrated_lufs_),
+            .true_peak_dbtp = static_cast<float>(true_peak_dbtp_),
+            .target_lufs = static_cast<float>(targetLufs),
+            .true_peak_ceiling_dbtp = static_cast<float>(truePeakCeilingDbtp),
+            .current_gain_centibels = static_cast<std::int16_t>(currentGainCentibels),
+        });
+        projection[QStringLiteral("available")] = advice.available;
+        projection[QStringLiteral("peakConstrained")] = advice.peak_constrained;
+        projection[QStringLiteral("gainRangeConstrained")] = advice.gain_range_constrained;
+        projection[QStringLiteral("targetReached")] = advice.target_reached;
+        projection[QStringLiteral("gainDeltaCentibels")] = advice.gain_delta_centibels;
+        projection[QStringLiteral("resultingGainCentibels")] = advice.resulting_gain_centibels;
+        projection[QStringLiteral("estimatedIntegratedLufs")] = advice.estimated_integrated_lufs;
+        projection[QStringLiteral("estimatedTruePeakDbtp")] = advice.estimated_true_peak_dbtp;
+    } catch (const std::exception&) {
+        // QML callers receive an unavailable recommendation rather than a
+        // cross-language exception for a transient or stale parameter set.
+    }
+    return projection;
 }
 
 bool LoudnessAnalysisController::running() const {
