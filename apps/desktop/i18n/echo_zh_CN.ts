@@ -536,6 +536,16 @@
         <source>The processing recipe could not be applied.</source>
         <translation>无法应用处理方案。</translation>
     </message>
+    <message><source>%1 restored · %2 conflicts · %3 failed</source><translation>已恢复 %1 个 · 冲突 %2 个 · 失败 %3 个</translation></message>
+    <message><source>Selected sounds · %1</source><translation>已选声音 · %1 个</translation></message>
+    <message><source>Processing recipe renamed.</source><translation>处理方案已重命名。</translation></message>
+    <message><source>Processing recipe version %1 added.</source><translation>已添加处理方案版本 %1。</translation></message>
+    <message><source>Processing recipe archived.</source><translation>处理方案已归档。</translation></message>
+    <message><source>The processing recipe could not be renamed.</source><translation>无法重命名处理方案。</translation></message>
+    <message><source>The processing recipe could not be updated.</source><translation>无法更新处理方案。</translation></message>
+    <message><source>The processing recipe could not be archived.</source><translation>无法归档处理方案。</translation></message>
+    <message><source>The processing recipe application could not be undone.</source><translation>无法撤销本次处理方案应用。</translation></message>
+    <message><source>Undo batch</source><translation>撤销本批次</translation></message>
     <message>
         <location filename="../qml/AudioSpaceWorkspace.qml" line="93"/>
         <source>All sounds</source>
@@ -1169,6 +1179,16 @@
         <source>The processing recipe could not be saved.</source>
         <translation>无法保存处理方案。</translation>
     </message>
+    <message><source>Manage processing recipes</source><translation>管理处理方案</translation></message>
+    <message><source>Processing recipe application undone.</source><translation>已撤销本次处理方案应用。</translation></message>
+    <message><source>Processing recipe renamed.</source><translation>处理方案已重命名。</translation></message>
+    <message><source>Processing recipe version %1 added.</source><translation>已添加处理方案版本 %1。</translation></message>
+    <message><source>Processing recipe archived.</source><translation>处理方案已归档。</translation></message>
+    <message><source>The processing recipe application could not be undone.</source><translation>无法撤销本次处理方案应用。</translation></message>
+    <message><source>The processing recipe could not be renamed.</source><translation>无法重命名处理方案。</translation></message>
+    <message><source>The processing recipe could not be updated.</source><translation>无法更新处理方案。</translation></message>
+    <message><source>The processing recipe could not be archived.</source><translation>无法归档处理方案。</translation></message>
+    <message><source>Undo batch</source><translation>撤销本批次</translation></message>
     <message>
         <location filename="../qml/SoundEditingWorkspace.qml" line="56"/>
         <source>%1 channels</source>
@@ -1507,6 +1527,7 @@
         <source>Apply processing recipe</source>
         <translation>应用处理方案</translation>
     </message>
+    <message><source>Manage processing recipes</source><translation>管理处理方案</translation></message>
     <message>
         <source>Export current results</source>
         <translation>导出当前结果</translation>
@@ -1851,6 +1872,51 @@
         <source>Insert effect · before fade and master</source>
         <translation>插入效果 · 位于淡化与母线之前</translation>
     </message>
+</context>
+<context>
+    <name>ProcessingRecipeManagerDialog</name>
+    <message><source>Add version</source><translation>添加版本</translation></message>
+    <message><source>Archive processing recipe?</source><translation>归档处理方案？</translation></message>
+    <message><source>Archive recipe</source><translation>归档处理方案</translation></message>
+    <message><source>Archive…</source><translation>归档…</translation></message>
+    <message><source>Cancel</source><translation>取消</translation></message>
+    <message><source>Choose at least one processing module.</source><translation>请至少选择一个处理模块。</translation></message>
+    <message><source>Choose modules</source><translation>选择模块</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>De-click</source><translation>去咔哒声</translation></message>
+    <message><source>De-hum</source><translation>去嗡声</translation></message>
+    <message><source>Dynamics</source><translation>动态</translation></message>
+    <message><source>Enter a processing recipe name.</source><translation>请输入处理方案名称。</translation></message>
+    <message><source>Equalizer</source><translation>均衡器</translation></message>
+    <message><source>Included processing</source><translation>包含的处理</translation></message>
+    <message><source>Low cut</source><translation>低切</translation></message>
+    <message><source>Manage processing recipes</source><translation>管理处理方案</translation></message>
+    <message><source>Master output</source><translation>总输出</translation></message>
+    <message><source>Name</source><translation>名称</translation></message>
+    <message><source>No processing modules</source><translation>未包含处理模块</translation></message>
+    <message><source>No processing recipes to manage</source><translation>没有可管理的处理方案</translation></message>
+    <message><source>No saved source sound selected</source><translation>未选择已保存的来源声音</translation></message>
+    <message><source>Processing recipe name</source><translation>处理方案名称</translation></message>
+    <message><source>Remove it from recipe choices while keeping its versions and application history.</source><translation>将它移出方案选择列表，同时保留版本与应用历史。</translation></message>
+    <message><source>Rename</source><translation>重命名</translation></message>
+    <message><source>Rename, update, or archive reusable processing</source><translation>重命名、更新或归档可复用处理</translation></message>
+    <message><source>Restoration</source><translation>修复</translation></message>
+    <message><source>Save name</source><translation>保存名称</translation></message>
+    <message><source>Save the current sound before using it to update a recipe.</source><translation>请先保存当前声音，再用它更新处理方案。</translation></message>
+    <message><source>Select a processing recipe</source><translation>选择一个处理方案</translation></message>
+    <message><source>Space</source><translation>空间</translation></message>
+    <message><source>The recipe name is yours and is never translated.</source><translation>方案名称由你定义，Echo 不会翻译它。</translation></message>
+    <message><source>This recipe will leave the picker, but its versions and past applications remain available for history and safe rollback.</source><translation>此方案将退出选择列表，但其版本与既有应用仍会保留，用于历史记录和安全回退。</translation></message>
+    <message><source>Update from saved sound</source><translation>从已保存声音更新</translation></message>
+    <message><source>Version %1</source><translation>版本 %1</translation></message>
+</context>
+<context>
+    <name>SoundMultiSelectionToolbar</name>
+    <message><source>%1 sounds selected</source><translation>已选择 %1 个声音</translation></message>
+    <message><source>Apply recipe</source><translation>应用处理方案</translation></message>
+    <message><source>Applying processing recipe</source><translation>正在应用处理方案</translation></message>
+    <message><source>Clear selection</source><translation>清除选择</translation></message>
+    <message><source>Selected sounds actions</source><translation>所选声音操作</translation></message>
 </context>
 <context>
     <name>ToneEqualizerPanel</name>

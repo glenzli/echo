@@ -11,6 +11,7 @@ Rectangle {
 
     required property var assets
     required property var selectedAsset
+    required property var selectedAssetIds
     required property string searchText
     required property int preferredCardWidth
     required property string density
@@ -19,8 +20,10 @@ Rectangle {
     readonly property int cardHeight: density === "overview"
         ? 184 : density === "rich" ? 292 : 228
 
-    signal assetSelected(var asset)
+    signal assetSelectionRequested(var asset, int modifiers)
     signal assetOpened(var asset)
+    signal processingRecipeRequested()
+    signal selectionClearRequested()
     signal affinityRequested(var asset, bool liked, int rating)
     signal albumMembershipRequested(var asset, var album, bool included)
     signal createAlbumRequested()
@@ -41,7 +44,9 @@ Rectangle {
         cellWidth: width / columns
         cellHeight: wall.cardHeight + spacing
         boundsBehavior: Flickable.StopAtBounds
-        bottomMargin: selectionToolbar.visible ? selectionToolbar.height + 42 : 18
+        bottomMargin: singleSelectionToolbar.visible
+            ? singleSelectionToolbar.height + 42
+            : multiSelectionToolbar.visible ? multiSelectionToolbar.height + 42 : 18
 
         delegate: Item {
             required property var modelData
@@ -56,11 +61,10 @@ Rectangle {
                 anchors.rightMargin: soundGrid.spacing
                 height: wall.cardHeight
                 entry: modelData
-                selected: wall.selectedAsset !== null
-                    && wall.selectedAsset.id === modelData.id
+                selected: wall.selectedAssetIds.indexOf(modelData.id) >= 0
                 density: wall.density
                 displayHeight: wall.cardHeight
-                onActivated: wall.assetSelected(modelData)
+                onActivated: modifiers => wall.assetSelectionRequested(modelData, modifiers)
                 onOpened: wall.assetOpened(modelData)
             }
         }
@@ -112,13 +116,14 @@ Rectangle {
     }
 
     SoundSelectionToolbar {
-        id: selectionToolbar
+        id: singleSelectionToolbar
 
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.rightMargin: 20
         anchors.bottomMargin: 18
         asset: wall.selectedAsset
+        visible: wall.selectedAsset !== null && wall.selectedAssetIds.length <= 1
         userAlbums: wall.userAlbums
         z: 20
         onAffinityRequested: function(liked, rating) {
@@ -128,5 +133,19 @@ Rectangle {
             wall.albumMembershipRequested(wall.selectedAsset, album, included)
         }
         onCreateAlbumRequested: wall.createAlbumRequested()
+    }
+
+    SoundMultiSelectionToolbar {
+        id: multiSelectionToolbar
+
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 20
+        anchors.bottomMargin: 18
+        selectedCount: wall.selectedAssetIds.length
+        visible: selectedCount > 1
+        z: 20
+        onApplyRecipeRequested: wall.processingRecipeRequested()
+        onClearRequested: wall.selectionClearRequested()
     }
 }

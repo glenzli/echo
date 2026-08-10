@@ -21,6 +21,7 @@ ToolBar {
     signal viewModeRequested(string mode)
     signal cardWidthRequested(real width)
     signal processingRecipesRequested()
+    signal processingRecipeManagementRequested()
     signal batchExportRequested()
 
     implicitHeight: 44
@@ -88,6 +89,15 @@ ToolBar {
             buttonSize: 28
             iconSize: 15
             onClicked: toolbar.processingRecipesRequested()
+        }
+
+        EchoIconButton {
+            source: "qrc:/EchoDesktop/icons/equalizer.svg"
+            toolTipText: qsTr("Manage processing recipes")
+            accessibleName: toolTipText
+            buttonSize: 28
+            iconSize: 15
+            onClicked: toolbar.processingRecipeManagementRequested()
         }
 
         EchoIconButton {

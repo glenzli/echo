@@ -91,6 +91,103 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     let _ = std::fs::remove_dir_all(root);
 }
 
+#[test]
+fn recipe_management_and_revert_preserve_later_sound_edits() {
+    let root = fixture_catalog();
+    let session = open_session(
+        root.join("catalog.sqlite").to_str().expect("utf8"),
+        root.join("cache").to_str().expect("utf8"),
+    )
+    .expect("session opens");
+    let source = register(&session, [73; 32], &root.join("source-managed.wav"), 10_000);
+    let target = register(&session, [74; 32], &root.join("target-managed.wav"), 8_000);
+
+    let mut source_adjustment = adjustment(10_000);
+    source_adjustment.low_cut_hertz = 85;
+    session
+        .set_asset_adjustment(&source.to_string(), &source_adjustment)
+        .expect("source adjustment saves");
+    let recipe_id = session
+        .create_processing_recipe(
+            "Field cleanup",
+            &source.to_string(),
+            &[echo_domain::ProcessingComponent::LowCut.wire_value()],
+        )
+        .expect("recipe creates");
+    session
+        .rename_processing_recipe(&recipe_id, "Field restoration")
+        .expect("recipe renames");
+
+    source_adjustment.low_cut_hertz = 110;
+    session
+        .set_asset_adjustment(&source.to_string(), &source_adjustment)
+        .expect("updated source adjustment saves");
+    assert_eq!(
+        session
+            .update_processing_recipe(
+                &recipe_id,
+                &source.to_string(),
+                &[echo_domain::ProcessingComponent::LowCut.wire_value()],
+            )
+            .expect("recipe revision appends"),
+        2
+    );
+    let recipes = session.processing_recipes().expect("recipes list");
+    assert_eq!(recipes[0].name, "Field restoration");
+    assert_eq!(recipes[0].revision_number, 2);
+
+    let first_apply = session
+        .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
+        .expect("recipe applies");
+    let first_revert = session
+        .revert_processing_recipe_application(&first_apply.batch_id)
+        .expect("application reverts");
+    assert_eq!(first_revert.restored_count, 1);
+    assert_eq!(first_revert.conflict_count, 0);
+    let restored_revision = first_revert.results[0].adjustment_revision;
+    let repeated = session
+        .revert_processing_recipe_application(&first_apply.batch_id)
+        .expect("revert is idempotent");
+    assert_eq!(repeated.revert_id, first_revert.revert_id);
+    assert_eq!(repeated.results[0].adjustment_revision, restored_revision);
+
+    let second_apply = session
+        .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
+        .expect("recipe reapplies");
+    let mut later_adjustment = adjustment(8_000);
+    later_adjustment.low_cut_hertz = 150;
+    session
+        .set_asset_adjustment(&target.to_string(), &later_adjustment)
+        .expect("later user adjustment saves");
+    let conflict = session
+        .revert_processing_recipe_application(&second_apply.batch_id)
+        .expect("conflicting revert returns receipt");
+    assert_eq!(conflict.restored_count, 0);
+    assert_eq!(conflict.conflict_count, 1);
+    let current = session
+        .catalog()
+        .with_transaction(|transaction| echo_catalog::latest_adjustment_graph(transaction, target))
+        .expect("target reads")
+        .expect("target adjustment exists");
+    assert_eq!(current.graph.low_cut_hertz(), 150);
+
+    session
+        .archive_processing_recipe(&recipe_id)
+        .expect("recipe archives");
+    assert!(
+        session
+            .processing_recipes()
+            .expect("active recipes list")
+            .is_empty()
+    );
+    assert!(
+        session
+            .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
+            .is_err()
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
+
 fn register(
     session: &crate::session::LibrarySession,
     hash: [u8; 32],

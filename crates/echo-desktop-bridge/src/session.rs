@@ -1,6 +1,8 @@
 //! The long-lived Library session: one catalog attachment for the desktop
 //! process lifetime.
 
+mod processing_recipe;
+
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
@@ -8,15 +10,11 @@ use std::{
 
 use echo_catalog::{AssetLookup, Catalog, find_by_id, list_assets, open_catalog, query_analysis};
 use echo_core::load_or_build_waveform;
-use echo_domain::{
-    AdjustmentGraph, AdjustmentPatch, AssetId, ProcessingComponent, ProcessingMergeMode,
-    ProcessingRecipeId,
-};
+use echo_domain::AssetId;
 
 use crate::ffi::{
     AnalysisStatusWire, AssetSummaryWire, EqualizerBandWire, JobStatsWire, KeywordFacetWire,
-    LongAudioChapterWire, ProcessingRecipeApplyReceiptWire, ProcessingRecipeTargetResultWire,
-    ProcessingRecipeWire, ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire,
+    LongAudioChapterWire, ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire,
     TranscriptWire, UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
@@ -667,193 +665,6 @@ impl LibrarySession {
                 updated_at_millis: album.updated_at_millis,
             })
             .collect())
-    }
-
-    /// Lists current immutable revisions of user-owned processing recipes.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SessionError`] when stored recipe evidence is invalid or the
-    /// Catalog projection fails.
-    pub fn processing_recipes(&self) -> Result<Vec<ProcessingRecipeWire>, SessionError> {
-        let recipes = self
-            .catalog
-            .with_transaction(echo_catalog::list_processing_recipes)
-            .map_err(SessionError::from)?;
-        Ok(recipes
-            .into_iter()
-            .map(|recipe| ProcessingRecipeWire {
-                id: recipe.id.to_string(),
-                name: recipe.name,
-                revision_id: recipe.current_revision.revision_id().to_string(),
-                revision_number: recipe.current_revision.sequence(),
-                components: recipe
-                    .current_revision
-                    .patch()
-                    .components()
-                    .iter()
-                    .copied()
-                    .map(ProcessingComponent::wire_value)
-                    .collect(),
-                updated_at_millis: recipe.updated_at_millis,
-            })
-            .collect())
-    }
-
-    /// Saves selected processing from one asset's current persisted graph.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SessionError`] for an unknown asset, unavailable duration,
-    /// invalid component wire value, invalid name, or Catalog failure.
-    pub fn create_processing_recipe(
-        &self,
-        name: &str,
-        source_asset_id: &str,
-        component_values: &[u8],
-    ) -> Result<String, SessionError> {
-        let asset_id = AssetId::from_str(source_asset_id).map_err(|error| SessionError {
-            message: format!("invalid source asset id {source_asset_id}: {error}"),
-        })?;
-        let components = component_values
-            .iter()
-            .copied()
-            .map(|value| {
-                ProcessingComponent::from_wire_value(value).map_err(|error| SessionError {
-                    message: error.to_string(),
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        self.catalog
-            .with_transaction(|transaction| {
-                let duration = match find_by_id(transaction, asset_id)? {
-                    AssetLookup::Found(asset) => {
-                        asset.original.duration_millis.ok_or_else(|| {
-                            echo_catalog::CatalogError::new(
-                                echo_catalog::CatalogErrorKind::Other,
-                                "source asset duration is unavailable",
-                            )
-                        })?
-                    }
-                    AssetLookup::NotFound => {
-                        return Err(echo_catalog::CatalogError::new(
-                            echo_catalog::CatalogErrorKind::Other,
-                            "source asset does not exist",
-                        ));
-                    }
-                };
-                let graph = echo_catalog::latest_adjustment_graph(transaction, asset_id)?
-                    .map_or_else(
-                        || AdjustmentGraph::identity(duration),
-                        |revision| Ok(revision.graph),
-                    )
-                    .map_err(|error| {
-                        echo_catalog::CatalogError::new(
-                            echo_catalog::CatalogErrorKind::Other,
-                            error.to_string(),
-                        )
-                    })?;
-                let patch = AdjustmentPatch::from_graph(graph, &components).map_err(|error| {
-                    echo_catalog::CatalogError::new(
-                        echo_catalog::CatalogErrorKind::Other,
-                        error.to_string(),
-                    )
-                })?;
-                echo_catalog::create_processing_recipe(
-                    transaction,
-                    echo_catalog::CreateProcessingRecipe {
-                        name,
-                        patch: &patch,
-                    },
-                    now_millis(),
-                )
-            })
-            .map(|recipe| recipe.id.to_string())
-            .map_err(SessionError::from)
-    }
-
-    /// Applies one recipe revision to explicit targets and returns its durable
-    /// per-sound receipt.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SessionError`] when an identity or merge mode is invalid, or
-    /// when the Catalog cannot atomically persist the batch.
-    pub fn apply_processing_recipe(
-        &self,
-        recipe_id: &str,
-        target_asset_ids: &[String],
-        merge_mode: u8,
-    ) -> Result<ProcessingRecipeApplyReceiptWire, SessionError> {
-        let recipe_id = ProcessingRecipeId::from_str(recipe_id).map_err(|error| SessionError {
-            message: format!("invalid processing recipe id {recipe_id}: {error}"),
-        })?;
-        let targets = target_asset_ids
-            .iter()
-            .map(|asset_id| {
-                AssetId::from_str(asset_id).map_err(|error| SessionError {
-                    message: format!("invalid target asset id {asset_id}: {error}"),
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let merge_mode = match merge_mode {
-            0 => ProcessingMergeMode::Merge,
-            1 => ProcessingMergeMode::Replace,
-            _ => {
-                return Err(SessionError {
-                    message: "processing recipe merge mode is invalid".to_owned(),
-                });
-            }
-        };
-        let receipt = self
-            .catalog
-            .with_transaction(|transaction| {
-                echo_catalog::apply_processing_recipe(
-                    transaction,
-                    recipe_id,
-                    &targets,
-                    merge_mode,
-                    now_millis(),
-                )
-            })
-            .map_err(SessionError::from)?;
-        let mut updated_count = 0_u64;
-        let mut unchanged_count = 0_u64;
-        let mut failed_count = 0_u64;
-        let results = receipt
-            .targets
-            .into_iter()
-            .map(|target| {
-                let outcome = match target.outcome {
-                    echo_catalog::ProcessingRecipeTargetOutcome::Updated => {
-                        updated_count += 1;
-                        "updated"
-                    }
-                    echo_catalog::ProcessingRecipeTargetOutcome::Unchanged => {
-                        unchanged_count += 1;
-                        "unchanged"
-                    }
-                    echo_catalog::ProcessingRecipeTargetOutcome::Failed => {
-                        failed_count += 1;
-                        "failed"
-                    }
-                };
-                ProcessingRecipeTargetResultWire {
-                    asset_id: target.asset_id.to_string(),
-                    outcome: outcome.to_owned(),
-                    adjustment_revision: target.resulting_adjustment_revision_id.unwrap_or(0),
-                    error: target.failure_reason.unwrap_or_default(),
-                }
-            })
-            .collect();
-        Ok(ProcessingRecipeApplyReceiptWire {
-            batch_id: receipt.batch_id.to_string(),
-            recipe_revision_id: receipt.recipe_revision_id.to_string(),
-            updated_count,
-            unchanged_count,
-            failed_count,
-            results,
-        })
     }
 
     /// Creates an empty user album or atomically snapshots suggested members.

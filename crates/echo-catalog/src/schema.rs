@@ -98,6 +98,8 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 12);
+pub(crate) const PROCESSING_RECIPES_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 11);
 pub(crate) const RESTORATIVE_EFFECTS_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 10);
@@ -119,9 +121,46 @@ pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 12);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 13);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.12-processing-recipes";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.13-recipe-management";
+
+pub(crate) const PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL: &str = r"
+ALTER TABLE processing_recipes
+    ADD COLUMN archived_at_millis INTEGER CHECK (archived_at_millis >= 0);
+
+CREATE TABLE processing_recipe_application_reverts (
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_batch_id        INTEGER NOT NULL UNIQUE
+                                REFERENCES processing_recipe_application_batches(id),
+    created_at_millis           INTEGER NOT NULL
+);
+
+CREATE TABLE processing_recipe_application_revert_targets (
+    revert_id                   INTEGER NOT NULL
+                                REFERENCES processing_recipe_application_reverts(id),
+    asset_id                    TEXT NOT NULL,
+    outcome                     TEXT NOT NULL CHECK (
+                                outcome IN ('restored', 'unchanged', 'conflict', 'failed')),
+    encountered_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    restored_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    failure_reason              TEXT,
+    PRIMARY KEY (revert_id, asset_id),
+    CHECK (
+        (outcome = 'restored' AND encountered_adjustment_revision_id IS NOT NULL
+         AND restored_adjustment_revision_id IS NOT NULL AND failure_reason IS NULL) OR
+        (outcome = 'unchanged' AND restored_adjustment_revision_id IS NULL
+         AND failure_reason IS NULL) OR
+        (outcome = 'conflict' AND encountered_adjustment_revision_id IS NOT NULL
+         AND restored_adjustment_revision_id IS NULL AND failure_reason IS NULL) OR
+        (outcome = 'failed' AND restored_adjustment_revision_id IS NULL
+         AND failure_reason IS NOT NULL)
+    )
+);
+
+CREATE INDEX processing_recipe_application_revert_targets_asset
+    ON processing_recipe_application_revert_targets (asset_id, revert_id DESC);
+";
 
 pub(crate) const PROCESSING_RECIPES_MIGRATION_SQL: &str = r"
 CREATE TABLE processing_recipes (
@@ -578,7 +617,8 @@ CREATE TABLE IF NOT EXISTS processing_recipes (
     id                 TEXT PRIMARY KEY,
     name               TEXT NOT NULL COLLATE NOCASE UNIQUE,
     created_at_millis  INTEGER NOT NULL,
-    updated_at_millis  INTEGER NOT NULL
+    updated_at_millis  INTEGER NOT NULL,
+    archived_at_millis INTEGER CHECK (archived_at_millis >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS processing_recipe_revisions (
@@ -617,6 +657,38 @@ CREATE TABLE IF NOT EXISTS processing_recipe_application_targets (
 
 CREATE INDEX IF NOT EXISTS processing_recipe_application_targets_asset
     ON processing_recipe_application_targets (asset_id, batch_id DESC);
+
+CREATE TABLE IF NOT EXISTS processing_recipe_application_reverts (
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_batch_id        INTEGER NOT NULL UNIQUE
+                                REFERENCES processing_recipe_application_batches(id),
+    created_at_millis           INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS processing_recipe_application_revert_targets (
+    revert_id                   INTEGER NOT NULL
+                                REFERENCES processing_recipe_application_reverts(id),
+    asset_id                    TEXT NOT NULL,
+    outcome                     TEXT NOT NULL CHECK (
+                                outcome IN ('restored', 'unchanged', 'conflict', 'failed')),
+    encountered_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    restored_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    failure_reason              TEXT,
+    PRIMARY KEY (revert_id, asset_id),
+    CHECK (
+        (outcome = 'restored' AND encountered_adjustment_revision_id IS NOT NULL
+         AND restored_adjustment_revision_id IS NOT NULL AND failure_reason IS NULL) OR
+        (outcome = 'unchanged' AND restored_adjustment_revision_id IS NULL
+         AND failure_reason IS NULL) OR
+        (outcome = 'conflict' AND encountered_adjustment_revision_id IS NOT NULL
+         AND restored_adjustment_revision_id IS NULL AND failure_reason IS NULL) OR
+        (outcome = 'failed' AND restored_adjustment_revision_id IS NULL
+         AND failure_reason IS NOT NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS processing_recipe_application_revert_targets_asset
+    ON processing_recipe_application_revert_targets (asset_id, revert_id DESC);
 
 CREATE TABLE IF NOT EXISTS render_exports (
     id                     INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -36,7 +36,8 @@ mod source_metadata;
 mod user_albums;
 
 pub use adjustment_graph::{
-    AssetAdjustmentRevision, latest_adjustment_graph, record_adjustment_graph,
+    AssetAdjustmentRevision, adjustment_graph_at_revision, latest_adjustment_graph,
+    record_adjustment_graph,
 };
 pub use analysis::{
     AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis,
@@ -80,9 +81,13 @@ pub use long_audio::{
 };
 pub use processing_recipe::{
     CreateProcessingRecipe, ProcessingRecipe, ProcessingRecipeApplicationReceipt,
-    ProcessingRecipeTargetOutcome, ProcessingRecipeTargetReceipt,
-    append_processing_recipe_revision, apply_processing_recipe, create_processing_recipe,
-    list_processing_recipes, processing_recipe, processing_recipe_application_receipt,
+    ProcessingRecipeApplicationRevertReceipt, ProcessingRecipeRevertTargetOutcome,
+    ProcessingRecipeRevertTargetReceipt, ProcessingRecipeTargetOutcome,
+    ProcessingRecipeTargetReceipt, append_processing_recipe_revision, apply_processing_recipe,
+    archive_processing_recipe, create_processing_recipe, list_processing_recipes,
+    processing_recipe, processing_recipe_application_receipt,
+    processing_recipe_application_revert_receipt, processing_recipe_patch_from_asset,
+    rename_processing_recipe, revert_processing_recipe_application,
 };
 pub use render_export::{
     RecordRenderExport, RenderExportFormat, RenderExportRecord, list_render_exports,

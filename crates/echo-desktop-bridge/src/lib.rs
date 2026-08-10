@@ -222,6 +222,27 @@ mod ffi {
         results: Vec<ProcessingRecipeTargetResultWire>,
     }
 
+    /// Per-sound outcome from safely reverting one application batch.
+    #[derive(Debug)]
+    struct ProcessingRecipeRevertTargetResultWire {
+        asset_id: String,
+        outcome: String,
+        adjustment_revision: i64,
+        error: String,
+    }
+
+    /// Durable result of one explicit recipe-application rollback.
+    #[derive(Debug)]
+    struct ProcessingRecipeRevertReceiptWire {
+        revert_id: String,
+        application_batch_id: String,
+        restored_count: u64,
+        unchanged_count: u64,
+        conflict_count: u64,
+        failed_count: u64,
+        results: Vec<ProcessingRecipeRevertTargetResultWire>,
+    }
+
     /// One pyramid level of a cached waveform artifact.
     #[derive(Debug)]
     struct WaveformLevelWire {
@@ -342,6 +363,21 @@ mod ffi {
             source_asset_id: &str,
             components: &[u8],
         ) -> Result<String>;
+        /// Renames one active processing recipe.
+        fn session_rename_processing_recipe(
+            self: &LibrarySession,
+            recipe_id: &str,
+            name: &str,
+        ) -> Result<()>;
+        /// Appends selected processing as the recipe's next revision.
+        fn session_update_processing_recipe(
+            self: &LibrarySession,
+            recipe_id: &str,
+            source_asset_id: &str,
+            components: &[u8],
+        ) -> Result<u32>;
+        /// Archives a recipe without deleting its audit history.
+        fn session_archive_processing_recipe(self: &LibrarySession, recipe_id: &str) -> Result<()>;
         /// Materializes one recipe revision into one or many asset-local graphs.
         fn session_apply_processing_recipe(
             self: &LibrarySession,
@@ -349,6 +385,11 @@ mod ffi {
             target_asset_ids: &[String],
             merge_mode: u8,
         ) -> Result<ProcessingRecipeApplyReceiptWire>;
+        /// Safely restores targets still anchored at one application batch.
+        fn session_revert_processing_recipe_application(
+            self: &LibrarySession,
+            batch_id: &str,
+        ) -> Result<ProcessingRecipeRevertReceiptWire>;
         /// Creates an empty user album or atomically snapshots a suggestion.
         fn session_create_user_album(
             self: &LibrarySession,
@@ -529,6 +570,29 @@ impl LibrarySession {
             .map_err(|error| error.message)
     }
 
+    /// Renames one active processing recipe.
+    fn session_rename_processing_recipe(&self, recipe_id: &str, name: &str) -> Result<(), String> {
+        self.rename_processing_recipe(recipe_id, name)
+            .map_err(|error| error.message)
+    }
+
+    /// Appends one immutable recipe revision from a saved sound adjustment.
+    fn session_update_processing_recipe(
+        &self,
+        recipe_id: &str,
+        source_asset_id: &str,
+        components: &[u8],
+    ) -> Result<u32, String> {
+        self.update_processing_recipe(recipe_id, source_asset_id, components)
+            .map_err(|error| error.message)
+    }
+
+    /// Archives one recipe while preserving revisions and batch receipts.
+    fn session_archive_processing_recipe(&self, recipe_id: &str) -> Result<(), String> {
+        self.archive_processing_recipe(recipe_id)
+            .map_err(|error| error.message)
+    }
+
     /// Applies one current immutable recipe revision to explicit targets.
     fn session_apply_processing_recipe(
         &self,
@@ -537,6 +601,15 @@ impl LibrarySession {
         merge_mode: u8,
     ) -> Result<ffi::ProcessingRecipeApplyReceiptWire, String> {
         self.apply_processing_recipe(recipe_id, target_asset_ids, merge_mode)
+            .map_err(|error| error.message)
+    }
+
+    /// Safely reverts one processing-recipe application batch.
+    fn session_revert_processing_recipe_application(
+        &self,
+        batch_id: &str,
+    ) -> Result<ffi::ProcessingRecipeRevertReceiptWire, String> {
+        self.revert_processing_recipe_application(batch_id)
             .map_err(|error| error.message)
     }
 

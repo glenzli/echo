@@ -20,6 +20,7 @@ Rectangle {
     property var processingRecipes: []
     property int processingRecipeModelRevision: 0
     property string processingRecipeNotice: ""
+    property string lastProcessingRecipeBatchId: ""
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
     readonly property bool dirty: adjustmentDraft.dirty
@@ -262,6 +263,38 @@ Rectangle {
         processingRecipeApplyDialog.present()
     }
 
+    function presentProcessingRecipeManager() : void {
+        refreshProcessingRecipeManager("")
+        processingRecipeManagerDialog.sourceAssetId = hasAsset ? asset.id : ""
+        processingRecipeManagerDialog.sourceLabel = hasAsset ? fileName(asset.path) : ""
+        processingRecipeManagerDialog.canUpdateFromSource = hasAsset && !dirty
+            && Number(asset.adjustmentRevision || 0) > 0
+        processingRecipeManagerDialog.present()
+    }
+
+    function refreshProcessingRecipeManager(preferredId: string) : void {
+        refreshProcessingRecipes()
+        processingRecipeManagerDialog.recipeModel = processingRecipes
+        processingRecipeManagerDialog.modelRevision = processingRecipeModelRevision
+        const stillExists = processingRecipes.some(recipe => recipe.id === preferredId)
+        processingRecipeManagerDialog.selectedRecipeId = stillExists ? preferredId
+            : processingRecipes.length > 0 ? processingRecipes[0].id : ""
+    }
+
+    function revertLastProcessingRecipeApplication() : void {
+        if (lastProcessingRecipeBatchId.length === 0)
+            return
+        const receipt = backend.revertProcessingRecipeApplication(
+            lastProcessingRecipeBatchId)
+        if (!receipt || !receipt.revertId) {
+            showProcessingRecipeNotice(
+                qsTr("The processing recipe application could not be undone."))
+        } else {
+            lastProcessingRecipeBatchId = ""
+            showProcessingRecipeNotice(qsTr("Processing recipe application undone."))
+        }
+    }
+
     function showProcessingRecipeNotice(message: string) : void {
         processingRecipeNotice = message
         processingRecipeNoticePopup.open()
@@ -303,6 +336,8 @@ Rectangle {
         loadedAdjustmentKey = ""
         Qt.callLater(refreshAsset)
     }
+
+    Component.onCompleted: refreshProcessingRecipes()
 
     Connections {
         target: backend
@@ -594,6 +629,16 @@ Rectangle {
                 onClicked: workspace.presentApplyProcessingRecipe()
             }
 
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/equalizer.svg"
+                toolTipText: qsTr("Manage processing recipes")
+                accessibleName: toolTipText
+                enabled: workspace.processingRecipes.length > 0
+                buttonSize: 30
+                iconSize: 16
+                onClicked: workspace.presentProcessingRecipeManager()
+            }
+
             EchoButton {
                 text: qsTr("Export")
                 ghost: true
@@ -763,11 +808,49 @@ Rectangle {
             const receipt = backend.applyProcessingRecipe(
                 recipeId, targetIds, mergeMode)
             if (receipt && receipt.batchId) {
+                workspace.lastProcessingRecipeBatchId = receipt.batchId
                 workspace.showProcessingRecipeNotice(
                     qsTr("Processing recipe applied."))
             } else {
+                workspace.lastProcessingRecipeBatchId = ""
                 workspace.showProcessingRecipeNotice(
                     qsTr("The processing recipe could not be applied."))
+            }
+        }
+    }
+
+    ProcessingRecipeManagerDialog {
+        id: processingRecipeManagerDialog
+
+        onRecipeSelected: recipeId => selectedRecipeId = recipeId
+        onRenameRequested: function(recipeId, name) {
+            if (backend.renameProcessingRecipe(recipeId, name)) {
+                workspace.refreshProcessingRecipeManager(recipeId)
+                workspace.showProcessingRecipeNotice(qsTr("Processing recipe renamed."))
+            } else {
+                workspace.showProcessingRecipeNotice(
+                    qsTr("The processing recipe could not be renamed."))
+            }
+        }
+        onUpdateRequested: function(recipeId, componentIds) {
+            const revision = backend.updateProcessingRecipe(
+                recipeId, sourceAssetId, componentIds)
+            if (revision > 0) {
+                workspace.refreshProcessingRecipeManager(recipeId)
+                workspace.showProcessingRecipeNotice(
+                    qsTr("Processing recipe version %1 added.").arg(revision))
+            } else {
+                workspace.showProcessingRecipeNotice(
+                    qsTr("The processing recipe could not be updated."))
+            }
+        }
+        onArchiveRequested: function(recipeId) {
+            if (backend.archiveProcessingRecipe(recipeId)) {
+                workspace.refreshProcessingRecipeManager("")
+                workspace.showProcessingRecipeNotice(qsTr("Processing recipe archived."))
+            } else {
+                workspace.showProcessingRecipeNotice(
+                    qsTr("The processing recipe could not be archived."))
             }
         }
     }
@@ -778,8 +861,8 @@ Rectangle {
         parent: Overlay.overlay
         x: Math.round((parent.width - width) / 2)
         y: 18
-        implicitWidth: Math.min(440, processingRecipeNoticeText.implicitWidth + 34)
-        implicitHeight: processingRecipeNoticeText.implicitHeight + 24
+        implicitWidth: Math.min(540, processingRecipeNoticeRow.implicitWidth + 28)
+        implicitHeight: processingRecipeNoticeRow.implicitHeight + 20
         padding: 0
         closePolicy: Popup.NoAutoClose
 
@@ -790,20 +873,32 @@ Rectangle {
             border.color: Theme.borderStrong
         }
 
-        contentItem: Text {
-            id: processingRecipeNoticeText
+        contentItem: RowLayout {
+            id: processingRecipeNoticeRow
 
-            text: workspace.processingRecipeNotice
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontBody
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            spacing: 10
+
+            Text {
+                Layout.fillWidth: true
+                text: workspace.processingRecipeNotice
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontBody
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            EchoButton {
+                visible: workspace.lastProcessingRecipeBatchId.length > 0
+                text: qsTr("Undo batch")
+                ghost: true
+                onClicked: workspace.revertLastProcessingRecipeApplication()
+            }
         }
     }
 
     Timer {
         id: processingRecipeNoticeTimer
-        interval: 2600
+        interval: workspace.lastProcessingRecipeBatchId.length > 0 ? 6000 : 2600
         onTriggered: processingRecipeNoticePopup.close()
     }
 }

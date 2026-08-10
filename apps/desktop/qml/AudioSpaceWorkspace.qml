@@ -24,6 +24,7 @@ Item {
     property var processingRecipes: []
     property int processingRecipeModelRevision: 0
     property string processingRecipeNotice: ""
+    property string lastProcessingRecipeBatchId: ""
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
 
     readonly property int visibleAssetCount: filteredAssets.length
@@ -42,6 +43,17 @@ Item {
         catalogBackend: backend
     }
 
+    SoundMultiSelectionState {
+        id: soundSelection
+        assets: workspace.filteredAssets
+
+        onPrimaryIdChanged: {
+            const primary = workspace.assetForId(primaryId)
+            if (primary !== null)
+                workspace.selectedAsset = primary
+        }
+    }
+
     function fileName(path: string) : string {
         const normalized = path.replace(/\\/g, "/")
         return normalized.substring(normalized.lastIndexOf("/") + 1)
@@ -54,23 +66,40 @@ Item {
     function refreshAssets() : void {
         const selectedId = selectedAsset !== null ? selectedAsset.id : ""
         const assets = backend.listAssets()
-        let reconciled = null
-        for (const asset of assets) {
-            if (asset.id === selectedId) {
-                reconciled = asset
-            }
-        }
         allAssets = assets
         albumState.refresh()
         reconcileAlbumFilter()
         refilter()
-        if (reconciled !== null) {
-            selectedAsset = reconciled
-        } else if (filteredAssets.length > 0) {
-            selectedAsset = filteredAssets[0]
+        soundSelection.reconcile()
+        if (soundSelection.selectedCount > 0) {
+            selectedAsset = assetForId(soundSelection.primaryId)
         } else {
-            selectedAsset = null
+            const reconciled = assetForId(selectedId)
+            selectAssetOnly(reconciled !== null ? reconciled
+                : filteredAssets.length > 0 ? filteredAssets[0] : null)
         }
+    }
+
+    function assetForId(assetId: string) : var {
+        for (const asset of filteredAssets) {
+            if (asset.id === assetId)
+                return asset
+        }
+        return null
+    }
+
+    function selectAssetOnly(asset: var) : void {
+        selectedAsset = asset
+        soundSelection.selectOnly(asset !== null ? asset.id : "")
+    }
+
+    function activateAsset(asset: var, modifiers: int) : void {
+        if (asset === null)
+            return
+        soundSelection.activate(asset.id, modifiers)
+        const primary = assetForId(soundSelection.primaryId)
+        if (primary !== null)
+            selectedAsset = primary
     }
 
     function refreshProcessingRecipes() : void {
@@ -78,17 +107,48 @@ Item {
         processingRecipeModelRevision += 1
     }
 
-    function presentProcessingRecipes() : void {
+    function presentProcessingRecipesFor(targetIds: var, targetLabel: string) : void {
         refreshProcessingRecipes()
         processingRecipeApplyDialog.recipeModel = processingRecipes
         processingRecipeApplyDialog.modelRevision = processingRecipeModelRevision
         processingRecipeApplyDialog.selectedRecipeId = processingRecipes.length > 0
             ? processingRecipes[0].id : ""
         processingRecipeApplyDialog.mergeMode = "merge"
-        processingRecipeApplyDialog.targetIds = filteredAssets.map(asset => asset.id)
-        processingRecipeApplyDialog.targetLabel = qsTr("Current results · %1 sounds")
-            .arg(filteredAssets.length)
+        processingRecipeApplyDialog.targetIds = targetIds
+        processingRecipeApplyDialog.targetLabel = targetLabel
         processingRecipeApplyDialog.present()
+    }
+
+    function presentProcessingRecipes() : void {
+        presentProcessingRecipesFor(
+            filteredAssets.map(asset => asset.id),
+            qsTr("Current results · %1 sounds").arg(filteredAssets.length))
+    }
+
+    function presentSelectedProcessingRecipes() : void {
+        presentProcessingRecipesFor(
+            soundSelection.selectedIds.slice(),
+            qsTr("Selected sounds · %1").arg(soundSelection.selectedCount))
+    }
+
+    function presentProcessingRecipeManager() : void {
+        refreshProcessingRecipeManager("")
+        processingRecipeManagerDialog.sourceAssetId = selectedAsset !== null
+            ? selectedAsset.id : ""
+        processingRecipeManagerDialog.sourceLabel = selectedAsset !== null
+            ? fileName(selectedAsset.path) : ""
+        processingRecipeManagerDialog.canUpdateFromSource = selectedAsset !== null
+            && Number(selectedAsset.adjustmentRevision || 0) > 0
+        processingRecipeManagerDialog.present()
+    }
+
+    function refreshProcessingRecipeManager(preferredId: string) : void {
+        refreshProcessingRecipes()
+        processingRecipeManagerDialog.recipeModel = processingRecipes
+        processingRecipeManagerDialog.modelRevision = processingRecipeModelRevision
+        const stillExists = processingRecipes.some(recipe => recipe.id === preferredId)
+        processingRecipeManagerDialog.selectedRecipeId = stillExists ? preferredId
+            : processingRecipes.length > 0 ? processingRecipes[0].id : ""
     }
 
     function applyProcessingRecipe(recipeId: string, mergeMode: string,
@@ -96,10 +156,29 @@ Item {
         const receipt = backend.applyProcessingRecipe(recipeId, targetIds, mergeMode)
         if (!receipt || !receipt.batchId) {
             processingRecipeNotice = qsTr("The processing recipe could not be applied.")
+            lastProcessingRecipeBatchId = ""
         } else {
             processingRecipeNotice = qsTr("%1 updated · %2 unchanged · %3 failed")
                 .arg(receipt.updatedCount).arg(receipt.unchangedCount)
                 .arg(receipt.failedCount)
+            lastProcessingRecipeBatchId = receipt.batchId
+        }
+        processingRecipeNoticePopup.open()
+        processingRecipeNoticeTimer.restart()
+    }
+
+    function revertLastProcessingRecipeApplication() : void {
+        if (lastProcessingRecipeBatchId.length === 0)
+            return
+        const receipt = backend.revertProcessingRecipeApplication(
+            lastProcessingRecipeBatchId)
+        if (!receipt || !receipt.revertId) {
+            processingRecipeNotice = qsTr("The processing recipe application could not be undone.")
+        } else {
+            processingRecipeNotice = qsTr("%1 restored · %2 conflicts · %3 failed")
+                .arg(receipt.restoredCount).arg(receipt.conflictCount)
+                .arg(receipt.failedCount)
+            lastProcessingRecipeBatchId = ""
         }
         processingRecipeNoticePopup.open()
         processingRecipeNoticeTimer.restart()
@@ -243,9 +322,14 @@ Item {
             return rightTime - leftTime
         })
         filteredAssets = admitted
-        if (selectedAsset !== null
-                && !admitted.some(asset => asset.id === selectedAsset.id)) {
-            selectedAsset = admitted.length > 0 ? admitted[0] : null
+        soundSelection.reconcile()
+        if (soundSelection.selectedCount > 0) {
+            selectedAsset = assetForId(soundSelection.primaryId)
+        } else if (selectedAsset !== null
+                   && admitted.some(asset => asset.id === selectedAsset.id)) {
+            soundSelection.selectOnly(selectedAsset.id)
+        } else {
+            selectAssetOnly(admitted.length > 0 ? admitted[0] : null)
         }
     }
 
@@ -328,7 +412,7 @@ Item {
     }
 
     function openAsset(asset: var) : void {
-        selectedAsset = asset
+        selectAssetOnly(asset)
         viewMode = "focus"
     }
 
@@ -354,7 +438,7 @@ Item {
     function selectSearchHit(hit: var) : void {
         for (const asset of allAssets) {
             if (asset.id === hit.id) {
-                selectedAsset = asset
+                selectAssetOnly(asset)
                 viewMode = "focus"
                 Qt.callLater(() => soundFocus.playFrom(hit.startMillis))
                 return
@@ -456,6 +540,7 @@ Item {
                     onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
                     onBatchExportRequested: batchExportDialog.present()
                     onProcessingRecipesRequested: workspace.presentProcessingRecipes()
+                    onProcessingRecipeManagementRequested: workspace.presentProcessingRecipeManager()
                 }
 
                 StackLayout {
@@ -468,12 +553,17 @@ Item {
                         Layout.fillHeight: true
                         assets: workspace.filteredAssets
                         selectedAsset: workspace.selectedAsset
+                        selectedAssetIds: soundSelection.selectedIds
                         searchText: workspace.searchText
                         preferredCardWidth: workspace.preferredCardWidth
                         density: workspace.cardDensity
                         userAlbums: albumState.userAlbums
-                        onAssetSelected: asset => workspace.selectedAsset = asset
+                        onAssetSelectionRequested: function(asset, modifiers) {
+                            workspace.activateAsset(asset, modifiers)
+                        }
                         onAssetOpened: asset => workspace.openAsset(asset)
+                        onProcessingRecipeRequested: workspace.presentSelectedProcessingRecipes()
+                        onSelectionClearRequested: soundSelection.collapseToPrimary()
                         onAffinityRequested: function(asset, liked, rating) {
                             workspace.updateAffinity(asset, liked, rating)
                         }
@@ -494,7 +584,7 @@ Item {
                         selectedAsset: workspace.selectedAsset
                         jobStats: workspace.jobStats
                         userAlbums: albumState.userAlbums
-                        onAssetSelected: asset => workspace.selectedAsset = asset
+                        onAssetSelected: asset => workspace.selectAssetOnly(asset)
                         onAffinityRequested: function(asset, liked, rating) {
                             workspace.updateAffinity(asset, liked, rating)
                         }
@@ -552,14 +642,53 @@ Item {
         }
     }
 
+    ProcessingRecipeManagerDialog {
+        id: processingRecipeManagerDialog
+
+        onRecipeSelected: recipeId => selectedRecipeId = recipeId
+        onRenameRequested: function(recipeId, name) {
+            if (backend.renameProcessingRecipe(recipeId, name)) {
+                workspace.refreshProcessingRecipeManager(recipeId)
+                workspace.processingRecipeNotice = qsTr("Processing recipe renamed.")
+            } else {
+                workspace.processingRecipeNotice = qsTr("The processing recipe could not be renamed.")
+            }
+            processingRecipeNoticePopup.open()
+            processingRecipeNoticeTimer.restart()
+        }
+        onUpdateRequested: function(recipeId, componentIds) {
+            const revision = backend.updateProcessingRecipe(
+                recipeId, sourceAssetId, componentIds)
+            if (revision > 0) {
+                workspace.refreshProcessingRecipeManager(recipeId)
+                workspace.processingRecipeNotice = qsTr("Processing recipe version %1 added.")
+                    .arg(revision)
+            } else {
+                workspace.processingRecipeNotice = qsTr("The processing recipe could not be updated.")
+            }
+            processingRecipeNoticePopup.open()
+            processingRecipeNoticeTimer.restart()
+        }
+        onArchiveRequested: function(recipeId) {
+            if (backend.archiveProcessingRecipe(recipeId)) {
+                workspace.refreshProcessingRecipeManager("")
+                workspace.processingRecipeNotice = qsTr("Processing recipe archived.")
+            } else {
+                workspace.processingRecipeNotice = qsTr("The processing recipe could not be archived.")
+            }
+            processingRecipeNoticePopup.open()
+            processingRecipeNoticeTimer.restart()
+        }
+    }
+
     Popup {
         id: processingRecipeNoticePopup
 
         parent: Overlay.overlay
         x: Math.round((parent.width - width) / 2)
         y: 18
-        implicitWidth: Math.min(440, noticeText.implicitWidth + 34)
-        implicitHeight: noticeText.implicitHeight + 24
+        implicitWidth: Math.min(560, noticeRow.implicitWidth + 28)
+        implicitHeight: noticeRow.implicitHeight + 20
         padding: 0
         closePolicy: Popup.NoAutoClose
 
@@ -570,20 +699,32 @@ Item {
             border.color: Theme.borderStrong
         }
 
-        contentItem: Text {
-            id: noticeText
+        contentItem: RowLayout {
+            id: noticeRow
 
-            text: workspace.processingRecipeNotice
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontBody
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            spacing: 10
+
+            Text {
+                Layout.fillWidth: true
+                text: workspace.processingRecipeNotice
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontBody
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            EchoButton {
+                visible: workspace.lastProcessingRecipeBatchId.length > 0
+                text: qsTr("Undo batch")
+                ghost: true
+                onClicked: workspace.revertLastProcessingRecipeApplication()
+            }
         }
     }
 
     Timer {
         id: processingRecipeNoticeTimer
-        interval: 3200
+        interval: workspace.lastProcessingRecipeBatchId.length > 0 ? 6000 : 3200
         onTriggered: processingRecipeNoticePopup.close()
     }
 }

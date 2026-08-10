@@ -56,20 +56,9 @@ pub fn latest_adjustment_graph(
     transaction: &Transaction<'_>,
     asset_id: AssetId,
 ) -> Result<Option<AssetAdjustmentRevision>, CatalogError> {
-    let duration: Option<i64> = transaction
-        .query_row(
-            "SELECT duration_millis FROM assets WHERE id = ?1",
-            [asset_id.to_string()],
-            |row| row.get(0),
-        )
-        .optional()?
-        .flatten();
-    let Some(duration) = duration else {
+    let Some(duration) = asset_duration(transaction, asset_id)? else {
         return Ok(None);
     };
-    let duration = u64::try_from(duration).map_err(|_| {
-        CatalogError::new(CatalogErrorKind::Other, "stored asset duration is invalid")
-    })?;
     let stored = transaction
         .query_row(
             "SELECT id, trim_start_millis, trim_end_millis, fade_in_millis, \
@@ -88,6 +77,67 @@ pub fn latest_adjustment_graph(
         .optional()?;
     stored
         .map(|stored| restore_adjustment_graph(duration, &stored))
+        .transpose()
+}
+
+/// Reads one saved adjustment revision belonging to the requested asset.
+///
+/// Revision identity is scoped by `asset_id`: a revision owned by another
+/// asset is indistinguishable from a missing revision and returns `None`.
+/// The graph is rebuilt against the asset's current immutable source duration
+/// using the same validation contract as [`latest_adjustment_graph`].
+///
+/// # Errors
+///
+/// Returns a catalog failure when the query cannot be applied, the asset has
+/// an invalid stored duration, or persisted adjustment values violate the
+/// adjustment contract.
+pub fn adjustment_graph_at_revision(
+    transaction: &Transaction<'_>,
+    asset_id: AssetId,
+    revision_id: i64,
+) -> Result<Option<AssetAdjustmentRevision>, CatalogError> {
+    let Some(duration) = asset_duration(transaction, asset_id)? else {
+        return Ok(None);
+    };
+    let stored = transaction
+        .query_row(
+            "SELECT id, trim_start_millis, trim_end_millis, fade_in_millis, \
+             fade_out_millis, fade_in_curve, fade_out_curve, gain_centibels, \
+             low_cut_hertz, parametric_equalizer_json, compressor_enabled, \
+             compressor_threshold_centibels, compressor_ratio_tenths, \
+             compressor_attack_millis, compressor_release_millis, \
+             compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
+             de_click_json, effect_chain_json, limiter_enabled, \
+             limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
+             FROM asset_adjustment_revisions WHERE asset_id = ?1 AND id = ?2",
+            rusqlite::params![asset_id.to_string(), revision_id],
+            stored_adjustment_from_row,
+        )
+        .optional()?;
+    stored
+        .map(|stored| restore_adjustment_graph(duration, &stored))
+        .transpose()
+}
+
+fn asset_duration(
+    transaction: &Transaction<'_>,
+    asset_id: AssetId,
+) -> Result<Option<u64>, CatalogError> {
+    let duration: Option<i64> = transaction
+        .query_row(
+            "SELECT duration_millis FROM assets WHERE id = ?1",
+            [asset_id.to_string()],
+            |row| row.get(0),
+        )
+        .optional()?
+        .flatten();
+    duration
+        .map(|duration| {
+            u64::try_from(duration).map_err(|_| {
+                CatalogError::new(CatalogErrorKind::Other, "stored asset duration is invalid")
+            })
+        })
         .transpose()
 }
 

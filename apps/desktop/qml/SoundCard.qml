@@ -16,7 +16,7 @@ Rectangle {
     required property int displayHeight
     property var waveformLevels: []
 
-    signal activated()
+    signal activated(int modifiers)
     signal opened()
 
     readonly property bool overview: density === "overview"
@@ -185,7 +185,7 @@ Rectangle {
         acceptedButtons: Qt.LeftButton
         cursorShape: Qt.PointingHandCursor
         z: 6
-        onClicked: card.activated()
+        onClicked: mouse => card.activated(mouse.modifiers)
         onDoubleClicked: card.opened()
     }
 

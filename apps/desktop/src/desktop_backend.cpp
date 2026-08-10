@@ -518,6 +518,54 @@ QString DesktopBackend::createProcessingRecipe(
     }
 }
 
+bool DesktopBackend::renameProcessingRecipe(const QString& recipeId, const QString& name) {
+    try {
+        session_->session_rename_processing_recipe(recipeId.toStdString(), name.toStdString());
+        emit processingRecipesChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot rename processing recipe: %s", error.what());
+        return false;
+    }
+}
+
+qlonglong DesktopBackend::updateProcessingRecipe(
+    const QString& recipeId,
+    const QString& sourceAssetId,
+    const QVariantList& componentIds
+) {
+    rust::Vec<std::uint8_t> components;
+    if (!appendProcessingComponents(componentIds, components)) {
+        qWarning("processing recipe components are outside the supported contract");
+        return 0;
+    }
+    try {
+        const auto componentSlice =
+            rust::Slice<const std::uint8_t>(components.data(), components.size());
+        const auto revision = session_->session_update_processing_recipe(
+            recipeId.toStdString(),
+            sourceAssetId.toStdString(),
+            componentSlice
+        );
+        emit processingRecipesChanged();
+        return static_cast<qlonglong>(revision);
+    } catch (const rust::Error& error) {
+        qWarning("cannot update processing recipe: %s", error.what());
+        return 0;
+    }
+}
+
+bool DesktopBackend::archiveProcessingRecipe(const QString& recipeId) {
+    try {
+        session_->session_archive_processing_recipe(recipeId.toStdString());
+        emit processingRecipesChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot archive processing recipe: %s", error.what());
+        return false;
+    }
+}
+
 QVariantMap DesktopBackend::applyProcessingRecipe(
     const QString& recipeId,
     const QVariantList& targetAssetIds,
@@ -583,6 +631,64 @@ QVariantMap DesktopBackend::applyProcessingRecipe(
         emit assetsChanged();
     } catch (const rust::Error& error) {
         qWarning("cannot apply processing recipe: %s", error.what());
+    }
+    return result;
+}
+
+QVariantMap DesktopBackend::revertProcessingRecipeApplication(const QString& batchId) {
+    QVariantMap result;
+    try {
+        const auto receipt =
+            session_->session_revert_processing_recipe_application(batchId.toStdString());
+        result.insert(
+            QStringLiteral("revertId"),
+            QString::fromUtf8(receipt.revert_id.data(), receipt.revert_id.size())
+        );
+        result.insert(
+            QStringLiteral("applicationBatchId"),
+            QString::fromUtf8(
+                receipt.application_batch_id.data(),
+                receipt.application_batch_id.size()
+            )
+        );
+        result.insert(
+            QStringLiteral("restoredCount"),
+            static_cast<qulonglong>(receipt.restored_count)
+        );
+        result.insert(
+            QStringLiteral("unchangedCount"),
+            static_cast<qulonglong>(receipt.unchanged_count)
+        );
+        result.insert(
+            QStringLiteral("conflictCount"),
+            static_cast<qulonglong>(receipt.conflict_count)
+        );
+        result.insert(QStringLiteral("failedCount"), static_cast<qulonglong>(receipt.failed_count));
+        QVariantList targetResults;
+        for (const auto& target : receipt.results) {
+            QVariantMap targetResult;
+            targetResult.insert(
+                QStringLiteral("assetId"),
+                QString::fromUtf8(target.asset_id.data(), target.asset_id.size())
+            );
+            targetResult.insert(
+                QStringLiteral("outcome"),
+                QString::fromUtf8(target.outcome.data(), target.outcome.size())
+            );
+            targetResult.insert(
+                QStringLiteral("adjustmentRevision"),
+                static_cast<qlonglong>(target.adjustment_revision)
+            );
+            targetResult.insert(
+                QStringLiteral("error"),
+                QString::fromUtf8(target.error.data(), target.error.size())
+            );
+            targetResults.append(targetResult);
+        }
+        result.insert(QStringLiteral("results"), targetResults);
+        emit assetsChanged();
+    } catch (const rust::Error& error) {
+        qWarning("cannot revert processing recipe application: %s", error.what());
     }
     return result;
 }

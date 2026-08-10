@@ -35,11 +35,19 @@ class DesktopBackend : public QObject {
         const QString& sourceAssetId,
         const QVariantList& componentIds
     );
+    Q_INVOKABLE bool renameProcessingRecipe(const QString& recipeId, const QString& name);
+    Q_INVOKABLE qlonglong updateProcessingRecipe(
+        const QString& recipeId,
+        const QString& sourceAssetId,
+        const QVariantList& componentIds
+    );
+    Q_INVOKABLE bool archiveProcessingRecipe(const QString& recipeId);
     Q_INVOKABLE QVariantMap applyProcessingRecipe(
         const QString& recipeId,
         const QVariantList& targetAssetIds,
         const QString& mergeMode
     );
+    Q_INVOKABLE QVariantMap revertProcessingRecipeApplication(const QString& batchId);
     Q_INVOKABLE qlonglong createUserAlbum(const QString& name, const QVariantList& memberIds);
     Q_INVOKABLE bool renameUserAlbum(qlonglong albumId, const QString& name);
     Q_INVOKABLE bool deleteUserAlbum(qlonglong albumId);

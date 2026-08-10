@@ -175,6 +175,7 @@ qt_add_qml_module(
         qml/MasterOutputPanel.qml
         qml/ParametricEqGraph.qml
         qml/ProcessingRecipeApplyDialog.qml
+        qml/ProcessingRecipeManagerDialog.qml
         qml/ProcessingRecipePicker.qml
         qml/ProcessingRecipeSaveDialog.qml
         qml/RestorationPanel.qml
@@ -195,6 +196,8 @@ qt_add_qml_module(
         qml/SoundFocusView.qml
         qml/SoundInspector.qml
         qml/SoundLibraryRow.qml
+        qml/SoundMultiSelectionState.qml
+        qml/SoundMultiSelectionToolbar.qml
         qml/SoundPresentationToolbar.qml
         qml/SoundSelectionToolbar.qml
         qml/SoundWall.qml

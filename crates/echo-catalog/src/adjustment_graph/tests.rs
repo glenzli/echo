@@ -89,7 +89,181 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
             .graph,
         second_graph
     );
+
     let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn historical_revisions_are_exact_and_asset_scoped() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-adjustment-history-scope-{}",
+        std::process::id()
+    ));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset_id = register_fixture_asset(&catalog, 32, "/voices/history.wav");
+    let first = catalog
+        .with_transaction(|transaction| {
+            record_adjustment_graph(transaction, asset_id, fully_configured_graph(), 20)
+        })
+        .expect("first revision writes");
+    let second = catalog
+        .with_transaction(|transaction| {
+            record_adjustment_graph(
+                transaction,
+                asset_id,
+                AdjustmentGraph::identity(10_000).expect("identity graph validates"),
+                30,
+            )
+        })
+        .expect("second revision writes");
+
+    for expected in [first, second] {
+        assert_eq!(
+            catalog
+                .with_transaction(|transaction| {
+                    adjustment_graph_at_revision(transaction, asset_id, expected.revision_id)
+                })
+                .expect("historical revision reads"),
+            Some(expected)
+        );
+    }
+    assert_eq!(
+        catalog
+            .with_transaction(|transaction| {
+                adjustment_graph_at_revision(transaction, asset_id, i64::MAX)
+            })
+            .expect("missing historical revision reads"),
+        None
+    );
+
+    let other_asset_id = register_fixture_asset(&catalog, 34, "/voices/other.wav");
+    assert_eq!(
+        catalog
+            .with_transaction(|transaction| {
+                adjustment_graph_at_revision(transaction, other_asset_id, first.revision_id)
+            })
+            .expect("foreign revision is hidden"),
+        None
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn historical_reads_follow_duration_and_persisted_value_failure_policy() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-adjustment-history-invalid-{}",
+        std::process::id()
+    ));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset_id = catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            let registered = register_asset(
+                transaction,
+                &AssetRegistrationInput {
+                    content_hash: ContentHash::new([33; 32]),
+                    path: Path::new("/voices/history-invalid.wav"),
+                    size_bytes: 100,
+                    codec: Some("pcm"),
+                    duration_millis: Some(10_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 10,
+                },
+            )?;
+            Ok(match registered {
+                RegisterAsset::Created(asset) | RegisterAsset::Existed(asset) => asset.id,
+            })
+        })
+        .expect("fixture writes");
+    let revision = catalog
+        .with_transaction(|transaction| {
+            record_adjustment_graph(transaction, asset_id, fully_configured_graph(), 20)
+        })
+        .expect("revision writes");
+
+    catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            transaction.execute(
+                "UPDATE assets SET duration_millis = NULL WHERE id = ?1",
+                [asset_id.to_string()],
+            )?;
+            Ok(())
+        })
+        .expect("duration clears");
+    assert_eq!(
+        catalog
+            .with_transaction(|transaction| {
+                adjustment_graph_at_revision(transaction, asset_id, revision.revision_id)
+            })
+            .expect("missing duration follows latest read policy"),
+        None
+    );
+
+    catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            transaction.execute(
+                "UPDATE assets SET duration_millis = -1 WHERE id = ?1",
+                [asset_id.to_string()],
+            )?;
+            Ok(())
+        })
+        .expect("duration corrupts");
+    let duration_error = catalog
+        .with_transaction(|transaction| {
+            adjustment_graph_at_revision(transaction, asset_id, revision.revision_id)
+        })
+        .expect_err("negative duration fails closed");
+    assert_eq!(duration_error.kind, CatalogErrorKind::Other);
+    assert_eq!(duration_error.message, "stored asset duration is invalid");
+
+    catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            transaction.execute(
+                "UPDATE assets SET duration_millis = 10000 WHERE id = ?1",
+                [asset_id.to_string()],
+            )?;
+            transaction.execute(
+                "UPDATE asset_adjustment_revisions SET parametric_equalizer_json = 'not-json' \
+                 WHERE id = ?1",
+                [revision.revision_id],
+            )?;
+            Ok(())
+        })
+        .expect("stored adjustment corrupts");
+    let adjustment_error = catalog
+        .with_transaction(|transaction| {
+            adjustment_graph_at_revision(transaction, asset_id, revision.revision_id)
+        })
+        .expect_err("invalid stored adjustment fails closed");
+    assert_eq!(adjustment_error.kind, CatalogErrorKind::Other);
+    assert!(
+        adjustment_error
+            .message
+            .starts_with("stored parametric equalizer is invalid:")
+    );
+
+    let _ = std::fs::remove_dir_all(root);
+}
+
+fn register_fixture_asset(catalog: &crate::Catalog, byte: u8, path: &str) -> AssetId {
+    catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            let registered = register_asset(
+                transaction,
+                &AssetRegistrationInput {
+                    content_hash: ContentHash::new([byte; 32]),
+                    path: Path::new(path),
+                    size_bytes: 100,
+                    codec: Some("pcm"),
+                    duration_millis: Some(10_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 10,
+                },
+            )?;
+            Ok(match registered {
+                RegisterAsset::Created(asset) | RegisterAsset::Existed(asset) => asset.id,
+            })
+        })
+        .expect("fixture asset writes")
 }
 
 fn fully_configured_graph() -> AdjustmentGraph {
