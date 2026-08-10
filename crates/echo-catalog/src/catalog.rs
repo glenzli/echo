@@ -11,7 +11,8 @@ use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION, CatalogSchemaRevision,
-        LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
+        DELIVERY_FORMATS_MIGRATION_SQL, EARLIEST_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION,
+        LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
         OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
         RESTORATION_CHAIN_MIGRATION_SQL, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
@@ -96,40 +97,47 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
-            migrate_restoration_chain_schema(connection)?;
+            migrate_delivery_formats_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == LEGACY_SCHEMA_VERSION) =>
         {
-            migrate_semantic_search_schema(connection)?;
+            migrate_restoration_chain_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == OLDER_COMPATIBLE_SCHEMA_VERSION) =>
         {
-            migrate_long_audio_schema(connection)?;
+            migrate_semantic_search_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == OLDEST_COMPATIBLE_SCHEMA_VERSION) =>
         {
-            migrate_user_albums_and_long_audio(connection)?;
+            migrate_long_audio_schema(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == ANCIENT_COMPATIBLE_SCHEMA_VERSION) =>
         {
-            migrate_render_exports_user_albums_and_long_audio(connection)?;
+            migrate_user_albums_and_long_audio(connection)?;
         }
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PRIMITIVE_COMPATIBLE_SCHEMA_VERSION) =>
+        {
+            migrate_render_exports_user_albums_and_long_audio(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == EARLIEST_COMPATIBLE_SCHEMA_VERSION) =>
         {
             migrate_adjustment_effects_render_exports_user_albums_and_long_audio(connection)?;
         }
@@ -147,9 +155,18 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
+fn migrate_delivery_formats_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_delivery_formats_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
 fn migrate_restoration_chain_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     apply_restoration_chain_migration(&transaction)?;
+    apply_delivery_formats_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -159,6 +176,7 @@ fn migrate_semantic_search_schema(connection: &Connection) -> Result<(), Catalog
     let transaction = connection.unchecked_transaction()?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
     apply_restoration_chain_migration(&transaction)?;
+    apply_delivery_formats_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -169,6 +187,7 @@ fn migrate_long_audio_schema(connection: &Connection) -> Result<(), CatalogError
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
     apply_restoration_chain_migration(&transaction)?;
+    apply_delivery_formats_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -180,6 +199,7 @@ fn migrate_user_albums_and_long_audio(connection: &Connection) -> Result<(), Cat
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
     apply_restoration_chain_migration(&transaction)?;
+    apply_delivery_formats_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -194,6 +214,7 @@ fn migrate_render_exports_user_albums_and_long_audio(
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
     apply_restoration_chain_migration(&transaction)?;
+    apply_delivery_formats_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -209,6 +230,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
     transaction.execute_batch(LONG_AUDIO_MIGRATION_SQL)?;
     transaction.execute_batch(SEMANTIC_SEARCH_MIGRATION_SQL)?;
     apply_restoration_chain_migration(&transaction)?;
+    apply_delivery_formats_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -238,6 +260,21 @@ fn apply_restoration_chain_migration(
     )?;
     if column_count == 0 {
         transaction.execute_batch(RESTORATION_CHAIN_MIGRATION_SQL)?;
+    }
+    Ok(())
+}
+
+fn apply_delivery_formats_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let supports_flac: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'render_exports' \
+         AND sql LIKE '%flac24%'",
+        [],
+        |row| row.get(0),
+    )?;
+    if supports_flac == 0 {
+        transaction.execute_batch(DELIVERY_FORMATS_MIGRATION_SQL)?;
     }
     Ok(())
 }

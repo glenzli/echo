@@ -803,6 +803,7 @@ QString DesktopBackend::recordRenderExport(
     const QString& assetId,
     qint64 adjustmentRevisionId,
     const QString& outputPath,
+    const QString& format,
     quint32 sampleRate,
     quint32 channelCount,
     quint16 bitDepth,
@@ -814,6 +815,7 @@ QString DesktopBackend::recordRenderExport(
     try {
         echo::desktop::RenderExportWire evidence;
         evidence.output_path = outputPath.toStdString();
+        evidence.format = format.toStdString();
         evidence.sample_rate = sampleRate;
         evidence.channel_count = channelCount;
         evidence.bit_depth = bitDepth;

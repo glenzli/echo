@@ -1,3 +1,4 @@
+#include "echo/audio/offline_flac_renderer.hpp"
 #include "echo/audio/offline_wav_renderer.hpp"
 
 #include <cassert>
@@ -119,6 +120,29 @@ int main() {
     assert(std::memcmp(sink.bytes().data() + 36, "data", 4) == 0);
     assert(u32(sink.bytes(), 40) == sink.bytes().size() - 44);
     assert(u32(sink.bytes(), 24) == 48000);
+
+    MemorySink pcm16_sink;
+    const auto pcm16 = echo::audio::OfflineWavRenderer::render(
+        source.string(),
+        adjustment,
+        pcm16_sink,
+        {},
+        echo::audio::WavPcmDepth::Pcm16
+    );
+    assert(pcm16.bit_depth == 16);
+    assert(pcm16.size_bytes == pcm16_sink.bytes().size());
+    assert(std::to_integer<std::uint8_t>(pcm16_sink.bytes()[34]) == 16);
+    assert(pcm16_sink.bytes().size() < sink.bytes().size());
+
+    MemorySink flac_sink;
+    const auto flac =
+        echo::audio::OfflineFlacRenderer::render(source.string(), adjustment, flac_sink);
+    assert(flac.sample_rate == 48000);
+    assert(flac.channel_count == 2);
+    assert(flac.bit_depth == 24);
+    assert(flac.frame_count >= 23900 && flac.frame_count <= 24100);
+    assert(flac.size_bytes == flac_sink.bytes().size());
+    assert(std::memcmp(flac_sink.bytes().data(), "fLaC", 4) == 0);
 
     MemorySink cancelled_sink;
     bool did_cancel = false;

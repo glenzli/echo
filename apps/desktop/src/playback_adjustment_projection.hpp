@@ -11,6 +11,10 @@
 /// audio-engine contract shared by audition, analysis, and offline render.
 class PlaybackAdjustmentProjection {
   public:
+    /// Projects the flattened saved adjustment carried by one Library asset.
+    [[nodiscard]] static std::optional<echo::audio::PlaybackAdjustment>
+    fromAssetMap(const QVariantMap& asset);
+
     [[nodiscard]] static std::optional<echo::audio::PlaybackAdjustment> fromQml(
         qint64 trimStartMillis,
         qint64 trimEndMillis,

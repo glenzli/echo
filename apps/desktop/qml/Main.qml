@@ -81,6 +81,16 @@ ApplicationWindow {
         soundEditor.debugExport(destination)
     }
 
+    function debugOpenBatchDialog() : void {
+        showAudioSpace()
+        audioSpace.debugOpenBatchDialog()
+    }
+
+    function debugBatchExport(destination: url, format: string) : void {
+        showAudioSpace()
+        audioSpace.debugBatchExport(destination, format)
+    }
+
     onWorkspaceIndexChanged: player.stop()
 
     EchoSettingsDialog {

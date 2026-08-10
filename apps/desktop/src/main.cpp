@@ -1,6 +1,7 @@
 //! Process startup: open the Library session, register the desktop backend,
 //! playback controller, and UI preferences, then load the Audio Space shell.
 
+#include "batch_export_controller.hpp"
 #include "desktop_backend.hpp"
 #include "inference_preferences.hpp"
 #include "loudness_analysis_controller.hpp"
@@ -71,6 +72,7 @@ int main(int argc, char* argv[]) {
         PlaybackController player;
         LoudnessAnalysisController loudness_analyzer;
         RenderExportController render_exporter(backend);
+        BatchExportController batch_exporter(backend);
         UiPreferences ui_prefs(application);
         InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
         SemanticSearchController semantic_search(
@@ -101,6 +103,7 @@ int main(int argc, char* argv[]) {
             QStringLiteral("renderExporter"),
             &render_exporter
         );
+        engine.rootContext()->setContextProperty(QStringLiteral("batchExporter"), &batch_exporter);
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
         engine.rootContext()->setContextProperty(
             QStringLiteral("inferencePrefs"),
@@ -185,6 +188,56 @@ int main(int argc, char* argv[]) {
                 QMetaObject::invokeMethod(root, "debugOpenExportDialog");
             });
         }
+        if (std::getenv("ECHO_DEBUG_OPEN_BATCH_EXPORT") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(900, root, [root] {
+                QMetaObject::invokeMethod(root, "debugOpenBatchDialog");
+            });
+        }
+        if (const char* batch_directory = std::getenv("ECHO_DEBUG_BATCH_EXPORT")) {
+            QObject* root = engine.rootObjects().first();
+            const QUrl destination = QUrl::fromLocalFile(QString::fromUtf8(batch_directory));
+            const QString format = QString::fromUtf8(
+                std::getenv("ECHO_DEBUG_BATCH_FORMAT") == nullptr
+                    ? "wav_pcm24"
+                    : std::getenv("ECHO_DEBUG_BATCH_FORMAT")
+            );
+            QObject::connect(
+                &batch_exporter,
+                &BatchExportController::stateChanged,
+                &application,
+                [&batch_exporter] {
+                    if (!batch_exporter.running() && batch_exporter.hasResult()) {
+                        QGuiApplication::exit(batch_exporter.failedCount() == 0 ? 0 : 1);
+                    }
+                }
+            );
+            QTimer::singleShot(900, root, [root, destination, format] {
+                QMetaObject::invokeMethod(
+                    root,
+                    "debugBatchExport",
+                    Q_ARG(QUrl, destination),
+                    Q_ARG(QString, format)
+                );
+            });
+            QTimer::singleShot(120'000, &application, [] { QGuiApplication::exit(2); });
+        }
+        if (std::getenv("ECHO_DEBUG_RESUME_BATCH_EXPORT") != nullptr) {
+            QObject::connect(
+                &batch_exporter,
+                &BatchExportController::stateChanged,
+                &application,
+                [&batch_exporter] {
+                    if (!batch_exporter.running() && batch_exporter.hasResult()) {
+                        QGuiApplication::exit(batch_exporter.failedCount() == 0 ? 0 : 1);
+                    }
+                }
+            );
+            QTimer::singleShot(900, &batch_exporter, [&batch_exporter] {
+                batch_exporter.resume();
+            });
+            QTimer::singleShot(120'000, &application, [] { QGuiApplication::exit(2); });
+        }
         if (const char* export_path = std::getenv("ECHO_DEBUG_EXPORT")) {
             QObject* root = engine.rootObjects().first();
             const QUrl destination = QUrl::fromLocalFile(QString::fromUtf8(export_path));
@@ -216,6 +269,7 @@ int main(int argc, char* argv[]) {
                                      || std::getenv("ECHO_DEBUG_SEARCH") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EXPORT") != nullptr
+                                     || std::getenv("ECHO_DEBUG_OPEN_BATCH_EXPORT") != nullptr
                                      || replay_editor;
                 const bool semantic_search = std::getenv("ECHO_DEBUG_SEARCH") != nullptr;
                 const int delay = replay_editor     ? 5000

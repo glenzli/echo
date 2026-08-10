@@ -5,14 +5,16 @@
 use std::{path::PathBuf, str::FromStr};
 
 use echo_domain::{AssetId, ContentHash};
-use rusqlite::Transaction;
+use rusqlite::{OptionalExtension, Transaction};
 
 use crate::{CatalogError, CatalogErrorKind, latest_adjustment_graph};
 
 /// Stable on-disk export format identity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderExportFormat {
+    WavPcm16,
     WavPcm24,
+    Flac24,
 }
 
 /// Complete evidence supplied after an atomic render publication.
@@ -59,7 +61,7 @@ pub fn record_render_export(
     )?;
     if evidence.sample_rate == 0
         || evidence.channel_count == 0
-        || evidence.bit_depth != 24
+        || !format_matches_bit_depth(evidence.format, evidence.bit_depth)
         || evidence.frame_count == 0
         || evidence.size_bytes == 0
         || !evidence.integrated_lufs.is_finite()
@@ -71,6 +73,34 @@ pub fn record_render_export(
     }
     let revision =
         (evidence.adjustment_revision_id != 0).then_some(evidence.adjustment_revision_id);
+    let existing = transaction
+        .query_row(
+            "SELECT id FROM render_exports WHERE asset_id = ?1 \
+             AND adjustment_revision_id IS ?2 AND output_path = ?3 AND format = ?4 \
+             AND sample_rate = ?5 AND channel_count = ?6 AND bit_depth = ?7 \
+             AND frame_count = ?8 AND content_hash = ?9 AND size_bytes = ?10 LIMIT 1",
+            rusqlite::params![
+                evidence.asset_id.to_string(),
+                revision,
+                evidence.output_path.to_string_lossy(),
+                format_text(evidence.format),
+                i64::from(evidence.sample_rate),
+                i64::from(evidence.channel_count),
+                i64::from(evidence.bit_depth),
+                i64::try_from(evidence.frame_count)
+                    .map_err(|_| invalid("frame count is too large"))?,
+                evidence.content_hash.to_string(),
+                i64::try_from(evidence.size_bytes).map_err(|_| invalid("size is too large"))?,
+            ],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?;
+    if let Some(id) = existing {
+        return Ok(RenderExportRecord {
+            id,
+            evidence: evidence.clone(),
+        });
+    }
     transaction.execute(
         "INSERT INTO render_exports (asset_id, adjustment_revision_id, output_path, format, \
          sample_rate, channel_count, bit_depth, frame_count, content_hash, size_bytes, \
@@ -188,15 +218,30 @@ fn validate_revision(
 
 const fn format_text(format: RenderExportFormat) -> &'static str {
     match format {
+        RenderExportFormat::WavPcm16 => "wav_pcm16",
         RenderExportFormat::WavPcm24 => "wav_pcm24",
+        RenderExportFormat::Flac24 => "flac24",
     }
 }
 
 fn parse_format(text: &str) -> Result<RenderExportFormat, CatalogError> {
     match text {
+        "wav_pcm16" => Ok(RenderExportFormat::WavPcm16),
         "wav_pcm24" => Ok(RenderExportFormat::WavPcm24),
+        "flac24" => Ok(RenderExportFormat::Flac24),
         _ => Err(malformed("format")),
     }
+}
+
+const fn format_matches_bit_depth(format: RenderExportFormat, bit_depth: u16) -> bool {
+    matches!(
+        (format, bit_depth),
+        (RenderExportFormat::WavPcm16, 16)
+            | (
+                RenderExportFormat::WavPcm24 | RenderExportFormat::Flac24,
+                24
+            )
+    )
 }
 
 fn invalid(message: &str) -> CatalogError {

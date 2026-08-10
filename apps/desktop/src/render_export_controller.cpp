@@ -2,41 +2,19 @@
 
 #include "desktop_backend.hpp"
 #include "playback_adjustment_projection.hpp"
+#include "qt_render_byte_sink.hpp"
 
 #include <QFileInfo>
 #include <QMetaObject>
 #include <QSaveFile>
 
 #include <chrono>
-#include <span>
 #include <stdexcept>
 #include <string>
 
 #include "echo/audio/offline_wav_renderer.hpp"
 
 namespace {
-
-class QtSaveFileSink final : public echo::audio::RenderByteSink {
-  public:
-    explicit QtSaveFileSink(QSaveFile& file) : file_(file) {}
-
-    void write(std::span<const std::byte> bytes) override {
-        const qint64 size = static_cast<qint64>(bytes.size());
-        const qint64 written = file_.write(reinterpret_cast<const char*>(bytes.data()), size);
-        if (written != size) {
-            throw std::runtime_error(file_.errorString().toStdString());
-        }
-    }
-
-    void seek(std::uint64_t offset) override {
-        if (!file_.seek(static_cast<qint64>(offset))) {
-            throw std::runtime_error(file_.errorString().toStdString());
-        }
-    }
-
-  private:
-    QSaveFile& file_;
-};
 
 QString normalized_destination(const QUrl& destination) {
     QString path = destination.toLocalFile();
@@ -156,7 +134,7 @@ void RenderExportController::exportAdjusted(
             if (!output.open(QIODevice::WriteOnly)) {
                 throw std::runtime_error(output.errorString().toStdString());
             }
-            QtSaveFileSink sink(output);
+            QtRenderByteSink sink(output);
             auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
             const auto result = echo::audio::OfflineWavRenderer::render(
                 source_path,
@@ -195,6 +173,7 @@ void RenderExportController::exportAdjusted(
                 assetId,
                 adjustmentRevisionId,
                 output_path,
+                QStringLiteral("wav_pcm24"),
                 result.sample_rate,
                 result.channel_count,
                 result.bit_depth,

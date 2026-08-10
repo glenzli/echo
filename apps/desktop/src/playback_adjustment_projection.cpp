@@ -4,6 +4,58 @@
 #include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
 
+std::optional<echo::audio::PlaybackAdjustment>
+PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
+    const QVariantMap restoration{
+        {QStringLiteral("noiseEnabled"), asset.value(QStringLiteral("noiseReductionEnabled"))},
+        {QStringLiteral("noiseReductionCentibels"),
+         asset.value(QStringLiteral("noiseReductionCentibels"))},
+        {QStringLiteral("noiseSensitivityPercent"),
+         asset.value(QStringLiteral("noiseReductionSensitivityPercent"))},
+        {QStringLiteral("noiseSmoothingMillis"),
+         asset.value(QStringLiteral("noiseReductionSmoothingMillis"))},
+        {QStringLiteral("deEsserEnabled"), asset.value(QStringLiteral("deEsserEnabled"))},
+        {QStringLiteral("deEsserFrequencyHertz"),
+         asset.value(QStringLiteral("deEsserFrequencyHertz"))},
+        {QStringLiteral("deEsserThresholdCentibels"),
+         asset.value(QStringLiteral("deEsserThresholdCentibels"))},
+        {QStringLiteral("deEsserReductionCentibels"),
+         asset.value(QStringLiteral("deEsserReductionCentibels"))},
+    };
+    const QVariantMap reverb{
+        {QStringLiteral("enabled"), asset.value(QStringLiteral("reverbEnabled"))},
+        {QStringLiteral("mixPercent"), asset.value(QStringLiteral("reverbMixPercent"))},
+        {QStringLiteral("preDelayMillis"), asset.value(QStringLiteral("reverbPreDelayMillis"))},
+        {QStringLiteral("decayMillis"), asset.value(QStringLiteral("reverbDecayMillis"))},
+        {QStringLiteral("sizePercent"), asset.value(QStringLiteral("reverbSizePercent"))},
+        {QStringLiteral("dampingPercent"), asset.value(QStringLiteral("reverbDampingPercent"))},
+        {QStringLiteral("lowCutHertz"), asset.value(QStringLiteral("reverbLowCutHertz"))},
+        {QStringLiteral("highCutHertz"), asset.value(QStringLiteral("reverbHighCutHertz"))},
+    };
+    return fromQml(
+        asset.value(QStringLiteral("trimStartMillis")).toLongLong(),
+        asset.value(QStringLiteral("trimEndMillis")).toLongLong(),
+        asset.value(QStringLiteral("fadeInMillis")).toLongLong(),
+        asset.value(QStringLiteral("fadeOutMillis")).toLongLong(),
+        asset.value(QStringLiteral("fadeInCurve")).toInt(),
+        asset.value(QStringLiteral("fadeOutCurve")).toInt(),
+        asset.value(QStringLiteral("gainCentibels")).toInt(),
+        asset.value(QStringLiteral("lowCutHertz")).toInt(),
+        restoration,
+        asset.value(QStringLiteral("equalizerBands")).toList(),
+        asset.value(QStringLiteral("compressorEnabled")).toBool(),
+        asset.value(QStringLiteral("compressorThresholdCentibels")).toInt(),
+        asset.value(QStringLiteral("compressorRatioTenths")).toInt(),
+        asset.value(QStringLiteral("compressorAttackMillis")).toInt(),
+        asset.value(QStringLiteral("compressorReleaseMillis")).toInt(),
+        asset.value(QStringLiteral("compressorMakeupCentibels")).toInt(),
+        reverb,
+        asset.value(QStringLiteral("limiterEnabled")).toBool(),
+        asset.value(QStringLiteral("limiterCeilingCentibels")).toInt(),
+        asset.value(QStringLiteral("limiterReleaseMillis")).toInt()
+    );
+}
+
 std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fromQml(
     qint64 trimStartMillis,
     qint64 trimEndMillis,

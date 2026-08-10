@@ -67,7 +67,24 @@ fn publication_round_trips_and_rejects_stale_adjustment() {
     let records = catalog
         .with_transaction(|transaction| list_render_exports(transaction, asset.id))
         .expect("publications list");
-    assert_eq!(records, vec![record]);
+    assert_eq!(records, vec![record.clone()]);
+    let repeated = catalog
+        .with_transaction(|transaction| record_render_export(transaction, &evidence))
+        .expect("repeated publication is idempotent");
+    assert_eq!(repeated.id, record.id);
+
+    for (format, bit_depth, suffix) in [
+        (RenderExportFormat::WavPcm16, 16, "16.wav"),
+        (RenderExportFormat::Flac24, 24, "24.flac"),
+    ] {
+        let mut variant = evidence.clone();
+        variant.output_path = PathBuf::from(format!("/exports/voice-{suffix}"));
+        variant.format = format;
+        variant.bit_depth = bit_depth;
+        catalog
+            .with_transaction(|transaction| record_render_export(transaction, &variant))
+            .expect("additional delivery format records");
+    }
 
     catalog
         .with_transaction(|transaction| {

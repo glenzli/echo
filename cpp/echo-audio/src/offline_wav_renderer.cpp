@@ -19,8 +19,6 @@ namespace {
 constexpr std::uint32_t kPcmFormat = 1;
 constexpr std::uint32_t kSampleRate = 48000;
 constexpr std::uint16_t kChannels = 2;
-constexpr std::uint16_t kBitDepth = 24;
-constexpr std::uint16_t kBytesPerSample = 3;
 constexpr std::size_t kChunkFrames = 4096;
 constexpr std::uint64_t kWavHeaderBytes = 44;
 
@@ -37,7 +35,9 @@ void put_fourcc(std::span<std::byte> destination, std::size_t offset, const char
     std::memcpy(destination.data() + offset, value, 4);
 }
 
-std::array<std::byte, kWavHeaderBytes> wav_header(std::uint32_t data_size) {
+std::array<std::byte, kWavHeaderBytes>
+wav_header(std::uint32_t data_size, std::uint16_t bit_depth) {
+    const auto bytes_per_sample = static_cast<std::uint16_t>(bit_depth / 8U);
     std::array<std::byte, kWavHeaderBytes> header{};
     put_fourcc(header, 0, "RIFF");
     put_little_endian<std::uint32_t>(header, 4, 36U + data_size);
@@ -47,9 +47,9 @@ std::array<std::byte, kWavHeaderBytes> wav_header(std::uint32_t data_size) {
     put_little_endian<std::uint16_t>(header, 20, static_cast<std::uint16_t>(kPcmFormat));
     put_little_endian<std::uint16_t>(header, 22, kChannels);
     put_little_endian<std::uint32_t>(header, 24, kSampleRate);
-    put_little_endian<std::uint32_t>(header, 28, kSampleRate * kChannels * kBytesPerSample);
-    put_little_endian<std::uint16_t>(header, 32, kChannels * kBytesPerSample);
-    put_little_endian<std::uint16_t>(header, 34, kBitDepth);
+    put_little_endian<std::uint32_t>(header, 28, kSampleRate * kChannels * bytes_per_sample);
+    put_little_endian<std::uint16_t>(header, 32, kChannels * bytes_per_sample);
+    put_little_endian<std::uint16_t>(header, 34, bit_depth);
     put_fourcc(header, 36, "data");
     put_little_endian<std::uint32_t>(header, 40, data_size);
     return header;
@@ -57,8 +57,8 @@ std::array<std::byte, kWavHeaderBytes> wav_header(std::uint32_t data_size) {
 
 class Dither {
   public:
-    float tpdf() {
-        return (uniform() - uniform()) / 8388608.0F;
+    float tpdf(float quantization_scale) {
+        return (uniform() - uniform()) / quantization_scale;
     }
 
   private:
@@ -72,30 +72,42 @@ class Dither {
     std::uint32_t state_ = 0x4543'484fU;
 };
 
-std::int32_t quantize(float sample, Dither& dither) {
-    const float prepared = std::clamp(sample + dither.tpdf(), -1.0F, 0.99999988F);
+std::int32_t quantize(float sample, Dither& dither, std::int32_t scale) {
+    const float quantization_scale = static_cast<float>(scale + 1);
+    const float prepared = std::clamp(
+        sample + dither.tpdf(quantization_scale),
+        -1.0F,
+        static_cast<float>(scale) / quantization_scale
+    );
     return std::clamp(
-        static_cast<std::int32_t>(std::lrint(prepared * 8388607.0F)),
-        -8388608,
-        8388607
+        static_cast<std::int32_t>(std::lrint(prepared * static_cast<float>(scale))),
+        -scale - 1,
+        scale
     );
 }
 
-void append_pcm24(
+void append_pcm(
     std::span<const float> samples,
     std::vector<std::byte>& encoded,
     std::vector<float>& measured,
-    Dither& dither
+    Dither& dither,
+    WavPcmDepth depth
 ) {
-    encoded.resize(samples.size() * kBytesPerSample);
+    const bool is_pcm24 = depth == WavPcmDepth::Pcm24;
+    const std::size_t bytes_per_sample = is_pcm24 ? 3U : 2U;
+    const std::int32_t scale = is_pcm24 ? 8'388'607 : 32'767;
+    encoded.resize(samples.size() * bytes_per_sample);
     measured.resize(samples.size());
     for (std::size_t index = 0; index < samples.size(); ++index) {
-        const std::int32_t value = quantize(samples[index], dither);
+        const std::int32_t value = quantize(samples[index], dither, scale);
         const std::uint32_t bits = static_cast<std::uint32_t>(value);
-        encoded[index * 3] = std::byte{static_cast<unsigned char>(bits & 0xffU)};
-        encoded[index * 3 + 1] = std::byte{static_cast<unsigned char>((bits >> 8U) & 0xffU)};
-        encoded[index * 3 + 2] = std::byte{static_cast<unsigned char>((bits >> 16U) & 0xffU)};
-        measured[index] = static_cast<float>(value) / 8388607.0F;
+        const std::size_t offset = index * bytes_per_sample;
+        encoded[offset] = std::byte{static_cast<unsigned char>(bits & 0xffU)};
+        encoded[offset + 1] = std::byte{static_cast<unsigned char>((bits >> 8U) & 0xffU)};
+        if (is_pcm24) {
+            encoded[offset + 2] = std::byte{static_cast<unsigned char>((bits >> 16U) & 0xffU)};
+        }
+        measured[index] = static_cast<float>(value) / static_cast<float>(scale);
     }
 }
 
@@ -111,13 +123,12 @@ void report_progress(const OfflineRenderCallbacks& callbacks, double value) {
 
 } // namespace
 
-OfflineRenderCancelled::OfflineRenderCancelled() : std::runtime_error("offline render cancelled") {}
-
-OfflineWavRenderResult OfflineWavRenderer::render(
+OfflineRenderResult OfflineWavRenderer::render(
     const std::string& sourcePath,
     const PlaybackAdjustment& adjustment,
     RenderByteSink& sink,
-    const OfflineRenderCallbacks& callbacks
+    const OfflineRenderCallbacks& callbacks,
+    WavPcmDepth depth
 ) {
     if (adjustment.trim_end_millis <= adjustment.trim_start_millis) {
         throw std::invalid_argument("offline render requires a non-empty selection");
@@ -127,15 +138,17 @@ OfflineWavRenderResult OfflineWavRenderer::render(
         throw std::invalid_argument("selection exceeds the WAV v1 size limit");
     }
     const std::uint64_t expected_frames = selected_millis * kSampleRate / 1000U;
-    constexpr std::uint64_t kBytesPerFrame = kChannels * kBytesPerSample;
-    if (expected_frames > std::numeric_limits<std::uint64_t>::max() / kBytesPerFrame) {
+    const std::uint16_t bit_depth = static_cast<std::uint16_t>(depth);
+    const std::uint16_t bytes_per_sample = static_cast<std::uint16_t>(bit_depth / 8U);
+    const std::uint64_t bytes_per_frame = kChannels * bytes_per_sample;
+    if (expected_frames > std::numeric_limits<std::uint64_t>::max() / bytes_per_frame) {
         throw std::invalid_argument("selection exceeds the WAV v1 size limit");
     }
-    const std::uint64_t expected_data_bytes = expected_frames * kBytesPerFrame;
+    const std::uint64_t expected_data_bytes = expected_frames * bytes_per_frame;
     if (expected_data_bytes > std::numeric_limits<std::uint32_t>::max() - 36U) {
         throw std::invalid_argument("selection exceeds the WAV v1 size limit");
     }
-    const auto placeholder = wav_header(0);
+    const auto placeholder = wav_header(0, bit_depth);
     sink.write(placeholder);
 
     PlaybackSession session(
@@ -165,11 +178,12 @@ OfflineWavRenderResult OfflineWavRenderer::render(
             continue;
         }
         const std::size_t sample_count = frames * session.channel_count();
-        append_pcm24(
+        append_pcm(
             std::span<const float>(decoded.data(), sample_count),
             encoded,
             measured,
-            dither
+            dither,
+            depth
         );
         sink.write(encoded);
         analyzer.process_interleaved(measured.data(), frames, session.channel_count());
@@ -187,7 +201,7 @@ OfflineWavRenderResult OfflineWavRenderer::render(
         throw std::runtime_error("rendered data exceeds the WAV v1 size limit");
     }
     sink.seek(0);
-    const auto header = wav_header(static_cast<std::uint32_t>(data_bytes));
+    const auto header = wav_header(static_cast<std::uint32_t>(data_bytes), bit_depth);
     sink.write(header);
     report_progress(callbacks, 1.0);
     const OfflineLoudnessResult loudness = analyzer.result();
@@ -196,7 +210,7 @@ OfflineWavRenderResult OfflineWavRenderer::render(
         .size_bytes = kWavHeaderBytes + data_bytes,
         .sample_rate = session.sample_rate(),
         .channel_count = session.channel_count(),
-        .bit_depth = kBitDepth,
+        .bit_depth = bit_depth,
         .integrated_lufs = loudness.integrated_lufs,
         .true_peak_dbtp = loudness.true_peak_dbtp,
     };

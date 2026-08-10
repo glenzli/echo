@@ -93,6 +93,7 @@ class DesktopBackend : public QObject {
         const QString& assetId,
         qint64 adjustmentRevisionId,
         const QString& outputPath,
+        const QString& format,
         quint32 sampleRate,
         quint32 channelCount,
         quint16 bitDepth,

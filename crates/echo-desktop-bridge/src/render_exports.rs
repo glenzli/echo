@@ -18,6 +18,7 @@ impl LibrarySession {
         asset_id: &str,
         adjustment_revision_id: i64,
         output_path: &str,
+        format: &str,
         sample_rate: u32,
         channel_count: u32,
         bit_depth: u16,
@@ -72,11 +73,21 @@ impl LibrarySession {
             echo_core::hash_file(&output_canonical).map_err(|error| SessionError {
                 message: error.to_string(),
             })?;
+        let format = match format {
+            "wav_pcm16" => RenderExportFormat::WavPcm16,
+            "wav_pcm24" => RenderExportFormat::WavPcm24,
+            "flac24" => RenderExportFormat::Flac24,
+            _ => {
+                return Err(SessionError {
+                    message: "render format is unsupported".to_owned(),
+                });
+            }
+        };
         let record = RecordRenderExport {
             asset_id,
             adjustment_revision_id,
             output_path: output_canonical,
-            format: RenderExportFormat::WavPcm24,
+            format,
             sample_rate,
             channel_count,
             bit_depth,

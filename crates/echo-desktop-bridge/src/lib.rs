@@ -126,6 +126,7 @@ mod ffi {
     #[derive(Debug)]
     struct RenderExportWire {
         output_path: String,
+        format: String,
         sample_rate: u32,
         channel_count: u32,
         bit_depth: u16,
@@ -563,6 +564,7 @@ impl LibrarySession {
             asset_id,
             adjustment_revision_id,
             &evidence.output_path,
+            &evidence.format,
             evidence.sample_rate,
             evidence.channel_count,
             evidence.bit_depth,

@@ -98,20 +98,60 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 6);
+    CatalogSchemaRevision::new(20_260_811, 7);
 pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 5);
+    CatalogSchemaRevision::new(20_260_811, 6);
 pub(crate) const OLDER_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 4);
+    CatalogSchemaRevision::new(20_260_811, 5);
 pub(crate) const OLDEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 3);
+    CatalogSchemaRevision::new(20_260_811, 4);
 pub(crate) const ANCIENT_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 2);
+    CatalogSchemaRevision::new(20_260_811, 3);
 pub(crate) const PRIMITIVE_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 2);
+pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 7);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 8);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.7-restoration-chain";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.8-delivery-formats";
+
+pub(crate) const DELIVERY_FORMATS_MIGRATION_SQL: &str = r"
+DROP INDEX IF EXISTS render_exports_asset_created;
+ALTER TABLE render_exports RENAME TO render_exports_legacy;
+
+CREATE TABLE render_exports (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id               TEXT NOT NULL REFERENCES assets(id),
+    adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    output_path            TEXT NOT NULL,
+    format                 TEXT NOT NULL CHECK (
+                           format IN ('wav_pcm16', 'wav_pcm24', 'flac24')),
+    sample_rate            INTEGER NOT NULL CHECK (sample_rate > 0),
+    channel_count          INTEGER NOT NULL CHECK (channel_count > 0),
+    bit_depth              INTEGER NOT NULL CHECK (
+                           (format = 'wav_pcm16' AND bit_depth = 16) OR
+                           (format IN ('wav_pcm24', 'flac24') AND bit_depth = 24)),
+    frame_count            INTEGER NOT NULL CHECK (frame_count > 0),
+    content_hash           TEXT NOT NULL,
+    size_bytes             INTEGER NOT NULL CHECK (size_bytes > 0),
+    integrated_lufs        REAL NOT NULL,
+    true_peak_dbtp         REAL NOT NULL,
+    created_at_millis      INTEGER NOT NULL
+);
+
+INSERT INTO render_exports (
+    id, asset_id, adjustment_revision_id, output_path, format, sample_rate,
+    channel_count, bit_depth, frame_count, content_hash, size_bytes,
+    integrated_lufs, true_peak_dbtp, created_at_millis)
+SELECT id, asset_id, adjustment_revision_id, output_path, format, sample_rate,
+       channel_count, bit_depth, frame_count, content_hash, size_bytes,
+       integrated_lufs, true_peak_dbtp, created_at_millis
+FROM render_exports_legacy;
+
+DROP TABLE render_exports_legacy;
+CREATE INDEX render_exports_asset_created
+    ON render_exports (asset_id, created_at_millis DESC, id DESC);
+";
 
 pub(crate) const RESTORATION_CHAIN_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -461,10 +501,13 @@ CREATE TABLE IF NOT EXISTS render_exports (
     asset_id               TEXT NOT NULL REFERENCES assets(id),
     adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
     output_path            TEXT NOT NULL,
-    format                 TEXT NOT NULL CHECK (format = 'wav_pcm24'),
+    format                 TEXT NOT NULL CHECK (
+                           format IN ('wav_pcm16', 'wav_pcm24', 'flac24')),
     sample_rate            INTEGER NOT NULL CHECK (sample_rate > 0),
     channel_count          INTEGER NOT NULL CHECK (channel_count > 0),
-    bit_depth              INTEGER NOT NULL CHECK (bit_depth = 24),
+    bit_depth              INTEGER NOT NULL CHECK (
+                           (format = 'wav_pcm16' AND bit_depth = 16) OR
+                           (format IN ('wav_pcm24', 'flac24') AND bit_depth = 24)),
     frame_count            INTEGER NOT NULL CHECK (frame_count > 0),
     content_hash           TEXT NOT NULL,
     size_bytes             INTEGER NOT NULL CHECK (size_bytes > 0),

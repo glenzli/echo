@@ -306,6 +306,16 @@ Item {
         createAlbum(name, members)
     }
 
+    function debugOpenBatchDialog() : void {
+        batchExportDialog.present()
+    }
+
+    function debugBatchExport(destination: url, format: string) : void {
+        batchExportDialog.destination = destination
+        batchExportDialog.selectedFormat = format
+        batchExporter.start(filteredAssets, destination, format)
+    }
+
     function selectSearchHit(hit: var) : void {
         for (const asset of allAssets) {
             if (asset.id === hit.id) {
@@ -406,6 +416,7 @@ Item {
                     onSearchRequested: text => workspace.setSearchText(text)
                     onViewModeRequested: mode => workspace.viewMode = mode
                     onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
+                    onBatchExportRequested: batchExportDialog.present()
                 }
 
                 StackLayout {
@@ -483,5 +494,12 @@ Item {
             onSpeechFilterRequested: enabled => workspace.setSpeechOnly(enabled)
             onClearAllFiltersRequested: workspace.clearAllFilters()
         }
+    }
+
+    BatchExportDialog {
+        id: batchExportDialog
+        assets: workspace.filteredAssets
+        exporter: batchExporter
+        collectionName: workspace.collectionTitle()
     }
 }

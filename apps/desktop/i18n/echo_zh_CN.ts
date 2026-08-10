@@ -2,6 +2,38 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN">
 <context>
+    <name>BatchExportDialog</name>
+    <message><source>%1 files created in %2 · %3 failed</source><translation>已在 %2 创建 %1 个文件 · %3 个失败</translation></message>
+    <message><source>%1 finished · %2 failed · %3 total</source><translation>已完成 %1 个 · %2 个失败 · 共 %3 个</translation></message>
+    <message><source>%1 of %2 finished · %3 failed</source><translation>已完成 %1/%2 · %3 个失败</translation></message>
+    <message><source>%1 · %2 sounds</source><translation>%1 · %2 段声音</translation></message>
+    <message><source>48 kHz · Stereo · Current saved adjustments</source><translation>48 kHz · 立体声 · 当前已保存调整</translation></message>
+    <message><source>An unfinished export can continue</source><translation>有一批未完成的导出可以继续</translation></message>
+    <message><source>Cancel remaining</source><translation>取消剩余任务</translation></message>
+    <message><source>Choose a folder</source><translation>选择文件夹</translation></message>
+    <message><source>Choose export folder</source><translation>选择导出文件夹</translation></message>
+    <message><source>Choose…</source><translation>选择…</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Continue</source><translation>继续</translation></message>
+    <message><source>DESTINATION</source><translation>目标位置</translation></message>
+    <message><source>Discard</source><translation>放弃</translation></message>
+    <message><source>Done</source><translation>完成</translation></message>
+    <message><source>Echo could not start this export. Check the destination and try again.</source><translation>Echo 无法开始导出。请检查目标位置后重试。</translation></message>
+    <message><source>Existing files are kept; Echo adds -2, -3, and so on.</source><translation>已有文件会保留；Echo 将依次添加 -2、-3 等后缀。</translation></message>
+    <message><source>Export %1 sounds</source><translation>导出 %1 段声音</translation></message>
+    <message><source>Export complete</source><translation>导出完成</translation></message>
+    <message><source>Export complete with some failures</source><translation>导出完成，部分项目失败</translation></message>
+    <message><source>Export current results</source><translation>导出当前结果</translation></message>
+    <message><source>FLAC · 24-bit lossless</source><translation>FLAC · 24 位无损</translation></message>
+    <message><source>FLAC · 24-bit lossless · Smaller archive</source><translation>FLAC · 24 位无损 · 更小的归档文件</translation></message>
+    <message><source>FORMAT</source><translation>格式</translation></message>
+    <message><source>Preparing batch…</source><translation>正在准备批量导出…</translation></message>
+    <message><source>WAV · 16-bit PCM</source><translation>WAV · 16 位 PCM</translation></message>
+    <message><source>WAV · 16-bit PCM · Broad compatibility</source><translation>WAV · 16 位 PCM · 广泛兼容</translation></message>
+    <message><source>WAV · 24-bit PCM</source><translation>WAV · 24 位 PCM</translation></message>
+    <message><source>WAV · 24-bit PCM · Editing master</source><translation>WAV · 24 位 PCM · 编辑母版</translation></message>
+</context>
+<context>
     <name>AdvancedEffectsRack</name>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="40"/>
@@ -1411,6 +1443,14 @@
 </context>
 <context>
     <name>SoundPresentationToolbar</name>
+    <message>
+        <source>Export current results</source>
+        <translation>导出当前结果</translation>
+    </message>
+    <message>
+        <source>Resume batch export</source>
+        <translation>继续批量导出</translation>
+    </message>
     <message>
         <location filename="../qml/SoundPresentationToolbar.qml" line="66"/>
         <source>Search sounds by words or meaning…</source>

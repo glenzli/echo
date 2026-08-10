@@ -41,6 +41,7 @@ fn session_records_verified_original_render() {
             &asset.id.to_string(),
             0,
             output.to_str().expect("utf8 path"),
+            "wav_pcm24",
             48_000,
             2,
             24,

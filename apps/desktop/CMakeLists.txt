@@ -107,6 +107,8 @@ qt_add_executable(
     src/main.cpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
+    src/batch_export_controller.cpp
+    src/batch_export_controller.hpp
     src/playback_controller.cpp
     src/playback_controller.hpp
     src/parametric_equalizer_projection.cpp
@@ -115,6 +117,7 @@ qt_add_executable(
     src/playback_adjustment_projection.hpp
     src/render_export_controller.cpp
     src/render_export_controller.hpp
+    src/qt_render_byte_sink.hpp
     src/semantic_search_controller.cpp
     src/semantic_search_controller.hpp
     src/reverb_projection.cpp
@@ -167,6 +170,7 @@ qt_add_qml_module(
         qml/MasterOutputPanel.qml
         qml/ParametricEqGraph.qml
         qml/RestorationPanel.qml
+        qml/BatchExportDialog.qml
         qml/SoundAdvancedFilterPopup.qml
         qml/SoundAlbumNameDialog.qml
         qml/SoundAlbumRow.qml

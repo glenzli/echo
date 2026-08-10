@@ -7,18 +7,14 @@
 
 namespace echo::audio {
 
-enum class WavPcmDepth : std::uint8_t { Pcm16 = 16, Pcm24 = 24 };
-
-/// Streams the authored adjustment graph into a canonical 48 kHz stereo,
-/// 24-bit PCM WAV. Memory use is constant in source duration.
-class OfflineWavRenderer {
+/// Streams the authored adjustment graph into 48 kHz stereo, 24-bit FLAC.
+class OfflineFlacRenderer {
   public:
     [[nodiscard]] static OfflineRenderResult render(
         const std::string& sourcePath,
         const PlaybackAdjustment& adjustment,
         RenderByteSink& sink,
-        const OfflineRenderCallbacks& callbacks = {},
-        WavPcmDepth depth = WavPcmDepth::Pcm24
+        const OfflineRenderCallbacks& callbacks = {}
     );
 };
 

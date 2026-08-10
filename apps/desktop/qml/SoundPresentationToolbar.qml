@@ -20,6 +20,7 @@ ToolBar {
     signal searchRequested(string text)
     signal viewModeRequested(string mode)
     signal cardWidthRequested(real width)
+    signal batchExportRequested()
 
     implicitHeight: 44
     leftPadding: 14
@@ -77,6 +78,24 @@ ToolBar {
         }
 
         Item { Layout.fillWidth: true }
+
+        EchoIconButton {
+            source: "qrc:/EchoDesktop/icons/export.svg"
+            enabled: toolbar.visibleCount > 0 && !batchExporter.running
+            selected: batchExporter.running || batchExporter.recoverable
+            toolTipText: batchExporter.recoverable
+                ? qsTr("Resume batch export") : qsTr("Export current results")
+            accessibleName: toolTipText
+            buttonSize: 28
+            iconSize: 15
+            onClicked: toolbar.batchExportRequested()
+        }
+
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 18
+            color: Theme.border
+        }
 
         EchoIconButton {
             source: "qrc:/EchoDesktop/icons/review-grid.svg"

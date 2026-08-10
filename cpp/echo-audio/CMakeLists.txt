@@ -16,6 +16,8 @@ add_library(
     src/loudness_gain_advisor.cpp
     src/loudness_meter.cpp
     src/offline_loudness_analyzer.cpp
+    src/offline_flac_renderer.cpp
+    src/offline_render.cpp
     src/offline_wav_renderer.cpp
     src/output_guard.cpp
     src/output_limiter.cpp
