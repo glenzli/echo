@@ -174,6 +174,9 @@ qt_add_qml_module(
         qml/MainTitleBar.qml
         qml/MasterOutputPanel.qml
         qml/ParametricEqGraph.qml
+        qml/ProcessingRecipeApplyDialog.qml
+        qml/ProcessingRecipePicker.qml
+        qml/ProcessingRecipeSaveDialog.qml
         qml/RestorationPanel.qml
         qml/BatchExportDialog.qml
         qml/SoundAdvancedFilterPopup.qml

@@ -5,6 +5,8 @@
 //! - `ids` owns strongly typed persistent identifiers;
 //! - `original` owns the immutable original reference and content identity;
 //! - `adjustment` owns validated non-destructive restoration intent;
+//! - `processing_recipe` owns reusable processing snapshots and their
+//!   deterministic asset-local materialization;
 //! - `analysis` owns progressive analysis levels and evidence contracts
 //!   (`value + model + model_version + confidence + timestamp` — analysis is
 //!   never treated as fact);
@@ -18,6 +20,7 @@ mod analysis;
 mod audio_asset;
 mod ids;
 mod original;
+mod processing_recipe;
 
 pub use adjustment::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, CompressorSettings, DeClickSettings,
@@ -44,8 +47,13 @@ pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,
 };
 pub use audio_asset::AudioAsset;
-pub use ids::AssetId;
+pub use ids::{AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId};
 pub use original::{AssetPathStatus, ContentHash, ContentHashParseError, OriginalRef};
+pub use processing_recipe::{
+    AdjustmentPatch, DEFAULT_PROCESSING_COMPONENTS, ProcessingComponent,
+    ProcessingComponentValueError, ProcessingMergeMode, ProcessingRecipeError,
+    ProcessingRecipeRevision,
+};
 
 #[cfg(test)]
 mod tests;

@@ -1,8 +1,89 @@
 use super::*;
 
 #[test]
+fn immediately_previous_revision_adds_processing_recipes_without_rewriting_assets() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-processing-recipes-migration-{}",
+        std::process::id()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    let (asset_id, revision_id) = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            let registered = crate::register_asset(
+                transaction,
+                &crate::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([64; 32]),
+                    path: std::path::Path::new("/voice/recipe-migration.wav"),
+                    size_bytes: 1,
+                    codec: Some("pcm"),
+                    duration_millis: Some(10_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )?;
+            let asset_id = match registered {
+                crate::RegisterAsset::Created(asset) | crate::RegisterAsset::Existed(asset) => {
+                    asset.id
+                }
+            };
+            let revision = crate::record_adjustment_graph(
+                transaction,
+                asset_id,
+                echo_domain::AdjustmentGraph::identity(10_000).expect("identity validates"),
+                2,
+            )?;
+            transaction.execute_batch(
+                "DROP TABLE processing_recipe_application_targets;
+                 DROP TABLE processing_recipe_application_batches;
+                 DROP TABLE processing_recipe_revisions;
+                 DROP TABLE processing_recipes;",
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260811.11' WHERE key = 'schema_version'",
+                [],
+            )?;
+            Ok((asset_id, revision.revision_id))
+        })
+        .expect("previous fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("previous revision migrates");
+    let (version, table_count, asset_count, stored_revision_id): (String, i64, i64, i64) = migrated
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok((
+                transaction.query_row(
+                    "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                    [],
+                    |row| row.get(0),
+                )?,
+                transaction.query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN (
+                     'processing_recipes', 'processing_recipe_revisions',
+                     'processing_recipe_application_batches',
+                     'processing_recipe_application_targets')",
+                    [],
+                    |row| row.get(0),
+                )?,
+                transaction.query_row("SELECT COUNT(*) FROM assets", [], |row| row.get(0))?,
+                transaction.query_row(
+                    "SELECT id FROM asset_adjustment_revisions WHERE asset_id = ?1",
+                    [asset_id.to_string()],
+                    |row| row.get(0),
+                )?,
+            ))
+        })
+        .expect("migration reads");
+    assert_eq!(version, "20260811.12");
+    assert_eq!(table_count, 4);
+    assert_eq!(asset_count, 1);
+    assert_eq!(stored_revision_id, revision_id);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 #[allow(clippy::too_many_lines)] // Migration fixture verifies history and normalized re-save.
-fn immediately_previous_revision_adds_restorative_settings_without_rewriting_history() {
+fn restorative_effects_revision_adds_settings_without_rewriting_history() {
     let root = std::env::temp_dir().join(format!(
         "echo-schema-restorative-effects-migration-{}",
         std::process::id()
@@ -80,7 +161,7 @@ fn immediately_previous_revision_adds_restorative_settings_without_rewriting_his
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert_eq!(column_count, 2);
     assert!(!legacy_json.contains("active_count"));
     assert!(!legacy_json.contains("de_hum"));
@@ -188,7 +269,7 @@ fn fixed_chain_revision_adds_authored_effect_chain_column() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert!(default_expression.contains("restoration"));
     assert!(default_expression.contains("master"));
     let _ = std::fs::remove_dir_all(root);
@@ -232,7 +313,7 @@ fn immediately_previous_revision_adds_delivery_formats() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert!(table_sql.contains("wav_pcm16"));
     assert!(table_sql.contains("flac24"));
     let _ = std::fs::remove_dir_all(root);
@@ -279,7 +360,7 @@ fn immediately_previous_revision_adds_restoration_chain() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert_eq!(restoration_column_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -347,7 +428,7 @@ fn previous_catalog_revision_adds_render_exports_without_losing_assets() {
                 ))
             })
             .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert_eq!(asset_count, 1);
     assert_eq!(render_table_count, 1);
     assert_eq!(album_table_count, 1);
@@ -395,7 +476,7 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert_eq!(album_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -462,7 +543,7 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert_eq!(render_table_count, 1);
     assert_eq!(reverb_column_count, 1);
     assert_eq!(album_table_count, 1);
@@ -508,7 +589,7 @@ fn immediately_previous_revision_adds_long_audio_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert_eq!(segment_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -558,7 +639,7 @@ fn immediately_previous_revision_adds_semantic_search_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.11");
+    assert_eq!(version, "20260811.12");
     assert_eq!(document_count, 1);
     assert_eq!(fts_count, 1);
     let _ = std::fs::remove_dir_all(root);

@@ -475,6 +475,17 @@ InferenceBackend
     时间位置、Trim 与 Fade 均继续锚定 Original 时间轴。延迟只在解码生产线程／离线渲染路径中
     补偿，Qt 实时回调仍只复制已经补偿的 PCM；本切片不引入多实例、分支、发送、插件宿主或允许
     改变延迟的实时拓扑编辑。
+  - 可复用处理方案切片（2026-08-11）：Echo 将一组可复制的恢复性参数从某段声音的完整
+    `AdjustmentGraph` 中明确抽为具名“处理方案”。处理方案拥有稳定 identity，内容以 immutable
+    revision append-only 保存；应用时把所选 Low Cut、修复、DeHum、DeClick、参数均衡、Dynamics、
+    算法空间与总输出意图确定性物化为目标声音自己的新 adjustment revision，目标声音原有 Trim、
+    Fade 与片段 Gain 永远保留。默认“合并”只覆盖方案声明的处理组件；显式“替换处理链”也只替换
+    处理域，不越过片段边界。单段与批量应用共同保存方案 revision、合并方式以及逐目标
+    updated／unchanged／failed 收据，使一次应用可审计且不会把部分失败冒充整体成功。
+    共享方案只存在于 Rust Catalog／应用层；C++ 实时与离线执行器继续只编译每段声音已经物化的
+    本地 `AdjustmentGraph`，播放回调绝不查询方案库。首版没有 live-link、自动传播、任意节点图、
+    多实例 UUID、参数智能适配或跨声音共享分析测量；复制后每段声音独立演进，后续更新必须由用户
+    再次显式应用。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
   - 用户声音相册首个切片（2026-08-11）：Catalog 将用户相册与成员关系保存为独立 UserState
     事实，名称、封面声音、成员身份和修改时间不依赖可重建 Analysis。Audio Space 左侧把用户相册

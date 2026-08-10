@@ -7,8 +7,9 @@
 //! [`asset_registration`] for idempotent source registration, [`analysis`]
 //! for append-only analysis evidence, [`job_queue`] for the persistent
 //! background work queue, [`adjustment_graph`] for authored non-destructive
-//! revisions, [`user_albums`] for durable user-authored collections, and
-//! [`scan_root`] for the directories Echo watches.
+//! revisions, [`processing_recipe`] for reusable processing definitions and
+//! explicit batch receipts, [`user_albums`] for durable user-authored
+//! collections, and [`scan_root`] for the directories Echo watches.
 
 mod adjustment_graph;
 mod analysis;
@@ -23,6 +24,7 @@ mod error;
 mod inference_run;
 mod job_queue;
 mod long_audio;
+mod processing_recipe;
 mod render_export;
 mod scan_journal;
 mod scan_root;
@@ -75,6 +77,12 @@ pub use long_audio::{
     LongAudioStage, ensure_long_audio_plan, list_long_audio_outline_nodes,
     list_long_audio_segments, record_long_audio_proxy, record_long_audio_stage,
     upsert_long_audio_outline_node,
+};
+pub use processing_recipe::{
+    CreateProcessingRecipe, ProcessingRecipe, ProcessingRecipeApplicationReceipt,
+    ProcessingRecipeTargetOutcome, ProcessingRecipeTargetReceipt,
+    append_processing_recipe_revision, apply_processing_recipe, create_processing_recipe,
+    list_processing_recipes, processing_recipe, processing_recipe_application_receipt,
 };
 pub use render_export::{
     RecordRenderExport, RenderExportFormat, RenderExportRecord, list_render_exports,

@@ -16,8 +16,9 @@ use crate::{
         EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
         INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
         OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
-        PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
-        RESTORATION_CHAIN_MIGRATION_SQL, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
+        PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
+        RENDER_EXPORTS_MIGRATION_SQL, RESTORATION_CHAIN_MIGRATION_SQL,
+        RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
         SEMANTIC_SEARCH_MIGRATION_SQL, USER_ALBUMS_MIGRATION_SQL,
     },
 };
@@ -100,6 +101,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
         {
+            migrate_processing_recipes_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == RESTORATIVE_EFFECTS_SCHEMA_VERSION) =>
+        {
             migrate_restorative_effects_schema(connection)?;
         }
         Some(version)
@@ -176,6 +184,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_processing_recipes_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_processing_recipes_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 
@@ -300,6 +316,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
 }
 
 fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), CatalogError> {
+    apply_processing_recipes_migration(transaction)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],
@@ -309,6 +326,29 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_processing_recipes_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let table_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN (\
+         'processing_recipes', 'processing_recipe_revisions', \
+         'processing_recipe_application_batches', 'processing_recipe_application_targets')",
+        [],
+        |row| row.get(0),
+    )?;
+    match table_count {
+        0 => transaction.execute_batch(PROCESSING_RECIPES_MIGRATION_SQL)?,
+        4 => {}
+        _ => {
+            return Err(CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                "catalog has an incomplete processing recipe schema",
+            ));
+        }
+    }
     Ok(())
 }
 

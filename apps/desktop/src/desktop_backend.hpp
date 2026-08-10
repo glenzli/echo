@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QUrl>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include "echo-desktop-bridge/src/lib.rs.h"
 #include "rust/cxx.h"
@@ -28,6 +29,17 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList listKeywordFacets() const;
     Q_INVOKABLE QVariantList listSmartAlbums() const;
     Q_INVOKABLE QVariantList listUserAlbums() const;
+    Q_INVOKABLE QVariantList listProcessingRecipes() const;
+    Q_INVOKABLE QString createProcessingRecipe(
+        const QString& name,
+        const QString& sourceAssetId,
+        const QVariantList& componentIds
+    );
+    Q_INVOKABLE QVariantMap applyProcessingRecipe(
+        const QString& recipeId,
+        const QVariantList& targetAssetIds,
+        const QString& mergeMode
+    );
     Q_INVOKABLE qlonglong createUserAlbum(const QString& name, const QVariantList& memberIds);
     Q_INVOKABLE bool renameUserAlbum(qlonglong albumId, const QString& name);
     Q_INVOKABLE bool deleteUserAlbum(qlonglong albumId);
@@ -118,6 +130,7 @@ class DesktopBackend : public QObject {
   signals:
     void assetsChanged();
     void albumsChanged();
+    void processingRecipesChanged();
     void jobsChanged();
 
   private:

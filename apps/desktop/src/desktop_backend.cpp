@@ -70,6 +70,60 @@ QVariantList effectChainForQml(const rust::Vec<std::uint8_t>& chain) {
     return result;
 }
 
+QString processingComponentId(std::uint8_t value) {
+    switch (value) {
+    case 0:
+        return QStringLiteral("lowCut");
+    case 1:
+        return QStringLiteral("restoration");
+    case 2:
+        return QStringLiteral("deHum");
+    case 3:
+        return QStringLiteral("deClick");
+    case 4:
+        return QStringLiteral("equalizer");
+    case 5:
+        return QStringLiteral("dynamics");
+    case 6:
+        return QStringLiteral("space");
+    case 7:
+        return QStringLiteral("master");
+    default:
+        return {};
+    }
+}
+
+bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8_t>& destination) {
+    std::array<bool, 8> seen{};
+    for (const QVariant& item : values) {
+        const QString componentId = item.toString();
+        int value = -1;
+        if (componentId == QStringLiteral("lowCut")) {
+            value = 0;
+        } else if (componentId == QStringLiteral("restoration")) {
+            value = 1;
+        } else if (componentId == QStringLiteral("deHum")) {
+            value = 2;
+        } else if (componentId == QStringLiteral("deClick")) {
+            value = 3;
+        } else if (componentId == QStringLiteral("equalizer")) {
+            value = 4;
+        } else if (componentId == QStringLiteral("dynamics")) {
+            value = 5;
+        } else if (componentId == QStringLiteral("space")) {
+            value = 6;
+        } else if (componentId == QStringLiteral("master")) {
+            value = 7;
+        }
+        if (value < 0 || seen[static_cast<std::size_t>(value)]) {
+            return false;
+        }
+        seen[static_cast<std::size_t>(value)] = true;
+        destination.push_back(static_cast<std::uint8_t>(value));
+    }
+    return !destination.empty();
+}
+
 } // namespace
 
 DesktopBackend::DesktopBackend(rust::Box<echo::desktop::LibrarySession> session, QObject* parent) :
@@ -394,6 +448,143 @@ QVariantList DesktopBackend::listUserAlbums() const {
         qWarning("cannot list user albums: %s", error.what());
     }
     return list;
+}
+
+QVariantList DesktopBackend::listProcessingRecipes() const {
+    QVariantList list;
+    try {
+        const auto recipes = session_->session_processing_recipes();
+        for (const auto& recipe : recipes) {
+            QVariantMap entry;
+            entry.insert(
+                QStringLiteral("id"),
+                QString::fromUtf8(recipe.id.data(), recipe.id.size())
+            );
+            entry.insert(
+                QStringLiteral("name"),
+                QString::fromUtf8(recipe.name.data(), recipe.name.size())
+            );
+            entry.insert(
+                QStringLiteral("revisionId"),
+                QString::fromUtf8(recipe.revision_id.data(), recipe.revision_id.size())
+            );
+            entry.insert(
+                QStringLiteral("revisionNumber"),
+                static_cast<qulonglong>(recipe.revision_number)
+            );
+            entry.insert(
+                QStringLiteral("updatedAtMillis"),
+                static_cast<qlonglong>(recipe.updated_at_millis)
+            );
+            QVariantList components;
+            for (const std::uint8_t value : recipe.components) {
+                const QString componentId = processingComponentId(value);
+                if (!componentId.isEmpty()) {
+                    components.append(componentId);
+                }
+            }
+            entry.insert(QStringLiteral("components"), components);
+            list.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list processing recipes: %s", error.what());
+    }
+    return list;
+}
+
+QString DesktopBackend::createProcessingRecipe(
+    const QString& name,
+    const QString& sourceAssetId,
+    const QVariantList& componentIds
+) {
+    rust::Vec<std::uint8_t> components;
+    if (!appendProcessingComponents(componentIds, components)) {
+        qWarning("processing recipe components are outside the supported contract");
+        return {};
+    }
+    try {
+        const auto componentSlice =
+            rust::Slice<const std::uint8_t>(components.data(), components.size());
+        const auto recipeId = session_->session_create_processing_recipe(
+            name.toStdString(),
+            sourceAssetId.toStdString(),
+            componentSlice
+        );
+        emit processingRecipesChanged();
+        return QString::fromUtf8(recipeId.data(), recipeId.size());
+    } catch (const rust::Error& error) {
+        qWarning("cannot create processing recipe: %s", error.what());
+        return {};
+    }
+}
+
+QVariantMap DesktopBackend::applyProcessingRecipe(
+    const QString& recipeId,
+    const QVariantList& targetAssetIds,
+    const QString& mergeMode
+) {
+    QVariantMap result;
+    if (targetAssetIds.isEmpty()
+        || (mergeMode != QStringLiteral("merge") && mergeMode != QStringLiteral("replace"))) {
+        qWarning("processing recipe application is outside the supported contract");
+        return result;
+    }
+    rust::Vec<rust::String> targets;
+    targets.reserve(static_cast<std::size_t>(targetAssetIds.size()));
+    for (const QVariant& target : targetAssetIds) {
+        targets.push_back(target.toString().toStdString());
+    }
+    try {
+        const auto targetSlice = rust::Slice<const rust::String>(targets.data(), targets.size());
+        const auto receipt = session_->session_apply_processing_recipe(
+            recipeId.toStdString(),
+            targetSlice,
+            mergeMode == QStringLiteral("replace") ? 1 : 0
+        );
+        result.insert(
+            QStringLiteral("batchId"),
+            QString::fromUtf8(receipt.batch_id.data(), receipt.batch_id.size())
+        );
+        result.insert(
+            QStringLiteral("recipeRevisionId"),
+            QString::fromUtf8(receipt.recipe_revision_id.data(), receipt.recipe_revision_id.size())
+        );
+        result.insert(
+            QStringLiteral("updatedCount"),
+            static_cast<qulonglong>(receipt.updated_count)
+        );
+        result.insert(
+            QStringLiteral("unchangedCount"),
+            static_cast<qulonglong>(receipt.unchanged_count)
+        );
+        result.insert(QStringLiteral("failedCount"), static_cast<qulonglong>(receipt.failed_count));
+        QVariantList targetResults;
+        for (const auto& target : receipt.results) {
+            QVariantMap targetResult;
+            targetResult.insert(
+                QStringLiteral("assetId"),
+                QString::fromUtf8(target.asset_id.data(), target.asset_id.size())
+            );
+            targetResult.insert(
+                QStringLiteral("outcome"),
+                QString::fromUtf8(target.outcome.data(), target.outcome.size())
+            );
+            targetResult.insert(
+                QStringLiteral("adjustmentRevision"),
+                static_cast<qlonglong>(target.adjustment_revision)
+            );
+            targetResult.insert(
+                QStringLiteral("error"),
+                QString::fromUtf8(target.error.data(), target.error.size())
+            );
+            targetResults.append(targetResult);
+        }
+        result.insert(QStringLiteral("results"), targetResults);
+        emit assetsChanged();
+    } catch (const rust::Error& error) {
+        qWarning("cannot apply processing recipe: %s", error.what());
+    }
+    return result;
 }
 
 qlonglong DesktopBackend::createUserAlbum(const QString& name, const QVariantList& memberIds) {

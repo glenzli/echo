@@ -525,6 +525,18 @@
 <context>
     <name>AudioSpaceWorkspace</name>
     <message>
+        <source>%1 updated · %2 unchanged · %3 failed</source>
+        <translation>已更新 %1 个 · 无变化 %2 个 · 失败 %3 个</translation>
+    </message>
+    <message>
+        <source>Current results · %1 sounds</source>
+        <translation>当前结果 · %1 个声音</translation>
+    </message>
+    <message>
+        <source>The processing recipe could not be applied.</source>
+        <translation>无法应用处理方案。</translation>
+    </message>
+    <message>
         <location filename="../qml/AudioSpaceWorkspace.qml" line="93"/>
         <source>All sounds</source>
         <translation>所有声音</translation>
@@ -1134,6 +1146,30 @@
 <context>
     <name>SoundEditingWorkspace</name>
     <message>
+        <source>Apply recipe</source>
+        <translation>应用处理方案</translation>
+    </message>
+    <message>
+        <source>Processing recipe applied.</source>
+        <translation>处理方案已应用。</translation>
+    </message>
+    <message>
+        <source>Processing recipe saved.</source>
+        <translation>处理方案已保存。</translation>
+    </message>
+    <message>
+        <source>Save as recipe</source>
+        <translation>保存为处理方案</translation>
+    </message>
+    <message>
+        <source>The processing recipe could not be applied.</source>
+        <translation>无法应用处理方案。</translation>
+    </message>
+    <message>
+        <source>The processing recipe could not be saved.</source>
+        <translation>无法保存处理方案。</translation>
+    </message>
+    <message>
         <location filename="../qml/SoundEditingWorkspace.qml" line="56"/>
         <source>%1 channels</source>
         <translation>%1 声道</translation>
@@ -1468,6 +1504,10 @@
 <context>
     <name>SoundPresentationToolbar</name>
     <message>
+        <source>Apply processing recipe</source>
+        <translation>应用处理方案</translation>
+    </message>
+    <message>
         <source>Export current results</source>
         <translation>导出当前结果</translation>
     </message>
@@ -1510,6 +1550,72 @@
         <source>Sound card size</source>
         <translation>声音卡片大小</translation>
     </message>
+</context>
+<context>
+    <name>ProcessingRecipeApplyDialog</name>
+    <message><source>%1 sounds selected</source><translation>已选择 %1 段声音</translation></message>
+    <message><source>Apply processing recipe</source><translation>应用处理方案</translation></message>
+    <message><source>Apply to %1 sounds</source><translation>应用到 %1 段声音</translation></message>
+    <message><source>Apply to current sound</source><translation>应用到当前声音</translation></message>
+    <message><source>Cancel</source><translation>取消</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Current sound</source><translation>当前声音</translation></message>
+    <message><source>Each sound keeps its own trim, fades, and clip gain in both modes.</source><translation>两种方式都会保留每段声音自己的裁切、淡化与片段增益。</translation></message>
+    <message><source>How to apply</source><translation>应用方式</translation></message>
+    <message><source>Merge with current processing</source><translation>合并到当前处理</translation></message>
+    <message><source>Rebuild the processing chain from this recipe.</source><translation>使用此方案重新构建声音的处理链。</translation></message>
+    <message><source>Replace current processing</source><translation>替换当前处理</translation></message>
+    <message><source>The original recording always remains unchanged.</source><translation>原始录音始终保持不变。</translation></message>
+    <message><source>Update only the modules included in the recipe.</source><translation>只更新方案中包含的处理模块。</translation></message>
+</context>
+<context>
+    <name>ProcessingRecipePicker</name>
+    <message><source>De-click</source><translation>去咔哒声</translation></message>
+    <message><source>De-hum</source><translation>去嗡声</translation></message>
+    <message><source>Dynamics</source><translation>动态</translation></message>
+    <message><source>Equalizer</source><translation>均衡器</translation></message>
+    <message><source>Low cut</source><translation>低切</translation></message>
+    <message><source>Master output</source><translation>总输出</translation></message>
+    <message><source>No matching processing recipes</source><translation>没有匹配的处理方案</translation></message>
+    <message><source>No processing modules</source><translation>未包含处理模块</translation></message>
+    <message><source>No processing recipes yet</source><translation>还没有处理方案</translation></message>
+    <message><source>Processing recipes</source><translation>处理方案</translation></message>
+    <message><source>Restoration</source><translation>修复</translation></message>
+    <message><source>Search processing recipes</source><translation>搜索处理方案</translation></message>
+    <message><source>Space</source><translation>空间</translation></message>
+    <message><source>Untitled processing recipe</source><translation>未命名处理方案</translation></message>
+    <message><source>Version %1</source><translation>版本 %1</translation></message>
+</context>
+<context>
+    <name>ProcessingRecipeSaveDialog</name>
+    <message><source>Cancel</source><translation>取消</translation></message>
+    <message><source>Choose at least one processing module.</source><translation>请至少选择一个处理模块。</translation></message>
+    <message><source>Choose the modules that should travel with this recipe.</source><translation>选择要随方案复用的处理模块。</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Compression and level control</source><translation>压缩与电平控制</translation></message>
+    <message><source>De-click</source><translation>去咔哒声</translation></message>
+    <message><source>De-hum</source><translation>去嗡声</translation></message>
+    <message><source>Dynamics</source><translation>动态</translation></message>
+    <message><source>Enter a processing recipe name.</source><translation>请输入处理方案名称。</translation></message>
+    <message><source>Equalizer</source><translation>均衡器</translation></message>
+    <message><source>Included processing</source><translation>包含的处理</translation></message>
+    <message><source>Limiter and output policy</source><translation>限制器与输出策略</translation></message>
+    <message><source>Low cut</source><translation>低切</translation></message>
+    <message><source>Mains hum and harmonics</source><translation>电源嗡声与谐波</translation></message>
+    <message><source>Master output</source><translation>总输出</translation></message>
+    <message><source>Name</source><translation>名称</translation></message>
+    <message><source>Noise reduction and de-essing</source><translation>降噪与去齿音</translation></message>
+    <message><source>Processing recipe name</source><translation>处理方案名称</translation></message>
+    <message><source>Remove low-frequency rumble</source><translation>去除低频隆隆声</translation></message>
+    <message><source>Restoration</source><translation>修复</translation></message>
+    <message><source>Reuse this processing on other sounds</source><translation>把这组处理复用到其他声音</translation></message>
+    <message><source>Room and ambience</source><translation>空间与环境感</translation></message>
+    <message><source>Save processing recipe</source><translation>保存处理方案</translation></message>
+    <message><source>Save recipe</source><translation>保存方案</translation></message>
+    <message><source>Short impulse repair</source><translation>短脉冲修复</translation></message>
+    <message><source>Space</source><translation>空间</translation></message>
+    <message><source>Tone shaping</source><translation>音色调整</translation></message>
+    <message><source>Trim, fades, and clip gain stay with each sound and are never saved in a processing recipe.</source><translation>裁切、淡化与片段增益始终属于各自声音，不会保存到处理方案中。</translation></message>
 </context>
 <context>
     <name>SoundSelectionToolbar</name>

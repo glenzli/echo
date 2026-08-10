@@ -17,6 +17,9 @@ Rectangle {
     property string loadedBaseAdjustmentKey: ""
     property string loadedAdjustmentKey: ""
     property bool auditionOriginal: false
+    property var processingRecipes: []
+    property int processingRecipeModelRevision: 0
+    property string processingRecipeNotice: ""
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
     readonly property bool dirty: adjustmentDraft.dirty
@@ -236,6 +239,35 @@ Rectangle {
         adjustmentDraft.save()
     }
 
+    function refreshProcessingRecipes() : void {
+        processingRecipes = backend.listProcessingRecipes()
+        processingRecipeModelRevision += 1
+    }
+
+    function presentSaveProcessingRecipe() : void {
+        const baseName = fileName(asset.path).replace(/\.[^.]+$/, "")
+        processingRecipeSaveDialog.suggestedName = baseName
+        processingRecipeSaveDialog.present()
+    }
+
+    function presentApplyProcessingRecipe() : void {
+        refreshProcessingRecipes()
+        processingRecipeApplyDialog.recipeModel = processingRecipes
+        processingRecipeApplyDialog.modelRevision = processingRecipeModelRevision
+        processingRecipeApplyDialog.selectedRecipeId = processingRecipes.length > 0
+            ? processingRecipes[0].id : ""
+        processingRecipeApplyDialog.mergeMode = "merge"
+        processingRecipeApplyDialog.targetIds = [asset.id]
+        processingRecipeApplyDialog.targetLabel = ""
+        processingRecipeApplyDialog.present()
+    }
+
+    function showProcessingRecipeNotice(message: string) : void {
+        processingRecipeNotice = message
+        processingRecipeNoticePopup.open()
+        processingRecipeNoticeTimer.restart()
+    }
+
     function debugNudgeEqualizer() : void {
         const band = adjustmentDraft.equalizerBands[2]
         const next = band.gainCentibels >= 1100
@@ -277,6 +309,9 @@ Rectangle {
 
         function onAssetsChanged() : void {
             workspace.refreshAsset()
+        }
+        function onProcessingRecipesChanged() : void {
+            workspace.refreshProcessingRecipes()
         }
     }
 
@@ -545,6 +580,21 @@ Rectangle {
             Item { Layout.fillWidth: true }
 
             EchoButton {
+                text: qsTr("Save as recipe")
+                ghost: true
+                enabled: workspace.hasAsset && !workspace.dirty
+                    && Number(workspace.asset.adjustmentRevision || 0) > 0
+                onClicked: workspace.presentSaveProcessingRecipe()
+            }
+
+            EchoButton {
+                text: qsTr("Apply recipe")
+                ghost: true
+                enabled: workspace.hasAsset && !workspace.dirty
+                onClicked: workspace.presentApplyProcessingRecipe()
+            }
+
+            EchoButton {
                 text: qsTr("Export")
                 ghost: true
                 enabled: workspace.hasAsset
@@ -686,5 +736,74 @@ Rectangle {
                 onClicked: workspace.setOriginalAudition(true)
             }
         }
+    }
+
+    ProcessingRecipeSaveDialog {
+        id: processingRecipeSaveDialog
+
+        onSaveRequested: function(name, componentIds) {
+            const recipeId = backend.createProcessingRecipe(
+                name, workspace.asset.id, componentIds)
+            if (recipeId.length > 0) {
+                workspace.refreshProcessingRecipes()
+                workspace.showProcessingRecipeNotice(qsTr("Processing recipe saved."))
+            } else {
+                workspace.showProcessingRecipeNotice(
+                    qsTr("The processing recipe could not be saved."))
+            }
+        }
+    }
+
+    ProcessingRecipeApplyDialog {
+        id: processingRecipeApplyDialog
+
+        onRecipeSelected: recipeId => selectedRecipeId = recipeId
+        onMergeModeSelected: mode => mergeMode = mode
+        onApplyRequested: function(recipeId, mergeMode, targetIds) {
+            const receipt = backend.applyProcessingRecipe(
+                recipeId, targetIds, mergeMode)
+            if (receipt && receipt.batchId) {
+                workspace.showProcessingRecipeNotice(
+                    qsTr("Processing recipe applied."))
+            } else {
+                workspace.showProcessingRecipeNotice(
+                    qsTr("The processing recipe could not be applied."))
+            }
+        }
+    }
+
+    Popup {
+        id: processingRecipeNoticePopup
+
+        parent: Overlay.overlay
+        x: Math.round((parent.width - width) / 2)
+        y: 18
+        implicitWidth: Math.min(440, processingRecipeNoticeText.implicitWidth + 34)
+        implicitHeight: processingRecipeNoticeText.implicitHeight + 24
+        padding: 0
+        closePolicy: Popup.NoAutoClose
+
+        background: Rectangle {
+            radius: Theme.controlRadius
+            color: Theme.panelRaised
+            border.width: 1
+            border.color: Theme.borderStrong
+        }
+
+        contentItem: Text {
+            id: processingRecipeNoticeText
+
+            text: workspace.processingRecipeNotice
+            color: Theme.textPrimary
+            font.pixelSize: Theme.fontBody
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    Timer {
+        id: processingRecipeNoticeTimer
+        interval: 2600
+        onTriggered: processingRecipeNoticePopup.close()
     }
 }

@@ -50,3 +50,93 @@ impl FromStr for AssetId {
         Uuid::from_str(value).map(Self)
     }
 }
+
+/// Identifies one user-owned reusable processing recipe.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ProcessingRecipeId(Uuid);
+
+impl ProcessingRecipeId {
+    /// Creates a fresh v7 (time-ordered) recipe identity.
+    #[must_use]
+    pub fn new() -> Self {
+        Self(Uuid::now_v7())
+    }
+
+    /// Wraps an existing UUID restored from durable storage.
+    #[must_use]
+    pub const fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+
+    /// Exposes the wrapped UUID.
+    #[must_use]
+    pub const fn as_uuid(&self) -> Uuid {
+        self.0
+    }
+}
+
+impl Default for ProcessingRecipeId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl fmt::Display for ProcessingRecipeId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl FromStr for ProcessingRecipeId {
+    type Err = uuid::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(value).map(Self)
+    }
+}
+
+/// Identifies one immutable revision of a processing recipe.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ProcessingRecipeRevisionId(Uuid);
+
+impl ProcessingRecipeRevisionId {
+    /// Creates a fresh v7 (time-ordered) recipe revision identity.
+    #[must_use]
+    pub fn new() -> Self {
+        Self(Uuid::now_v7())
+    }
+
+    /// Wraps an existing UUID restored from durable storage.
+    #[must_use]
+    pub const fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+
+    /// Exposes the wrapped UUID.
+    #[must_use]
+    pub const fn as_uuid(&self) -> Uuid {
+        self.0
+    }
+}
+
+impl Default for ProcessingRecipeRevisionId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl fmt::Display for ProcessingRecipeRevisionId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl FromStr for ProcessingRecipeRevisionId {
+    type Err = uuid::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(value).map(Self)
+    }
+}

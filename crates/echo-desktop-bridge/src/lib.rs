@@ -191,6 +191,37 @@ mod ffi {
         updated_at_millis: i64,
     }
 
+    /// One named reusable processing recipe projected for Qt.
+    #[derive(Debug)]
+    struct ProcessingRecipeWire {
+        id: String,
+        name: String,
+        revision_id: String,
+        revision_number: u32,
+        components: Vec<u8>,
+        updated_at_millis: i64,
+    }
+
+    /// Per-sound outcome from one explicit recipe application batch.
+    #[derive(Debug)]
+    struct ProcessingRecipeTargetResultWire {
+        asset_id: String,
+        outcome: String,
+        adjustment_revision: i64,
+        error: String,
+    }
+
+    /// Auditable result of applying one immutable recipe revision.
+    #[derive(Debug)]
+    struct ProcessingRecipeApplyReceiptWire {
+        batch_id: String,
+        recipe_revision_id: String,
+        updated_count: u64,
+        unchanged_count: u64,
+        failed_count: u64,
+        results: Vec<ProcessingRecipeTargetResultWire>,
+    }
+
     /// One pyramid level of a cached waveform artifact.
     #[derive(Debug)]
     struct WaveformLevelWire {
@@ -302,6 +333,22 @@ mod ffi {
         fn session_smart_albums(self: &LibrarySession) -> Result<Vec<SmartAlbumWire>>;
         /// Lists user-authored albums and explicit membership.
         fn session_user_albums(self: &LibrarySession) -> Result<Vec<UserAlbumWire>>;
+        /// Lists named reusable processing recipes at their current revision.
+        fn session_processing_recipes(self: &LibrarySession) -> Result<Vec<ProcessingRecipeWire>>;
+        /// Saves selected processing from one asset-local adjustment revision.
+        fn session_create_processing_recipe(
+            self: &LibrarySession,
+            name: &str,
+            source_asset_id: &str,
+            components: &[u8],
+        ) -> Result<String>;
+        /// Materializes one recipe revision into one or many asset-local graphs.
+        fn session_apply_processing_recipe(
+            self: &LibrarySession,
+            recipe_id: &str,
+            target_asset_ids: &[String],
+            merge_mode: u8,
+        ) -> Result<ProcessingRecipeApplyReceiptWire>;
         /// Creates an empty user album or atomically snapshots a suggestion.
         fn session_create_user_album(
             self: &LibrarySession,
@@ -464,6 +511,33 @@ impl LibrarySession {
     /// Lists user-authored albums.
     fn session_user_albums(&self) -> Result<Vec<ffi::UserAlbumWire>, String> {
         self.user_albums().map_err(|error| error.message)
+    }
+
+    /// Lists current named processing recipe revisions.
+    fn session_processing_recipes(&self) -> Result<Vec<ffi::ProcessingRecipeWire>, String> {
+        self.processing_recipes().map_err(|error| error.message)
+    }
+
+    /// Saves a reusable recipe from one persisted asset adjustment.
+    fn session_create_processing_recipe(
+        &self,
+        name: &str,
+        source_asset_id: &str,
+        components: &[u8],
+    ) -> Result<String, String> {
+        self.create_processing_recipe(name, source_asset_id, components)
+            .map_err(|error| error.message)
+    }
+
+    /// Applies one current immutable recipe revision to explicit targets.
+    fn session_apply_processing_recipe(
+        &self,
+        recipe_id: &str,
+        target_asset_ids: &[String],
+        merge_mode: u8,
+    ) -> Result<ffi::ProcessingRecipeApplyReceiptWire, String> {
+        self.apply_processing_recipe(recipe_id, target_asset_ids, merge_mode)
+            .map_err(|error| error.message)
     }
 
     /// Creates one user album with an optional member snapshot.

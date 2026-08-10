@@ -21,6 +21,9 @@ Item {
     property bool speechOnly: false
     property var allAssets: []
     property var filteredAssets: []
+    property var processingRecipes: []
+    property int processingRecipeModelRevision: 0
+    property string processingRecipeNotice: ""
     property var jobStats: ({ pending: 0, running: 0, done: 0, failed: 0 })
 
     readonly property int visibleAssetCount: filteredAssets.length
@@ -68,6 +71,38 @@ Item {
         } else {
             selectedAsset = null
         }
+    }
+
+    function refreshProcessingRecipes() : void {
+        processingRecipes = backend.listProcessingRecipes()
+        processingRecipeModelRevision += 1
+    }
+
+    function presentProcessingRecipes() : void {
+        refreshProcessingRecipes()
+        processingRecipeApplyDialog.recipeModel = processingRecipes
+        processingRecipeApplyDialog.modelRevision = processingRecipeModelRevision
+        processingRecipeApplyDialog.selectedRecipeId = processingRecipes.length > 0
+            ? processingRecipes[0].id : ""
+        processingRecipeApplyDialog.mergeMode = "merge"
+        processingRecipeApplyDialog.targetIds = filteredAssets.map(asset => asset.id)
+        processingRecipeApplyDialog.targetLabel = qsTr("Current results · %1 sounds")
+            .arg(filteredAssets.length)
+        processingRecipeApplyDialog.present()
+    }
+
+    function applyProcessingRecipe(recipeId: string, mergeMode: string,
+                                   targetIds: var) : void {
+        const receipt = backend.applyProcessingRecipe(recipeId, targetIds, mergeMode)
+        if (!receipt || !receipt.batchId) {
+            processingRecipeNotice = qsTr("The processing recipe could not be applied.")
+        } else {
+            processingRecipeNotice = qsTr("%1 updated · %2 unchanged · %3 failed")
+                .arg(receipt.updatedCount).arg(receipt.unchangedCount)
+                .arg(receipt.failedCount)
+        }
+        processingRecipeNoticePopup.open()
+        processingRecipeNoticeTimer.restart()
     }
 
     function reconcileAlbumFilter() : void {
@@ -330,6 +365,9 @@ Item {
     Connections {
         target: backend
         function onAssetsChanged() : void { workspace.refreshAssets() }
+        function onProcessingRecipesChanged() : void {
+            workspace.refreshProcessingRecipes()
+        }
     }
 
     Connections {
@@ -417,6 +455,7 @@ Item {
                     onViewModeRequested: mode => workspace.viewMode = mode
                     onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
                     onBatchExportRequested: batchExportDialog.present()
+                    onProcessingRecipesRequested: workspace.presentProcessingRecipes()
                 }
 
                 StackLayout {
@@ -501,5 +540,50 @@ Item {
         assets: workspace.filteredAssets
         exporter: batchExporter
         collectionName: workspace.collectionTitle()
+    }
+
+    ProcessingRecipeApplyDialog {
+        id: processingRecipeApplyDialog
+
+        onRecipeSelected: recipeId => selectedRecipeId = recipeId
+        onMergeModeSelected: mode => mergeMode = mode
+        onApplyRequested: function(recipeId, mergeMode, targetIds) {
+            workspace.applyProcessingRecipe(recipeId, mergeMode, targetIds)
+        }
+    }
+
+    Popup {
+        id: processingRecipeNoticePopup
+
+        parent: Overlay.overlay
+        x: Math.round((parent.width - width) / 2)
+        y: 18
+        implicitWidth: Math.min(440, noticeText.implicitWidth + 34)
+        implicitHeight: noticeText.implicitHeight + 24
+        padding: 0
+        closePolicy: Popup.NoAutoClose
+
+        background: Rectangle {
+            radius: Theme.controlRadius
+            color: Theme.panelRaised
+            border.width: 1
+            border.color: Theme.borderStrong
+        }
+
+        contentItem: Text {
+            id: noticeText
+
+            text: workspace.processingRecipeNotice
+            color: Theme.textPrimary
+            font.pixelSize: Theme.fontBody
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    Timer {
+        id: processingRecipeNoticeTimer
+        interval: 3200
+        onTriggered: processingRecipeNoticePopup.close()
     }
 }

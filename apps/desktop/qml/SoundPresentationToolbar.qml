@@ -20,6 +20,7 @@ ToolBar {
     signal searchRequested(string text)
     signal viewModeRequested(string mode)
     signal cardWidthRequested(real width)
+    signal processingRecipesRequested()
     signal batchExportRequested()
 
     implicitHeight: 44
@@ -78,6 +79,16 @@ ToolBar {
         }
 
         Item { Layout.fillWidth: true }
+
+        EchoIconButton {
+            source: "qrc:/EchoDesktop/icons/tune.svg"
+            enabled: toolbar.visibleCount > 0
+            toolTipText: qsTr("Apply processing recipe")
+            accessibleName: toolTipText
+            buttonSize: 28
+            iconSize: 15
+            onClicked: toolbar.processingRecipesRequested()
+        }
 
         EchoIconButton {
             source: "qrc:/EchoDesktop/icons/export.svg"
