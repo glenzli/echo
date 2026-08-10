@@ -104,6 +104,13 @@ fn structural_jobs_are_claimed_before_progressive_analysis() {
             )?;
             enqueue_job(
                 transaction,
+                "events",
+                JobKind::DetectAudioEvents,
+                &serde_json::json!({ "asset_id": "x" }),
+                0,
+            )?;
+            enqueue_job(
+                transaction,
                 "waveform",
                 JobKind::AnalyzeWaveform,
                 &serde_json::json!({ "asset_id": "x" }),
@@ -133,7 +140,7 @@ fn structural_jobs_are_claimed_before_progressive_analysis() {
         .expect("enqueue");
 
     let mut claimed = Vec::new();
-    for now in 20..24 {
+    for now in 20..25 {
         claimed.push(
             catalog
                 .with_transaction(|transaction| claim_next_job(transaction, now))
@@ -142,7 +149,10 @@ fn structural_jobs_are_claimed_before_progressive_analysis() {
                 .id,
         );
     }
-    assert_eq!(claimed, ["scan", "import", "waveform", "old-transcript"]);
+    assert_eq!(
+        claimed,
+        ["scan", "import", "waveform", "old-transcript", "events"]
+    );
     let _ = std::fs::remove_dir_all(root);
 }
 

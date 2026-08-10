@@ -123,6 +123,7 @@ impl JobKindLabel for echo_catalog::Job {
             JobKind::ExtractMetadata => "metadata",
             JobKind::AnalyzeWaveform => "waveform",
             JobKind::Transcribe => "transcribe",
+            JobKind::DetectAudioEvents => "detect audio events",
             JobKind::Align => "align",
             JobKind::Contextual => "contextual",
             JobKind::EmbedText => "embed text",

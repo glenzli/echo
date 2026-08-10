@@ -69,6 +69,7 @@ impl WorkerPool {
         metadata_queue::enqueue_missing_source_metadata(catalog, now)?;
         analysis_queue::enqueue_missing_transcriptions(catalog, now)?;
         analysis_queue::settle_empty_transcript_alignments(catalog, now)?;
+        analysis_queue::enqueue_missing_audio_events(catalog, now)?;
         analysis_queue::enqueue_missing_alignments(catalog, now)?;
         analysis_queue::enqueue_missing_contextual(catalog, now)?;
         semantic_search::enqueue_missing_documents(catalog, now)?;
@@ -128,6 +129,7 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             scanner::scan_root(catalog, &payload.root, crate::util::now_millis())?;
             metadata_queue::enqueue_missing_source_metadata(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_transcriptions(catalog, crate::util::now_millis())?;
+            analysis_queue::enqueue_missing_audio_events(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_alignments(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_contextual(catalog, crate::util::now_millis())?;
             semantic_search::enqueue_missing_documents(catalog, crate::util::now_millis())?;
@@ -178,9 +180,11 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             )
             .map(|_| ())
         }
-        JobKind::Transcribe | JobKind::Align | JobKind::Contextual | JobKind::EmbedText => {
-            dispatch_analysis(catalog, config, job)
-        }
+        JobKind::Transcribe
+        | JobKind::DetectAudioEvents
+        | JobKind::Align
+        | JobKind::Contextual
+        | JobKind::EmbedText => dispatch_analysis(catalog, config, job),
     }
 }
 
@@ -191,6 +195,7 @@ fn dispatch_analysis(
 ) -> Result<(), CoreError> {
     match job.kind {
         JobKind::Transcribe => dispatch_transcription(catalog, config, job),
+        JobKind::DetectAudioEvents => crate::sound_event_workflow::dispatch(catalog, config, job),
         JobKind::Align => dispatch_alignment(catalog, config, job),
         JobKind::Contextual => dispatch_contextual(catalog, config, job),
         JobKind::EmbedText => semantic_search::dispatch_document(catalog, config, job),
@@ -229,12 +234,15 @@ fn dispatch_transcription(
     })?;
     record_inference_success(catalog, job, asset_id, provenance)?;
     crate::record_runtime_transcript(catalog, asset_id, &payload)?;
-    if !payload.text.trim().is_empty() {
-        catalog.with_transaction(|transaction| {
+    catalog.with_transaction(|transaction| {
+        if payload.text.trim().is_empty() {
+            analysis_queue::enqueue_audio_events(transaction, asset_id, crate::util::now_millis())
+                .map_err(CoreError::from)
+        } else {
             analysis_queue::enqueue_alignment(transaction, asset_id, crate::util::now_millis())
                 .map_err(CoreError::from)
-        })?;
-    }
+        }
+    })?;
     Ok(())
 }
 

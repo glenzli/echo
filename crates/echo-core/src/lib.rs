@@ -19,6 +19,8 @@ mod long_audio;
 mod metadata_queue;
 mod scanner;
 mod semantic_search;
+mod sound_event_workflow;
+mod sound_events;
 mod util;
 mod waveform_artifact;
 mod worker;
@@ -34,12 +36,15 @@ pub use contextual::{
 pub use error::{CoreError, CoreErrorKind};
 pub use import::{ImportOutcome, hash_file, import_asset, import_asset_with_probe};
 pub use infer_runtime::{
-    ALIGNMENT_INTENT, AlignmentIntent, AlignmentItem, AlignmentPayload, CONTEXTUAL_INTENT,
-    ContextualIntent, ContextualResponse, EXPECTED_CONTRACT_VERSION, InferRuntimeClient,
-    InferRuntimeConfig, InferRuntimeError, InferRuntimeErrorKind, MAX_AUDIO_UPLOAD_BYTES,
-    MAX_CONTEXTUAL_INPUT_BYTES, RuntimeAttempt, RuntimeCandidateDecision, RuntimeJobConstraints,
-    RuntimeJobSnapshot, RuntimeProvenance, RuntimeRoutingDecision, TEXT_EMBEDDING_INTENT,
-    TRANSCRIPTION_INTENT, TextEmbeddingIntent, TextEmbeddingPayload,
+    ALIGNMENT_INTENT, AUDIO_EVENT_DETECTION_INTENT, AlignmentIntent, AlignmentItem,
+    AlignmentPayload, AudioAnalysisCoverage, AudioCoverageStatus, AudioEventDetection,
+    AudioEventDetectionIntent, CONTEXTUAL_INTENT, ContextualIntent, ContextualResponse,
+    DetectedAudioEvent, EXPECTED_CONTRACT_VERSION, InferRuntimeClient, InferRuntimeConfig,
+    InferRuntimeError, InferRuntimeErrorKind, MAX_AUDIO_UPLOAD_BYTES, MAX_CONTEXTUAL_INPUT_BYTES,
+    RuntimeAttempt, RuntimeCandidateDecision, RuntimeJobConstraints, RuntimeJobSnapshot,
+    RuntimeProvenance, RuntimeRoutingDecision, SoundEventDetectionPolicy, SoundEventOntology,
+    SoundEventProvenance, SoundEventSmoothingPolicy, SpeechPresence, SpeechPresenceStatus,
+    TEXT_EMBEDDING_INTENT, TRANSCRIPTION_INTENT, TextEmbeddingIntent, TextEmbeddingPayload,
     TextEmbeddingProviderProvenance, TranscriptionIntent,
 };
 pub use infer_runtime_credentials::{
@@ -51,6 +56,9 @@ pub use scanner::{
     FolderScanner, ScanOutcome, add_root_and_scan, queue_scans_for_enabled_roots, scan_root,
 };
 pub use semantic_search::search as semantic_search;
+pub use sound_events::{
+    AUDIO_EVENTS_SCHEMA_VERSION, AudioEventChunk, AudioEventsEvidence, record_audio_events,
+};
 pub use waveform_artifact::{
     WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,
     load_or_build_waveform,

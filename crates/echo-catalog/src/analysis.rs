@@ -249,6 +249,35 @@ pub fn list_assets_with_empty_latest_transcript(
     parse_asset_ids(rows)
 }
 
+/// Lists present assets whose newest transcript is valid empty-text evidence
+/// and that do not yet have sound-event evidence.
+///
+/// Empty ASR is only admission to classification. It is not interpreted as
+/// proof that speech is absent; that state remains owned by `AudioEvents`.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the query or a stored identity is invalid.
+pub fn list_assets_with_empty_transcript_missing_audio_events(
+    transaction: &Transaction<'_>,
+) -> Result<Vec<AssetId>, CatalogError> {
+    let mut statement = transaction.prepare(
+        "SELECT a.id FROM assets a WHERE a.path_status = 'present' AND EXISTS (\
+             SELECT 1 FROM analysis_records transcript \
+             WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript'\
+         ) AND TRIM(COALESCE(json_extract((\
+             SELECT transcript.value FROM analysis_records transcript \
+             WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript' \
+             ORDER BY transcript.id DESC LIMIT 1\
+         ), '$.text'), '')) = '' AND NOT EXISTS (\
+             SELECT 1 FROM analysis_records events \
+             WHERE events.asset_id = a.id AND events.kind = 'audio_events'\
+         ) ORDER BY a.imported_at_millis ASC, a.id ASC",
+    )?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    parse_asset_ids(rows)
+}
+
 fn parse_asset_ids(
     rows: impl Iterator<Item = rusqlite::Result<String>>,
 ) -> Result<Vec<AssetId>, CatalogError> {

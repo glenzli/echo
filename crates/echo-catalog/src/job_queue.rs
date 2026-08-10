@@ -36,6 +36,8 @@ pub enum JobKind {
     AnalyzeWaveform,
     /// Submits audio transcription and records transcript evidence.
     Transcribe,
+    /// Detects temporal, multi-label sound events after valid empty ASR.
+    DetectAudioEvents,
     /// Submits forced alignment after transcript evidence exists.
     Align,
     /// Runs local LLM contextual understanding over a transcript.
@@ -147,10 +149,11 @@ pub fn claim_next_job(
                  WHEN 'extract_metadata' THEN 2 \
                  WHEN 'analyze_waveform' THEN 3 \
                  WHEN 'transcribe' THEN 4 \
-                 WHEN 'align' THEN 5 \
-                 WHEN 'contextual' THEN 6 \
-                 WHEN 'embed_text' THEN 7 \
-                 ELSE 8 END, created_at_millis ASC, id ASC LIMIT 1",
+                 WHEN 'detect_audio_events' THEN 5 \
+                 WHEN 'align' THEN 6 \
+                 WHEN 'contextual' THEN 7 \
+                 WHEN 'embed_text' THEN 8 \
+                 ELSE 9 END, created_at_millis ASC, id ASC LIMIT 1",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -457,6 +460,7 @@ pub(crate) const fn kind_text(kind: JobKind) -> &'static str {
         JobKind::ExtractMetadata => "extract_metadata",
         JobKind::AnalyzeWaveform => "analyze_waveform",
         JobKind::Transcribe => "transcribe",
+        JobKind::DetectAudioEvents => "detect_audio_events",
         JobKind::Align => "align",
         JobKind::Contextual => "contextual",
         JobKind::EmbedText => "embed_text",
@@ -470,6 +474,7 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
         "extract_metadata" => Ok(JobKind::ExtractMetadata),
         "analyze_waveform" => Ok(JobKind::AnalyzeWaveform),
         "transcribe" => Ok(JobKind::Transcribe),
+        "detect_audio_events" => Ok(JobKind::DetectAudioEvents),
         "align" => Ok(JobKind::Align),
         "contextual" => Ok(JobKind::Contextual),
         "embed_text" => Ok(JobKind::EmbedText),

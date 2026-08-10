@@ -174,3 +174,45 @@ fn contextual_backfill_requires_alignment_and_deduplicates_job_identity() {
     assert!(contextual_job_id(asset.id).starts_with("contextual-v3-r1-"));
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn audio_event_backfill_requires_empty_asr_and_deduplicates_job_identity() {
+    let root = std::env::temp_dir().join(format!("echo-audio-event-queue-{}", std::process::id()));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset_id = catalog
+        .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
+            let asset_id = register(transaction, 3);
+            record_analysis(
+                transaction,
+                &echo_catalog::AppendAnalysisRecord {
+                    asset_id,
+                    record: AnalysisRecord::new(
+                        AnalysisKind::Transcript,
+                        serde_json::json!({ "text": "" }),
+                        ModelIdentity::new("test".into(), "1".into()),
+                        None,
+                        10,
+                    ),
+                },
+            )?;
+            Ok(asset_id)
+        })
+        .expect("empty ASR fixture writes");
+
+    assert_eq!(
+        enqueue_missing_audio_events(&catalog, 20).expect("event backfill queues"),
+        1
+    );
+    assert_eq!(
+        enqueue_missing_audio_events(&catalog, 30).expect("event backfill repeats"),
+        1
+    );
+    let job = catalog
+        .with_transaction(|transaction| job_by_id(transaction, &audio_event_job_id(asset_id)))
+        .expect("job reads")
+        .expect("job exists");
+    assert_eq!(job.kind, echo_catalog::JobKind::DetectAudioEvents);
+    let JobStats { pending, .. } = catalog.with_transaction(job_stats).expect("stats read");
+    assert_eq!(pending, 1);
+    let _ = std::fs::remove_dir_all(root);
+}

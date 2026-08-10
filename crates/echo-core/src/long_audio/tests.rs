@@ -15,6 +15,29 @@ fn leaf_plan_is_contiguous_and_runtime_bounded() {
 }
 
 #[test]
+fn direct_audio_duration_matches_the_event_runtime_ceiling() {
+    let asset = |duration_millis| {
+        AudioAsset::new(
+            AssetId::new(),
+            echo_domain::OriginalRef {
+                path: "fixture.wav".into(),
+                content_hash: echo_domain::ContentHash::new([9; 32]),
+                path_status: echo_domain::AssetPathStatus::Present,
+                size_bytes: 1_024,
+                codec: Some("pcm".to_owned()),
+                duration_millis: Some(duration_millis),
+                recorded_at_millis: None,
+                imported_at_millis: 1,
+            },
+            echo_domain::AnalysisLevel::Asr,
+        )
+    };
+
+    assert!(!requires_segmentation(&asset(600_000)));
+    assert!(requires_segmentation(&asset(600_001)));
+}
+
+#[test]
 fn aggregate_offsets_leaf_timestamps_to_original_time() {
     let transcript = TranscriptPayload {
         model: "audio.transcribe".to_owned(),

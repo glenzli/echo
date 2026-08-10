@@ -5,9 +5,15 @@
 //! response normalization and App-scoped Job provenance. It never opens the
 //! catalog and never knows how Echo schedules or presents analysis work.
 
+mod audio_events;
 mod embeddings;
 mod responses;
 
+pub use audio_events::{
+    AUDIO_EVENT_DETECTION_INTENT, AudioAnalysisCoverage, AudioCoverageStatus, AudioEventDetection,
+    AudioEventDetectionIntent, DetectedAudioEvent, SoundEventDetectionPolicy, SoundEventOntology,
+    SoundEventProvenance, SoundEventSmoothingPolicy, SpeechPresence, SpeechPresenceStatus,
+};
 pub use embeddings::{
     TEXT_EMBEDDING_INTENT, TextEmbeddingIntent, TextEmbeddingPayload,
     TextEmbeddingProviderProvenance,
@@ -30,7 +36,7 @@ use ureq::unversioned::multipart::Form;
 
 use crate::{TranscriptPayload, infer_runtime_discovery::EndpointResolver};
 
-pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.2";
+pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.3";
 pub const TRANSCRIPTION_INTENT: &str = "audio.transcribe";
 pub const ALIGNMENT_INTENT: &str = "audio.align";
 pub const MAX_AUDIO_UPLOAD_BYTES: u64 = 25 * 1024 * 1024;
@@ -696,4 +702,4 @@ fn extension_items<T: DeserializeOwned>(
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

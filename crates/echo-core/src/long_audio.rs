@@ -22,7 +22,9 @@ use crate::{
 };
 
 pub const LONG_AUDIO_PLAN_VERSION: u32 = 1;
-const LONG_AUDIO_THRESHOLD_MILLIS: u64 = 15 * 60 * 1000;
+// `audio.detect_events` accepts at most 600 seconds, so every audio Intent
+// shares this direct-source ceiling and the same resumable proxy plan.
+const DIRECT_AUDIO_DURATION_LIMIT_MILLIS: u64 = 10 * 60 * 1000;
 const LEAF_DURATION_MILLIS: u64 = 8 * 60 * 1000;
 const OUTLINE_FAN_OUT: usize = 6;
 const CONTEXTUAL_VALIDATION_ATTEMPTS: usize = 3;
@@ -47,7 +49,7 @@ pub(crate) fn requires_segmentation(asset: &AudioAsset) -> bool {
         || asset
             .original
             .duration_millis
-            .is_some_and(|duration| duration > LONG_AUDIO_THRESHOLD_MILLIS)
+            .is_some_and(|duration| duration > DIRECT_AUDIO_DURATION_LIMIT_MILLIS)
 }
 
 pub(crate) fn dispatch_long_audio(
@@ -103,7 +105,16 @@ pub(crate) fn dispatch_long_audio(
         &aggregate,
         LONG_AUDIO_PLAN_VERSION,
     )?;
-    if !aggregate.text.trim().is_empty() {
+    if aggregate.text.trim().is_empty() {
+        catalog.with_transaction(|transaction| {
+            crate::analysis_queue::enqueue_audio_events(
+                transaction,
+                asset.id,
+                crate::util::now_millis(),
+            )
+            .map_err(CoreError::from)
+        })?;
+    } else {
         crate::analysis::record_aggregate_alignment(
             catalog,
             asset.id,

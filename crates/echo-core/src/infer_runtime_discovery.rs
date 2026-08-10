@@ -21,7 +21,7 @@ const DISCOVERY_SCHEMA_VERSION: &str = "20260810.1";
 const SERVICE_KIND: &str = "infer-runtime";
 const DEFAULT_INSTANCE_ID: &str = "local";
 const CONSUMER_PROTOCOL: &str = "infer-runtime.consumer";
-const CONSUMER_PROTOCOL_VERSION: &str = "0.1.0-candidate.2";
+const CONSUMER_PROTOCOL_VERSION: &str = "0.1.0-candidate.3";
 const CONSUMER_BINDING: &str = "infer-runtime.http-loopback";
 const MAX_REGISTRATION_BYTES: u64 = 64 * 1024;
 

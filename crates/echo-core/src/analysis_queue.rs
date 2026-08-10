@@ -8,6 +8,7 @@ use echo_catalog::{
     Catalog, JobKind, complete_job, enqueue_job, job_by_id, list_assets_missing_analysis,
     list_assets_with_alignment_missing_current_contextual,
     list_assets_with_empty_latest_transcript,
+    list_assets_with_empty_transcript_missing_audio_events,
     list_assets_with_nonempty_transcript_missing_alignment,
 };
 use echo_domain::{AnalysisKind, AssetId};
@@ -80,6 +81,39 @@ pub(crate) fn enqueue_missing_alignments(
         .map_err(CoreError::from)
 }
 
+/// Persists sound-event detection after ASR produced valid empty text.
+pub(crate) fn enqueue_audio_events(
+    transaction: &Transaction<'_>,
+    asset_id: AssetId,
+    now_millis: i64,
+) -> Result<(), echo_catalog::CatalogError> {
+    enqueue_job(
+        transaction,
+        &audio_event_job_id(asset_id),
+        JobKind::DetectAudioEvents,
+        &serde_json::json!({ "asset_id": asset_id.to_string() }),
+        now_millis,
+    )
+}
+
+/// Backfills sound-event intent only for present assets whose latest ASR
+/// observation is valid and empty. Unknown or failed ASR never reaches this
+/// admission path.
+pub(crate) fn enqueue_missing_audio_events(
+    catalog: &Catalog,
+    now_millis: i64,
+) -> Result<u64, CoreError> {
+    catalog
+        .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
+            let assets = list_assets_with_empty_transcript_missing_audio_events(transaction)?;
+            for asset_id in &assets {
+                enqueue_audio_events(transaction, *asset_id, now_millis)?;
+            }
+            Ok(u64::try_from(assets.len()).expect("asset count fits u64"))
+        })
+        .map_err(CoreError::from)
+}
+
 /// Persists contextual understanding after alignment evidence exists.
 pub(crate) fn enqueue_contextual(
     transaction: &Transaction<'_>,
@@ -142,6 +176,10 @@ fn transcription_job_id(asset_id: AssetId) -> String {
 
 pub(crate) fn alignment_job_id(asset_id: AssetId) -> String {
     format!("align-{asset_id}")
+}
+
+pub(crate) fn audio_event_job_id(asset_id: AssetId) -> String {
+    format!("detect-audio-events-v1-{asset_id}")
 }
 
 #[must_use]

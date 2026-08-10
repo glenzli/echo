@@ -257,18 +257,26 @@ InferenceBackend
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
   - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
     导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
-  - 已完成（正式 Runtime 切片，2026-08-09；Discovery 迁移 2026-08-11）：Echo 以独立
-    非管理员 App 身份消费 `0.1.0-candidate.2`，并通过 owner-only leased registration 发现本机
-    Consumer endpoint；后台队列依次提交 `audio.transcribe` 与 `audio.align`，读取 App-scoped
-    Job/Attempt，并把合同版本、provider/deployment、physical model/build 与稳定错误码写入
-    Catalog。桌面读取层以最新对齐证据细化段落时间，无法可靠匹配时保留原转写时间。
+  - 已完成（正式 Runtime 切片，2026-08-09；Discovery 与声音事件迁移 2026-08-11）：Echo 以独立
+    非管理员 App 身份消费 `0.1.0-candidate.3`，并通过 owner-only leased registration 发现本机
+    Consumer endpoint；后台队列提交 `audio.transcribe`，非空文字继续 `audio.align`，有效空文字
+    改走 `audio.detect_events`。每条路径都读取 App-scoped Job/Attempt，并把合同版本、
+    provider/deployment、physical model/build 与稳定错误码写入 Catalog。桌面读取层以最新对齐
+    证据细化段落时间，无法可靠匹配时保留原转写时间。
   - 默认分析策略（2026-08-09 校准）：新录音完成注册后持久入队 waveform 与
     `audio.transcribe`；应用启动时为已有但缺少 transcript 证据的在线录音做幂等回填。
     结构性扫描、导入和 waveform 优先于 ASR；ASR 失败不得影响 Original、播放或浏览。
     手动分析只作为失败重试/调试入口，不是正常产品路径。非空文字完成 `audio.align` 后，
-    继续以最低队列优先级提交 `text.summarize` contextual 元数据；该默认仍不扩张到
+    继续以最低队列优先级提交 `text.summarize` contextual 元数据；有效空文字提交本地-only
+    `audio.detect_events`，但 ASR 失败、未分析或空文字本身都不得反向断言“无人声”。Runtime 的
+    `speech_presence` 只有完整覆盖且低于版本化阈值时才可为 `absent`。该默认仍不扩张到
     SenseVoice、diarization 或 TTS。M2 已在合格 contextual 证据之后追加独立、可重建的
     text-evidence embedding，不改变 M1 的音频分析 admission。
+  - 声音事件合同（2026-08-11）：`audio.detect_events` 以 YAMNet／AudioSet 形成有界、多标签、
+    带时间区间的 `AudioEvents` 证据。Echo 以 AudioSet MID `class_id` 作为稳定身份，完整保留
+    coverage、ontology、阈值／平滑 policy、模型与解码 provenance；英文 label 仅为展示文字。
+    Echo 从每个稳定 class id 的最高分观察确定性派生短声音速写、关键词和事件 facet，复用现有
+    声音墙、复合筛选与 text-evidence 搜索；派生展示不替代原始事件证据，也不冒充 CLAP 音频向量。
   - Contextual 展示合同（2026-08-10）：`text.summarize` 输出升级为带版本的严格 JSON，新增
     独立声音速写并保留理解摘要、关键词、情绪、地点、事件和人物提示。Echo 校验字段全集、版本、
     长度、主要书写系统和元话语；卡片不再使用正文兜底。旧 contextual job 与证据通过版本化身份
@@ -283,18 +291,21 @@ InferenceBackend
     consumer admission 明确失败；长录音代理／切片属于后续独立 payload 切片，不允许静默
     截断原始声音。Echo 不消费 speech/TTS/voice-clone Intent。
   - 长录音切片合同（2026-08-11）：当原始文件超过 Runtime 25 MiB 上限，或声音时长
-    超过 15 分钟时，Echo 以原始内容身份和稳定规划版本生成 8 分钟叶子切片。每次只流式
+    超过 10 分钟时，Echo 以原始内容身份和稳定规划版本生成 8 分钟叶子切片；该时长边界同时
+    满足 `audio.detect_events` 的 600 秒直接输入上限。每次只流式
     解码一个时间窗，生成 16 kHz、单声道、16-bit PCM WAV 分析代理，按 BLAKE3 内容地址
     原子发布到可删除 cache；Original 不改写，后台不读入整个源文件或代理。切片计划、
     代理引用、每段 transcribe/align/contextual 阶段和 Runtime provenance 逐段持久化，父任务
-    在任一阶段成功后都可断点续跑；不为同一声音并发占用多个本地模型候选。
+    在任一阶段成功后都可断点续跑；整段有效空文字时，声音事件复用同一组有界代理并把每段 Runtime
+    结果连同 Original 时间轴偏移聚合为一个 append-only `AudioEvents` 证据；不为同一声音并发
+    占用多个本地模型候选。
   - 分层文字合同（2026-08-11）：叶子文字和对齐时间统一投影回 Original 时间轴，
     并索引为资产级文字证据；叶子声音速写再以有界子节点递归压缩，直到得到一个根速写。
     每个节点保留子区间、内容 schema 与 Runtime provenance，没有靠静默截断制造“整段摘要”。
     声音墙与轻量详情不再急切加载整份 transcript JSON，只返回有界预览和叶子计数；
     完整文字、章节与点击定位只由显式打开的单声音工作区及专用读取 owner 按需提供；
     完整文字实体的分页／虚拟化是后续大实例压测的性能门槛，不由声音墙偷偷代读。
-  - 待办：SenseVoice 能力 Intent、speaker/event 证据；音频合同能在
+  - 待办：SenseVoice 的窄域 emotion 能力 Intent、speaker 证据；音频合同能在
     执行中暴露 Job id 后，再补真正可中断的 Runtime 取消（当前同步 endpoint 仅在终态返回 id）。
 - **M2 Library**：声音墙、声音相册、Like/评分、来源元数据筛选、自然语言搜索、人物/声音、
   时间、audio event、CLAP semantic search。

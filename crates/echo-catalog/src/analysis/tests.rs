@@ -236,3 +236,55 @@ fn ordinary_backfill_excludes_assets_owned_by_long_audio_pipeline() {
 
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn audio_event_projection_requires_present_empty_asr_and_missing_event_evidence() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-audio-event-projection-{}",
+        std::process::id()
+    ));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let (eligible, speaking, analyzed, offline) = catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            let eligible = register(transaction, 41, Path::new("/sounds/birds.wav"));
+            let speaking = register(transaction, 42, Path::new("/sounds/speech.wav"));
+            let analyzed = register(transaction, 43, Path::new("/sounds/truck.wav"));
+            let offline = register(transaction, 44, Path::new("/sounds/offline.wav"));
+            for asset_id in [eligible, analyzed, offline] {
+                record_fixture_analysis(
+                    transaction,
+                    asset_id,
+                    AnalysisKind::Transcript,
+                    serde_json::json!({ "text": "" }),
+                    100,
+                )?;
+            }
+            record_fixture_analysis(
+                transaction,
+                speaking,
+                AnalysisKind::Transcript,
+                serde_json::json!({ "text": "recognized speech" }),
+                101,
+            )?;
+            record_fixture_analysis(
+                transaction,
+                analyzed,
+                AnalysisKind::AudioEvents,
+                serde_json::json!({ "schema_version": 1, "chunks": [] }),
+                102,
+            )?;
+            mark_asset_missing(transaction, &offline.to_string())?;
+            Ok((eligible, speaking, analyzed, offline))
+        })
+        .expect("fixtures write");
+
+    let projected = catalog
+        .with_transaction(list_assets_with_empty_transcript_missing_audio_events)
+        .expect("projection reads");
+
+    assert_eq!(projected, [eligible]);
+    assert!(!projected.contains(&speaking));
+    assert!(!projected.contains(&analyzed));
+    assert!(!projected.contains(&offline));
+    let _ = std::fs::remove_dir_all(root);
+}

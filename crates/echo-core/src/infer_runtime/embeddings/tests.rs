@@ -11,7 +11,7 @@ use super::*;
 #[test]
 fn text_embedding_requires_local_constraints_and_matching_provenance() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
         json_response(&embedding_response("space-v1", 768)),
         json_response(&job_snapshot()),
     ]);
@@ -49,7 +49,7 @@ fn text_embedding_requires_local_constraints_and_matching_provenance() {
 #[test]
 fn text_embedding_rejects_a_wrong_vector_contract() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
+        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
         json_response(&embedding_response("space-v1", 767)),
     ]);
     let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
