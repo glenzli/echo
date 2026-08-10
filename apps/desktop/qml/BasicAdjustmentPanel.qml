@@ -39,7 +39,7 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        PanelHeader {
+        AdjustmentPanelHeader {
             Layout.fillWidth: true
             title: qsTr("Basic adjustments")
             iconSource: "qrc:/EchoDesktop/icons/tune.svg"
@@ -229,29 +229,6 @@ Rectangle {
                 onEdited: value => panel.draft.setGain(value)
             }
         }
-    }
-
-    component PanelHeader: RowLayout {
-        property string title: ""
-        property url iconSource
-
-        Layout.preferredHeight: 30
-        Layout.leftMargin: 10
-        Layout.rightMargin: 8
-        spacing: 6
-
-        EchoIcon {
-            source: parent.iconSource
-            size: 14
-            color: Theme.textSecondary
-        }
-        Text {
-            text: parent.title
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontBody
-            font.weight: Font.DemiBold
-        }
-        Item { Layout.fillWidth: true }
     }
 
     component ControlRow: RowLayout {

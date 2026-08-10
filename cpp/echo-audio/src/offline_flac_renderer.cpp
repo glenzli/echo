@@ -322,6 +322,12 @@ OfflineRenderResult OfflineFlacRenderer::render(
     if (!pending.empty()) {
         encode(std::span(pending), pending.size() / kChannels);
     }
+    if (frame_count != expected_frames) {
+        throw std::runtime_error(
+            "offline render produced " + std::to_string(frame_count) + " frames; expected "
+            + std::to_string(expected_frames)
+        );
+    }
     require_ffmpeg(avcodec_send_frame(codec.get(), nullptr), "finish FLAC encoder");
     drain_packets();
     require_ffmpeg(av_write_trailer(format.get()), "finish FLAC container");

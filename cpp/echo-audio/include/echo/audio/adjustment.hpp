@@ -15,7 +15,7 @@ enum class FadeCurve : std::uint8_t {
 };
 
 inline constexpr std::size_t kParametricEqualizerBandCount = 6;
-inline constexpr std::size_t kEffectNodeCount = 5;
+inline constexpr std::size_t kEffectNodeCount = 7;
 
 enum class EffectNodeKind : std::uint8_t {
     Restoration = 0,
@@ -23,6 +23,8 @@ enum class EffectNodeKind : std::uint8_t {
     Dynamics = 2,
     Space = 3,
     Master = 4,
+    DeHum = 5,
+    DeClick = 6,
 };
 
 enum class EqualizerFilterKind : std::uint8_t {
@@ -84,6 +86,23 @@ struct RestorationAdjustment {
     DeEsserAdjustment de_esser;
 };
 
+/// Finite power-line hum rejection in stable authored units.
+struct DeHumAdjustment {
+    bool enabled = false;
+    std::uint16_t fundamental_hertz = 50;
+    std::uint8_t harmonic_count = 4;
+    std::uint16_t quality_tenths = 300;
+    std::uint16_t depth_centibels = 2400;
+};
+
+/// Conservative short-transient repair in stable authored units.
+struct DeClickAdjustment {
+    bool enabled = false;
+    std::uint8_t sensitivity_percent = 50;
+    std::uint16_t maximum_click_microseconds = 1000;
+    std::uint8_t repair_percent = 100;
+};
+
 /// Stereo-linked final-output peak limiter intent.
 struct LimiterAdjustment {
     bool enabled = false;
@@ -117,6 +136,8 @@ struct PlaybackAdjustment {
     /// High-pass cutoff in hertz, or zero when disabled.
     std::uint16_t low_cut_hertz = 0;
     RestorationAdjustment restoration;
+    DeHumAdjustment de_hum;
+    DeClickAdjustment de_click;
     ParametricEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
     ReverbAdjustment reverb;
@@ -127,7 +148,10 @@ struct PlaybackAdjustment {
         EffectNodeKind::Dynamics,
         EffectNodeKind::Space,
         EffectNodeKind::Master,
+        EffectNodeKind::DeHum,
+        EffectNodeKind::DeClick,
     }};
+    std::uint8_t effect_chain_count = 5;
 };
 
 /// Playback-ready adjustment compiled once before decoding begins.
@@ -148,11 +172,14 @@ class PreparedAdjustment {
     [[nodiscard]] std::uint64_t trim_end_millis() const;
     [[nodiscard]] std::uint16_t low_cut_hertz() const;
     [[nodiscard]] RestorationAdjustment restoration() const;
+    [[nodiscard]] DeHumAdjustment de_hum() const;
+    [[nodiscard]] DeClickAdjustment de_click() const;
     [[nodiscard]] ParametricEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] ReverbAdjustment reverb() const;
     [[nodiscard]] LimiterAdjustment limiter() const;
     [[nodiscard]] std::array<EffectNodeKind, kEffectNodeCount> effect_chain() const;
+    [[nodiscard]] std::size_t effect_chain_count() const;
     [[nodiscard]] std::uint64_t clamp_seek_millis(std::uint64_t millis) const;
     [[nodiscard]] float amplitude_at(std::uint64_t source_frame) const;
     [[nodiscard]] float gain_amplitude() const;
@@ -170,11 +197,14 @@ class PreparedAdjustment {
     float gain_amplitude_ = 1.0F;
     std::uint16_t low_cut_hertz_ = 0;
     RestorationAdjustment restoration_;
+    DeHumAdjustment de_hum_;
+    DeClickAdjustment de_click_;
     ParametricEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
     ReverbAdjustment reverb_;
     LimiterAdjustment limiter_;
     std::array<EffectNodeKind, kEffectNodeCount> effect_chain_;
+    std::size_t effect_chain_count_ = 5;
 };
 
 } // namespace echo::audio

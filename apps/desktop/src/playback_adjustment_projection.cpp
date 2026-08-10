@@ -6,12 +6,26 @@
 
 namespace {
 
-std::optional<std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount>>
-effectChainFromQml(const QVariantList& values) {
-    if (values.size() != static_cast<qsizetype>(echo::audio::kEffectNodeCount)) {
+struct EffectChainProjection {
+    std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> nodes;
+    std::uint8_t active_count;
+};
+
+std::optional<EffectChainProjection> effectChainFromQml(const QVariantList& values) {
+    if (values.isEmpty() || values.size() > static_cast<qsizetype>(echo::audio::kEffectNodeCount)
+        || values.back().toInt() != static_cast<int>(echo::audio::EffectNodeKind::Master)) {
         return std::nullopt;
     }
-    std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result{};
+    constexpr std::array standard{
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::DeClick,
+    };
+    std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result = standard;
     std::array<bool, echo::audio::kEffectNodeCount> seen{};
     for (qsizetype index = 0; index < values.size(); ++index) {
         const int value = values[index].toInt();
@@ -22,13 +36,63 @@ effectChainFromQml(const QVariantList& values) {
         seen[static_cast<std::size_t>(value)] = true;
         result[static_cast<std::size_t>(index)] = static_cast<echo::audio::EffectNodeKind>(value);
     }
-    if (result.back() != echo::audio::EffectNodeKind::Master) {
+    std::size_t write_index = static_cast<std::size_t>(values.size());
+    for (const auto node : standard) {
+        if (!seen[static_cast<std::size_t>(node)]) {
+            result[write_index++] = node;
+        }
+    }
+    return EffectChainProjection{
+        .nodes = result,
+        .active_count = static_cast<std::uint8_t>(values.size()),
+    };
+}
+
+std::optional<echo::audio::DeHumAdjustment> deHumFromQmlImpl(const QVariantMap& value) {
+    const int fundamental = value.value(QStringLiteral("fundamentalHertz"), 50).toInt();
+    const int harmonics = value.value(QStringLiteral("harmonicCount"), 4).toInt();
+    const int quality = value.value(QStringLiteral("qualityTenths"), 300).toInt();
+    const int depth = value.value(QStringLiteral("depthCentibels"), 2400).toInt();
+    if ((fundamental != 50 && fundamental != 60) || harmonics < 1 || harmonics > 8 || quality < 50
+        || quality > 1000 || depth < 0 || depth > 4800) {
         return std::nullopt;
     }
-    return result;
+    return echo::audio::DeHumAdjustment{
+        .enabled = value.value(QStringLiteral("enabled")).toBool(),
+        .fundamental_hertz = static_cast<std::uint16_t>(fundamental),
+        .harmonic_count = static_cast<std::uint8_t>(harmonics),
+        .quality_tenths = static_cast<std::uint16_t>(quality),
+        .depth_centibels = static_cast<std::uint16_t>(depth),
+    };
+}
+
+std::optional<echo::audio::DeClickAdjustment> deClickFromQmlImpl(const QVariantMap& value) {
+    const int sensitivity = value.value(QStringLiteral("sensitivityPercent"), 50).toInt();
+    const int maximum_click = value.value(QStringLiteral("maximumClickMicroseconds"), 1000).toInt();
+    const int repair = value.value(QStringLiteral("repairPercent"), 100).toInt();
+    if (sensitivity < 0 || sensitivity > 100 || maximum_click < 50 || maximum_click > 2000
+        || repair < 0 || repair > 100) {
+        return std::nullopt;
+    }
+    return echo::audio::DeClickAdjustment{
+        .enabled = value.value(QStringLiteral("enabled")).toBool(),
+        .sensitivity_percent = static_cast<std::uint8_t>(sensitivity),
+        .maximum_click_microseconds = static_cast<std::uint16_t>(maximum_click),
+        .repair_percent = static_cast<std::uint8_t>(repair),
+    };
 }
 
 } // namespace
+
+std::optional<echo::audio::DeHumAdjustment>
+PlaybackAdjustmentProjection::deHumFromQml(const QVariantMap& value) {
+    return deHumFromQmlImpl(value);
+}
+
+std::optional<echo::audio::DeClickAdjustment>
+PlaybackAdjustmentProjection::deClickFromQml(const QVariantMap& value) {
+    return deClickFromQmlImpl(value);
+}
 
 std::optional<echo::audio::PlaybackAdjustment>
 PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
@@ -48,6 +112,23 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
          asset.value(QStringLiteral("deEsserThresholdCentibels"))},
         {QStringLiteral("deEsserReductionCentibels"),
          asset.value(QStringLiteral("deEsserReductionCentibels"))},
+    };
+    const QVariantMap de_hum{
+        {QStringLiteral("enabled"), asset.value(QStringLiteral("deHumEnabled"))},
+        {QStringLiteral("fundamentalHertz"),
+         asset.value(QStringLiteral("deHumFundamentalHertz"), 50)},
+        {QStringLiteral("harmonicCount"), asset.value(QStringLiteral("deHumHarmonicCount"), 4)},
+        {QStringLiteral("qualityTenths"), asset.value(QStringLiteral("deHumQualityTenths"), 300)},
+        {QStringLiteral("depthCentibels"),
+         asset.value(QStringLiteral("deHumDepthCentibels"), 2400)},
+    };
+    const QVariantMap de_click{
+        {QStringLiteral("enabled"), asset.value(QStringLiteral("deClickEnabled"))},
+        {QStringLiteral("sensitivityPercent"),
+         asset.value(QStringLiteral("deClickSensitivityPercent"), 50)},
+        {QStringLiteral("maximumClickMicroseconds"),
+         asset.value(QStringLiteral("deClickMaximumClickMicroseconds"), 1000)},
+        {QStringLiteral("repairPercent"), asset.value(QStringLiteral("deClickRepairPercent"), 100)},
     };
     const QVariantMap reverb{
         {QStringLiteral("enabled"), asset.value(QStringLiteral("reverbEnabled"))},
@@ -69,6 +150,8 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         asset.value(QStringLiteral("gainCentibels")).toInt(),
         asset.value(QStringLiteral("lowCutHertz")).toInt(),
         restoration,
+        de_hum,
+        de_click,
         asset.value(QStringLiteral("equalizerEnabled"), true).toBool(),
         asset.value(QStringLiteral("equalizerBands")).toList(),
         asset.value(QStringLiteral("compressorEnabled")).toBool(),
@@ -95,6 +178,8 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     int gainCentibels,
     int lowCutHertz,
     const QVariantMap& restorationValue,
+    const QVariantMap& deHumValue,
+    const QVariantMap& deClickValue,
     bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
@@ -125,9 +210,11 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
     const auto reverb = ReverbProjection::fromQml(reverbValue);
     const auto restoration = RestorationProjection::fromQml(restorationValue);
+    const auto deHum = deHumFromQml(deHumValue);
+    const auto deClick = deClickFromQml(deClickValue);
     const auto effectChain = effectChainFromQml(effectChainValue);
     if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()
-        || !effectChain.has_value()) {
+        || !deHum.has_value() || !deClick.has_value() || !effectChain.has_value()) {
         return std::nullopt;
     }
     equalizer->enabled = equalizerEnabled;
@@ -141,6 +228,8 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
         .gain_centibels = static_cast<std::int16_t>(gainCentibels),
         .low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz),
         .restoration = *restoration,
+        .de_hum = *deHum,
+        .de_click = *deClick,
         .equalizer = *equalizer,
         .compressor =
             {
@@ -158,6 +247,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
                 .ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels),
                 .release_millis = static_cast<std::uint16_t>(limiterReleaseMillis),
             },
-        .effect_chain = *effectChain,
+        .effect_chain = effectChain->nodes,
+        .effect_chain_count = effectChain->active_count,
     };
 }

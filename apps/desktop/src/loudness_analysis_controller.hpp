@@ -37,6 +37,8 @@ class LoudnessAnalysisController : public QObject {
         int gainCentibels,
         int lowCutHertz,
         const QVariantMap& restoration,
+        const QVariantMap& deHum,
+        const QVariantMap& deClick,
         bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,

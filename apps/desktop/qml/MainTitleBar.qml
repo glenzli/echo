@@ -215,6 +215,16 @@ ToolBar {
                 onClicked: titleBar.editor.redo()
             }
 
+            EchoButton {
+                visible: titleBar.workspaceIndex === 1
+                text: qsTr("Save version")
+                enabled: titleBar.editor !== null && titleBar.editor !== undefined
+                    && titleBar.editor.dirty
+                implicitWidth: 82
+                implicitHeight: 27
+                onClicked: titleBar.editor.save()
+            }
+
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/tune.svg"
                 toolTipText: qsTr("Settings")

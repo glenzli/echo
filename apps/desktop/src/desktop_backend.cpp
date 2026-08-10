@@ -46,10 +46,10 @@ QVariantList equalizerBandsForQml(const rust::Vec<echo::desktop::EqualizerBandWi
 }
 
 bool appendEffectChain(const QVariantList& values, rust::Vec<std::uint8_t>& destination) {
-    if (values.size() != 5 || values.back().toInt() != 4) {
+    if (values.isEmpty() || values.size() > 7 || values.back().toInt() != 4) {
         return false;
     }
-    std::array<bool, 5> seen{};
+    std::array<bool, 7> seen{};
     for (const QVariant& item : values) {
         const int value = item.toInt();
         if (value < 0 || value >= static_cast<int>(seen.size())
@@ -179,6 +179,36 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(
             QStringLiteral("deEsserReductionCentibels"),
             static_cast<int>(asset.de_esser_reduction_centibels)
+        );
+        entry.insert(QStringLiteral("deHumEnabled"), asset.de_hum_enabled);
+        entry.insert(
+            QStringLiteral("deHumFundamentalHertz"),
+            static_cast<int>(asset.de_hum_fundamental_hertz)
+        );
+        entry.insert(
+            QStringLiteral("deHumHarmonicCount"),
+            static_cast<int>(asset.de_hum_harmonic_count)
+        );
+        entry.insert(
+            QStringLiteral("deHumQualityTenths"),
+            static_cast<int>(asset.de_hum_quality_tenths)
+        );
+        entry.insert(
+            QStringLiteral("deHumDepthCentibels"),
+            static_cast<int>(asset.de_hum_depth_centibels)
+        );
+        entry.insert(QStringLiteral("deClickEnabled"), asset.de_click_enabled);
+        entry.insert(
+            QStringLiteral("deClickSensitivityPercent"),
+            static_cast<int>(asset.de_click_sensitivity_percent)
+        );
+        entry.insert(
+            QStringLiteral("deClickMaximumClickMicroseconds"),
+            static_cast<int>(asset.de_click_maximum_click_microseconds)
+        );
+        entry.insert(
+            QStringLiteral("deClickRepairPercent"),
+            static_cast<int>(asset.de_click_repair_percent)
         );
         entry.insert(QStringLiteral("equalizerEnabled"), asset.equalizer_enabled);
         entry.insert(QStringLiteral("equalizerBands"), equalizerBandsForQml(asset.equalizer_bands));
@@ -464,6 +494,15 @@ bool DesktopBackend::setAssetAdjustment(
     int deEsserFrequencyHertz,
     int deEsserThresholdCentibels,
     int deEsserReductionCentibels,
+    bool deHumEnabled,
+    int deHumFundamentalHertz,
+    int deHumHarmonicCount,
+    int deHumQualityTenths,
+    int deHumDepthCentibels,
+    bool deClickEnabled,
+    int deClickSensitivityPercent,
+    int deClickMaximumClickMicroseconds,
+    int deClickRepairPercent,
     bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
@@ -495,18 +534,23 @@ bool DesktopBackend::setAssetAdjustment(
         || deEsserFrequencyHertz < 3000 || deEsserFrequencyHertz > 12000
         || deEsserThresholdCentibels < -6000 || deEsserThresholdCentibels > 0
         || deEsserReductionCentibels < 0 || deEsserReductionCentibels > 1800
-        || compressorThresholdCentibels < -6000 || compressorThresholdCentibels > 0
-        || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
-        || compressorAttackMillis > 200 || compressorReleaseMillis < 20
-        || compressorReleaseMillis > 2000 || compressorMakeupCentibels < 0
-        || compressorMakeupCentibels > 2400 || limiterCeilingCentibels < -600
-        || limiterCeilingCentibels > 0 || limiterReleaseMillis < 20 || limiterReleaseMillis > 1000
-        || reverbMixPercent < 0 || reverbMixPercent > 100 || reverbPreDelayMillis < 0
-        || reverbPreDelayMillis > 200 || reverbDecayMillis < 100 || reverbDecayMillis > 12000
-        || reverbSizePercent < 10 || reverbSizePercent > 100 || reverbDampingPercent < 0
-        || reverbDampingPercent > 100 || reverbLowCutHertz < 20 || reverbLowCutHertz > 1000
-        || reverbHighCutHertz < 1000 || reverbHighCutHertz > 20000
-        || reverbLowCutHertz >= reverbHighCutHertz) {
+        || (deHumFundamentalHertz != 50 && deHumFundamentalHertz != 60) || deHumHarmonicCount < 1
+        || deHumHarmonicCount > 8 || deHumQualityTenths < 50 || deHumQualityTenths > 1000
+        || deHumDepthCentibels < 0 || deHumDepthCentibels > 4800 || deClickSensitivityPercent < 0
+        || deClickSensitivityPercent > 100 || deClickMaximumClickMicroseconds < 50
+        || deClickMaximumClickMicroseconds > 2000 || deClickRepairPercent < 0
+        || deClickRepairPercent > 100 || compressorThresholdCentibels < -6000
+        || compressorThresholdCentibels > 0 || compressorRatioTenths < 10
+        || compressorRatioTenths > 200 || compressorAttackMillis < 1 || compressorAttackMillis > 200
+        || compressorReleaseMillis < 20 || compressorReleaseMillis > 2000
+        || compressorMakeupCentibels < 0 || compressorMakeupCentibels > 2400
+        || limiterCeilingCentibels < -600 || limiterCeilingCentibels > 0
+        || limiterReleaseMillis < 20 || limiterReleaseMillis > 1000 || reverbMixPercent < 0
+        || reverbMixPercent > 100 || reverbPreDelayMillis < 0 || reverbPreDelayMillis > 200
+        || reverbDecayMillis < 100 || reverbDecayMillis > 12000 || reverbSizePercent < 10
+        || reverbSizePercent > 100 || reverbDampingPercent < 0 || reverbDampingPercent > 100
+        || reverbLowCutHertz < 20 || reverbLowCutHertz > 1000 || reverbHighCutHertz < 1000
+        || reverbHighCutHertz > 20000 || reverbLowCutHertz >= reverbHighCutHertz) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
@@ -533,6 +577,17 @@ bool DesktopBackend::setAssetAdjustment(
             static_cast<std::int16_t>(deEsserThresholdCentibels);
         adjustment.de_esser_reduction_centibels =
             static_cast<std::uint16_t>(deEsserReductionCentibels);
+        adjustment.de_hum_enabled = deHumEnabled;
+        adjustment.de_hum_fundamental_hertz = static_cast<std::uint16_t>(deHumFundamentalHertz);
+        adjustment.de_hum_harmonic_count = static_cast<std::uint8_t>(deHumHarmonicCount);
+        adjustment.de_hum_quality_tenths = static_cast<std::uint16_t>(deHumQualityTenths);
+        adjustment.de_hum_depth_centibels = static_cast<std::uint16_t>(deHumDepthCentibels);
+        adjustment.de_click_enabled = deClickEnabled;
+        adjustment.de_click_sensitivity_percent =
+            static_cast<std::uint8_t>(deClickSensitivityPercent);
+        adjustment.de_click_maximum_click_microseconds =
+            static_cast<std::uint16_t>(deClickMaximumClickMicroseconds);
+        adjustment.de_click_repair_percent = static_cast<std::uint8_t>(deClickRepairPercent);
         adjustment.equalizer_enabled = equalizerEnabled;
         if (!appendEqualizerBands(equalizerBands, adjustment.equalizer_bands)) {
             qWarning("parametric equalizer is outside the supported range");

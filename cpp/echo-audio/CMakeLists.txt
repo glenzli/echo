@@ -9,8 +9,11 @@ add_library(
     src/algorithmic_reverb.cpp
     src/adjustment.cpp
     src/decode.cpp
+    src/de_click_processor.cpp
     src/de_esser.cpp
+    src/de_hum_filter.cpp
     src/dynamics_processor.cpp
+    src/effect_processing_chain.cpp
     src/k_weighting_filter.cpp
     src/low_cut_filter.cpp
     src/loudness_gain_advisor.cpp
@@ -61,12 +64,28 @@ if(BUILD_TESTING)
     add_test(NAME echo-adaptive-noise-reducer-test COMMAND echo-adaptive-noise-reducer-test)
 
     add_executable(
+        echo-de-click-processor-test
+        tests/de_click_processor_test.cpp
+    )
+    target_link_libraries(echo-de-click-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-de-click-processor-test)
+    add_test(NAME echo-de-click-processor-test COMMAND echo-de-click-processor-test)
+
+    add_executable(
         echo-de-esser-test
         tests/de_esser_test.cpp
     )
     target_link_libraries(echo-de-esser-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-de-esser-test)
     add_test(NAME echo-de-esser-test COMMAND echo-de-esser-test)
+
+    add_executable(
+        echo-de-hum-filter-test
+        tests/de_hum_filter_test.cpp
+    )
+    target_link_libraries(echo-de-hum-filter-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-de-hum-filter-test)
+    add_test(NAME echo-de-hum-filter-test COMMAND echo-de-hum-filter-test)
 
     add_executable(
         echo-analysis-proxy-test
@@ -99,6 +118,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-dynamics-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-dynamics-processor-test)
     add_test(NAME echo-dynamics-processor-test COMMAND echo-dynamics-processor-test)
+
+    add_executable(
+        echo-effect-processing-chain-test
+        tests/effect_processing_chain_test.cpp
+    )
+    target_link_libraries(echo-effect-processing-chain-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-effect-processing-chain-test)
+    add_test(NAME echo-effect-processing-chain-test COMMAND echo-effect-processing-chain-test)
 
     add_executable(
         echo-low-cut-filter-test

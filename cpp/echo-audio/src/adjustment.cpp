@@ -43,8 +43,12 @@ bool valid_curve(FadeCurve curve) {
     return false;
 }
 
-bool valid_effect_chain(const std::array<EffectNodeKind, kEffectNodeCount>& nodes) {
-    if (nodes.back() != EffectNodeKind::Master) {
+bool valid_effect_chain(
+    const std::array<EffectNodeKind, kEffectNodeCount>& nodes,
+    std::size_t active_count
+) {
+    if (active_count == 0 || active_count > nodes.size()
+        || nodes[active_count - 1] != EffectNodeKind::Master) {
         return false;
     }
     std::array<bool, kEffectNodeCount> seen{};
@@ -114,9 +118,9 @@ PreparedAdjustment::PreparedAdjustment(
             || authored.low_cut_hertz > kMaximumLowCutHertz)) {
         throw std::invalid_argument("adjustment low cut is outside the supported range");
     }
-    if (!valid_effect_chain(authored.effect_chain)) {
+    if (!valid_effect_chain(authored.effect_chain, authored.effect_chain_count)) {
         throw std::invalid_argument(
-            "adjustment effect chain must contain singleton nodes with master last"
+            "adjustment effect chain must contain unique singleton nodes with master last"
         );
     }
     const NoiseReductionAdjustment noise_reduction = authored.restoration.noise_reduction;
@@ -129,6 +133,17 @@ PreparedAdjustment::PreparedAdjustment(
         || de_esser.threshold_centibels < -6000 || de_esser.threshold_centibels > 0
         || de_esser.reduction_centibels > 1800) {
         throw std::invalid_argument("adjustment de-esser is outside the supported range");
+    }
+    const DeHumAdjustment de_hum = authored.de_hum;
+    if ((de_hum.fundamental_hertz != 50 && de_hum.fundamental_hertz != 60)
+        || de_hum.harmonic_count < 1 || de_hum.harmonic_count > 8 || de_hum.quality_tenths < 50
+        || de_hum.quality_tenths > 1000 || de_hum.depth_centibels > 4800) {
+        throw std::invalid_argument("adjustment de-hum is outside the supported range");
+    }
+    const DeClickAdjustment de_click = authored.de_click;
+    if (de_click.sensitivity_percent > 100 || de_click.maximum_click_microseconds < 50
+        || de_click.maximum_click_microseconds > 2000 || de_click.repair_percent > 100) {
+        throw std::invalid_argument("adjustment de-click is outside the supported range");
     }
     for (const ParametricEqualizerBand& band : authored.equalizer.bands) {
         if (band.gain_centibels < kMinimumEqualizerGainCentibels
@@ -180,11 +195,14 @@ PreparedAdjustment::PreparedAdjustment(
     gain_amplitude_ = std::pow(10.0F, static_cast<float>(authored.gain_centibels) / 2000.0F);
     low_cut_hertz_ = authored.low_cut_hertz;
     restoration_ = authored.restoration;
+    de_hum_ = authored.de_hum;
+    de_click_ = authored.de_click;
     equalizer_ = authored.equalizer;
     compressor_ = authored.compressor;
     reverb_ = authored.reverb;
     limiter_ = authored.limiter;
     effect_chain_ = authored.effect_chain;
+    effect_chain_count_ = authored.effect_chain_count;
 }
 
 std::uint64_t PreparedAdjustment::start_frame() const {
@@ -211,6 +229,14 @@ RestorationAdjustment PreparedAdjustment::restoration() const {
     return restoration_;
 }
 
+DeHumAdjustment PreparedAdjustment::de_hum() const {
+    return de_hum_;
+}
+
+DeClickAdjustment PreparedAdjustment::de_click() const {
+    return de_click_;
+}
+
 ParametricEqualizerAdjustment PreparedAdjustment::equalizer() const {
     return equalizer_;
 }
@@ -229,6 +255,10 @@ LimiterAdjustment PreparedAdjustment::limiter() const {
 
 std::array<EffectNodeKind, kEffectNodeCount> PreparedAdjustment::effect_chain() const {
     return effect_chain_;
+}
+
+std::size_t PreparedAdjustment::effect_chain_count() const {
+    return effect_chain_count_;
 }
 
 std::uint64_t PreparedAdjustment::clamp_seek_millis(std::uint64_t millis) const {

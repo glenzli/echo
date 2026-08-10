@@ -4,6 +4,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import EchoDesktop
 
@@ -18,8 +19,10 @@ Rectangle {
 
     property int currentKind: 0
 
+    implicitHeight: 286
     radius: Theme.compactControlRadius
-    color: Theme.panel
+    color: Theme.panelRaised
+    clip: true
     border.width: 1
     border.color: Theme.borderStrong
 
@@ -30,6 +33,8 @@ Rectangle {
         if (kind === 1) return qsTr("Equalizer")
         if (kind === 2) return qsTr("Dynamics")
         if (kind === 3) return qsTr("Space")
+        if (kind === 5) return qsTr("De-hum")
+        if (kind === 6) return qsTr("De-click")
         return qsTr("Master")
     }
 
@@ -38,6 +43,8 @@ Rectangle {
         if (kind === 1) return qsTr("6-band parametric")
         if (kind === 2) return qsTr("Stereo compressor")
         if (kind === 3) return qsTr("Algorithmic room")
+        if (kind === 5) return qsTr("Mains hum and harmonics")
+        if (kind === 6) return qsTr("Short impulse repair")
         return qsTr("Limiter · Loudness")
     }
 
@@ -46,73 +53,137 @@ Rectangle {
         if (kind === 1) return "qrc:/EchoDesktop/icons/equalizer.svg"
         if (kind === 2) return "qrc:/EchoDesktop/icons/dynamics.svg"
         if (kind === 3) return "qrc:/EchoDesktop/icons/waveform.svg"
+        if (kind === 5) return "qrc:/EchoDesktop/icons/high-pass.svg"
+        if (kind === 6) return "qrc:/EchoDesktop/icons/waveform.svg"
         return "qrc:/EchoDesktop/icons/gain.svg"
+    }
+
+    function effectId(kind: int) : string {
+        return ["restoration", "equalizer", "dynamics", "space", "master",
+                "dehum", "declick"][kind]
+    }
+
+    function effectKind(effectId: string) : int {
+        return ["restoration", "equalizer", "dynamics", "space", "master",
+                "dehum", "declick"]
+            .indexOf(effectId)
+    }
+
+    function buildChainModel(chain: var, restorationEnabled: bool,
+                             equalizerEnabled: bool, dynamicsEnabled: bool,
+                             spaceEnabled: bool, masterEnabled: bool,
+                             deHumEnabled: bool, deClickEnabled: bool) : var {
+        const enabled = [restorationEnabled, equalizerEnabled, dynamicsEnabled,
+                         spaceEnabled, masterEnabled, deHumEnabled, deClickEnabled]
+        const result = []
+        for (let index = 0; index < chain.length; ++index) {
+            const kind = Number(chain[index])
+            result.push({
+                effectId: effectId(kind),
+                title: nodeTitle(kind),
+                summary: nodeSummary(kind),
+                iconSource: nodeIcon(kind),
+                enabled: enabled[kind],
+                terminal: kind === 4
+            })
+        }
+        return result
+    }
+
+    function buildCatalogModel(chain: var) : var {
+        return [
+            { effectId: "restoration", title: nodeTitle(0), summary: nodeSummary(0),
+              categoryId: "restore", categoryTitle: qsTr("Restoration"),
+              iconSource: nodeIcon(0), available: chain.indexOf(0) < 0 },
+            { effectId: "equalizer", title: nodeTitle(1), summary: nodeSummary(1),
+              categoryId: "tone", categoryTitle: qsTr("Tone"),
+              iconSource: nodeIcon(1), available: chain.indexOf(1) < 0 },
+            { effectId: "dynamics", title: nodeTitle(2), summary: nodeSummary(2),
+              categoryId: "dynamics", categoryTitle: qsTr("Dynamics"),
+              iconSource: nodeIcon(2), available: chain.indexOf(2) < 0 },
+            { effectId: "space", title: nodeTitle(3), summary: nodeSummary(3),
+              categoryId: "space", categoryTitle: qsTr("Space"),
+              iconSource: nodeIcon(3), available: chain.indexOf(3) < 0 },
+            { effectId: "dehum", title: nodeTitle(5), summary: nodeSummary(5),
+              categoryId: "restore", categoryTitle: qsTr("Restoration"),
+              iconSource: nodeIcon(5), available: chain.indexOf(5) < 0 },
+            { effectId: "declick", title: nodeTitle(6), summary: nodeSummary(6),
+              categoryId: "restore", categoryTitle: qsTr("Restoration"),
+              iconSource: nodeIcon(6), available: chain.indexOf(6) < 0 }
+        ]
+    }
+
+    function ensureCurrentNode() : void {
+        if (draft.effectChain.indexOf(currentKind) < 0)
+            currentKind = Number(draft.effectChain[0])
+    }
+
+    readonly property var chainModel: buildChainModel(
+        draft.effectChain, draft.restorationEnabled, draft.equalizerEnabled,
+        draft.compressorEnabled, draft.reverbEnabled, draft.limiterEnabled,
+        draft.deHumEnabled, draft.deClickEnabled)
+    readonly property var catalogModel: buildCatalogModel(draft.effectChain)
+
+    onDraftChanged: ensureCurrentNode()
+
+    Connections {
+        target: rack.draft
+        function onEffectChainChanged() : void { rack.ensureCurrentNode() }
+    }
+
+    Popup {
+        id: catalogPopup
+
+        parent: Overlay.overlay
+        width: Math.min(380, parent.width - 24)
+        height: Math.min(470, parent.height - 24)
+        padding: 0
+        modal: false
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        function presentFrom(item: var) : void {
+            const point = item.mapToItem(Overlay.overlay, 0, 0)
+            x = Math.max(12, Math.min(parent.width - width - 12,
+                                     point.x + item.width + 8))
+            y = Math.max(12, Math.min(parent.height - height - 12,
+                                     point.y))
+            open()
+        }
+
+        background: null
+        contentItem: EffectCatalog {
+            effectModel: rack.catalogModel
+            onEffectAddRequested: effectId => {
+                const kind = rack.effectKind(effectId)
+                rack.draft.addEffectNode(kind)
+                rack.currentKind = kind
+                catalogPopup.close()
+            }
+        }
     }
 
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
+        EditableEffectChain {
+            id: chainEditor
+
             Layout.preferredWidth: 204
             Layout.fillHeight: true
-            color: Theme.panelRaised
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 7
-                spacing: 4
-
-                Text {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 7
-                    Layout.topMargin: 2
-                    text: qsTr("EFFECT CHAIN")
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontMeta
-                    font.letterSpacing: 0.7
-                    font.weight: Font.DemiBold
-                }
-
-                Repeater {
-                    model: rack.draft.effectChain
-
-                    delegate: EffectChainNode {
-                        required property int index
-                        required property int modelData
-
-                        Layout.fillWidth: true
-                        kind: modelData
-                        orderIndex: index
-                        title: rack.nodeTitle(kind)
-                        summary: rack.nodeSummary(kind)
-                        iconSource: rack.nodeIcon(kind)
-                        nodeEnabled: rack.draft.effectNodeEnabled(kind)
-                        selected: rack.currentKind === kind
-                        terminal: kind === 4
-                        canMoveUp: index > 0 && kind !== 4
-                        canMoveDown: index < 3 && kind !== 4
-                        onSelectedRequested: rack.currentKind = kind
-                        onEnabledRequested: enabled =>
-                            rack.draft.setEffectNodeEnabled(kind, enabled)
-                        onMoveRequested: direction =>
-                            rack.draft.moveEffectNode(kind, direction)
-                    }
-                }
-
-                Item { Layout.fillHeight: true }
-
-                Text {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 7
-                    Layout.rightMargin: 5
-                    Layout.bottomMargin: 3
-                    text: qsTr("Signal flows from top to bottom. Master stays last.")
-                    color: Theme.textDisabled
-                    font.pixelSize: Theme.fontMeta
-                    wrapMode: Text.WordWrap
-                }
-            }
+            radius: 0
+            border.width: 0
+            effectModel: rack.chainModel
+            selectedEffectId: rack.effectId(rack.currentKind)
+            onEffectSelected: effectId => rack.currentKind = rack.effectKind(effectId)
+            onEffectBypassRequested: (effectId, bypassed) =>
+                rack.draft.setEffectNodeEnabled(rack.effectKind(effectId), !bypassed)
+            onEffectDeleteRequested: effectId =>
+                rack.draft.removeEffectNode(rack.effectKind(effectId))
+            onEffectMoveRequested: (effectId, direction) =>
+                rack.draft.moveEffectNode(rack.effectKind(effectId), direction)
+            onAddEffectRequested: catalogPopup.presentFrom(chainEditor)
         }
 
         Rectangle {
@@ -128,6 +199,8 @@ Rectangle {
             ToneEqualizerPanel {
                 anchors.fill: parent
                 visible: rack.currentKind === 1
+                radius: 0
+                border.width: 0
                 draft: rack.draft
                 responseProvider: rack.meterSource
             }
@@ -135,6 +208,8 @@ Rectangle {
             DynamicsPanel {
                 anchors.fill: parent
                 visible: rack.currentKind === 2
+                radius: 0
+                border.width: 0
                 draft: rack.draft
                 meterSource: rack.meterSource
             }
@@ -142,6 +217,8 @@ Rectangle {
             SpaceReverbPanel {
                 anchors.fill: parent
                 visible: rack.currentKind === 3
+                radius: 0
+                border.width: 0
                 draft: rack.draft
             }
 
@@ -149,6 +226,8 @@ Rectangle {
                 id: masterPanel
                 anchors.fill: parent
                 visible: rack.currentKind === 4
+                radius: 0
+                border.width: 0
                 draft: rack.draft
                 meterSource: rack.meterSource
                 analyzer: rack.analyzer
@@ -159,6 +238,22 @@ Rectangle {
             RestorationPanel {
                 anchors.fill: parent
                 visible: rack.currentKind === 0
+                draft: rack.draft
+            }
+
+            DeHumPanel {
+                anchors.fill: parent
+                visible: rack.currentKind === 5
+                radius: 0
+                border.width: 0
+                draft: rack.draft
+            }
+
+            DeClickPanel {
+                anchors.fill: parent
+                visible: rack.currentKind === 6
+                radius: 0
+                border.width: 0
                 draft: rack.draft
             }
         }

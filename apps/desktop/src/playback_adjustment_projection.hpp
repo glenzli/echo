@@ -15,6 +15,11 @@ class PlaybackAdjustmentProjection {
     [[nodiscard]] static std::optional<echo::audio::PlaybackAdjustment>
     fromAssetMap(const QVariantMap& asset);
 
+    [[nodiscard]] static std::optional<echo::audio::DeHumAdjustment>
+    deHumFromQml(const QVariantMap& value);
+    [[nodiscard]] static std::optional<echo::audio::DeClickAdjustment>
+    deClickFromQml(const QVariantMap& value);
+
     [[nodiscard]] static std::optional<echo::audio::PlaybackAdjustment> fromQml(
         qint64 trimStartMillis,
         qint64 trimEndMillis,
@@ -25,6 +30,8 @@ class PlaybackAdjustmentProjection {
         int gainCentibels,
         int lowCutHertz,
         const QVariantMap& restoration,
+        const QVariantMap& deHum,
+        const QVariantMap& deClick,
         bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,

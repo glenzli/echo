@@ -20,11 +20,11 @@ mod ids;
 mod original;
 
 pub use adjustment::{
-    AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, CompressorSettings, DeEsserSettings,
-    EFFECT_NODE_COUNT, EffectChain, EffectChainError, EffectNodeKind, EffectNodeKindValueError,
-    EqualizerFilterKind, FadeCurve, FadeCurveValueError, FadeCurves, LimiterSettings,
-    MAX_COMPRESSOR_ATTACK_MILLIS, MAX_COMPRESSOR_MAKEUP_CENTIBELS, MAX_COMPRESSOR_RATIO_TENTHS,
-    MAX_COMPRESSOR_RELEASE_MILLIS, MAX_COMPRESSOR_THRESHOLD_CENTIBELS,
+    AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, CompressorSettings, DeClickSettings,
+    DeEsserSettings, DeHumSettings, EFFECT_NODE_COUNT, EffectChain, EffectChainError,
+    EffectNodeKind, EffectNodeKindValueError, EqualizerFilterKind, FadeCurve, FadeCurveValueError,
+    FadeCurves, LimiterSettings, MAX_COMPRESSOR_ATTACK_MILLIS, MAX_COMPRESSOR_MAKEUP_CENTIBELS,
+    MAX_COMPRESSOR_RATIO_TENTHS, MAX_COMPRESSOR_RELEASE_MILLIS, MAX_COMPRESSOR_THRESHOLD_CENTIBELS,
     MAX_DE_ESSER_FREQUENCY_HERTZ, MAX_DE_ESSER_REDUCTION_CENTIBELS,
     MAX_DE_ESSER_THRESHOLD_CENTIBELS, MAX_EQ_GAIN_CENTIBELS, MAX_GAIN_CENTIBELS,
     MAX_LIMITER_CEILING_CENTIBELS, MAX_LIMITER_RELEASE_MILLIS, MAX_LOW_CUT_HERTZ,

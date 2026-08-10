@@ -82,8 +82,27 @@ int main() {
     assert(prepared.limiter().enabled);
     assert(prepared.limiter().ceiling_centibels == -125);
     assert(prepared.effect_chain().front() == echo::audio::EffectNodeKind::Restoration);
+    assert(prepared.effect_chain_count() == 5);
+    assert(!prepared.de_hum().enabled);
+    assert(!prepared.de_click().enabled);
     assert(std::abs(prepared.gain_amplitude() - 0.501187F) < 0.001F);
     assert(std::abs(prepared.envelope_at(240'000) - 1.0F) < 0.0001F);
+
+    const echo::audio::PreparedAdjustment reduced_chain(
+        {.effect_chain =
+             {echo::audio::EffectNodeKind::Restoration,
+              echo::audio::EffectNodeKind::Dynamics,
+              echo::audio::EffectNodeKind::Master,
+              echo::audio::EffectNodeKind::Equalizer,
+              echo::audio::EffectNodeKind::Space,
+              echo::audio::EffectNodeKind::DeHum,
+              echo::audio::EffectNodeKind::DeClick},
+         .effect_chain_count = 3},
+        10'000,
+        48'000
+    );
+    assert(reduced_chain.effect_chain_count() == 3);
+    assert(reduced_chain.effect_chain()[2] == echo::audio::EffectNodeKind::Master);
 
     const echo::audio::PreparedAdjustment linear(
         {.trim_end_millis = 1'000, .fade_in_millis = 1'000},
@@ -128,7 +147,9 @@ int main() {
                   echo::audio::EffectNodeKind::Equalizer,
                   echo::audio::EffectNodeKind::Dynamics,
                   echo::audio::EffectNodeKind::Master,
-                  echo::audio::EffectNodeKind::Restoration}},
+                  echo::audio::EffectNodeKind::Restoration,
+                  echo::audio::EffectNodeKind::DeHum,
+                  echo::audio::EffectNodeKind::DeClick}},
             10'000,
             48'000
         );

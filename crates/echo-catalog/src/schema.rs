@@ -98,6 +98,10 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 10);
+pub(crate) const EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 9);
+pub(crate) const FIXED_EFFECT_CHAIN_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 8);
 pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 7);
@@ -113,14 +117,26 @@ pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 9);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 11);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.9-effect-chain";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.11-restorative-effects";
+
+pub(crate) const DE_HUM_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN de_hum_json TEXT NOT NULL DEFAULT
+    '{"enabled":false,"fundamental_hertz":50,"harmonic_count":4,"quality_tenths":300,"depth_centibels":2400}';
+"#;
+
+pub(crate) const DE_CLICK_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN de_click_json TEXT NOT NULL DEFAULT
+    '{"enabled":false,"sensitivity_percent":50,"maximum_click_microseconds":1000,"repair_percent":100}';
+"#;
 
 pub(crate) const EFFECT_CHAIN_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
     ADD COLUMN effect_chain_json TEXT NOT NULL DEFAULT
-    '{"nodes":["restoration","equalizer","dynamics","space","master"]}';
+    '{"nodes":["restoration","equalizer","dynamics","space","master","de_hum","de_click"],"active_count":5}';
 "#;
 
 pub(crate) const DELIVERY_FORMATS_MIGRATION_SQL: &str = r"
@@ -491,8 +507,12 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            '{\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
     restoration_json        TEXT NOT NULL DEFAULT
                            '{\"enabled\":true,\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
+    de_hum_json             TEXT NOT NULL DEFAULT
+                           '{\"enabled\":false,\"fundamental_hertz\":50,\"harmonic_count\":4,\"quality_tenths\":300,\"depth_centibels\":2400}',
+    de_click_json           TEXT NOT NULL DEFAULT
+                           '{\"enabled\":false,\"sensitivity_percent\":50,\"maximum_click_microseconds\":1000,\"repair_percent\":100}',
     effect_chain_json       TEXT NOT NULL DEFAULT
-                           '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\"]}',
+                           '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\",\"de_hum\",\"de_click\"],\"active_count\":5}',
     limiter_enabled        INTEGER NOT NULL DEFAULT 0
                            CHECK (limiter_enabled IN (0, 1)),
     limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100

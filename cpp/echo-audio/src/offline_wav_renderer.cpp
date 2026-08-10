@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -197,6 +198,12 @@ OfflineRenderResult OfflineWavRenderer::render(
         );
     }
     session.stop();
+    if (frame_count != expected_frames) {
+        throw std::runtime_error(
+            "offline render produced " + std::to_string(frame_count) + " frames; expected "
+            + std::to_string(expected_frames)
+        );
+    }
     if (data_bytes > std::numeric_limits<std::uint32_t>::max() - 36U) {
         throw std::runtime_error("rendered data exceeds the WAV v1 size limit");
     }

@@ -198,6 +198,15 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         de_esser_frequency_hertz: 7_200,
         de_esser_threshold_centibels: -2_800,
         de_esser_reduction_centibels: 750,
+        de_hum_enabled: true,
+        de_hum_fundamental_hertz: 60,
+        de_hum_harmonic_count: 6,
+        de_hum_quality_tenths: 420,
+        de_hum_depth_centibels: 1_900,
+        de_click_enabled: true,
+        de_click_sensitivity_percent: 68,
+        de_click_maximum_click_microseconds: 720,
+        de_click_repair_percent: 86,
         equalizer_enabled: false,
         equalizer_bands: test_equalizer_bands(),
         compressor_enabled: true,
@@ -217,11 +226,20 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
-        effect_chain: vec![3, 0, 1, 2, 4],
+        effect_chain: vec![5, 3, 0, 6, 1, 2, 4],
     };
     session
         .set_asset_adjustment(&asset.id.to_string(), &adjustment)
         .expect("adjustment saves");
+    let stored = session
+        .catalog()
+        .with_transaction(|transaction| {
+            echo_catalog::latest_adjustment_graph(transaction, asset.id)
+        })
+        .expect("stored adjustment reads")
+        .expect("stored adjustment exists");
+    assert!(stored.graph.de_hum().enabled);
+    assert!(stored.graph.de_click().enabled);
     let projected = session.list_assets().expect("assets project");
     assert_eq!(projected.len(), 1);
     assert!(projected[0].adjustment_revision > 0);
@@ -242,6 +260,15 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].de_esser_frequency_hertz, 7_200);
     assert_eq!(projected[0].de_esser_threshold_centibels, -2_800);
     assert_eq!(projected[0].de_esser_reduction_centibels, 750);
+    assert!(projected[0].de_hum_enabled);
+    assert_eq!(projected[0].de_hum_fundamental_hertz, 60);
+    assert_eq!(projected[0].de_hum_harmonic_count, 6);
+    assert_eq!(projected[0].de_hum_quality_tenths, 420);
+    assert_eq!(projected[0].de_hum_depth_centibels, 1_900);
+    assert!(projected[0].de_click_enabled);
+    assert_eq!(projected[0].de_click_sensitivity_percent, 68);
+    assert_eq!(projected[0].de_click_maximum_click_microseconds, 720);
+    assert_eq!(projected[0].de_click_repair_percent, 86);
     assert!(!projected[0].equalizer_enabled);
     assert_eq!(projected[0].equalizer_bands.len(), 6);
     assert_eq!(projected[0].equalizer_bands[0].gain_centibels, 250);
@@ -264,7 +291,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert!(projected[0].limiter_enabled);
     assert_eq!(projected[0].limiter_ceiling_centibels, -125);
     assert_eq!(projected[0].limiter_release_millis, 160);
-    assert_eq!(projected[0].effect_chain, [3, 0, 1, 2, 4]);
+    assert_eq!(projected[0].effect_chain, [5, 3, 0, 6, 1, 2, 4]);
     let _ = std::fs::remove_dir_all(root);
 }
 

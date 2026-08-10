@@ -1,6 +1,7 @@
 use super::*;
 
 #[test]
+#[allow(clippy::too_many_lines)] // One complete authored graph contract fixture.
 fn graph_preserves_authored_millisecond_and_centibel_units() {
     let graph = AdjustmentGraph::new(
         10_000,
@@ -28,11 +29,26 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
                 reduction_centibels: 750,
             },
         })
+        .with_de_hum(DeHumSettings {
+            enabled: true,
+            fundamental_hertz: 60,
+            harmonic_count: 6,
+            quality_tenths: 420,
+            depth_centibels: 1_800,
+        })
+        .with_de_click(DeClickSettings {
+            enabled: true,
+            sensitivity_percent: 64,
+            maximum_click_microseconds: 750,
+            repair_percent: 85,
+        })
         .with_equalizer(ParametricEqualizer::from_legacy_gains(250, -175, 400))
         .with_effect_chain(
             EffectChain::new([
+                EffectNodeKind::DeHum,
                 EffectNodeKind::Equalizer,
                 EffectNodeKind::Restoration,
+                EffectNodeKind::DeClick,
                 EffectNodeKind::Space,
                 EffectNodeKind::Dynamics,
                 EffectNodeKind::Master,
@@ -77,6 +93,10 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
         1_200
     );
     assert_eq!(graph.restoration().de_esser.frequency_hertz, 7_200);
+    assert_eq!(graph.de_hum().fundamental_hertz, 60);
+    assert_eq!(graph.de_hum().harmonic_count, 6);
+    assert_eq!(graph.de_click().maximum_click_microseconds, 750);
+    assert_eq!(graph.de_click().repair_percent, 85);
     assert_eq!(
         graph.equalizer(),
         ParametricEqualizer::from_legacy_gains(250, -175, 400)
@@ -86,11 +106,11 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.reverb().decay_millis, 2_400);
     assert_eq!(graph.reverb().mix_percent, 24);
     assert_eq!(graph.limiter().ceiling_centibels, -125);
-    assert_eq!(graph.effect_chain().nodes()[0], EffectNodeKind::Equalizer);
+    assert_eq!(graph.effect_chain().nodes()[0], EffectNodeKind::DeHum);
 }
 
 #[test]
-fn effect_chain_has_closed_identity_and_fixed_master_tail() {
+fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let reordered = EffectChain::new([
         EffectNodeKind::Space,
         EffectNodeKind::Equalizer,
@@ -101,6 +121,9 @@ fn effect_chain_has_closed_identity_and_fixed_master_tail() {
     .expect("valid reorder");
     assert!(reordered.is_valid());
     assert_eq!(EffectNodeKind::Space.wire_value(), 3);
+    assert_eq!(EffectNodeKind::DeHum.wire_value(), 5);
+    assert_eq!(EffectNodeKind::DeClick.wire_value(), 6);
+    assert_eq!(EFFECT_NODE_COUNT, 7);
     assert_eq!(
         EffectNodeKind::from_wire_value(3),
         Ok(EffectNodeKind::Space)
@@ -129,6 +152,61 @@ fn effect_chain_has_closed_identity_and_fixed_master_tail() {
             EffectNodeKind::Restoration,
         ]),
         Err(EffectChainError)
+    );
+
+    let reduced = EffectChain::new([
+        EffectNodeKind::Restoration,
+        EffectNodeKind::Dynamics,
+        EffectNodeKind::Master,
+    ])
+    .expect("optional insert nodes may be omitted");
+    assert_eq!(
+        reduced.nodes(),
+        [
+            EffectNodeKind::Restoration,
+            EffectNodeKind::Dynamics,
+            EffectNodeKind::Master,
+        ]
+    );
+    let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
+    let encoded_value: serde_json::Value =
+        serde_json::from_str(&encoded).expect("encoded chain is JSON");
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(7));
+    assert_eq!(encoded_value["active_count"], 3);
+    let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
+    assert_eq!(decoded, reduced);
+
+    let legacy: EffectChain = serde_json::from_str(
+        r#"{"nodes":["restoration","equalizer","dynamics","space","master"]}"#,
+    )
+    .expect("legacy full chain decodes");
+    assert_eq!(legacy, EffectChain::standard());
+
+    let legacy_reduced: EffectChain = serde_json::from_str(
+        r#"{"nodes":["restoration","dynamics","master","equalizer","space"],"active_count":3}"#,
+    )
+    .expect("legacy reduced chain decodes");
+    assert_eq!(
+        legacy_reduced.nodes(),
+        [
+            EffectNodeKind::Restoration,
+            EffectNodeKind::Dynamics,
+            EffectNodeKind::Master,
+        ]
+    );
+    let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(7));
+    assert_eq!(normalized["active_count"], 3);
+
+    assert_eq!(
+        EffectChain::standard().nodes(),
+        [
+            EffectNodeKind::Restoration,
+            EffectNodeKind::Equalizer,
+            EffectNodeKind::Dynamics,
+            EffectNodeKind::Space,
+            EffectNodeKind::Master,
+        ]
     );
 }
 
@@ -271,4 +349,65 @@ fn graph_rejects_restoration_parameters_outside_the_authored_contract() {
         AdjustmentGraph::new(1_000, 0, 1_000, 0, 0, invalid_de_esser),
         Err(AdjustmentGraphError::DeEsserOutOfRange)
     );
+}
+
+#[test]
+fn graph_rejects_de_hum_and_de_click_parameters_outside_the_authored_contract() {
+    for de_hum in [
+        DeHumSettings {
+            fundamental_hertz: 55,
+            ..DeHumSettings::default()
+        },
+        DeHumSettings {
+            harmonic_count: 0,
+            ..DeHumSettings::default()
+        },
+        DeHumSettings {
+            quality_tenths: MAX_DE_HUM_QUALITY_TENTHS + 1,
+            ..DeHumSettings::default()
+        },
+        DeHumSettings {
+            depth_centibels: MAX_DE_HUM_DEPTH_CENTIBELS + 1,
+            ..DeHumSettings::default()
+        },
+    ] {
+        assert_eq!(
+            AdjustmentGraph::new(
+                1_000,
+                0,
+                1_000,
+                0,
+                0,
+                AdjustmentEffects::default().with_de_hum(de_hum),
+            ),
+            Err(AdjustmentGraphError::DeHumOutOfRange)
+        );
+    }
+
+    for de_click in [
+        DeClickSettings {
+            sensitivity_percent: MAX_DE_CLICK_SENSITIVITY_PERCENT + 1,
+            ..DeClickSettings::default()
+        },
+        DeClickSettings {
+            maximum_click_microseconds: MIN_DE_CLICK_DURATION_MICROSECONDS - 1,
+            ..DeClickSettings::default()
+        },
+        DeClickSettings {
+            repair_percent: MAX_DE_CLICK_REPAIR_PERCENT + 1,
+            ..DeClickSettings::default()
+        },
+    ] {
+        assert_eq!(
+            AdjustmentGraph::new(
+                1_000,
+                0,
+                1_000,
+                0,
+                0,
+                AdjustmentEffects::default().with_de_click(de_click),
+            ),
+            Err(AdjustmentGraphError::DeClickOutOfRange)
+        );
+    }
 }

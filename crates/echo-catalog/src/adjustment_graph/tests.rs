@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use echo_domain::{
-    AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, DeEsserSettings,
-    EffectChain, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings, NoiseReductionSettings,
-    RestorationSettings, ReverbSettings,
+    AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, DeClickSettings,
+    DeEsserSettings, DeHumSettings, EffectChain, EffectNodeKind, FadeCurve, FadeCurves,
+    LimiterSettings, NoiseReductionSettings, RestorationSettings, ReverbSettings,
 };
 
 use super::*;
@@ -52,6 +52,8 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         echo_domain::ParametricEqualizer::from_legacy_gains(300, -150, 225)
     );
     assert_eq!(first.graph.compressor(), graph.compressor());
+    assert_eq!(first.graph.de_hum(), graph.de_hum());
+    assert_eq!(first.graph.de_click(), graph.de_click());
     assert_eq!(first.graph.reverb(), graph.reverb());
     assert_eq!(first.graph.limiter(), graph.limiter());
     assert_eq!(first.graph.effect_chain(), graph.effect_chain());
@@ -66,6 +68,10 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
             FadeCurves::new(FadeCurve::Linear, FadeCurve::Smooth),
             0,
             120,
+        )
+        .with_effect_chain(
+            EffectChain::new([EffectNodeKind::Restoration, EffectNodeKind::Master])
+                .expect("valid reduced chain"),
         ),
     )
     .expect("second graph validates");
@@ -113,6 +119,19 @@ fn fully_configured_graph() -> AdjustmentGraph {
                 reduction_centibels: 700,
             },
         })
+        .with_de_hum(DeHumSettings {
+            enabled: true,
+            fundamental_hertz: 60,
+            harmonic_count: 7,
+            quality_tenths: 480,
+            depth_centibels: 2_100,
+        })
+        .with_de_click(DeClickSettings {
+            enabled: true,
+            sensitivity_percent: 72,
+            maximum_click_microseconds: 650,
+            repair_percent: 88,
+        })
         .with_equalizer(echo_domain::ParametricEqualizer::from_legacy_gains(
             300, -150, 225,
         ))
@@ -141,8 +160,10 @@ fn fully_configured_graph() -> AdjustmentGraph {
         })
         .with_effect_chain(
             EffectChain::new([
+                EffectNodeKind::DeHum,
                 EffectNodeKind::Space,
                 EffectNodeKind::Restoration,
+                EffectNodeKind::DeClick,
                 EffectNodeKind::Equalizer,
                 EffectNodeKind::Dynamics,
                 EffectNodeKind::Master,

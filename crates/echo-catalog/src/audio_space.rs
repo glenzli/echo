@@ -82,7 +82,8 @@ pub fn list_audio_space(
          adj.compressor_enabled, adj.compressor_threshold_centibels, \
          adj.compressor_ratio_tenths, adj.compressor_attack_millis, \
          adj.compressor_release_millis, adj.compressor_makeup_centibels, \
-         adj.reverb_json, adj.restoration_json, adj.effect_chain_json, \
+         adj.reverb_json, adj.restoration_json, adj.de_hum_json, adj.de_click_json, \
+         adj.effect_chain_json, \
          adj.limiter_enabled, adj.limiter_ceiling_centibels, \
          adj.limiter_release_millis, \
          adj.created_at_millis \
@@ -168,6 +169,12 @@ fn audio_space_adjustment_from_row(
     .with_restoration(
         serde_json::from_str(&row.get::<_, String>(36)?).expect("stored restoration chain parses"),
     )
+    .with_de_hum(
+        serde_json::from_str(&row.get::<_, String>(37)?).expect("stored de-hum settings parse"),
+    )
+    .with_de_click(
+        serde_json::from_str(&row.get::<_, String>(38)?).expect("stored de-click settings parse"),
+    )
     .with_compressor(echo_domain::CompressorSettings {
         enabled: row.get::<_, i64>(29)? != 0,
         threshold_centibels: i16::try_from(row.get::<_, i64>(30)?)
@@ -182,13 +189,13 @@ fn audio_space_adjustment_from_row(
     })
     .with_reverb(serde_json::from_str(&row.get::<_, String>(35)?).expect("stored reverb parses"))
     .with_effect_chain(
-        serde_json::from_str(&row.get::<_, String>(37)?).expect("stored effect chain parses"),
+        serde_json::from_str(&row.get::<_, String>(39)?).expect("stored effect chain parses"),
     )
     .with_limiter(echo_domain::LimiterSettings {
-        enabled: row.get::<_, i64>(38)? != 0,
-        ceiling_centibels: i16::try_from(row.get::<_, i64>(39)?)
+        enabled: row.get::<_, i64>(40)? != 0,
+        ceiling_centibels: i16::try_from(row.get::<_, i64>(41)?)
             .expect("limiter ceiling fits centibels"),
-        release_millis: u16::try_from(row.get::<_, i64>(40)?)
+        release_millis: u16::try_from(row.get::<_, i64>(42)?)
             .expect("limiter release fits milliseconds"),
     });
     let graph = echo_domain::AdjustmentGraph::new(
@@ -203,7 +210,7 @@ fn audio_space_adjustment_from_row(
     Ok(Some(crate::AssetAdjustmentRevision {
         revision_id,
         graph,
-        created_at_millis: row.get(41)?,
+        created_at_millis: row.get(43)?,
     }))
 }
 

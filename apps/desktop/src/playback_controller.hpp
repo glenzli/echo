@@ -48,6 +48,8 @@ class PlaybackController : public QObject {
         int gainCentibels,
         int lowCutHertz,
         const QVariantMap& restoration,
+        const QVariantMap& deHum,
+        const QVariantMap& deClick,
         bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,
@@ -64,6 +66,8 @@ class PlaybackController : public QObject {
     );
     Q_INVOKABLE bool updateEqualizer(bool enabled, const QVariantList& equalizerBands);
     Q_INVOKABLE bool updateRestoration(const QVariantMap& restoration);
+    Q_INVOKABLE bool updateDeHum(const QVariantMap& deHum);
+    Q_INVOKABLE bool updateDeClick(const QVariantMap& deClick);
     Q_INVOKABLE QVariantList
     equalizerResponse(const QVariantList& equalizerBands, int pointCount) const;
     Q_INVOKABLE bool updateCompressor(

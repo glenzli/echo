@@ -52,6 +52,23 @@ Rectangle {
         deEsserReductionCentibels: hasAsset
             ? Number(asset.deEsserReductionCentibels) : 600
     })
+    readonly property var deHumValue: ({
+        enabled: hasAsset ? Boolean(asset.deHumEnabled) : false,
+        fundamentalHertz: hasAsset
+            ? Number(asset.deHumFundamentalHertz ?? 50) : 50,
+        harmonicCount: hasAsset ? Number(asset.deHumHarmonicCount ?? 4) : 4,
+        qualityTenths: hasAsset ? Number(asset.deHumQualityTenths ?? 300) : 300,
+        depthCentibels: hasAsset
+            ? Number(asset.deHumDepthCentibels ?? 2400) : 2400
+    })
+    readonly property var deClickValue: ({
+        enabled: hasAsset ? Boolean(asset.deClickEnabled) : false,
+        sensitivityPercent: hasAsset
+            ? Number(asset.deClickSensitivityPercent ?? 50) : 50,
+        maximumClickMicroseconds: hasAsset
+            ? Number(asset.deClickMaximumClickMicroseconds ?? 1000) : 1000,
+        repairPercent: hasAsset ? Number(asset.deClickRepairPercent ?? 100) : 100
+    })
     readonly property bool equalizerEnabled: hasAsset
         ? Boolean(asset.equalizerEnabled) : true
     readonly property var equalizerBands: hasAsset ? asset.equalizerBands : []
@@ -136,6 +153,8 @@ Rectangle {
             + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve
             + ":" + gainCentibels + ":" + lowCutHertz
             + ":" + JSON.stringify(restorationValue)
+            + ":" + JSON.stringify(deHumValue)
+            + ":" + JSON.stringify(deClickValue)
             + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands)
             + ":" + compressorEnabled
             + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths
@@ -153,7 +172,8 @@ Rectangle {
         player.playAdjusted(asset.path, trimStartMillis, trimEndMillis,
                             fadeInMillis, fadeOutMillis, fadeInCurve,
                             fadeOutCurve, gainCentibels, lowCutHertz,
-                            restorationValue, equalizerEnabled, equalizerBands,
+                            restorationValue, deHumValue, deClickValue,
+                            equalizerEnabled, equalizerBands,
                             compressorEnabled,
                             compressorThresholdCentibels, compressorRatioTenths,
                             compressorAttackMillis, compressorReleaseMillis,

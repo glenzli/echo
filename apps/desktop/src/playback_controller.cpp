@@ -49,6 +49,8 @@ void PlaybackController::playAdjusted(
     int gainCentibels,
     int lowCutHertz,
     const QVariantMap& restorationValue,
+    const QVariantMap& deHumValue,
+    const QVariantMap& deClickValue,
     bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
@@ -73,6 +75,8 @@ void PlaybackController::playAdjusted(
         gainCentibels,
         lowCutHertz,
         restorationValue,
+        deHumValue,
+        deClickValue,
         equalizerEnabled,
         equalizerBands,
         compressorEnabled,
@@ -104,6 +108,36 @@ bool PlaybackController::updateRestoration(const QVariantMap& restorationValue) 
         session->update_restoration(*restoration);
     } catch (const std::exception& error) {
         qWarning("cannot update playback restoration: %s", error.what());
+        return false;
+    }
+    return true;
+}
+
+bool PlaybackController::updateDeHum(const QVariantMap& deHumValue) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto adjustment = PlaybackAdjustmentProjection::deHumFromQml(deHumValue);
+    if (session == nullptr || !adjustment.has_value()) {
+        return false;
+    }
+    try {
+        session->update_de_hum(*adjustment);
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback de-hum: %s", error.what());
+        return false;
+    }
+    return true;
+}
+
+bool PlaybackController::updateDeClick(const QVariantMap& deClickValue) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto adjustment = PlaybackAdjustmentProjection::deClickFromQml(deClickValue);
+    if (session == nullptr || !adjustment.has_value()) {
+        return false;
+    }
+    try {
+        session->update_de_click(*adjustment);
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback de-click: %s", error.what());
         return false;
     }
     return true;

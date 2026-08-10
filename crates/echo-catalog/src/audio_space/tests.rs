@@ -68,7 +68,20 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
                         ),
                         -200,
                         80,
-                    ),
+                    )
+                    .with_de_hum(echo_domain::DeHumSettings {
+                        enabled: true,
+                        fundamental_hertz: 60,
+                        harmonic_count: 5,
+                        quality_tenths: 360,
+                        depth_centibels: 1_700,
+                    })
+                    .with_de_click(echo_domain::DeClickSettings {
+                        enabled: true,
+                        sensitivity_percent: 66,
+                        maximum_click_microseconds: 800,
+                        repair_percent: 90,
+                    }),
                 )
                 .expect("adjustment validates"),
                 31,
@@ -89,6 +102,10 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
     let adjustment = projected.adjustment.expect("adjustment projects");
     assert_eq!(adjustment.graph.trim_start_millis(), 100);
     assert_eq!(adjustment.graph.trim_end_millis(), 900);
+    assert_eq!(adjustment.graph.de_hum().fundamental_hertz, 60);
+    assert_eq!(adjustment.graph.de_hum().harmonic_count, 5);
+    assert_eq!(adjustment.graph.de_click().sensitivity_percent, 66);
+    assert_eq!(adjustment.graph.de_click().maximum_click_microseconds, 800);
     assert_eq!(
         projected.transcript.expect("text evidence")["text"],
         "旧房子的窗户朝南"

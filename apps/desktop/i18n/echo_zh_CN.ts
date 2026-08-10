@@ -61,12 +61,52 @@
     <message><source>Stereo compressor</source><translation>立体声压缩器</translation></message>
     <message><source>Algorithmic room</source><translation>算法空间</translation></message>
     <message><source>Limiter · Loudness</source><translation>限制器 · 响度</translation></message>
-    <message><source>EFFECT CHAIN</source><translation>效果链</translation></message>
+    <message><source>Restoration</source><translation>修复</translation></message>
+    <message><source>Tone</source><translation>音色</translation></message>
+    <message><source>De-hum</source><translation>去嗡声</translation></message>
+    <message><source>De-click</source><translation>去咔哒声</translation></message>
+    <message><source>Mains hum and harmonics</source><translation>电源嗡声与谐波</translation></message>
+    <message><source>Short impulse repair</source><translation>短脉冲修复</translation></message>
+</context>
+<context>
+    <name>DeHumPanel</name>
+    <message><source>De-hum</source><translation>去嗡声</translation></message>
+    <message><source>Enabled</source><translation>启用</translation></message>
+    <message><source>Reset de-hum</source><translation>重置去嗡声</translation></message>
+    <message><source>Mains</source><translation>电源频率</translation></message>
+    <message><source>Harmonics</source><translation>谐波</translation></message>
+    <message><source>Depth</source><translation>深度</translation></message>
+    <message><source>Notches the selected mains frequency and its harmonics while preserving nearby sound.</source><translation>对所选电源频率及其谐波进行陷波，同时保留邻近声音。</translation></message>
+</context>
+<context>
+    <name>DeClickPanel</name>
+    <message><source>De-click</source><translation>去咔哒声</translation></message>
+    <message><source>Enabled</source><translation>启用</translation></message>
+    <message><source>Reset de-click</source><translation>重置去咔哒声</translation></message>
+    <message><source>Sensitivity</source><translation>灵敏度</translation></message>
+    <message><source>Maximum impulse</source><translation>最大短脉冲</translation></message>
+    <message><source>Repair</source><translation>修复</translation></message>
+    <message><source>Repairs isolated clicks and short impulses without smoothing sustained transients.</source><translation>修复孤立的咔哒声和短脉冲，同时保留持续瞬态的清晰度。</translation></message>
+</context>
+<context>
+    <name>EditableEffectChain</name>
+    <message><source>Add effect</source><translation>添加效果</translation></message>
+    <message><source>Effect chain</source><translation>效果链</translation></message>
+    <message><source>Bypassed</source><translation>已旁路</translation></message>
+    <message><source>Move effect up</source><translation>上移效果</translation></message>
+    <message><source>Move effect down</source><translation>下移效果</translation></message>
+    <message><source>Delete effect</source><translation>删除效果</translation></message>
     <message><source>Signal flows from top to bottom. Master stays last.</source><translation>信号自上而下流动；母线固定在末端。</translation></message>
 </context>
 <context>
-    <name>EffectChainNode</name>
-    <message><source>Bypassed</source><translation>已旁路</translation></message>
+    <name>EffectCatalog</name>
+    <message><source>Add effect</source><translation>添加效果</translation></message>
+    <message><source>Add</source><translation>添加</translation></message>
+    <message><source>All</source><translation>全部</translation></message>
+    <message><source>Other</source><translation>其他</translation></message>
+    <message><source>Search effects</source><translation>搜索效果</translation></message>
+    <message><source>Unavailable</source><translation>已添加</translation></message>
+    <message><source>No effects found</source><translation>没有匹配的效果</translation></message>
 </context>
 <context>
     <name>AudioLibrarySidebar</name>
@@ -887,6 +927,11 @@
         <source>Redo</source>
         <translation>重做</translation>
     </message>
+    <message>
+        <location filename="../qml/MainTitleBar.qml" line="220"/>
+        <source>Save version</source>
+        <translation>保存版本</translation>
+    </message>
 </context>
 <context>
     <name>MasterOutputPanel</name>
@@ -944,34 +989,6 @@
         <location filename="../qml/MasterOutputPanel.qml" line="243"/>
         <source>True peak estimate</source>
         <translation>真峰值估计</translation>
-    </message>
-</context>
-<context>
-    <name>SoundAdjustmentEditor</name>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="51"/>
-        <source>Adjustments</source>
-        <translation>声音调整</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="70"/>
-        <source>Range</source>
-        <translation>范围</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="83"/>
-        <source>Revert</source>
-        <translation>还原已保存</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="92"/>
-        <source>Clear</source>
-        <translation>清空调整</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="106"/>
-        <source>Save version</source>
-        <translation>保存版本</translation>
     </message>
 </context>
 <context>

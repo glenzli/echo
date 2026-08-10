@@ -80,6 +80,14 @@ Rectangle {
                     deEsserThresholdCentibels: -2400,
                     deEsserReductionCentibels: 600 }
                 : adjustmentDraft.restorationValue()) + ":"
+            + JSON.stringify(auditionOriginal
+                ? { enabled: false, fundamentalHertz: 50, harmonicCount: 4,
+                    qualityTenths: 300, depthCentibels: 2400 }
+                : adjustmentDraft.deHumValue()) + ":"
+            + JSON.stringify(auditionOriginal
+                ? { enabled: false, sensitivityPercent: 50,
+                    maximumClickMicroseconds: 1000, repairPercent: 100 }
+                : adjustmentDraft.deClickValue()) + ":"
             + (auditionOriginal ? false : adjustmentDraft.equalizerEnabled) + ":"
             + JSON.stringify(auditionOriginal
                 ? adjustmentDraft.defaultEqualizerBands()
@@ -129,6 +137,16 @@ Rectangle {
                                     deEsserThresholdCentibels: -2400,
                                     deEsserReductionCentibels: 600 }
                                 : adjustmentDraft.restorationValue(),
+                            auditionOriginal
+                                ? { enabled: false, fundamentalHertz: 50,
+                                    harmonicCount: 4, qualityTenths: 300,
+                                    depthCentibels: 2400 }
+                                : adjustmentDraft.deHumValue(),
+                            auditionOriginal
+                                ? { enabled: false, sensitivityPercent: 50,
+                                    maximumClickMicroseconds: 1000,
+                                    repairPercent: 100 }
+                                : adjustmentDraft.deClickValue(),
                             auditionOriginal ? false : adjustmentDraft.equalizerEnabled,
                             auditionOriginal
                                 ? adjustmentDraft.defaultEqualizerBands()
@@ -214,6 +232,10 @@ Rectangle {
         adjustmentDraft.redo()
     }
 
+    function save() : void {
+        adjustmentDraft.save()
+    }
+
     function debugNudgeEqualizer() : void {
         const band = adjustmentDraft.equalizerBands[2]
         const next = band.gainCentibels >= 1100
@@ -270,6 +292,11 @@ Rectangle {
                                   noiseSensitivity, noiseSmoothing,
                                   deEsserEnabled, deEsserFrequency,
                                   deEsserThreshold, deEsserReduction,
+                                  deHumEnabled, deHumFundamental,
+                                  deHumHarmonicCount, deHumQuality,
+                                  deHumDepth, deClickEnabled,
+                                  deClickSensitivity, deClickMaximumClick,
+                                  deClickRepair,
                                   equalizerEnabled, equalizerBands,
                                   compressorEnabled, compressorThreshold,
                                   compressorRatio, compressorAttack,
@@ -287,6 +314,11 @@ Rectangle {
                                            noiseSensitivity, noiseSmoothing,
                                            deEsserEnabled, deEsserFrequency,
                                            deEsserThreshold, deEsserReduction,
+                                           deHumEnabled, deHumFundamental,
+                                           deHumHarmonicCount, deHumQuality,
+                                           deHumDepth, deClickEnabled,
+                                           deClickSensitivity,
+                                           deClickMaximumClick, deClickRepair,
                                            equalizerEnabled,
                                            equalizerBands,
                                            compressorEnabled, compressorThreshold,
@@ -329,6 +361,15 @@ Rectangle {
         function onDeEsserFrequencyHertzChanged() : void { workspace.scheduleEffectsPreview() }
         function onDeEsserThresholdCentibelsChanged() : void { workspace.scheduleEffectsPreview() }
         function onDeEsserReductionCentibelsChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeHumEnabledChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeHumFundamentalHertzChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeHumHarmonicCountChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeHumQualityTenthsChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeHumDepthCentibelsChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeClickEnabledChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeClickSensitivityPercentChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeClickMaximumClickMicrosecondsChanged() : void { workspace.scheduleEffectsPreview() }
+        function onDeClickRepairPercentChanged() : void { workspace.scheduleEffectsPreview() }
         function onCompressorEnabledChanged() : void {
             workspace.scheduleEffectsPreview()
         }
@@ -388,6 +429,8 @@ Rectangle {
                 adjustmentDraft.equalizerEnabled, adjustmentDraft.equalizerBands)
             const restorationUpdated = player.updateRestoration(
                 adjustmentDraft.restorationValue())
+            const deHumUpdated = player.updateDeHum(adjustmentDraft.deHumValue())
+            const deClickUpdated = player.updateDeClick(adjustmentDraft.deClickValue())
             const compressorUpdated = player.updateCompressor(
                 adjustmentDraft.compressorEnabled,
                 adjustmentDraft.compressorThresholdCentibels,
@@ -400,8 +443,9 @@ Rectangle {
                 adjustmentDraft.limiterCeilingCentibels,
                 adjustmentDraft.limiterReleaseMillis)
             const reverbUpdated = player.updateReverb(adjustmentDraft.reverbValue())
-            if (restorationUpdated && equalizerUpdated && compressorUpdated
-                    && reverbUpdated && limiterUpdated) {
+            if (restorationUpdated && deHumUpdated && deClickUpdated
+                    && equalizerUpdated && compressorUpdated && reverbUpdated
+                    && limiterUpdated) {
                 workspace.loadedAdjustmentKey = workspace.adjustmentKey()
             }
         }
@@ -516,22 +560,28 @@ Rectangle {
             orientation: Qt.Vertical
 
             handle: Rectangle {
-                implicitHeight: 7
-                color: Theme.window
+                implicitHeight: 9
+                color: SplitHandle.pressed ? Theme.surfaceSelected
+                    : SplitHandle.hovered ? Theme.surfaceSubtle : Theme.window
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 44
-                    height: 1
-                    color: Theme.borderStrong
+                    width: SplitHandle.hovered || SplitHandle.pressed ? 64 : 44
+                    height: SplitHandle.hovered || SplitHandle.pressed ? 2 : 1
+                    radius: 1
+                    color: SplitHandle.pressed ? Theme.accent : Theme.borderStrong
+
+                    Behavior on width { NumberAnimation { duration: 90 } }
                 }
+
+                HoverHandler { cursorShape: Qt.SplitVCursor }
             }
 
             SoundEditorTimeline {
                 id: editorTimeline
 
                 SplitView.fillWidth: true
-                SplitView.fillHeight: true
+                SplitView.preferredHeight: 360
                 SplitView.minimumHeight: 200
                 waveformLevels: workspace.waveformLevels
                 sourceDurationMillis: adjustmentDraft.sourceDurationMillis
@@ -566,9 +616,8 @@ Rectangle {
             SoundAdjustmentEditor {
                 id: adjustmentEditor
                 SplitView.fillWidth: true
-                SplitView.preferredHeight: 342
-                SplitView.minimumHeight: 324
-                SplitView.maximumHeight: 390
+                SplitView.fillHeight: true
+                SplitView.minimumHeight: 280
                 draft: adjustmentDraft
                 meterSource: player
                 analyzer: loudnessAnalyzer

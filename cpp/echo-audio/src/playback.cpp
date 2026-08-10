@@ -1,15 +1,11 @@
 #include "echo/audio/playback.hpp"
 
-#include "echo/audio/adaptive_noise_reducer.hpp"
-#include "echo/audio/algorithmic_reverb.hpp"
-#include "echo/audio/de_esser.hpp"
-#include "echo/audio/dynamics_processor.hpp"
+#include "echo/audio/effect_processing_chain.hpp"
 #include "echo/audio/ffmpeg_include.hpp"
 #include "echo/audio/loudness_meter.hpp"
 #include "echo/audio/low_cut_filter.hpp"
 #include "echo/audio/output_guard.hpp"
 #include "echo/audio/output_limiter.hpp"
-#include "echo/audio/parametric_equalizer.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -31,6 +27,8 @@ namespace {
 constexpr int kCanonicalSampleRate = 48000;
 constexpr std::uint64_t kRingCapacityFrames = 4096; // 85 ms at 48 kHz
 constexpr std::uint64_t kSeekWaitTimeoutMillis = 50;
+constexpr std::uint64_t kReadGateClosed = std::uint64_t{1} << 63U;
+constexpr std::uint64_t kReaderCountMask = ~kReadGateClosed;
 std::string av_error_text(int code) {
     char buffer[AV_ERROR_MAX_STRING_SIZE] = {0};
     av_strerror(code, buffer, sizeof(buffer));
@@ -157,8 +155,8 @@ class FrameRing {
         return read_frames;
     }
 
-    /// Discards all buffered frames (seek path; an in-flight consumer copy
-    /// finishes with stale-but-bounded data).
+    /// Discards all buffered frames after the session's read-epoch barrier has
+    /// excluded in-flight consumers.
     void reset() {
         read_index_.store(write_index_.load(std::memory_order_acquire), std::memory_order_release);
     }
@@ -264,24 +262,8 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
-        noise_reducer_ = std::make_unique<AdaptiveNoiseReducer>(
-            adjustment_->restoration().noise_reduction,
-            kCanonicalSampleRate
-        );
-        de_esser_ = std::make_unique<DeEsser>(
-            adjustment_->restoration().de_esser,
-            kCanonicalSampleRate,
-            channel_count_
-        );
-        equalizer_ = std::make_unique<ParametricEqualizer>(
-            adjustment_->equalizer(),
-            kCanonicalSampleRate,
-            channel_count_
-        );
-        dynamics_processor_ =
-            std::make_unique<DynamicsProcessor>(adjustment_->compressor(), kCanonicalSampleRate);
-        reverb_ = std::make_unique<AlgorithmicReverb>(
-            adjustment_->reverb(),
+        effect_chain_ = std::make_unique<EffectProcessingChain>(
+            *adjustment_,
             kCanonicalSampleRate,
             channel_count_
         );
@@ -291,7 +273,8 @@ class PlaybackSession::Impl {
         loudness_meter_ = std::make_unique<LoudnessMeter>(kCanonicalSampleRate, channel_count_);
         pending_equalizer_ = adjustment_->equalizer();
         pending_restoration_ = adjustment_->restoration();
-        restoration_enabled_ = adjustment_->restoration().enabled;
+        pending_de_hum_ = adjustment_->de_hum();
+        pending_de_click_ = adjustment_->de_click();
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -299,7 +282,9 @@ class PlaybackSession::Impl {
         if (packet_ == nullptr || frame_ == nullptr) {
             fail("cannot allocate decode buffers");
         }
-        perform_seek(adjustment_->trim_start_millis());
+        if (!perform_seek(adjustment_->trim_start_millis())) {
+            fail("cannot seek to the prepared trim start");
+        }
     }
 
     ~Impl() {
@@ -313,8 +298,31 @@ class PlaybackSession::Impl {
         if (stopped_.load(std::memory_order_acquire)) {
             return 0;
         }
+        std::uint64_t gate = read_gate_.load(std::memory_order_seq_cst);
+        while ((gate & kReadGateClosed) == 0U) {
+            if ((gate & kReaderCountMask) == kReaderCountMask) {
+                return 0;
+            }
+            if (read_gate_.compare_exchange_weak(
+                    gate,
+                    gate + 1U,
+                    std::memory_order_seq_cst,
+                    std::memory_order_seq_cst
+                )) {
+                break;
+            }
+        }
+        if ((gate & kReadGateClosed) != 0U) {
+            return 0;
+        }
         const std::size_t frames = ring_->read(output, max_frames);
         consumed_frames_.fetch_add(frames, std::memory_order_relaxed);
+        const std::uint64_t exit_gate = read_gate_.fetch_sub(1, std::memory_order_seq_cst);
+        const bool stale = (exit_gate & kReadGateClosed) != 0U;
+        if (stale) {
+            std::fill_n(output, frames * channel_count_, 0.0F);
+            return 0;
+        }
         return frames;
     }
 
@@ -343,28 +351,27 @@ class PlaybackSession::Impl {
 
     void seek(std::uint64_t millis) {
         const std::uint64_t clamped = adjustment_->clamp_seek_millis(millis);
+        std::uint64_t generation = 0;
         {
             std::lock_guard<std::mutex> lock(control_mutex_);
+            generation = ++requested_seek_generation_;
             pending_seek_millis_ = clamped;
+            pending_seek_generation_ = generation;
             seek_requested_ = true;
             control_cv_.notify_one();
         }
         const auto deadline =
             std::chrono::steady_clock::now() + std::chrono::milliseconds(kSeekWaitTimeoutMillis);
-        while (!seek_completed_.load(std::memory_order_acquire)
+        while (completed_seek_generation_.load(std::memory_order_acquire) < generation
                && std::chrono::steady_clock::now() < deadline) {
             std::this_thread::yield();
         }
     }
 
     void update_equalizer(ParametricEqualizerAdjustment adjustment) {
-        [[maybe_unused]] const ParametricEqualizer validation(
-            adjustment,
-            kCanonicalSampleRate,
-            channel_count_
-        );
+        EffectProcessingChain::validate_equalizer(adjustment, kCanonicalSampleRate, channel_count_);
         {
-            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_equalizer_ = adjustment;
             equalizer_update_pending_ = true;
         }
@@ -372,28 +379,43 @@ class PlaybackSession::Impl {
     }
 
     void update_restoration(RestorationAdjustment adjustment) {
-        [[maybe_unused]] const AdaptiveNoiseReducer noise_validation(
-            adjustment.noise_reduction,
-            kCanonicalSampleRate
-        );
-        [[maybe_unused]] const DeEsser de_esser_validation(
-            adjustment.de_esser,
+        EffectProcessingChain::validate_restoration(
+            adjustment,
             kCanonicalSampleRate,
             channel_count_
         );
         {
-            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_restoration_ = adjustment;
             restoration_update_pending_ = true;
         }
         control_cv_.notify_one();
     }
 
-    void update_compressor(CompressorAdjustment adjustment) {
-        // Validate on the caller thread without disturbing the live detector.
-        [[maybe_unused]] const DynamicsProcessor validation(adjustment, kCanonicalSampleRate);
+    void update_de_hum(DeHumAdjustment adjustment) {
+        EffectProcessingChain::validate_de_hum(adjustment, kCanonicalSampleRate, channel_count_);
         {
-            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            std::lock_guard<std::mutex> lock(effect_mutex_);
+            pending_de_hum_ = adjustment;
+            de_hum_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
+    void update_de_click(DeClickAdjustment adjustment) {
+        EffectProcessingChain::validate_de_click(adjustment, kCanonicalSampleRate, channel_count_);
+        {
+            std::lock_guard<std::mutex> lock(effect_mutex_);
+            pending_de_click_ = adjustment;
+            de_click_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
+    void update_compressor(CompressorAdjustment adjustment) {
+        EffectProcessingChain::validate_compressor(adjustment, kCanonicalSampleRate);
+        {
+            std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_compressor_ = adjustment;
             compressor_update_pending_ = true;
         }
@@ -403,7 +425,7 @@ class PlaybackSession::Impl {
     void update_limiter(LimiterAdjustment adjustment) {
         [[maybe_unused]] const OutputLimiter validation(adjustment, kCanonicalSampleRate);
         {
-            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_limiter_ = adjustment;
             limiter_update_pending_ = true;
         }
@@ -411,13 +433,9 @@ class PlaybackSession::Impl {
     }
 
     void update_reverb(ReverbAdjustment adjustment) {
-        [[maybe_unused]] const AlgorithmicReverb validation(
-            adjustment,
-            kCanonicalSampleRate,
-            channel_count_
-        );
+        EffectProcessingChain::validate_reverb(adjustment, kCanonicalSampleRate, channel_count_);
         {
-            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_reverb_ = adjustment;
             reverb_update_pending_ = true;
         }
@@ -481,7 +499,7 @@ class PlaybackSession::Impl {
         return nullptr;
     }
 
-    void perform_seek(std::uint64_t millis) {
+    bool perform_seek(std::uint64_t millis) {
         const std::int64_t timestamp = av_rescale_q(
             static_cast<std::int64_t>(millis),
             AVRational{1, 1000},
@@ -489,37 +507,238 @@ class PlaybackSession::Impl {
         );
         const int result =
             av_seek_frame(format_.get(), stream_index_, timestamp, AVSEEK_FLAG_BACKWARD);
-        if (result >= 0) {
-            avcodec_flush_buffers(codec_.get());
-            swr_close(swr_.get());
-            if (swr_init(swr_.get()) < 0) {
-                fail("cannot reset resampler after seek");
-            }
-            consumed_frames_.store(millis * kCanonicalSampleRate / 1000, std::memory_order_relaxed);
-            decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
-            low_cut_filter_->reset();
-            noise_reducer_->reset();
-            de_esser_->reset();
-            equalizer_->reset();
-            dynamics_processor_->reset();
-            reverb_->reset();
-            output_limiter_->reset();
-            if (options_.apply_output_guard) {
-                output_guard_->reset();
-            }
-            if (options_.collect_metering) {
-                loudness_meter_->reset();
-            }
-            momentary_lufs_.store(-70.0F, std::memory_order_release);
-            output_peak_dbfs_.store(-70.0F, std::memory_order_release);
-            gain_reduction_decibels_.store(0.0F, std::memory_order_release);
-            limiter_reduction_decibels_.store(0.0F, std::memory_order_release);
+        if (result < 0) {
+            return false;
         }
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
-        while (ring_->available() > 0 && std::chrono::steady_clock::now() < deadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        avcodec_flush_buffers(codec_.get());
+        swr_close(swr_.get());
+        if (swr_init(swr_.get()) < 0) {
+            fail("cannot reset resampler after seek");
+        }
+        decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
+        decode_cursor_initialized_ = false;
+        minimum_decode_frame_ = decoded_frame_cursor_;
+        next_output_source_frame_ = decoded_frame_cursor_;
+        low_cut_filter_->reset();
+        effect_chain_->reset();
+        output_limiter_->reset();
+        if (options_.apply_output_guard) {
+            output_guard_->reset();
+        }
+        if (options_.collect_metering) {
+            loudness_meter_->reset();
+        }
+        momentary_lufs_.store(-70.0F, std::memory_order_release);
+        output_peak_dbfs_.store(-70.0F, std::memory_order_release);
+        gain_reduction_decibels_.store(0.0F, std::memory_order_release);
+        limiter_reduction_decibels_.store(0.0F, std::memory_order_release);
+
+        std::uint64_t gate = read_gate_.load(std::memory_order_seq_cst);
+        while (true) {
+            if ((gate & kReadGateClosed) != 0U) {
+                throw std::logic_error("playback read gate is already closed");
+            }
+            if (read_gate_.compare_exchange_weak(
+                    gate,
+                    gate | kReadGateClosed,
+                    std::memory_order_seq_cst,
+                    std::memory_order_seq_cst
+                )) {
+                break;
+            }
+        }
+        while ((read_gate_.load(std::memory_order_seq_cst) & kReaderCountMask) != 0U) {
+            std::this_thread::yield();
         }
         ring_->reset();
+        consumed_frames_.store(millis * kCanonicalSampleRate / 1000, std::memory_order_relaxed);
+        read_gate_.store(0, std::memory_order_seq_cst);
+        return true;
+    }
+
+    std::size_t wait_for_ring_space() {
+        while (true) {
+            const std::size_t writable = ring_->writable();
+            if (writable > 0) {
+                return writable;
+            }
+            std::unique_lock<std::mutex> lock(control_mutex_);
+            control_cv_.wait_for(lock, std::chrono::milliseconds(1));
+            if (stopped_ || seek_requested_) {
+                return 0;
+            }
+        }
+    }
+
+    void apply_pending_effect_updates() {
+        std::lock_guard<std::mutex> lock(effect_mutex_);
+        if (equalizer_update_pending_) {
+            effect_chain_->update_equalizer(pending_equalizer_);
+            equalizer_update_pending_ = false;
+        }
+        if (restoration_update_pending_) {
+            effect_chain_->update_restoration(pending_restoration_);
+            restoration_update_pending_ = false;
+        }
+        if (de_hum_update_pending_) {
+            effect_chain_->update_de_hum(pending_de_hum_);
+            de_hum_update_pending_ = false;
+        }
+        if (de_click_update_pending_) {
+            effect_chain_->update_de_click(pending_de_click_);
+            de_click_update_pending_ = false;
+        }
+        if (compressor_update_pending_) {
+            effect_chain_->update_compressor(pending_compressor_);
+            compressor_update_pending_ = false;
+        }
+        if (limiter_update_pending_) {
+            output_limiter_->update(pending_limiter_);
+            limiter_update_pending_ = false;
+        }
+        if (reverb_update_pending_) {
+            effect_chain_->update_reverb(pending_reverb_);
+            reverb_update_pending_ = false;
+        }
+    }
+
+    void publish_processed(float* samples, std::size_t frame_count) {
+        if (frame_count == 0) {
+            return;
+        }
+        for (std::size_t frame = 0; frame < frame_count; ++frame) {
+            const float envelope = adjustment_->envelope_at(next_output_source_frame_ + frame);
+            for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                samples[frame * channel_count_ + channel] *= envelope;
+            }
+        }
+        next_output_source_frame_ += frame_count;
+        output_limiter_->process_interleaved(samples, frame_count, channel_count_);
+        if (options_.apply_output_guard) {
+            output_guard_->process_interleaved(samples, frame_count, channel_count_);
+        }
+        if (options_.collect_metering) {
+            loudness_meter_->process_interleaved(samples, frame_count, channel_count_);
+            const LoudnessSnapshot loudness = loudness_meter_->snapshot();
+            momentary_lufs_.store(loudness.momentary_lufs, std::memory_order_release);
+            output_peak_dbfs_.store(loudness.sample_peak_dbfs, std::memory_order_release);
+        }
+        gain_reduction_decibels_.store(
+            effect_chain_->gain_reduction_decibels(),
+            std::memory_order_release
+        );
+        limiter_reduction_decibels_.store(
+            output_limiter_->gain_reduction_decibels(),
+            std::memory_order_release
+        );
+        const std::size_t pushed = ring_->write(samples, frame_count);
+        if (pushed != frame_count) {
+            throw std::logic_error("effect output exceeded reserved playback ring capacity");
+        }
+    }
+
+    bool finish_effect_chain(float* scratch, std::size_t scratch_frames) {
+        while (effect_chain_->pending_output_frames() > 0) {
+            const std::size_t writable = wait_for_ring_space();
+            if (writable == 0) {
+                return false;
+            }
+            apply_pending_effect_updates();
+            const std::size_t capacity = std::min(scratch_frames, writable);
+            const std::size_t produced =
+                effect_chain_->finish_interleaved(scratch, capacity, channel_count_);
+            publish_processed(scratch, produced);
+        }
+        return true;
+    }
+
+    bool feed_resampled(
+        const float* const* planes,
+        std::size_t sample_count,
+        float* scratch,
+        std::size_t scratch_frames
+    ) {
+        const std::uint64_t frame_start = decoded_frame_cursor_;
+        const std::uint64_t frame_end = frame_start + static_cast<std::uint64_t>(sample_count);
+        decoded_frame_cursor_ = frame_end;
+        const std::uint64_t selected_start =
+            std::max({frame_start, adjustment_->start_frame(), minimum_decode_frame_});
+        const std::uint64_t selected_end = std::min(frame_end, adjustment_->end_frame());
+        const std::size_t input_offset =
+            selected_start < selected_end ? static_cast<std::size_t>(selected_start - frame_start)
+                                          : 0;
+        const std::size_t selected_count =
+            selected_start < selected_end ? static_cast<std::size_t>(selected_end - selected_start)
+                                          : 0;
+        std::size_t input_consumed = 0;
+        while (input_consumed < selected_count) {
+            const std::size_t writable = wait_for_ring_space();
+            if (writable == 0) {
+                return false;
+            }
+            const std::size_t chunk =
+                std::min({selected_count - input_consumed, scratch_frames, writable});
+            apply_pending_effect_updates();
+            for (std::size_t index = 0; index < chunk; ++index) {
+                for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                    const float filtered = low_cut_filter_->process_sample(
+                        planes[channel][input_offset + input_consumed + index],
+                        channel
+                    );
+                    scratch[index * channel_count_ + channel] =
+                        filtered * adjustment_->gain_amplitude();
+                }
+            }
+            const std::size_t produced =
+                effect_chain_->process_interleaved(scratch, chunk, channel_count_);
+            publish_processed(scratch, produced);
+            input_consumed += chunk;
+        }
+        return frame_end >= adjustment_->end_frame()
+               && finish_effect_chain(scratch, scratch_frames);
+    }
+
+    bool drain_resampler_and_feed(float* scratch, std::size_t scratch_frames) {
+        while (true) {
+            const int output_samples = swr_get_out_samples(swr_.get(), 0);
+            if (output_samples <= 0) {
+                return false;
+            }
+            uint8_t* output_data[2] = {nullptr};
+            int output_linesize = 0;
+            const int allocation_result = av_samples_alloc(
+                output_data,
+                &output_linesize,
+                static_cast<int>(channel_count_),
+                output_samples,
+                AV_SAMPLE_FMT_FLTP,
+                0
+            );
+            if (allocation_result < 0) {
+                fail("cannot allocate resampler drain output: " + av_error_text(allocation_result));
+            }
+            const int sample_count =
+                swr_convert(swr_.get(), output_data, output_samples, nullptr, 0);
+            if (sample_count < 0) {
+                av_freep(&output_data[0]);
+                fail("cannot drain resampler output: " + av_error_text(sample_count));
+            }
+            if (sample_count == 0) {
+                av_freep(&output_data[0]);
+                return false;
+            }
+            const float* const* planes = reinterpret_cast<const float* const*>(output_data);
+            const bool reached_end = feed_resampled(
+                planes,
+                static_cast<std::size_t>(sample_count),
+                scratch,
+                scratch_frames
+            );
+            av_freep(&output_data[0]);
+            if (reached_end) {
+                return true;
+            }
+        }
     }
 
     bool decode_and_feed(float* scratch, std::size_t scratch_frames) {
@@ -551,151 +770,25 @@ class PlaybackSession::Impl {
             );
             if (sample_count > 0) {
                 const float* const* planes = reinterpret_cast<const float* const*>(output_data);
-                const AVStream* stream = format_.get()->streams[stream_index_];
-                std::uint64_t frame_start = decoded_frame_cursor_;
-                if (frame_->best_effort_timestamp != AV_NOPTS_VALUE) {
+                if (!decode_cursor_initialized_
+                    && frame_->best_effort_timestamp != AV_NOPTS_VALUE) {
+                    const AVStream* stream = format_.get()->streams[stream_index_];
                     const std::int64_t rescaled = av_rescale_q(
                         frame_->best_effort_timestamp,
                         stream->time_base,
                         AVRational{1, kCanonicalSampleRate}
                     );
                     if (rescaled >= 0) {
-                        frame_start = static_cast<std::uint64_t>(rescaled);
+                        decoded_frame_cursor_ = static_cast<std::uint64_t>(rescaled);
                     }
                 }
-                const std::uint64_t frame_end =
-                    frame_start + static_cast<std::uint64_t>(sample_count);
-                decoded_frame_cursor_ = frame_end;
-                const std::uint64_t selected_start =
-                    std::max(frame_start, adjustment_->start_frame());
-                const std::uint64_t selected_end = std::min(frame_end, adjustment_->end_frame());
-                const std::size_t input_offset =
-                    selected_start < selected_end
-                        ? static_cast<std::size_t>(selected_start - frame_start)
-                        : 0;
-                const std::size_t selected_count =
-                    selected_start < selected_end
-                        ? static_cast<std::size_t>(selected_end - selected_start)
-                        : 0;
-                std::size_t written = 0;
-                while (written < selected_count) {
-                    const std::size_t writable = ring_->writable();
-                    if (writable == 0) {
-                        std::unique_lock<std::mutex> lock(control_mutex_);
-                        control_cv_.wait_for(lock, std::chrono::milliseconds(1));
-                        if (stopped_) {
-                            av_freep(&output_data[0]);
-                            av_frame_unref(frame_.get());
-                            return false;
-                        }
-                        if (seek_requested_) {
-                            av_freep(&output_data[0]);
-                            av_frame_unref(frame_.get());
-                            return false;
-                        }
-                        continue;
-                    }
-                    const std::size_t chunk =
-                        std::min({selected_count - written, scratch_frames, writable});
-                    {
-                        std::lock_guard<std::mutex> lock(dynamics_mutex_);
-                        if (equalizer_update_pending_) {
-                            equalizer_->transition_to(pending_equalizer_);
-                            equalizer_update_pending_ = false;
-                        }
-                        if (restoration_update_pending_) {
-                            noise_reducer_->update(pending_restoration_.noise_reduction);
-                            de_esser_->update(pending_restoration_.de_esser);
-                            restoration_enabled_ = pending_restoration_.enabled;
-                            restoration_update_pending_ = false;
-                        }
-                        if (compressor_update_pending_) {
-                            dynamics_processor_->update(pending_compressor_);
-                            compressor_update_pending_ = false;
-                        }
-                        if (limiter_update_pending_) {
-                            output_limiter_->update(pending_limiter_);
-                            limiter_update_pending_ = false;
-                        }
-                        if (reverb_update_pending_) {
-                            reverb_->update(pending_reverb_);
-                            reverb_update_pending_ = false;
-                        }
-                    }
-                    for (std::size_t index = 0; index < chunk; ++index) {
-                        for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                            const float filtered = low_cut_filter_->process_sample(
-                                planes[channel][input_offset + written + index],
-                                channel
-                            );
-                            scratch[index * channel_count_ + channel] = filtered;
-                        }
-                    }
-                    const auto effect_chain = adjustment_->effect_chain();
-                    for (std::size_t node_index = 0; node_index + 1 < effect_chain.size();
-                         ++node_index) {
-                        switch (effect_chain[node_index]) {
-                        case EffectNodeKind::Restoration:
-                            if (restoration_enabled_) {
-                                noise_reducer_->process_interleaved(scratch, chunk, channel_count_);
-                                de_esser_->process_interleaved(scratch, chunk, channel_count_);
-                            }
-                            break;
-                        case EffectNodeKind::Equalizer:
-                            for (std::size_t index = 0; index < chunk; ++index) {
-                                for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                                    const std::size_t sample_index =
-                                        index * channel_count_ + channel;
-                                    scratch[sample_index] =
-                                        equalizer_->process_sample(scratch[sample_index], channel)
-                                        * adjustment_->gain_amplitude();
-                                }
-                            }
-                            break;
-                        case EffectNodeKind::Dynamics:
-                            dynamics_processor_
-                                ->process_interleaved(scratch, chunk, channel_count_);
-                            break;
-                        case EffectNodeKind::Space:
-                            reverb_->process_interleaved(scratch, chunk, channel_count_);
-                            break;
-                        case EffectNodeKind::Master:
-                            break;
-                        }
-                    }
-                    for (std::size_t index = 0; index < chunk; ++index) {
-                        const std::uint64_t source_frame =
-                            selected_start + static_cast<std::uint64_t>(written + index);
-                        const float envelope = adjustment_->envelope_at(source_frame);
-                        for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                            scratch[index * channel_count_ + channel] *= envelope;
-                        }
-                    }
-                    output_limiter_->process_interleaved(scratch, chunk, channel_count_);
-                    if (options_.apply_output_guard) {
-                        output_guard_->process_interleaved(scratch, chunk, channel_count_);
-                    }
-                    if (options_.collect_metering) {
-                        loudness_meter_->process_interleaved(scratch, chunk, channel_count_);
-                        const LoudnessSnapshot loudness = loudness_meter_->snapshot();
-                        momentary_lufs_.store(loudness.momentary_lufs, std::memory_order_release);
-                        output_peak_dbfs_.store(
-                            loudness.sample_peak_dbfs,
-                            std::memory_order_release
-                        );
-                    }
-                    gain_reduction_decibels_.store(
-                        dynamics_processor_->gain_reduction_decibels(),
-                        std::memory_order_release
-                    );
-                    limiter_reduction_decibels_.store(
-                        output_limiter_->gain_reduction_decibels(),
-                        std::memory_order_release
-                    );
-                    const std::size_t pushed = ring_->write(scratch, chunk);
-                    written += pushed;
-                }
-                if (frame_end >= adjustment_->end_frame()) {
+                decode_cursor_initialized_ = true;
+                if (feed_resampled(
+                        planes,
+                        static_cast<std::size_t>(sample_count),
+                        scratch,
+                        scratch_frames
+                    )) {
                     av_freep(&output_data[0]);
                     av_frame_unref(frame_.get());
                     return true;
@@ -718,17 +811,16 @@ class PlaybackSession::Impl {
                 }
                 if (seek_requested_) {
                     const std::uint64_t target = pending_seek_millis_;
+                    const std::uint64_t generation = pending_seek_generation_;
                     seek_requested_ = false;
                     lock.unlock();
-                    perform_seek(target);
-                    // A seek after end-of-stream must restart decoding.
-                    ended_.store(false, std::memory_order_release);
-                    seek_completed_.store(true, std::memory_order_release);
+                    if (perform_seek(target)) {
+                        // A successful seek after end-of-stream restarts decoding.
+                        ended_.store(false, std::memory_order_release);
+                    }
+                    completed_seek_generation_.store(generation, std::memory_order_release);
                     continue;
                 }
-            }
-            if (seek_completed_.load(std::memory_order_acquire)) {
-                seek_completed_.store(false, std::memory_order_release);
             }
 
             if (ended_.load(std::memory_order_acquire)) {
@@ -739,9 +831,18 @@ class PlaybackSession::Impl {
             const int read_result = av_read_frame(format_.get(), packet_.get());
             if (read_result == AVERROR_EOF) {
                 avcodec_send_packet(codec_.get(), nullptr);
-                decode_and_feed(scratch.data(), scratch.size() / channel_count_);
+                bool reached_end = decode_and_feed(scratch.data(), scratch.size() / channel_count_);
+                if (!reached_end) {
+                    reached_end =
+                        drain_resampler_and_feed(scratch.data(), scratch.size() / channel_count_);
+                }
+                const bool finished =
+                    reached_end
+                    || finish_effect_chain(scratch.data(), scratch.size() / channel_count_);
                 av_packet_unref(packet_.get());
-                ended_.store(true, std::memory_order_release);
+                if (finished) {
+                    ended_.store(true, std::memory_order_release);
+                }
                 continue;
             }
             if (read_result < 0) {
@@ -772,21 +873,23 @@ class PlaybackSession::Impl {
     std::unique_ptr<FrameRing> ring_;
     std::unique_ptr<PreparedAdjustment> adjustment_;
     std::unique_ptr<LowCutFilter> low_cut_filter_;
-    std::unique_ptr<AdaptiveNoiseReducer> noise_reducer_;
-    std::unique_ptr<DeEsser> de_esser_;
-    std::unique_ptr<ParametricEqualizer> equalizer_;
-    std::unique_ptr<DynamicsProcessor> dynamics_processor_;
-    std::unique_ptr<AlgorithmicReverb> reverb_;
+    std::unique_ptr<EffectProcessingChain> effect_chain_;
     std::unique_ptr<OutputLimiter> output_limiter_;
     std::unique_ptr<OutputGuard> output_guard_;
     std::unique_ptr<LoudnessMeter> loudness_meter_;
     std::uint64_t decoded_frame_cursor_ = 0;
-    std::mutex dynamics_mutex_;
+    bool decode_cursor_initialized_ = false;
+    std::uint64_t minimum_decode_frame_ = 0;
+    std::uint64_t next_output_source_frame_ = 0;
+    std::mutex effect_mutex_;
     ParametricEqualizerAdjustment pending_equalizer_;
     bool equalizer_update_pending_ = false;
     RestorationAdjustment pending_restoration_;
-    bool restoration_enabled_ = true;
     bool restoration_update_pending_ = false;
+    DeHumAdjustment pending_de_hum_;
+    bool de_hum_update_pending_ = false;
+    DeClickAdjustment pending_de_click_;
+    bool de_click_update_pending_ = false;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;
     ReverbAdjustment pending_reverb_;
@@ -805,7 +908,10 @@ class PlaybackSession::Impl {
     std::atomic<bool> stopped_{false};
     bool seek_requested_ = false;
     std::uint64_t pending_seek_millis_ = 0;
-    std::atomic<bool> seek_completed_{false};
+    std::uint64_t pending_seek_generation_ = 0;
+    std::uint64_t requested_seek_generation_ = 0;
+    std::atomic<std::uint64_t> completed_seek_generation_{0};
+    std::atomic<std::uint64_t> read_gate_{0};
 
     std::atomic<bool> ended_{false};
     std::atomic<std::uint64_t> consumed_frames_{0};
@@ -842,6 +948,12 @@ void PlaybackSession::update_equalizer(ParametricEqualizerAdjustment adjustment)
 }
 void PlaybackSession::update_restoration(RestorationAdjustment adjustment) {
     impl_->update_restoration(adjustment);
+}
+void PlaybackSession::update_de_hum(DeHumAdjustment adjustment) {
+    impl_->update_de_hum(adjustment);
+}
+void PlaybackSession::update_de_click(DeClickAdjustment adjustment) {
+    impl_->update_de_click(adjustment);
 }
 void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
     impl_->update_compressor(adjustment);

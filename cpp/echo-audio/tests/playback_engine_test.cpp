@@ -86,12 +86,27 @@ std::size_t pull_until(
     std::size_t chunk
 ) {
     std::size_t total = 0;
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
     while (total < target && std::chrono::steady_clock::now() < deadline) {
-        total += session.read(buffer + total * session.channel_count(), chunk);
-        if (total == 0) {
+        const std::size_t pulled = session.read(buffer + total * session.channel_count(), chunk);
+        total += pulled;
+        if (pulled == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
+    }
+    return total;
+}
+
+std::size_t drain_until_ended(echo::audio::PlaybackSession& session, std::size_t chunk) {
+    std::vector<float> buffer(chunk * session.channel_count(), 0.0F);
+    std::size_t total = 0;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (std::chrono::steady_clock::now() < deadline) {
+        total += session.read(buffer.data(), chunk);
+        if (session.is_ended() && session.buffered_frames() == 0) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     return total;
 }
@@ -397,13 +412,15 @@ int main(int argc, char* argv[]) {
                  .damping_percent = 35,
                  .low_cut_hertz = 120,
                  .high_cut_hertz = 10000},
-            .effect_chain = {
-                echo::audio::EffectNodeKind::Restoration,
-                echo::audio::EffectNodeKind::Equalizer,
-                echo::audio::EffectNodeKind::Dynamics,
-                echo::audio::EffectNodeKind::Space,
-                echo::audio::EffectNodeKind::Master
-            },
+            .effect_chain =
+                {echo::audio::EffectNodeKind::Restoration,
+                 echo::audio::EffectNodeKind::Equalizer,
+                 echo::audio::EffectNodeKind::Dynamics,
+                 echo::audio::EffectNodeKind::Space,
+                 echo::audio::EffectNodeKind::Master,
+                 echo::audio::EffectNodeKind::DeHum,
+                 echo::audio::EffectNodeKind::DeClick},
+            .effect_chain_count = 5,
         };
         auto space_then_dynamics = dynamics_then_space;
         space_then_dynamics.effect_chain = {
@@ -411,7 +428,9 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::Equalizer,
             echo::audio::EffectNodeKind::Space,
             echo::audio::EffectNodeKind::Dynamics,
-            echo::audio::EffectNodeKind::Master
+            echo::audio::EffectNodeKind::Master,
+            echo::audio::EffectNodeKind::DeHum,
+            echo::audio::EffectNodeKind::DeClick
         };
 
         echo::audio::PlaybackSession first_order(path.string(), dynamics_then_space);
@@ -439,6 +458,43 @@ int main(int argc, char* argv[]) {
         );
         first_order.stop();
         second_order.stop();
+    }
+
+    // A fixed-look-ahead node keeps its latency while bypassed, but playback
+    // compensates it at the session boundary: neither a full trim nor a seek
+    // loses source frames or extends the authored duration.
+    {
+        const echo::audio::PlaybackAdjustment latency_compensated{
+            .trim_start_millis = 500,
+            .trim_end_millis = 1000,
+            .effect_chain =
+                {
+                    echo::audio::EffectNodeKind::Restoration,
+                    echo::audio::EffectNodeKind::DeClick,
+                    echo::audio::EffectNodeKind::Master,
+                    echo::audio::EffectNodeKind::Equalizer,
+                    echo::audio::EffectNodeKind::Dynamics,
+                    echo::audio::EffectNodeKind::Space,
+                    echo::audio::EffectNodeKind::DeHum,
+                },
+            .effect_chain_count = 3,
+        };
+        echo::audio::PlaybackSession full(path.string(), latency_compensated);
+        expect(
+            drain_until_ended(full, 173) == 24'000,
+            "latency compensation preserves the full selected frame count"
+        );
+        expect(full.position_millis() == 1000, "latency-compensated playback ends at trim out");
+        full.stop();
+
+        echo::audio::PlaybackSession sought(path.string(), latency_compensated);
+        sought.seek(750);
+        expect(
+            drain_until_ended(sought, 113) == 12'000,
+            "latency compensation resets after seek without losing frames"
+        );
+        expect(sought.position_millis() == 1000, "latency-compensated seek ends at trim out");
+        sought.stop();
     }
 
     // Positive EQ on near-full-scale material must not recreate the former

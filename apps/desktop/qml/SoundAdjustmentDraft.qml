@@ -26,6 +26,15 @@ QtObject {
     property int deEsserFrequencyHertz: 6500
     property int deEsserThresholdCentibels: -2400
     property int deEsserReductionCentibels: 600
+    property bool deHumEnabled: false
+    property int deHumFundamentalHertz: 50
+    property int deHumHarmonicCount: 4
+    property int deHumQualityTenths: 300
+    property int deHumDepthCentibels: 2400
+    property bool deClickEnabled: false
+    property int deClickSensitivityPercent: 50
+    property int deClickMaximumClickMicroseconds: 1000
+    property int deClickRepairPercent: 100
     property bool equalizerEnabled: true
     property var equalizerBands: defaultEqualizerBands()
     property bool compressorEnabled: false
@@ -65,11 +74,13 @@ QtObject {
         && fadeInMillis === 0 && fadeOutMillis === 0
         && fadeInCurve === 0 && fadeOutCurve === 0
         && gainCentibels === 0 && lowCutHertz === 0
-        && (!restorationEnabled
+        && (!containsEffectNode(0) || !restorationEnabled
             || (!noiseReductionEnabled && !deEsserEnabled))
-        && (!equalizerEnabled || equalizerIsFlat())
-        && !compressorEnabled
-        && !reverbEnabled
+        && (!containsEffectNode(5) || !deHumEnabled)
+        && (!containsEffectNode(6) || !deClickEnabled)
+        && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat())
+        && (!containsEffectNode(2) || !compressorEnabled)
+        && (!containsEffectNode(3) || !reverbEnabled)
         && !limiterEnabled
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
@@ -82,6 +93,11 @@ QtObject {
                          int noiseSensitivity, int noiseSmoothing,
                          bool deEsserEnabled, int deEsserFrequency,
                          int deEsserThreshold, int deEsserReduction,
+                         bool deHumEnabled, int deHumFundamental,
+                         int deHumHarmonicCount, int deHumQuality,
+                         int deHumDepth,
+                         bool deClickEnabled, int deClickSensitivity,
+                         int deClickMaximumClick, int deClickRepair,
                          bool equalizerEnabled, var equalizerBands,
                          bool compressorEnabled, int compressorThreshold,
                          int compressorRatio, int compressorAttack,
@@ -119,25 +135,30 @@ QtObject {
     }
 
     function copyEffectChain(values: var) : var {
-        if (!values || values.length !== 5) return defaultEffectChain()
+        if (!values || values.length < 1 || values.length > 7)
+            return defaultEffectChain()
         const result = []
-        const seen = [false, false, false, false, false]
+        const seen = [false, false, false, false, false, false, false]
         for (let index = 0; index < values.length; ++index) {
             const node = Math.round(Number(values[index]))
-            if (node < 0 || node > 4 || seen[node]) return defaultEffectChain()
+            if (node < 0 || node > 6 || seen[node]) return defaultEffectChain()
             seen[node] = true
             result.push(node)
         }
-        return result[4] === 4 ? result : defaultEffectChain()
+        return result[result.length - 1] === 4 ? result : defaultEffectChain()
     }
 
     function sameEffectChain(left: var, right: var) : bool {
-        if (!left || !right || left.length !== 5 || right.length !== 5)
+        if (!left || !right || left.length !== right.length)
             return false
-        for (let index = 0; index < 5; ++index) {
+        for (let index = 0; index < left.length; ++index) {
             if (Number(left[index]) !== Number(right[index])) return false
         }
         return true
+    }
+
+    function containsEffectNode(kind: int) : bool {
+        return effectChain && effectChain.indexOf(kind) !== -1
     }
 
     function copyEqualizerBands(values: var) : var {
@@ -204,6 +225,15 @@ QtObject {
             deEsserFrequencyHertz: deEsserFrequencyHertz,
             deEsserThresholdCentibels: deEsserThresholdCentibels,
             deEsserReductionCentibels: deEsserReductionCentibels,
+            deHumEnabled: deHumEnabled,
+            deHumFundamentalHertz: deHumFundamentalHertz,
+            deHumHarmonicCount: deHumHarmonicCount,
+            deHumQualityTenths: deHumQualityTenths,
+            deHumDepthCentibels: deHumDepthCentibels,
+            deClickEnabled: deClickEnabled,
+            deClickSensitivityPercent: deClickSensitivityPercent,
+            deClickMaximumClickMicroseconds: deClickMaximumClickMicroseconds,
+            deClickRepairPercent: deClickRepairPercent,
             equalizerEnabled: equalizerEnabled,
             equalizerBands: copyEqualizerBands(equalizerBands),
             compressorEnabled: compressorEnabled,
@@ -246,6 +276,16 @@ QtObject {
             deEsserFrequencyHertz: Number(value.deEsserFrequencyHertz),
             deEsserThresholdCentibels: Number(value.deEsserThresholdCentibels),
             deEsserReductionCentibels: Number(value.deEsserReductionCentibels),
+            deHumEnabled: Boolean(value.deHumEnabled),
+            deHumFundamentalHertz: Number(value.deHumFundamentalHertz),
+            deHumHarmonicCount: Number(value.deHumHarmonicCount),
+            deHumQualityTenths: Number(value.deHumQualityTenths),
+            deHumDepthCentibels: Number(value.deHumDepthCentibels),
+            deClickEnabled: Boolean(value.deClickEnabled),
+            deClickSensitivityPercent: Number(value.deClickSensitivityPercent),
+            deClickMaximumClickMicroseconds:
+                Number(value.deClickMaximumClickMicroseconds),
+            deClickRepairPercent: Number(value.deClickRepairPercent),
             equalizerEnabled: Boolean(value.equalizerEnabled),
             equalizerBands: copyEqualizerBands(value.equalizerBands),
             compressorEnabled: Boolean(value.compressorEnabled),
@@ -288,6 +328,22 @@ QtObject {
             && Number(left.deEsserFrequencyHertz) === Number(right.deEsserFrequencyHertz)
             && Number(left.deEsserThresholdCentibels) === Number(right.deEsserThresholdCentibels)
             && Number(left.deEsserReductionCentibels) === Number(right.deEsserReductionCentibels)
+            && Boolean(left.deHumEnabled) === Boolean(right.deHumEnabled)
+            && Number(left.deHumFundamentalHertz)
+                === Number(right.deHumFundamentalHertz)
+            && Number(left.deHumHarmonicCount)
+                === Number(right.deHumHarmonicCount)
+            && Number(left.deHumQualityTenths)
+                === Number(right.deHumQualityTenths)
+            && Number(left.deHumDepthCentibels)
+                === Number(right.deHumDepthCentibels)
+            && Boolean(left.deClickEnabled) === Boolean(right.deClickEnabled)
+            && Number(left.deClickSensitivityPercent)
+                === Number(right.deClickSensitivityPercent)
+            && Number(left.deClickMaximumClickMicroseconds)
+                === Number(right.deClickMaximumClickMicroseconds)
+            && Number(left.deClickRepairPercent)
+                === Number(right.deClickRepairPercent)
             && Boolean(left.equalizerEnabled) === Boolean(right.equalizerEnabled)
             && sameEqualizer(left.equalizerBands, right.equalizerBands)
             && Boolean(left.compressorEnabled)
@@ -334,6 +390,15 @@ QtObject {
                 deEsserFrequencyHertz: 6500,
                 deEsserThresholdCentibels: -2400,
                 deEsserReductionCentibels: 600,
+                deHumEnabled: false,
+                deHumFundamentalHertz: 50,
+                deHumHarmonicCount: 4,
+                deHumQualityTenths: 300,
+                deHumDepthCentibels: 2400,
+                deClickEnabled: false,
+                deClickSensitivityPercent: 50,
+                deClickMaximumClickMicroseconds: 1000,
+                deClickRepairPercent: 100,
                 equalizerEnabled: true,
                 equalizerBands: defaultEqualizerBands(),
                 compressorEnabled: false,
@@ -378,6 +443,22 @@ QtObject {
             deEsserFrequencyHertz: clamp(Number(asset.deEsserFrequencyHertz ?? 6500), 3000, 12000),
             deEsserThresholdCentibels: clamp(Number(asset.deEsserThresholdCentibels ?? -2400), -6000, 0),
             deEsserReductionCentibels: clamp(Number(asset.deEsserReductionCentibels ?? 600), 0, 1800),
+            deHumEnabled: Boolean(asset.deHumEnabled),
+            deHumFundamentalHertz: Number(asset.deHumFundamentalHertz) === 60
+                ? 60 : 50,
+            deHumHarmonicCount: clamp(
+                Number(asset.deHumHarmonicCount ?? 4), 1, 8),
+            deHumQualityTenths: clamp(
+                Number(asset.deHumQualityTenths ?? 300), 50, 1000),
+            deHumDepthCentibels: clamp(
+                Number(asset.deHumDepthCentibels ?? 2400), 0, 4800),
+            deClickEnabled: Boolean(asset.deClickEnabled),
+            deClickSensitivityPercent: clamp(
+                Number(asset.deClickSensitivityPercent ?? 50), 0, 100),
+            deClickMaximumClickMicroseconds: clamp(
+                Number(asset.deClickMaximumClickMicroseconds ?? 1000), 50, 2000),
+            deClickRepairPercent: clamp(
+                Number(asset.deClickRepairPercent ?? 100), 0, 100),
             equalizerEnabled: asset.equalizerEnabled === undefined
                 ? true : Boolean(asset.equalizerEnabled),
             equalizerBands: copyEqualizerBands(asset.equalizerBands),
@@ -434,6 +515,16 @@ QtObject {
         deEsserFrequencyHertz = Number(value.deEsserFrequencyHertz)
         deEsserThresholdCentibels = Number(value.deEsserThresholdCentibels)
         deEsserReductionCentibels = Number(value.deEsserReductionCentibels)
+        deHumEnabled = Boolean(value.deHumEnabled)
+        deHumFundamentalHertz = Number(value.deHumFundamentalHertz)
+        deHumHarmonicCount = Number(value.deHumHarmonicCount)
+        deHumQualityTenths = Number(value.deHumQualityTenths)
+        deHumDepthCentibels = Number(value.deHumDepthCentibels)
+        deClickEnabled = Boolean(value.deClickEnabled)
+        deClickSensitivityPercent = Number(value.deClickSensitivityPercent)
+        deClickMaximumClickMicroseconds
+            = Number(value.deClickMaximumClickMicroseconds)
+        deClickRepairPercent = Number(value.deClickRepairPercent)
         equalizerEnabled = Boolean(value.equalizerEnabled)
         equalizerBands = copyEqualizerBands(value.equalizerBands)
         compressorEnabled = Boolean(value.compressorEnabled)
@@ -560,12 +651,33 @@ QtObject {
         }
     }
 
+    function deHumValue() : var {
+        return {
+            enabled: deHumEnabled,
+            fundamentalHertz: deHumFundamentalHertz,
+            harmonicCount: deHumHarmonicCount,
+            qualityTenths: deHumQualityTenths,
+            depthCentibels: deHumDepthCentibels
+        }
+    }
+
+    function deClickValue() : var {
+        return {
+            enabled: deClickEnabled,
+            sensitivityPercent: deClickSensitivityPercent,
+            maximumClickMicroseconds: deClickMaximumClickMicroseconds,
+            repairPercent: deClickRepairPercent
+        }
+    }
+
     function effectNodeEnabled(kind: int) : bool {
         if (kind === 0) return restorationEnabled
         if (kind === 1) return equalizerEnabled
         if (kind === 2) return compressorEnabled
         if (kind === 3) return reverbEnabled
         if (kind === 4) return limiterEnabled
+        if (kind === 5) return deHumEnabled
+        if (kind === 6) return deClickEnabled
         return false
     }
 
@@ -575,6 +687,8 @@ QtObject {
         else if (kind === 2) compressorEnabled = enabled
         else if (kind === 3) reverbEnabled = enabled
         else if (kind === 4) limiterEnabled = enabled
+        else if (kind === 5) deHumEnabled = enabled
+        else if (kind === 6) deClickEnabled = enabled
         else return
         pushCurrent()
     }
@@ -584,11 +698,90 @@ QtObject {
         const next = copyEffectChain(effectChain)
         const from = next.indexOf(kind)
         const target = from + (direction < 0 ? -1 : 1)
-        if (from < 0 || target < 0 || target >= 4) return
+        if (from < 0 || target < 0 || target >= next.length - 1) return
         const displaced = next[target]
         next[target] = kind
         next[from] = displaced
         effectChain = next
+        pushCurrent()
+    }
+
+    function addEffectNode(kind: int) : void {
+        if (kind < 0 || kind > 6 || kind === 4 || containsEffectNode(kind)) return
+        const next = copyEffectChain(effectChain)
+        next.splice(next.length - 1, 0, kind)
+        effectChain = next
+        if (kind === 0) restorationEnabled = true
+        else if (kind === 1) equalizerEnabled = true
+        else if (kind === 2) compressorEnabled = true
+        else if (kind === 3) reverbEnabled = true
+        else if (kind === 5) deHumEnabled = true
+        else if (kind === 6) deClickEnabled = true
+        pushCurrent()
+    }
+
+    function removeEffectNode(kind: int) : void {
+        if (kind < 0 || kind > 6 || kind === 4) return
+        const next = copyEffectChain(effectChain)
+        const index = next.indexOf(kind)
+        if (index < 0) return
+        next.splice(index, 1)
+        effectChain = next
+        pushCurrent()
+    }
+
+    function setDeHumEnabled(enabled: bool) : void {
+        deHumEnabled = enabled
+        pushCurrent()
+    }
+
+    function setDeHumParameter(parameter: string, value: int) : void {
+        if (parameter === "fundamental") {
+            deHumFundamentalHertz = Number(value) === 60 ? 60 : 50
+        } else if (parameter === "harmonics") {
+            deHumHarmonicCount = Math.round(clamp(value, 1, 8))
+        } else if (parameter === "quality") {
+            deHumQualityTenths = Math.round(clamp(value, 50, 1000))
+        } else if (parameter === "depth") {
+            deHumDepthCentibels = Math.round(clamp(value, 0, 4800))
+        } else {
+            return
+        }
+        pushCurrent()
+    }
+
+    function resetDeHum() : void {
+        deHumEnabled = false
+        deHumFundamentalHertz = 50
+        deHumHarmonicCount = 4
+        deHumQualityTenths = 300
+        deHumDepthCentibels = 2400
+        pushCurrent()
+    }
+
+    function setDeClickEnabled(enabled: bool) : void {
+        deClickEnabled = enabled
+        pushCurrent()
+    }
+
+    function setDeClickParameter(parameter: string, value: int) : void {
+        if (parameter === "sensitivity") {
+            deClickSensitivityPercent = Math.round(clamp(value, 0, 100))
+        } else if (parameter === "maximumClick") {
+            deClickMaximumClickMicroseconds = Math.round(clamp(value, 50, 2000))
+        } else if (parameter === "repair") {
+            deClickRepairPercent = Math.round(clamp(value, 0, 100))
+        } else {
+            return
+        }
+        pushCurrent()
+    }
+
+    function resetDeClick() : void {
+        deClickEnabled = false
+        deClickSensitivityPercent = 50
+        deClickMaximumClickMicroseconds = 1000
+        deClickRepairPercent = 100
         pushCurrent()
     }
 
@@ -771,6 +964,15 @@ QtObject {
             deEsserFrequencyHertz: 6500,
             deEsserThresholdCentibels: -2400,
             deEsserReductionCentibels: 600,
+            deHumEnabled: false,
+            deHumFundamentalHertz: 50,
+            deHumHarmonicCount: 4,
+            deHumQualityTenths: 300,
+            deHumDepthCentibels: 2400,
+            deClickEnabled: false,
+            deClickSensitivityPercent: 50,
+            deClickMaximumClickMicroseconds: 1000,
+            deClickRepairPercent: 100,
             equalizerEnabled: true,
             equalizerBands: defaultEqualizerBands(),
             compressorEnabled: false,
@@ -810,6 +1012,10 @@ QtObject {
             noiseReductionSensitivityPercent, noiseReductionSmoothingMillis,
             deEsserEnabled, deEsserFrequencyHertz,
             deEsserThresholdCentibels, deEsserReductionCentibels,
+            deHumEnabled, deHumFundamentalHertz, deHumHarmonicCount,
+            deHumQualityTenths, deHumDepthCentibels,
+            deClickEnabled, deClickSensitivityPercent,
+            deClickMaximumClickMicroseconds, deClickRepairPercent,
             equalizerEnabled,
             copyEqualizerBands(equalizerBands),
             compressorEnabled,

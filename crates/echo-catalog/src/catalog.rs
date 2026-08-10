@@ -11,10 +11,11 @@ use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION, CatalogSchemaRevision,
-        DELIVERY_FORMATS_MIGRATION_SQL, EARLIEST_COMPATIBLE_SCHEMA_VERSION,
-        EFFECT_CHAIN_MIGRATION_SQL, INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION,
-        LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
-        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
+        DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL, DELIVERY_FORMATS_MIGRATION_SQL,
+        EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
+        EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
+        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
+        OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
         RESTORATION_CHAIN_MIGRATION_SQL, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
         SEMANTIC_SEARCH_MIGRATION_SQL, USER_ALBUMS_MIGRATION_SQL,
@@ -62,6 +63,7 @@ pub fn open_catalog(path: &Path) -> Result<Catalog, CatalogError> {
     })
 }
 
+#[allow(clippy::too_many_lines)] // Explicit dispatch keeps every supported migration visible.
 fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     connection.execute_batch(
         "CREATE TABLE IF NOT EXISTS catalog_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
@@ -97,6 +99,20 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
+        {
+            migrate_restorative_effects_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION) =>
+        {
+            migrate_editable_effect_chain_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == FIXED_EFFECT_CHAIN_SCHEMA_VERSION) =>
         {
             migrate_effect_chain_schema(connection)?;
         }
@@ -163,9 +179,26 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
+fn migrate_restorative_effects_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_restorative_effects_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn migrate_editable_effect_chain_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_restorative_effects_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
 fn migrate_effect_chain_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -175,6 +208,7 @@ fn migrate_delivery_formats_schema(connection: &Connection) -> Result<(), Catalo
     let transaction = connection.unchecked_transaction()?;
     apply_delivery_formats_migration(&transaction)?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -185,6 +219,7 @@ fn migrate_restoration_chain_schema(connection: &Connection) -> Result<(), Catal
     apply_restoration_chain_migration(&transaction)?;
     apply_delivery_formats_migration(&transaction)?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -196,6 +231,7 @@ fn migrate_semantic_search_schema(connection: &Connection) -> Result<(), Catalog
     apply_restoration_chain_migration(&transaction)?;
     apply_delivery_formats_migration(&transaction)?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -208,6 +244,7 @@ fn migrate_long_audio_schema(connection: &Connection) -> Result<(), CatalogError
     apply_restoration_chain_migration(&transaction)?;
     apply_delivery_formats_migration(&transaction)?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -221,6 +258,7 @@ fn migrate_user_albums_and_long_audio(connection: &Connection) -> Result<(), Cat
     apply_restoration_chain_migration(&transaction)?;
     apply_delivery_formats_migration(&transaction)?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -237,6 +275,7 @@ fn migrate_render_exports_user_albums_and_long_audio(
     apply_restoration_chain_migration(&transaction)?;
     apply_delivery_formats_migration(&transaction)?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -254,6 +293,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
     apply_restoration_chain_migration(&transaction)?;
     apply_delivery_formats_migration(&transaction)?;
     apply_effect_chain_migration(&transaction)?;
+    apply_restorative_effects_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -283,6 +323,31 @@ fn apply_restoration_chain_migration(
     )?;
     if column_count == 0 {
         transaction.execute_batch(RESTORATION_CHAIN_MIGRATION_SQL)?;
+    }
+    Ok(())
+}
+
+fn apply_restorative_effects_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let de_hum_column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'de_hum_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    if de_hum_column_count == 0 {
+        transaction.execute_batch(DE_HUM_MIGRATION_SQL)?;
+    }
+
+    let de_click_column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'de_click_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    if de_click_column_count == 0 {
+        transaction.execute_batch(DE_CLICK_MIGRATION_SQL)?;
     }
     Ok(())
 }

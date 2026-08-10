@@ -5,7 +5,7 @@
 //! sample positions and filter coefficients are prepared by the audio engine
 //! and are never persisted as user intent.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
 /// Lowest supported output gain in hundredths of one decibel.
 pub const MIN_GAIN_CENTIBELS: i16 = -2_400;
@@ -59,8 +59,19 @@ pub const MAX_DE_ESSER_FREQUENCY_HERTZ: u16 = 12_000;
 pub const MIN_DE_ESSER_THRESHOLD_CENTIBELS: i16 = -6_000;
 pub const MAX_DE_ESSER_THRESHOLD_CENTIBELS: i16 = 0;
 pub const MAX_DE_ESSER_REDUCTION_CENTIBELS: u16 = 1_800;
-/// Echo's first authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 5;
+pub const MIN_DE_HUM_HARMONIC_COUNT: u8 = 1;
+pub const MAX_DE_HUM_HARMONIC_COUNT: u8 = 8;
+/// De-hum Q is stored in tenths.
+pub const MIN_DE_HUM_QUALITY_TENTHS: u16 = 50;
+pub const MAX_DE_HUM_QUALITY_TENTHS: u16 = 1_000;
+pub const MAX_DE_HUM_DEPTH_CENTIBELS: u16 = 4_800;
+pub const MAX_DE_CLICK_SENSITIVITY_PERCENT: u8 = 100;
+pub const MIN_DE_CLICK_DURATION_MICROSECONDS: u16 = 50;
+pub const MAX_DE_CLICK_DURATION_MICROSECONDS: u16 = 2_000;
+pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
+/// Echo's authored chain is deliberately bounded to singleton effects.
+pub const EFFECT_NODE_COUNT: usize = 7;
+const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
     true
@@ -76,6 +87,8 @@ pub enum EffectNodeKind {
     Dynamics = 2,
     Space = 3,
     Master = 4,
+    DeHum = 5,
+    DeClick = 6,
 }
 
 impl EffectNodeKind {
@@ -96,6 +109,8 @@ impl EffectNodeKind {
             2 => Ok(Self::Dynamics),
             3 => Ok(Self::Space),
             4 => Ok(Self::Master),
+            5 => Ok(Self::DeHum),
+            6 => Ok(Self::DeClick),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -112,11 +127,49 @@ impl std::fmt::Display for EffectNodeKindValueError {
 
 impl std::error::Error for EffectNodeKindValueError {}
 
-/// A bounded linear effect chain. The four insert effects may be reordered;
-/// master output remains the unique terminal node.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// A bounded linear effect chain. Insert effects may be omitted or reordered;
+/// master output remains the unique active terminal node. Omitted singleton
+/// identities remain in the private tail so this compact value stays `Copy`
+/// without allocating in adjustment snapshots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct EffectChain {
     nodes: [EffectNodeKind; EFFECT_NODE_COUNT],
+    active_count: u8,
+}
+
+#[derive(Deserialize)]
+struct StoredEffectChain {
+    nodes: Vec<EffectNodeKind>,
+    #[serde(default)]
+    active_count: Option<u8>,
+}
+
+impl<'de> Deserialize<'de> for EffectChain {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let stored = StoredEffectChain::deserialize(deserializer)?;
+        let legacy_node_count = stored.nodes.len();
+        if legacy_node_count != usize::from(STANDARD_EFFECT_NODE_COUNT)
+            && legacy_node_count != EFFECT_NODE_COUNT
+        {
+            return Err(D::Error::custom(
+                "effect chain must contain the five legacy nodes or seven current nodes",
+            ));
+        }
+        let active_count = stored.active_count.unwrap_or(STANDARD_EFFECT_NODE_COUNT);
+        let mut nodes = Self::standard().nodes;
+        nodes[..legacy_node_count].copy_from_slice(&stored.nodes);
+        let chain = Self {
+            nodes,
+            active_count,
+        };
+        if !chain.is_valid() {
+            return Err(D::Error::custom(EffectChainError));
+        }
+        Ok(chain)
+    }
 }
 
 impl Default for EffectChain {
@@ -135,36 +188,83 @@ impl EffectChain {
                 EffectNodeKind::Dynamics,
                 EffectNodeKind::Space,
                 EffectNodeKind::Master,
+                EffectNodeKind::DeHum,
+                EffectNodeKind::DeClick,
             ],
+            active_count: STANDARD_EFFECT_NODE_COUNT,
         }
     }
 
-    /// Creates a closed singleton chain with master fixed at the tail.
+    /// Creates an authored singleton chain from its active nodes.
     ///
     /// # Errors
     ///
-    /// Returns [`EffectChainError`] for duplicates, omissions, or a movable
-    /// master node.
-    pub const fn new(nodes: [EffectNodeKind; EFFECT_NODE_COUNT]) -> Result<Self, EffectChainError> {
-        if !valid_effect_chain(nodes) {
+    /// Returns [`EffectChainError`] for duplicates, an empty chain, a missing
+    /// terminal master node, or more nodes than Echo supports.
+    pub fn new<const N: usize>(
+        active_nodes: [EffectNodeKind; N],
+    ) -> Result<Self, EffectChainError> {
+        Self::from_active_nodes(&active_nodes)
+    }
+
+    /// Restores an authored chain from a variable-length wire projection.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EffectChainError`] under the same conditions as [`Self::new`].
+    pub fn from_active_nodes(active_nodes: &[EffectNodeKind]) -> Result<Self, EffectChainError> {
+        let active_count = active_nodes.len();
+        if active_count == 0
+            || active_count > EFFECT_NODE_COUNT
+            || !matches!(active_nodes[active_count - 1], EffectNodeKind::Master)
+        {
             return Err(EffectChainError);
         }
-        Ok(Self { nodes })
+        let mut seen = [false; EFFECT_NODE_COUNT];
+        for &node in active_nodes {
+            let value = node as usize;
+            if seen[value] {
+                return Err(EffectChainError);
+            }
+            seen[value] = true;
+        }
+
+        let standard = Self::standard().nodes;
+        let mut nodes = standard;
+        nodes[..active_count].copy_from_slice(active_nodes);
+        let mut write_index = active_count;
+        for node in standard {
+            if !seen[node as usize] {
+                nodes[write_index] = node;
+                write_index += 1;
+            }
+        }
+        let chain = Self {
+            nodes,
+            active_count: u8::try_from(active_count).map_err(|_| EffectChainError)?,
+        };
+        if !chain.is_valid() {
+            return Err(EffectChainError);
+        }
+        Ok(chain)
     }
 
     #[must_use]
-    pub const fn nodes(self) -> [EffectNodeKind; EFFECT_NODE_COUNT] {
-        self.nodes
+    pub fn nodes(&self) -> &[EffectNodeKind] {
+        &self.nodes[..usize::from(self.active_count)]
     }
 
     #[must_use]
     pub const fn is_valid(self) -> bool {
-        valid_effect_chain(self.nodes)
+        valid_effect_chain(self.nodes, self.active_count)
     }
 }
 
-const fn valid_effect_chain(nodes: [EffectNodeKind; EFFECT_NODE_COUNT]) -> bool {
-    if !matches!(nodes[4], EffectNodeKind::Master) {
+const fn valid_effect_chain(nodes: [EffectNodeKind; EFFECT_NODE_COUNT], active_count: u8) -> bool {
+    if active_count == 0 || active_count as usize > EFFECT_NODE_COUNT {
+        return false;
+    }
+    if !matches!(nodes[active_count as usize - 1], EffectNodeKind::Master) {
         return false;
     }
     let mut seen = [false; EFFECT_NODE_COUNT];
@@ -185,7 +285,7 @@ pub struct EffectChainError;
 
 impl std::fmt::Display for EffectChainError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("effect chain must contain each singleton node once with master last")
+        formatter.write_str("effect chain must contain unique singleton nodes with master last")
     }
 }
 
@@ -241,6 +341,64 @@ impl DeEsserSettings {
             frequency_hertz: 6_500,
             threshold_centibels: -2_400,
             reduction_centibels: 600,
+        }
+    }
+}
+
+/// Authored mains-hum removal intent. The audio engine derives the bounded
+/// harmonic notch bank and smooths changes between these stable controls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeHumSettings {
+    pub enabled: bool,
+    pub fundamental_hertz: u16,
+    pub harmonic_count: u8,
+    pub quality_tenths: u16,
+    pub depth_centibels: u16,
+}
+
+impl Default for DeHumSettings {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl DeHumSettings {
+    #[must_use]
+    pub const fn standard() -> Self {
+        Self {
+            enabled: false,
+            fundamental_hertz: 50,
+            harmonic_count: 4,
+            quality_tenths: 300,
+            depth_centibels: 2_400,
+        }
+    }
+}
+
+/// Authored short-transient repair intent. The audio engine owns detection,
+/// lookahead, and interpolation; persistence stores only bounded user intent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeClickSettings {
+    pub enabled: bool,
+    pub sensitivity_percent: u8,
+    pub maximum_click_microseconds: u16,
+    pub repair_percent: u8,
+}
+
+impl Default for DeClickSettings {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl DeClickSettings {
+    #[must_use]
+    pub const fn standard() -> Self {
+        Self {
+            enabled: false,
+            sensitivity_percent: 50,
+            maximum_click_microseconds: 1_000,
+            repair_percent: 100,
         }
     }
 }
@@ -593,6 +751,8 @@ pub struct AdjustmentEffects {
     pub gain_centibels: i16,
     pub low_cut_hertz: u16,
     pub restoration: RestorationSettings,
+    pub de_hum: DeHumSettings,
+    pub de_click: DeClickSettings,
     pub equalizer: ParametricEqualizer,
     pub compressor: CompressorSettings,
     pub reverb: ReverbSettings,
@@ -608,6 +768,8 @@ impl AdjustmentEffects {
             gain_centibels,
             low_cut_hertz,
             restoration: RestorationSettings::standard(),
+            de_hum: DeHumSettings::standard(),
+            de_click: DeClickSettings::standard(),
             equalizer: ParametricEqualizer::flat(),
             compressor: CompressorSettings::standard(),
             reverb: ReverbSettings::studio_room(),
@@ -619,6 +781,18 @@ impl AdjustmentEffects {
     #[must_use]
     pub const fn with_restoration(mut self, restoration: RestorationSettings) -> Self {
         self.restoration = restoration;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_de_hum(mut self, de_hum: DeHumSettings) -> Self {
+        self.de_hum = de_hum;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_de_click(mut self, de_click: DeClickSettings) -> Self {
+        self.de_click = de_click;
         self
     }
 
@@ -666,6 +840,10 @@ pub struct AdjustmentGraph {
     low_cut_hertz: u16,
     #[serde(default)]
     restoration: RestorationSettings,
+    #[serde(default)]
+    de_hum: DeHumSettings,
+    #[serde(default)]
+    de_click: DeClickSettings,
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     #[serde(default)]
@@ -711,23 +889,7 @@ impl AdjustmentGraph {
         if !effects.effect_chain.is_valid() {
             return Err(AdjustmentGraphError::InvalidEffectChain);
         }
-        let noise_reduction = effects.restoration.noise_reduction;
-        if noise_reduction.reduction_centibels > MAX_NOISE_REDUCTION_CENTIBELS
-            || noise_reduction.sensitivity_percent > MAX_NOISE_REDUCTION_SENSITIVITY_PERCENT
-            || !(MIN_NOISE_REDUCTION_SMOOTHING_MILLIS..=MAX_NOISE_REDUCTION_SMOOTHING_MILLIS)
-                .contains(&noise_reduction.smoothing_millis)
-        {
-            return Err(AdjustmentGraphError::NoiseReductionOutOfRange);
-        }
-        let de_esser = effects.restoration.de_esser;
-        if !(MIN_DE_ESSER_FREQUENCY_HERTZ..=MAX_DE_ESSER_FREQUENCY_HERTZ)
-            .contains(&de_esser.frequency_hertz)
-            || !(MIN_DE_ESSER_THRESHOLD_CENTIBELS..=MAX_DE_ESSER_THRESHOLD_CENTIBELS)
-                .contains(&de_esser.threshold_centibels)
-            || de_esser.reduction_centibels > MAX_DE_ESSER_REDUCTION_CENTIBELS
-        {
-            return Err(AdjustmentGraphError::DeEsserOutOfRange);
-        }
+        validate_restorative_effects(effects)?;
         for band in effects.equalizer.bands {
             if !(MIN_EQ_GAIN_CENTIBELS..=MAX_EQ_GAIN_CENTIBELS).contains(&band.gain_centibels)
                 || !(MIN_EQ_FREQUENCY_HERTZ..=MAX_EQ_FREQUENCY_HERTZ)
@@ -782,6 +944,8 @@ impl AdjustmentGraph {
             gain_centibels: effects.gain_centibels,
             low_cut_hertz: effects.low_cut_hertz,
             restoration: effects.restoration,
+            de_hum: effects.de_hum,
+            de_click: effects.de_click,
             equalizer: effects.equalizer,
             compressor,
             reverb,
@@ -854,6 +1018,16 @@ impl AdjustmentGraph {
     }
 
     #[must_use]
+    pub const fn de_hum(self) -> DeHumSettings {
+        self.de_hum
+    }
+
+    #[must_use]
+    pub const fn de_click(self) -> DeClickSettings {
+        self.de_click
+    }
+
+    #[must_use]
     pub const fn equalizer(self) -> ParametricEqualizer {
         self.equalizer
     }
@@ -879,6 +1053,43 @@ impl AdjustmentGraph {
     }
 }
 
+fn validate_restorative_effects(effects: AdjustmentEffects) -> Result<(), AdjustmentGraphError> {
+    let de_hum = effects.de_hum;
+    if !matches!(de_hum.fundamental_hertz, 50 | 60)
+        || !(MIN_DE_HUM_HARMONIC_COUNT..=MAX_DE_HUM_HARMONIC_COUNT).contains(&de_hum.harmonic_count)
+        || !(MIN_DE_HUM_QUALITY_TENTHS..=MAX_DE_HUM_QUALITY_TENTHS).contains(&de_hum.quality_tenths)
+        || de_hum.depth_centibels > MAX_DE_HUM_DEPTH_CENTIBELS
+    {
+        return Err(AdjustmentGraphError::DeHumOutOfRange);
+    }
+    let de_click = effects.de_click;
+    if de_click.sensitivity_percent > MAX_DE_CLICK_SENSITIVITY_PERCENT
+        || !(MIN_DE_CLICK_DURATION_MICROSECONDS..=MAX_DE_CLICK_DURATION_MICROSECONDS)
+            .contains(&de_click.maximum_click_microseconds)
+        || de_click.repair_percent > MAX_DE_CLICK_REPAIR_PERCENT
+    {
+        return Err(AdjustmentGraphError::DeClickOutOfRange);
+    }
+    let noise_reduction = effects.restoration.noise_reduction;
+    if noise_reduction.reduction_centibels > MAX_NOISE_REDUCTION_CENTIBELS
+        || noise_reduction.sensitivity_percent > MAX_NOISE_REDUCTION_SENSITIVITY_PERCENT
+        || !(MIN_NOISE_REDUCTION_SMOOTHING_MILLIS..=MAX_NOISE_REDUCTION_SMOOTHING_MILLIS)
+            .contains(&noise_reduction.smoothing_millis)
+    {
+        return Err(AdjustmentGraphError::NoiseReductionOutOfRange);
+    }
+    let de_esser = effects.restoration.de_esser;
+    if !(MIN_DE_ESSER_FREQUENCY_HERTZ..=MAX_DE_ESSER_FREQUENCY_HERTZ)
+        .contains(&de_esser.frequency_hertz)
+        || !(MIN_DE_ESSER_THRESHOLD_CENTIBELS..=MAX_DE_ESSER_THRESHOLD_CENTIBELS)
+            .contains(&de_esser.threshold_centibels)
+        || de_esser.reduction_centibels > MAX_DE_ESSER_REDUCTION_CENTIBELS
+    {
+        return Err(AdjustmentGraphError::DeEsserOutOfRange);
+    }
+    Ok(())
+}
+
 /// Stable validation failures for authored adjustment intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdjustmentGraphError {
@@ -888,6 +1099,8 @@ pub enum AdjustmentGraphError {
     LowCutOutOfRange,
     NoiseReductionOutOfRange,
     DeEsserOutOfRange,
+    DeHumOutOfRange,
+    DeClickOutOfRange,
     EqualizerBandOutOfRange,
     CompressorOutOfRange,
     ReverbOutOfRange,
@@ -906,6 +1119,8 @@ impl std::fmt::Display for AdjustmentGraphError {
                 "noise reduction parameters are outside the supported range"
             }
             Self::DeEsserOutOfRange => "de-esser parameters are outside the supported range",
+            Self::DeHumOutOfRange => "de-hum parameters are outside the supported range",
+            Self::DeClickOutOfRange => "de-click parameters are outside the supported range",
             Self::EqualizerBandOutOfRange => {
                 "equalizer band frequency, Q, or gain is outside the supported range"
             }
@@ -913,7 +1128,7 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::ReverbOutOfRange => "reverb parameters are outside the supported range",
             Self::LimiterOutOfRange => "limiter parameters are outside the supported range",
             Self::InvalidEffectChain => {
-                "effect chain must contain each singleton node once with master last"
+                "effect chain must contain unique singleton nodes with master last"
             }
         })
     }

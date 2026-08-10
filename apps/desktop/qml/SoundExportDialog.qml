@@ -44,6 +44,7 @@ Popup {
             draft.fadeInMillis, draft.fadeOutMillis,
             draft.fadeInCurve, draft.fadeOutCurve,
             draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(),
+            draft.deHumValue(), draft.deClickValue(),
             draft.equalizerEnabled, draft.equalizerBands,
             draft.compressorEnabled, draft.compressorThresholdCentibels,
             draft.compressorRatioTenths, draft.compressorAttackMillis,

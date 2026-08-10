@@ -112,7 +112,7 @@ int main() {
     assert(result.sample_rate == 48000);
     assert(result.channel_count == 2);
     assert(result.bit_depth == 24);
-    assert(result.frame_count >= 23900 && result.frame_count <= 24100);
+    assert(result.frame_count == 24000);
     assert(result.size_bytes == sink.bytes().size());
     assert(progress == 1.0);
     assert(std::memcmp(sink.bytes().data(), "RIFF", 4) == 0);
@@ -140,9 +140,38 @@ int main() {
     assert(flac.sample_rate == 48000);
     assert(flac.channel_count == 2);
     assert(flac.bit_depth == 24);
-    assert(flac.frame_count >= 23900 && flac.frame_count <= 24100);
+    assert(flac.frame_count == 24000);
     assert(flac.size_bytes == flac_sink.bytes().size());
     assert(std::memcmp(flac_sink.bytes().data(), "fLaC", 4) == 0);
+
+    MemorySink latency_compensated_sink;
+    auto latency_compensated = adjustment;
+    latency_compensated.effect_chain = {
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::DeHum,
+    };
+    latency_compensated.effect_chain_count = 3;
+    const auto compensated = echo::audio::OfflineWavRenderer::render(
+        source.string(),
+        latency_compensated,
+        latency_compensated_sink
+    );
+    assert(compensated.frame_count == 24000);
+    assert(compensated.size_bytes == latency_compensated_sink.bytes().size());
+
+    MemorySink full_source_sink;
+    auto full_source = latency_compensated;
+    full_source.trim_start_millis = 0;
+    full_source.trim_end_millis = 1000;
+    const auto full_source_result =
+        echo::audio::OfflineWavRenderer::render(source.string(), full_source, full_source_sink);
+    assert(full_source_result.frame_count == 48'000);
+    assert(full_source_result.size_bytes == full_source_sink.bytes().size());
 
     MemorySink cancelled_sink;
     bool did_cancel = false;

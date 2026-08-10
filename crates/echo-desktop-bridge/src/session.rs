@@ -73,6 +73,15 @@ struct AdjustmentWireFields {
     de_esser_frequency_hertz: u16,
     de_esser_threshold_centibels: i16,
     de_esser_reduction_centibels: u16,
+    de_hum_enabled: bool,
+    de_hum_fundamental_hertz: u16,
+    de_hum_harmonic_count: u8,
+    de_hum_quality_tenths: u16,
+    de_hum_depth_centibels: u16,
+    de_click_enabled: bool,
+    de_click_sensitivity_percent: u8,
+    de_click_maximum_click_microseconds: u16,
+    de_click_repair_percent: u8,
     equalizer_enabled: bool,
     equalizer_bands: Vec<EqualizerBandWire>,
     compressor_enabled: bool,
@@ -173,7 +182,8 @@ fn equalizer_from_wire(
 fn effect_chain_wire(chain: echo_domain::EffectChain) -> Vec<u8> {
     chain
         .nodes()
-        .into_iter()
+        .iter()
+        .copied()
         .map(echo_domain::EffectNodeKind::wire_value)
         .collect()
 }
@@ -188,14 +198,98 @@ fn effect_chain_from_wire(values: &[u8]) -> Result<echo_domain::EffectChain, Ses
             })
         })
         .collect::<Result<_, _>>()?;
-    let nodes = nodes.try_into().map_err(|_: Vec<_>| SessionError {
-        message: "effect chain must contain exactly five nodes".to_owned(),
-    })?;
-    echo_domain::EffectChain::new(nodes).map_err(|error| SessionError {
+    echo_domain::EffectChain::from_active_nodes(&nodes).map_err(|error| SessionError {
         message: error.to_string(),
     })
 }
 
+fn adjustment_graph_from_wire(
+    duration: u64,
+    adjustment: &crate::ffi::AssetAdjustmentWire,
+) -> Result<echo_domain::AdjustmentGraph, SessionError> {
+    echo_domain::AdjustmentGraph::new(
+        duration,
+        adjustment.trim_start_millis,
+        adjustment.trim_end_millis,
+        adjustment.fade_in_millis,
+        adjustment.fade_out_millis,
+        echo_domain::AdjustmentEffects::new(
+            echo_domain::FadeCurves::new(
+                echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_in_curve))
+                    .map_err(|error| SessionError {
+                        message: error.to_string(),
+                    })?,
+                echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_out_curve))
+                    .map_err(|error| SessionError {
+                        message: error.to_string(),
+                    })?,
+            ),
+            adjustment.gain_centibels,
+            adjustment.low_cut_hertz,
+        )
+        .with_restoration(echo_domain::RestorationSettings {
+            enabled: adjustment.restoration_enabled,
+            noise_reduction: echo_domain::NoiseReductionSettings {
+                enabled: adjustment.noise_reduction_enabled,
+                reduction_centibels: adjustment.noise_reduction_centibels,
+                sensitivity_percent: adjustment.noise_reduction_sensitivity_percent,
+                smoothing_millis: adjustment.noise_reduction_smoothing_millis,
+            },
+            de_esser: echo_domain::DeEsserSettings {
+                enabled: adjustment.de_esser_enabled,
+                frequency_hertz: adjustment.de_esser_frequency_hertz,
+                threshold_centibels: adjustment.de_esser_threshold_centibels,
+                reduction_centibels: adjustment.de_esser_reduction_centibels,
+            },
+        })
+        .with_de_hum(echo_domain::DeHumSettings {
+            enabled: adjustment.de_hum_enabled,
+            fundamental_hertz: adjustment.de_hum_fundamental_hertz,
+            harmonic_count: adjustment.de_hum_harmonic_count,
+            quality_tenths: adjustment.de_hum_quality_tenths,
+            depth_centibels: adjustment.de_hum_depth_centibels,
+        })
+        .with_de_click(echo_domain::DeClickSettings {
+            enabled: adjustment.de_click_enabled,
+            sensitivity_percent: adjustment.de_click_sensitivity_percent,
+            maximum_click_microseconds: adjustment.de_click_maximum_click_microseconds,
+            repair_percent: adjustment.de_click_repair_percent,
+        })
+        .with_equalizer(equalizer_from_wire(
+            adjustment.equalizer_enabled,
+            &adjustment.equalizer_bands,
+        )?)
+        .with_compressor(echo_domain::CompressorSettings {
+            enabled: adjustment.compressor_enabled,
+            threshold_centibels: adjustment.compressor_threshold_centibels,
+            ratio_tenths: adjustment.compressor_ratio_tenths,
+            attack_millis: adjustment.compressor_attack_millis,
+            release_millis: adjustment.compressor_release_millis,
+            makeup_centibels: adjustment.compressor_makeup_centibels,
+        })
+        .with_reverb(echo_domain::ReverbSettings {
+            enabled: adjustment.reverb_enabled,
+            mix_percent: adjustment.reverb_mix_percent,
+            pre_delay_millis: adjustment.reverb_pre_delay_millis,
+            decay_millis: adjustment.reverb_decay_millis,
+            size_percent: adjustment.reverb_size_percent,
+            damping_percent: adjustment.reverb_damping_percent,
+            low_cut_hertz: adjustment.reverb_low_cut_hertz,
+            high_cut_hertz: adjustment.reverb_high_cut_hertz,
+        })
+        .with_limiter(echo_domain::LimiterSettings {
+            enabled: adjustment.limiter_enabled,
+            ceiling_centibels: adjustment.limiter_ceiling_centibels,
+            release_millis: adjustment.limiter_release_millis,
+        })
+        .with_effect_chain(effect_chain_from_wire(&adjustment.effect_chain)?),
+    )
+    .map_err(|error| SessionError {
+        message: error.to_string(),
+    })
+}
+
+#[allow(clippy::too_many_lines)] // Exhaustive flat ABI projection is intentional.
 fn adjustment_wire_fields(
     adjustment: Option<echo_catalog::AssetAdjustmentRevision>,
     source_duration_millis: Option<u64>,
@@ -220,6 +314,15 @@ fn adjustment_wire_fields(
             de_esser_frequency_hertz: 6_500,
             de_esser_threshold_centibels: -2_400,
             de_esser_reduction_centibels: 600,
+            de_hum_enabled: false,
+            de_hum_fundamental_hertz: 50,
+            de_hum_harmonic_count: 4,
+            de_hum_quality_tenths: 300,
+            de_hum_depth_centibels: 2_400,
+            de_click_enabled: false,
+            de_click_sensitivity_percent: 50,
+            de_click_maximum_click_microseconds: 1_000,
+            de_click_repair_percent: 100,
             equalizer_enabled: true,
             equalizer_bands: equalizer_wire_bands(echo_domain::ParametricEqualizer::flat()),
             compressor_enabled: false,
@@ -274,6 +377,18 @@ fn adjustment_wire_fields(
             de_esser_frequency_hertz: revision.graph.restoration().de_esser.frequency_hertz,
             de_esser_threshold_centibels: revision.graph.restoration().de_esser.threshold_centibels,
             de_esser_reduction_centibels: revision.graph.restoration().de_esser.reduction_centibels,
+            de_hum_enabled: revision.graph.de_hum().enabled,
+            de_hum_fundamental_hertz: revision.graph.de_hum().fundamental_hertz,
+            de_hum_harmonic_count: revision.graph.de_hum().harmonic_count,
+            de_hum_quality_tenths: revision.graph.de_hum().quality_tenths,
+            de_hum_depth_centibels: revision.graph.de_hum().depth_centibels,
+            de_click_enabled: revision.graph.de_click().enabled,
+            de_click_sensitivity_percent: revision.graph.de_click().sensitivity_percent,
+            de_click_maximum_click_microseconds: revision
+                .graph
+                .de_click()
+                .maximum_click_microseconds,
+            de_click_repair_percent: revision.graph.de_click().repair_percent,
             equalizer_enabled: revision.graph.equalizer().enabled(),
             equalizer_bands: equalizer_wire_bands(revision.graph.equalizer()),
             compressor_enabled: revision.graph.compressor().enabled,
@@ -359,6 +474,15 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         de_esser_frequency_hertz: adjustment.de_esser_frequency_hertz,
         de_esser_threshold_centibels: adjustment.de_esser_threshold_centibels,
         de_esser_reduction_centibels: adjustment.de_esser_reduction_centibels,
+        de_hum_enabled: adjustment.de_hum_enabled,
+        de_hum_fundamental_hertz: adjustment.de_hum_fundamental_hertz,
+        de_hum_harmonic_count: adjustment.de_hum_harmonic_count,
+        de_hum_quality_tenths: adjustment.de_hum_quality_tenths,
+        de_hum_depth_centibels: adjustment.de_hum_depth_centibels,
+        de_click_enabled: adjustment.de_click_enabled,
+        de_click_sensitivity_percent: adjustment.de_click_sensitivity_percent,
+        de_click_maximum_click_microseconds: adjustment.de_click_maximum_click_microseconds,
+        de_click_repair_percent: adjustment.de_click_repair_percent,
         equalizer_enabled: adjustment.equalizer_enabled,
         equalizer_bands: adjustment.equalizer_bands,
         compressor_enabled: adjustment.compressor_enabled,
@@ -680,75 +804,7 @@ impl LibrarySession {
                 }),
             }
         })?;
-        let graph = echo_domain::AdjustmentGraph::new(
-            duration,
-            adjustment.trim_start_millis,
-            adjustment.trim_end_millis,
-            adjustment.fade_in_millis,
-            adjustment.fade_out_millis,
-            echo_domain::AdjustmentEffects::new(
-                echo_domain::FadeCurves::new(
-                    echo_domain::FadeCurve::from_catalog_value(i64::from(adjustment.fade_in_curve))
-                        .map_err(|error| SessionError {
-                            message: error.to_string(),
-                        })?,
-                    echo_domain::FadeCurve::from_catalog_value(i64::from(
-                        adjustment.fade_out_curve,
-                    ))
-                    .map_err(|error| SessionError {
-                        message: error.to_string(),
-                    })?,
-                ),
-                adjustment.gain_centibels,
-                adjustment.low_cut_hertz,
-            )
-            .with_restoration(echo_domain::RestorationSettings {
-                enabled: adjustment.restoration_enabled,
-                noise_reduction: echo_domain::NoiseReductionSettings {
-                    enabled: adjustment.noise_reduction_enabled,
-                    reduction_centibels: adjustment.noise_reduction_centibels,
-                    sensitivity_percent: adjustment.noise_reduction_sensitivity_percent,
-                    smoothing_millis: adjustment.noise_reduction_smoothing_millis,
-                },
-                de_esser: echo_domain::DeEsserSettings {
-                    enabled: adjustment.de_esser_enabled,
-                    frequency_hertz: adjustment.de_esser_frequency_hertz,
-                    threshold_centibels: adjustment.de_esser_threshold_centibels,
-                    reduction_centibels: adjustment.de_esser_reduction_centibels,
-                },
-            })
-            .with_equalizer(equalizer_from_wire(
-                adjustment.equalizer_enabled,
-                &adjustment.equalizer_bands,
-            )?)
-            .with_compressor(echo_domain::CompressorSettings {
-                enabled: adjustment.compressor_enabled,
-                threshold_centibels: adjustment.compressor_threshold_centibels,
-                ratio_tenths: adjustment.compressor_ratio_tenths,
-                attack_millis: adjustment.compressor_attack_millis,
-                release_millis: adjustment.compressor_release_millis,
-                makeup_centibels: adjustment.compressor_makeup_centibels,
-            })
-            .with_reverb(echo_domain::ReverbSettings {
-                enabled: adjustment.reverb_enabled,
-                mix_percent: adjustment.reverb_mix_percent,
-                pre_delay_millis: adjustment.reverb_pre_delay_millis,
-                decay_millis: adjustment.reverb_decay_millis,
-                size_percent: adjustment.reverb_size_percent,
-                damping_percent: adjustment.reverb_damping_percent,
-                low_cut_hertz: adjustment.reverb_low_cut_hertz,
-                high_cut_hertz: adjustment.reverb_high_cut_hertz,
-            })
-            .with_limiter(echo_domain::LimiterSettings {
-                enabled: adjustment.limiter_enabled,
-                ceiling_centibels: adjustment.limiter_ceiling_centibels,
-                release_millis: adjustment.limiter_release_millis,
-            })
-            .with_effect_chain(effect_chain_from_wire(&adjustment.effect_chain)?),
-        )
-        .map_err(|error| SessionError {
-            message: error.to_string(),
-        })?;
+        let graph = adjustment_graph_from_wire(duration, adjustment)?;
         self.catalog
             .with_transaction(|transaction| {
                 echo_catalog::record_adjustment_graph(transaction, asset_id, graph, now_millis())
