@@ -21,6 +21,8 @@ fn previous_render_schema_fixture() -> (std::path::PathBuf, std::path::PathBuf) 
             transaction.execute("DROP TABLE user_album_members", [])?;
             transaction.execute("DROP TABLE user_albums", [])?;
             transaction.execute("DROP TABLE render_exports", [])?;
+            transaction.execute("DROP TABLE long_audio_outline_nodes", [])?;
+            transaction.execute("DROP TABLE long_audio_segments", [])?;
             transaction.execute(
                 "UPDATE catalog_meta SET value = '20260811.2' WHERE key = 'schema_version'",
                 [],
@@ -61,7 +63,7 @@ fn previous_catalog_revision_adds_render_exports_without_losing_assets() {
                 ))
             })
             .expect("migration reads");
-    assert_eq!(version, "20260811.4");
+    assert_eq!(version, "20260811.5");
     assert_eq!(asset_count, 1);
     assert_eq!(render_table_count, 1);
     assert_eq!(album_table_count, 1);
@@ -80,6 +82,8 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
         .with_transaction(|transaction| -> Result<_, CatalogError> {
             transaction.execute("DROP TABLE user_album_members", [])?;
             transaction.execute("DROP TABLE user_albums", [])?;
+            transaction.execute("DROP TABLE long_audio_outline_nodes", [])?;
+            transaction.execute("DROP TABLE long_audio_segments", [])?;
             transaction.execute(
                 "UPDATE catalog_meta SET value = '20260811.3' WHERE key = 'schema_version'",
                 [],
@@ -107,7 +111,7 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.4");
+    assert_eq!(version, "20260811.5");
     assert_eq!(album_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -125,6 +129,8 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             transaction.execute("DROP TABLE user_album_members", [])?;
             transaction.execute("DROP TABLE user_albums", [])?;
             transaction.execute("DROP TABLE render_exports", [])?;
+            transaction.execute("DROP TABLE long_audio_outline_nodes", [])?;
+            transaction.execute("DROP TABLE long_audio_segments", [])?;
             transaction.execute(
                 "ALTER TABLE asset_adjustment_revisions DROP COLUMN reverb_json",
                 [],
@@ -172,9 +178,53 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.4");
+    assert_eq!(version, "20260811.5");
     assert_eq!(render_table_count, 1);
     assert_eq!(reverb_column_count, 1);
     assert_eq!(album_table_count, 1);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn immediately_previous_revision_adds_long_audio_projection() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-long-audio-migration-{}",
+        std::process::id()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            transaction.execute("DROP TABLE long_audio_outline_nodes", [])?;
+            transaction.execute("DROP TABLE long_audio_segments", [])?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260811.4' WHERE key = 'schema_version'",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("previous fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("previous revision migrates");
+    let (version, segment_table_count): (String, i64) = migrated
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok((
+                transaction.query_row(
+                    "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                    [],
+                    |row| row.get(0),
+                )?,
+                transaction.query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' \
+                     AND name = 'long_audio_segments'",
+                    [],
+                    |row| row.get(0),
+                )?,
+            ))
+        })
+        .expect("migration reads");
+    assert_eq!(version, "20260811.5");
+    assert_eq!(segment_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }

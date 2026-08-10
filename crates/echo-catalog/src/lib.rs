@@ -22,6 +22,7 @@ mod derived_artifact;
 mod error;
 mod inference_run;
 mod job_queue;
+mod long_audio;
 mod render_export;
 mod scan_journal;
 mod scan_root;
@@ -66,6 +67,12 @@ pub use job_queue::{
     ClaimedJob, FileJobPayload, Job, JobKind, JobState, JobStats, ScanRootJobPayload,
     claim_next_job, complete_job, enqueue_job, fail_job, job_by_id, job_stats, list_failed_jobs,
     recover_interrupted_jobs, requeue_scan_job, retry_job, update_job_progress,
+};
+pub use long_audio::{
+    LongAudioOutlineNode, LongAudioProxyRef, LongAudioSegment, LongAudioSegmentPlan,
+    LongAudioStage, ensure_long_audio_plan, list_long_audio_outline_nodes,
+    list_long_audio_segments, record_long_audio_proxy, record_long_audio_stage,
+    upsert_long_audio_outline_node,
 };
 pub use render_export::{
     RecordRenderExport, RenderExportFormat, RenderExportRecord, list_render_exports,

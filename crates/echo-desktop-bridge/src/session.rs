@@ -12,8 +12,8 @@ use echo_domain::AssetId;
 
 use crate::ffi::{
     AnalysisStatusWire, AssetSummaryWire, EqualizerBandWire, JobStatsWire, KeywordFacetWire,
-    ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire,
-    UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
+    LongAudioChapterWire, ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire,
+    TranscriptWire, UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 pub(crate) fn now_millis() -> i64 {
@@ -741,6 +741,53 @@ impl LibrarySession {
         Ok(wires)
     }
 
+    /// Returns every persisted long-recording outline node. Level zero is the
+    /// leaf/chapter view; higher levels are progressively coarser summaries.
+    pub fn long_audio_chapters(
+        &self,
+        asset_id: &str,
+    ) -> Result<Vec<LongAudioChapterWire>, SessionError> {
+        let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: error.to_string(),
+        })?;
+        let nodes = self
+            .catalog
+            .with_transaction(|transaction| {
+                echo_catalog::list_long_audio_outline_nodes(
+                    transaction,
+                    asset_id,
+                    echo_core::LONG_AUDIO_PLAN_VERSION,
+                )
+            })
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        nodes
+            .into_iter()
+            .map(|node| {
+                let payload =
+                    node.contextual
+                        .get("payload")
+                        .cloned()
+                        .ok_or_else(|| SessionError {
+                            message: "long-audio outline lacks contextual payload".to_owned(),
+                        })?;
+                let payload: echo_core::ContextualPayload = serde_json::from_value(payload)
+                    .map_err(|error| SessionError {
+                        message: format!("long-audio outline is invalid: {error}"),
+                    })?;
+                Ok(LongAudioChapterWire {
+                    level: node.level,
+                    index: node.index,
+                    start_millis: node.start_millis,
+                    end_millis: node.end_millis,
+                    sound_caption: payload.sound_caption,
+                    summary: payload.summary,
+                })
+            })
+            .collect()
+    }
+
     /// Starts the background worker pool (idempotent).
     ///
     /// # Errors
@@ -810,8 +857,23 @@ impl LibrarySession {
                         .ok()
                 })
                 .is_some_and(|payload| payload.is_current());
+            let has_long_audio_plan = !echo_catalog::list_long_audio_segments(
+                transaction,
+                asset_id,
+                echo_core::LONG_AUDIO_PLAN_VERSION,
+            )?
+            .is_empty();
             let contextual_job_id = echo_core::contextual_job_id(asset_id);
-            let (stage, job_id) = if latest_transcript_is_empty {
+            let (stage, job_id) = if has_long_audio_plan {
+                (
+                    if has_current_contextual || latest_transcript_is_empty {
+                        "complete"
+                    } else {
+                        "long_audio"
+                    },
+                    format!("transcribe-{asset_id}"),
+                )
+            } else if latest_transcript_is_empty {
                 ("complete", format!("align-{asset_id}"))
             } else if has_current_contextual {
                 ("complete", contextual_job_id.clone())

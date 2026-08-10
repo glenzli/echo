@@ -170,3 +170,69 @@ fn contextual_projection_requires_the_newest_current_sound_caption() {
     assert!(!queued.contains(&current));
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn ordinary_backfill_excludes_assets_owned_by_long_audio_pipeline() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-long-audio-backfill-exclusion-{}",
+        std::process::id()
+    ));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let (ordinary, long) = catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            let ordinary = register(transaction, 31, Path::new("/voices/ordinary.wav"));
+            let long = register(transaction, 32, Path::new("/voices/long.wav"));
+            for asset_id in [ordinary, long] {
+                record_fixture_analysis(
+                    transaction,
+                    asset_id,
+                    AnalysisKind::Transcript,
+                    serde_json::json!({ "text": "fixture speech" }),
+                    100,
+                )?;
+            }
+            crate::ensure_long_audio_plan(
+                transaction,
+                long,
+                1,
+                &[crate::LongAudioSegmentPlan {
+                    index: 0,
+                    start_millis: 0,
+                    end_millis: 1_000,
+                }],
+                101,
+            )?;
+            Ok((ordinary, long))
+        })
+        .expect("fixtures write");
+
+    let alignment = catalog
+        .with_transaction(list_assets_with_nonempty_transcript_missing_alignment)
+        .expect("alignment projection reads");
+    assert_eq!(alignment, [ordinary]);
+    assert!(!alignment.contains(&long));
+
+    catalog
+        .with_transaction(|transaction| -> Result<(), crate::CatalogError> {
+            for asset_id in [ordinary, long] {
+                record_fixture_analysis(
+                    transaction,
+                    asset_id,
+                    AnalysisKind::Alignment,
+                    serde_json::json!({ "text": "fixture speech", "items": [] }),
+                    102,
+                )?;
+            }
+            Ok(())
+        })
+        .expect("alignment fixtures write");
+    let contextual = catalog
+        .with_transaction(|transaction| {
+            list_assets_with_alignment_missing_current_contextual(transaction, 3)
+        })
+        .expect("contextual projection reads");
+    assert_eq!(contextual, [ordinary]);
+    assert!(!contextual.contains(&long));
+
+    let _ = std::fs::remove_dir_all(root);
+}

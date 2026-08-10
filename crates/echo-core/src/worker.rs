@@ -204,8 +204,12 @@ fn dispatch_transcription(
     job: &ClaimedJob,
 ) -> Result<(), CoreError> {
     let asset_id = asset_id_of(&job.payload)?;
-    let source = source_path_of(catalog, &asset_id)?;
+    let asset = asset_of(catalog, &asset_id)?;
     record_inference_submitting(catalog, job, asset_id, crate::TRANSCRIPTION_INTENT)?;
+    if crate::long_audio::requires_segmentation(&asset) {
+        return crate::long_audio::dispatch_long_audio(catalog, config, job, &asset);
+    }
+    let source = asset.original.path;
     let client = crate::InferRuntimeClient::new(config.infer_runtime.clone());
     let payload = match client.transcribe(&source, &crate::TranscriptionIntent::default()) {
         Ok(payload) => payload,
@@ -420,6 +424,20 @@ fn source_path_of(
     })
 }
 
+fn asset_of(
+    catalog: &Catalog,
+    asset_id: &echo_domain::AssetId,
+) -> Result<echo_domain::AudioAsset, CoreError> {
+    catalog.with_transaction(|transaction| match find_by_id(transaction, *asset_id) {
+        Ok(AssetLookup::Found(asset)) => Ok(asset),
+        Ok(AssetLookup::NotFound) => Err(CoreError::new(
+            CoreErrorKind::Other,
+            format!("asset {asset_id} not found"),
+        )),
+        Err(error) => Err(CoreError::from(error)),
+    })
+}
+
 fn newest_transcript(
     catalog: &Catalog,
     asset_id: echo_domain::AssetId,
@@ -467,7 +485,7 @@ fn record_inference_submitting(
         .map_err(CoreError::from)
 }
 
-fn record_inference_success(
+pub(crate) fn record_inference_success(
     catalog: &Catalog,
     job: &ClaimedJob,
     asset_id: echo_domain::AssetId,

@@ -271,6 +271,18 @@ InferenceBackend
     provider/deployment、physical model/build、Attempt 和稳定错误码。25 MiB 上传上限在
     consumer admission 明确失败；长录音代理／切片属于后续独立 payload 切片，不允许静默
     截断原始声音。Echo 不消费 speech/TTS/voice-clone Intent。
+  - 长录音切片合同（2026-08-11）：当原始文件超过 Runtime 25 MiB 上限，或声音时长
+    超过 15 分钟时，Echo 以原始内容身份和稳定规划版本生成 8 分钟叶子切片。每次只流式
+    解码一个时间窗，生成 16 kHz、单声道、16-bit PCM WAV 分析代理，按 BLAKE3 内容地址
+    原子发布到可删除 cache；Original 不改写，后台不读入整个源文件或代理。切片计划、
+    代理引用、每段 transcribe/align/contextual 阶段和 Runtime provenance 逐段持久化，父任务
+    在任一阶段成功后都可断点续跑；不为同一声音并发占用多个本地模型候选。
+  - 分层文字合同（2026-08-11）：叶子文字和对齐时间统一投影回 Original 时间轴，
+    并索引为资产级文字证据；叶子声音速写再以有界子节点递归压缩，直到得到一个根速写。
+    每个节点保留子区间、内容 schema 与 Runtime provenance，没有靠静默截断制造“整段摘要”。
+    声音墙与轻量详情不再急切加载整份 transcript JSON，只返回有界预览和叶子计数；
+    完整文字、章节与点击定位只由显式打开的单声音工作区及专用读取 owner 按需提供；
+    完整文字实体的分页／虚拟化是后续大实例压测的性能门槛，不由声音墙偷偷代读。
   - 待办：长录音代理／切片、SenseVoice 能力 Intent、speaker/event 证据；音频合同能在
     执行中暴露 Job id 后，再补真正可中断的 Runtime 取消（当前同步 endpoint 仅在终态返回 id）。
 - **M2 Library**：声音墙、声音相册、Like/评分、来源元数据筛选、自然语言搜索、人物/声音、

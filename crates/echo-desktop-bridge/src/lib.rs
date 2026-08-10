@@ -183,6 +183,17 @@ mod ffi {
         segments: Vec<TranscriptSegmentWire>,
     }
 
+    /// One long-recording outline node for source-time navigation.
+    #[derive(Debug)]
+    struct LongAudioChapterWire {
+        level: u32,
+        index: u32,
+        start_millis: u64,
+        end_millis: u64,
+        sound_caption: String,
+        summary: String,
+    }
+
     /// Aggregate background job statistics.
     #[derive(Debug)]
     struct JobStatsWire {
@@ -275,6 +286,11 @@ mod ffi {
             self: &LibrarySession,
             asset_id: &str,
         ) -> Result<Vec<TranscriptWire>>;
+        /// Returns the persisted hierarchical outline of a long recording.
+        fn session_long_audio_chapters(
+            self: &LibrarySession,
+            asset_id: &str,
+        ) -> Result<Vec<LongAudioChapterWire>>;
         /// Stores user-owned Like and rating state for one asset.
         fn session_set_asset_affinity(
             self: &LibrarySession,
@@ -434,6 +450,14 @@ impl LibrarySession {
     /// Returns the session error message when the catalog read fails.
     fn session_transcripts(&self, asset_id: &str) -> Result<Vec<ffi::TranscriptWire>, String> {
         self.transcripts(asset_id).map_err(|error| error.message)
+    }
+
+    fn session_long_audio_chapters(
+        &self,
+        asset_id: &str,
+    ) -> Result<Vec<ffi::LongAudioChapterWire>, String> {
+        self.long_audio_chapters(asset_id)
+            .map_err(|error| error.message)
     }
 
     /// Stores user-owned Like and rating state for one asset.

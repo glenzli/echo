@@ -58,10 +58,63 @@ pub struct BlobStore {
 /// Returns a cache error when the root cannot be created.
 pub fn open_blob_store(root: &Path) -> Result<BlobStore, CacheError> {
     fs::create_dir_all(root.join("blobs").join("b3"))?;
+    fs::create_dir_all(root.join("blobs").join("staging"))?;
     fs::create_dir_all(root.join("quarantine").join("b3"))?;
     Ok(BlobStore {
         root: root.to_owned(),
     })
+}
+
+/// Streams one existing file into the content-addressed store without
+/// retaining its payload in memory. The source remains owned by the caller.
+///
+/// # Errors
+///
+/// Returns a cache error when the source cannot be read or publication cannot
+/// be applied atomically.
+pub fn put_file(
+    store: &BlobStore,
+    role: BlobRole,
+    source: &Path,
+) -> Result<(CachedBlob, PutBlob), CacheError> {
+    let staging = store.root.join("blobs").join("staging").join(format!(
+        "publish-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |duration| duration.as_nanos())
+    ));
+    let result = stream_copy_and_hash(source, &staging).and_then(|(content_hash, size_bytes)| {
+        let final_path = blob_path(&store.root, &content_hash);
+        if final_path.exists() {
+            verify_file(&final_path, &content_hash, size_bytes)?;
+            fs::remove_file(&staging)?;
+            return Ok((
+                CachedBlob {
+                    role,
+                    content_hash,
+                    size_bytes,
+                },
+                PutBlob::AlreadyPresent,
+            ));
+        }
+        if let Some(parent) = final_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::rename(&staging, &final_path)?;
+        Ok((
+            CachedBlob {
+                role,
+                content_hash,
+                size_bytes,
+            },
+            PutBlob::Stored,
+        ))
+    });
+    if result.is_err() {
+        let _ = fs::remove_file(staging);
+    }
+    result
 }
 
 /// Canonical on-disk path for a content hash.
@@ -93,9 +146,11 @@ pub fn put_blob(
     payload: &[u8],
 ) -> Result<(CachedBlob, PutBlob), CacheError> {
     let content_hash = ContentHash::from(blake3::hash(payload));
+    let payload_size = u64::try_from(payload.len())
+        .map_err(|error| CacheError::new(CacheErrorKind::TooLarge, error.to_string()))?;
     let final_path = blob_path(&store.root, &content_hash);
     if final_path.exists() {
-        verify_bytes(&final_path, &content_hash, payload.len())?;
+        verify_file(&final_path, &content_hash, payload_size)?;
         return Ok((
             cached_blob(role, content_hash, payload.len()),
             PutBlob::AlreadyPresent,
@@ -128,8 +183,30 @@ pub fn read_verified(
 ) -> Result<Vec<u8>, CacheError> {
     let path = blob_path(&store.root, &content_hash);
     let payload = read_bounded(&path, max_bytes)?;
-    verify_bytes(&path, &content_hash, payload.len())?;
+    if ContentHash::from(blake3::hash(&payload)) != content_hash {
+        return Err(CacheError::new(
+            CacheErrorKind::Corrupt,
+            format!("blob {} failed verification", path.display()),
+        ));
+    }
     Ok(payload)
+}
+
+/// Verifies one cached blob by streaming its bytes without returning the
+/// payload to the caller.
+///
+/// # Errors
+///
+/// Returns a cache error when the blob is missing, corrupt, or has a different
+/// size than its catalog reference.
+pub fn verify_blob(
+    store: &BlobStore,
+    content_hash: ContentHash,
+    expected_size: u64,
+) -> Result<PathBuf, CacheError> {
+    let path = blob_path(&store.root, &content_hash);
+    verify_file(&path, &content_hash, expected_size)?;
+    Ok(path)
 }
 
 /// Re-verifies a blob and, when corrupt, moves it out of the canonical tree.
@@ -144,8 +221,7 @@ pub fn quarantine_corrupt(
     expected_size: u64,
 ) -> Result<(), CacheError> {
     let path = blob_path(&store.root, &content_hash);
-    let payload = read_bounded(&path, expected_size)?;
-    if blake3::hash(&payload) == digest_bytes(&content_hash) {
+    if verify_file(&path, &content_hash, expected_size).is_ok() {
         return Ok(());
     }
     let quarantine_path = quarantine_path(&store.root, &content_hash);
@@ -162,10 +238,6 @@ pub fn store_root(store: &BlobStore) -> &Path {
     &store.root
 }
 
-fn digest_bytes(content_hash: &ContentHash) -> blake3::Hash {
-    blake3::Hash::from_bytes(*content_hash.as_bytes())
-}
-
 fn cached_blob(role: BlobRole, content_hash: ContentHash, size_bytes: usize) -> CachedBlob {
     CachedBlob {
         role,
@@ -174,30 +246,59 @@ fn cached_blob(role: BlobRole, content_hash: ContentHash, size_bytes: usize) -> 
     }
 }
 
-fn verify_bytes(
-    path: &Path,
-    content_hash: &ContentHash,
-    expected_size: usize,
-) -> Result<(), CacheError> {
-    let file = File::open(path)?;
+fn stream_copy_and_hash(
+    source: &Path,
+    destination: &Path,
+) -> Result<(ContentHash, u64), CacheError> {
+    let mut input = File::open(source)?;
+    let mut output = File::create(destination)?;
     let mut hasher = blake3::Hasher::new();
     let mut buffer = vec![0u8; 64 * 1024];
-    let mut file = file.take(u64::try_from(expected_size).expect("size fits u64"));
+    let mut size_bytes = 0u64;
     loop {
-        let read = file.read(&mut buffer)?;
+        let read = input.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        output.write_all(&buffer[..read])?;
+        hasher.update(&buffer[..read]);
+        size_bytes = size_bytes
+            .checked_add(u64::try_from(read).expect("read size fits u64"))
+            .ok_or_else(|| CacheError::new(CacheErrorKind::TooLarge, "size overflow"))?;
+    }
+    output.sync_all().ok();
+    Ok((ContentHash::from(hasher.finalize()), size_bytes))
+}
+
+fn verify_file(
+    path: &Path,
+    content_hash: &ContentHash,
+    expected_size: u64,
+) -> Result<(), CacheError> {
+    let actual_size = fs::metadata(path)?.len();
+    if actual_size != expected_size {
+        return Err(CacheError::new(
+            CacheErrorKind::Corrupt,
+            format!(
+                "blob {} has size {actual_size}, expected {expected_size}",
+                path.display()
+            ),
+        ));
+    }
+    let mut input = File::open(path)?;
+    let mut hasher = blake3::Hasher::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = input.read(&mut buffer)?;
         if read == 0 {
             break;
         }
         hasher.update(&buffer[..read]);
     }
-    let digest = ContentHash::from(hasher.finalize());
-    if digest != *content_hash {
+    if ContentHash::from(hasher.finalize()) != *content_hash {
         return Err(CacheError::new(
             CacheErrorKind::Corrupt,
-            format!(
-                "blob {} failed verification (bytes read {expected_size})",
-                path.display()
-            ),
+            format!("blob {} failed verification", path.display()),
         ));
     }
     Ok(())

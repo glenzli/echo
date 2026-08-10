@@ -15,6 +15,7 @@ mod import;
 mod infer_runtime;
 mod infer_runtime_credentials;
 mod infer_runtime_discovery;
+mod long_audio;
 mod metadata_queue;
 mod scanner;
 mod util;
@@ -43,6 +44,7 @@ pub use infer_runtime_credentials::{
     InferRuntimeCredential, InferRuntimeCredentialError, InferRuntimeCredentialStore,
     infer_runtime_credential_available, load_infer_runtime_credential,
 };
+pub use long_audio::LONG_AUDIO_PLAN_VERSION;
 pub use scanner::{
     FolderScanner, ScanOutcome, add_root_and_scan, queue_scans_for_enabled_roots, scan_root,
 };

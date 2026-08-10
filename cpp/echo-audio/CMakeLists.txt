@@ -4,6 +4,7 @@ pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavut
 
 add_library(
     echo-audio STATIC
+    src/analysis_proxy.cpp
     src/algorithmic_reverb.cpp
     src/adjustment.cpp
     src/decode.cpp
@@ -47,6 +48,14 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(
+        echo-analysis-proxy-test
+        tests/analysis_proxy_test.cpp
+    )
+    target_link_libraries(echo-analysis-proxy-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-analysis-proxy-test)
+    add_test(NAME echo-analysis-proxy-test COMMAND echo-analysis-proxy-test)
+
     add_executable(
         echo-algorithmic-reverb-test
         tests/algorithmic_reverb_test.cpp

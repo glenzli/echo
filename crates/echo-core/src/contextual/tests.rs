@@ -1,4 +1,7 @@
-use super::{CONTEXTUAL_SCHEMA_VERSION, ContextualPayload, decode_contextual_output};
+use super::{
+    CONTEXTUAL_SCHEMA_VERSION, ContextualPayload, decode_contextual_outline_output,
+    decode_contextual_output,
+};
 
 #[test]
 fn contextual_evidence_keeps_optional_product_fields() {
@@ -139,6 +142,30 @@ fn sound_caption_rejects_language_drift_meta_and_copy_then_hard_compacts_length(
     )
     .expect("valid generated meaning is compacted to the card presentation bound");
     assert_eq!(payload.sound_caption.chars().count(), 14);
+}
+
+#[test]
+fn outline_caption_may_equal_repeated_child_evidence() {
+    let output = serde_json::json!({
+        "schema_version": 3,
+        "sound_caption": "Morning alley sounds",
+        "summary": "",
+        "keywords": ["alley"],
+        "mood": null,
+        "place_hint": null,
+        "event_type": null,
+        "people_hints": []
+    });
+    let payload = decode_contextual_outline_output(
+        &output.to_string(),
+        "Morning alley sounds\nMorning alley sounds\nMorning alley sounds",
+    )
+    .expect("an honest repeated outline can retain its shared child caption");
+    assert_eq!(payload.sound_caption, "Morning alley sounds");
+
+    let ordinary = decode_contextual_output(&output.to_string(), "Morning alley sounds")
+        .expect_err("leaf captions still cannot copy a transcript");
+    assert_eq!(ordinary.code, "sound_caption_copies_transcript");
 }
 
 #[test]

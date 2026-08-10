@@ -43,12 +43,57 @@ mod ffi {
         levels: Vec<FfiWaveformLevel>,
     }
 
+    struct FfiAnalysisProxy {
+        sample_rate: u32,
+        channel_count: u32,
+        frame_count: u64,
+        size_bytes: u64,
+    }
+
     unsafe extern "C++" {
         include!("src/bridge/cxx_bridge.hpp");
 
         fn probe_audio(path: &str) -> Result<FfiAudioProbe>;
         fn build_waveform_bridge(path: &str, max_levels: u32) -> Result<FfiWaveform>;
+        fn build_analysis_proxy_bridge(
+            source_path: &str,
+            output_path: &str,
+            start_millis: u64,
+            end_millis: u64,
+        ) -> Result<FfiAnalysisProxy>;
     }
+}
+
+/// Metadata of one bounded analysis proxy written by the audio engine.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalysisProxy {
+    pub sample_rate: u32,
+    pub channel_count: u32,
+    pub frame_count: u64,
+    pub size_bytes: u64,
+}
+
+/// Streams one source time range to a mono 16 kHz PCM16 WAV at `output`.
+///
+/// # Errors
+///
+/// Returns an engine failure when paths are invalid or the range cannot be
+/// decoded. A failed output is owned by the caller and may be discarded.
+pub fn build_analysis_proxy(
+    source: &Path,
+    output: &Path,
+    start_millis: u64,
+    end_millis: u64,
+) -> Result<AnalysisProxy, BridgeError> {
+    let source = native_path(source)?;
+    let output = native_path(output)?;
+    let wire = ffi::build_analysis_proxy_bridge(&source, &output, start_millis, end_millis)?;
+    Ok(AnalysisProxy {
+        sample_rate: wire.sample_rate,
+        channel_count: wire.channel_count,
+        frame_count: wire.frame_count,
+        size_bytes: wire.size_bytes,
+    })
 }
 
 /// Probe result for one source file.

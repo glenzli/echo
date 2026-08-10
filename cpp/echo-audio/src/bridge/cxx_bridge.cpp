@@ -1,5 +1,6 @@
 #include "cxx_bridge.hpp"
 
+#include <echo/audio/analysis_proxy.hpp>
 #include <echo/audio/decode.hpp>
 #include <echo/audio/waveform.hpp>
 
@@ -50,6 +51,26 @@ FfiWaveform build_waveform_bridge(rust::Str path, uint32_t max_levels) {
         wire.levels.push_back(wire_level);
     }
     return wire;
+}
+
+FfiAnalysisProxy build_analysis_proxy_bridge(
+    rust::Str source_path,
+    rust::Str output_path,
+    uint64_t start_millis,
+    uint64_t end_millis
+) {
+    const audio::AnalysisProxyResult result = audio::build_analysis_proxy(
+        std::string(source_path),
+        std::string(output_path),
+        start_millis,
+        end_millis
+    );
+    return FfiAnalysisProxy{
+        .sample_rate = result.sample_rate,
+        .channel_count = result.channel_count,
+        .frame_count = result.frame_count,
+        .size_bytes = result.size_bytes,
+    };
 }
 
 } // namespace echo::bridge

@@ -97,6 +97,62 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
 }
 
 #[test]
+fn sound_wall_projection_bounds_long_text_and_omits_segments() {
+    let root = std::env::temp_dir().join(format!("echo-bounded-wall-{}", std::process::id()));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset_id = catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            let registered = register_asset(
+                transaction,
+                &AssetRegistrationInput {
+                    content_hash: ContentHash::new([0x33; 32]),
+                    path: Path::new("/voices/long.wav"),
+                    size_bytes: 100,
+                    codec: Some("pcm"),
+                    duration_millis: Some(1_000_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 10,
+                },
+            )?;
+            let asset_id = match registered {
+                RegisterAsset::Created(asset) | RegisterAsset::Existed(asset) => asset.id,
+            };
+            record_analysis(
+                transaction,
+                &AppendAnalysisRecord {
+                    asset_id,
+                    record: AnalysisRecord::new(
+                        AnalysisKind::Transcript,
+                        serde_json::json!({
+                            "model":"fixture",
+                            "text":"x".repeat(10_000),
+                            "segments":[{"text":"private leaf","start":0,"end":1}],
+                            "runtime":{"large":"provenance"}
+                        }),
+                        ModelIdentity::new("test".into(), "1".into()),
+                        None,
+                        20,
+                    ),
+                },
+            )?;
+            Ok(asset_id)
+        })
+        .expect("fixture writes");
+    let projected = catalog
+        .with_transaction(list_audio_space)
+        .expect("projection reads")
+        .into_iter()
+        .find(|asset| asset.id == asset_id.to_string())
+        .expect("asset projects")
+        .transcript
+        .expect("preview exists");
+    assert_eq!(projected["text"].as_str().unwrap().len(), 2048);
+    assert_eq!(projected["segments"], serde_json::json!([]));
+    assert!(projected["runtime"].is_null());
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn sound_wall_projection_keeps_latest_positive_facets_across_empty_refresh() {
     let root = std::env::temp_dir().join(format!("echo-positive-facets-{}", std::process::id()));
     let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");

@@ -11,6 +11,7 @@ Rectangle {
     id: preview
 
     property var asset: null
+    property bool active: true
     property var waveformLevels: []
     property string loadedPath: ""
     property string loadedAdjustmentKey: ""
@@ -93,6 +94,9 @@ Rectangle {
     function refreshAsset() : void {
         transcriptModel.clear()
         waveformLevels = []
+        if (!active) {
+            return
+        }
         if (!asset || !asset.id || asset.pathStatus === "missing") {
             analysisStatus = ({ stage: "text", state: "missing",
                                 errorCode: "", runtimeJobId: "",
@@ -155,15 +159,23 @@ Rectangle {
         Qt.callLater(refreshAsset)
     }
 
+    onActiveChanged: {
+        if (active) {
+            Qt.callLater(refreshAsset)
+        }
+    }
+
     Connections {
         target: backend
 
         function onAssetsChanged() : void {
-            preview.refreshAsset()
+            if (preview.active) {
+                preview.refreshAsset()
+            }
         }
 
         function onJobsChanged() : void {
-            if (preview.hasAsset) {
+            if (preview.active && preview.hasAsset) {
                 preview.analysisStatus = backend.analysisStatusForAsset(preview.asset.id)
             }
         }

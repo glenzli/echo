@@ -56,6 +56,7 @@ Rectangle {
         anchors.top: parent.top
         anchors.bottom: filmstripPanel.top
         asset: focusView.selectedAsset
+        active: focusView.visible
         jobStats: focusView.jobStats
     }
 

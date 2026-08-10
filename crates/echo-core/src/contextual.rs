@@ -85,6 +85,21 @@ pub(crate) fn decode_contextual_output(
     output: &str,
     transcript: &str,
 ) -> Result<ContextualPayload, ContextualOutputError> {
+    decode_contextual_output_with_copy_policy(output, transcript, true)
+}
+
+pub(crate) fn decode_contextual_outline_output(
+    output: &str,
+    child_evidence: &str,
+) -> Result<ContextualPayload, ContextualOutputError> {
+    decode_contextual_output_with_copy_policy(output, child_evidence, false)
+}
+
+fn decode_contextual_output_with_copy_policy(
+    output: &str,
+    transcript: &str,
+    reject_source_copy: bool,
+) -> Result<ContextualPayload, ContextualOutputError> {
     let value: serde_json::Value =
         serde_json::from_str(output.trim()).map_err(|_| invalid_output("invalid_json"))?;
     let object = value
@@ -100,7 +115,8 @@ pub(crate) fn decode_contextual_output(
     if decoded.schema_version != CONTEXTUAL_SCHEMA_VERSION {
         return Err(invalid_output("unsupported_schema_version"));
     }
-    let sound_caption = validate_sound_caption(&decoded.sound_caption, transcript)?;
+    let sound_caption =
+        validate_sound_caption(&decoded.sound_caption, transcript, reject_source_copy)?;
     let summary = validate_summary(&decoded.summary, transcript);
     if decoded.keywords.len() > 8 {
         return Err(invalid_output("invalid_keyword_count"));
@@ -145,7 +161,11 @@ const fn legacy_contextual_schema_version() -> u32 {
     1
 }
 
-fn validate_sound_caption(value: &str, transcript: &str) -> Result<String, ContextualOutputError> {
+fn validate_sound_caption(
+    value: &str,
+    transcript: &str,
+    reject_source_copy: bool,
+) -> Result<String, ContextualOutputError> {
     let caption = bounded_required(value, 64, "invalid_sound_caption")?;
     if caption.contains(['\n', '\r']) {
         return Err(invalid_output("invalid_sound_caption"));
@@ -169,9 +189,10 @@ fn validate_sound_caption(value: &str, transcript: &str) -> Result<String, Conte
     validate_primary_script(&caption, transcript, "sound_caption_language_mismatch")?;
     let normalized_caption = normalize_comparison_text(&caption);
     let normalized_transcript = normalize_comparison_text(transcript);
-    if normalized_caption == normalized_transcript
-        || (normalized_caption.chars().count() >= 8
-            && normalized_transcript.contains(&normalized_caption))
+    if reject_source_copy
+        && (normalized_caption == normalized_transcript
+            || (normalized_caption.chars().count() >= 8
+                && normalized_transcript.contains(&normalized_caption)))
     {
         return Err(invalid_output("sound_caption_copies_transcript"));
     }

@@ -548,6 +548,34 @@ QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {
     return transcripts;
 }
 
+QVariantList DesktopBackend::longAudioChaptersForAsset(const QString& id) const {
+    QVariantList chapters;
+    rust::Vec<echo::desktop::LongAudioChapterWire> wires;
+    try {
+        wires = session_->session_long_audio_chapters(id.toStdString());
+    } catch (const rust::Error& error) {
+        qWarning("long-audio outline query failed for %s: %s", qPrintable(id), error.what());
+        return chapters;
+    }
+    for (const auto& wire : wires) {
+        QVariantMap chapter;
+        chapter.insert(QStringLiteral("level"), static_cast<quint32>(wire.level));
+        chapter.insert(QStringLiteral("index"), static_cast<quint32>(wire.index));
+        chapter.insert(QStringLiteral("startMillis"), static_cast<qulonglong>(wire.start_millis));
+        chapter.insert(QStringLiteral("endMillis"), static_cast<qulonglong>(wire.end_millis));
+        chapter.insert(
+            QStringLiteral("soundCaption"),
+            QString::fromUtf8(wire.sound_caption.data(), wire.sound_caption.size())
+        );
+        chapter.insert(
+            QStringLiteral("summary"),
+            QString::fromUtf8(wire.summary.data(), wire.summary.size())
+        );
+        chapters.append(chapter);
+    }
+    return chapters;
+}
+
 void DesktopBackend::startWorkers(const QString& runtimeEndpoint) {
     try {
         session_->session_start_workers(runtimeEndpoint.toStdString());

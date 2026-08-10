@@ -14,5 +14,11 @@ namespace echo::bridge {
 
 [[nodiscard]] FfiAudioProbe probe_audio(rust::Str path);
 [[nodiscard]] FfiWaveform build_waveform_bridge(rust::Str path, uint32_t max_levels);
+[[nodiscard]] FfiAnalysisProxy build_analysis_proxy_bridge(
+    rust::Str source_path,
+    rust::Str output_path,
+    uint64_t start_millis,
+    uint64_t end_millis
+);
 
 } // namespace echo::bridge

@@ -9,8 +9,8 @@ mod blobs;
 mod error;
 
 pub use blobs::{
-    BlobRole, BlobStore, CachedBlob, PutBlob, blob_path, open_blob_store, put_blob,
-    quarantine_corrupt, read_verified, store_root,
+    BlobRole, BlobStore, CachedBlob, PutBlob, blob_path, open_blob_store, put_blob, put_file,
+    quarantine_corrupt, read_verified, store_root, verify_blob,
 };
 pub use error::{CacheError, CacheErrorKind};
 

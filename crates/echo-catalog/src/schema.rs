@@ -98,14 +98,52 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 3);
+    CatalogSchemaRevision::new(20_260_811, 4);
 pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 3);
+pub(crate) const OLDER_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const OLDEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 4);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 5);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.4-user-albums";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.5-long-audio-segments";
+
+pub(crate) const LONG_AUDIO_MIGRATION_SQL: &str = r"
+CREATE TABLE long_audio_segments (
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    plan_version       INTEGER NOT NULL,
+    segment_index      INTEGER NOT NULL CHECK (segment_index >= 0),
+    start_millis       INTEGER NOT NULL CHECK (start_millis >= 0),
+    end_millis         INTEGER NOT NULL CHECK (end_millis > start_millis),
+    proxy_content_hash TEXT,
+    proxy_size_bytes   INTEGER CHECK (proxy_size_bytes > 0),
+    transcript_json    TEXT,
+    alignment_json     TEXT,
+    contextual_json    TEXT,
+    updated_at_millis  INTEGER NOT NULL,
+    PRIMARY KEY (asset_id, plan_version, segment_index),
+    CHECK ((proxy_content_hash IS NULL) = (proxy_size_bytes IS NULL))
+);
+
+CREATE INDEX long_audio_segments_asset_range
+    ON long_audio_segments (asset_id, plan_version, start_millis);
+
+CREATE TABLE long_audio_outline_nodes (
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    plan_version       INTEGER NOT NULL,
+    level              INTEGER NOT NULL CHECK (level >= 0),
+    node_index         INTEGER NOT NULL CHECK (node_index >= 0),
+    start_millis       INTEGER NOT NULL CHECK (start_millis >= 0),
+    end_millis         INTEGER NOT NULL CHECK (end_millis > start_millis),
+    contextual_json    TEXT NOT NULL,
+    updated_at_millis  INTEGER NOT NULL,
+    PRIMARY KEY (asset_id, plan_version, level, node_index)
+);
+
+CREATE INDEX long_audio_outline_asset_level
+    ON long_audio_outline_nodes (asset_id, plan_version, level, start_millis);
+";
 
 pub(crate) const ADJUSTMENT_EFFECTS_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -278,6 +316,40 @@ CREATE TABLE IF NOT EXISTS user_album_members (
 
 CREATE INDEX IF NOT EXISTS user_album_members_asset
     ON user_album_members (asset_id, album_id);
+
+CREATE TABLE IF NOT EXISTS long_audio_segments (
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    plan_version       INTEGER NOT NULL,
+    segment_index      INTEGER NOT NULL CHECK (segment_index >= 0),
+    start_millis       INTEGER NOT NULL CHECK (start_millis >= 0),
+    end_millis         INTEGER NOT NULL CHECK (end_millis > start_millis),
+    proxy_content_hash TEXT,
+    proxy_size_bytes   INTEGER CHECK (proxy_size_bytes > 0),
+    transcript_json    TEXT,
+    alignment_json     TEXT,
+    contextual_json    TEXT,
+    updated_at_millis  INTEGER NOT NULL,
+    PRIMARY KEY (asset_id, plan_version, segment_index),
+    CHECK ((proxy_content_hash IS NULL) = (proxy_size_bytes IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS long_audio_segments_asset_range
+    ON long_audio_segments (asset_id, plan_version, start_millis);
+
+CREATE TABLE IF NOT EXISTS long_audio_outline_nodes (
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    plan_version       INTEGER NOT NULL,
+    level              INTEGER NOT NULL CHECK (level >= 0),
+    node_index         INTEGER NOT NULL CHECK (node_index >= 0),
+    start_millis       INTEGER NOT NULL CHECK (start_millis >= 0),
+    end_millis         INTEGER NOT NULL CHECK (end_millis > start_millis),
+    contextual_json    TEXT NOT NULL,
+    updated_at_millis  INTEGER NOT NULL,
+    PRIMARY KEY (asset_id, plan_version, level, node_index)
+);
+
+CREATE INDEX IF NOT EXISTS long_audio_outline_asset_level
+    ON long_audio_outline_nodes (asset_id, plan_version, level, start_millis);
 
 CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     id                    INTEGER PRIMARY KEY AUTOINCREMENT,

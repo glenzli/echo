@@ -173,6 +173,8 @@ pub fn list_assets_with_nonempty_transcript_missing_alignment(
 ) -> Result<Vec<AssetId>, CatalogError> {
     let mut statement = transaction.prepare(
         "SELECT a.id FROM assets a WHERE a.path_status = 'present' \
+         AND NOT EXISTS (SELECT 1 FROM long_audio_segments long_audio \
+             WHERE long_audio.asset_id = a.id) \
          AND TRIM(COALESCE(json_extract((\
              SELECT transcript.value FROM analysis_records transcript \
              WHERE transcript.asset_id = a.id AND transcript.kind = 'transcript' \
@@ -200,6 +202,8 @@ pub fn list_assets_with_alignment_missing_current_contextual(
 ) -> Result<Vec<AssetId>, CatalogError> {
     let mut statement = transaction.prepare(
         "SELECT a.id FROM assets a WHERE a.path_status = 'present' \
+         AND NOT EXISTS (SELECT 1 FROM long_audio_segments long_audio \
+             WHERE long_audio.asset_id = a.id) \
          AND EXISTS (SELECT 1 FROM analysis_records aligned \
              WHERE aligned.asset_id = a.id AND aligned.kind = 'alignment') \
          AND TRIM(COALESCE(json_extract((\

@@ -12,7 +12,7 @@ Rectangle {
     required property var asset
     required property var jobStats
     property var waveformLevels: []
-    property var textRecords: []
+    property var longAudioChapters: []
     property string loadedPath: ""
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
@@ -60,6 +60,10 @@ Rectangle {
         return minutes + ":" + String(seconds).padStart(2, "0")
     }
 
+    function formatPosition(millis: double) : string {
+        return formatDuration(Math.max(1, millis))
+    }
+
     function formatDate(millis: double) : string {
         if (!millis || millis <= 0) {
             return qsTr("Unknown")
@@ -69,14 +73,14 @@ Rectangle {
 
     function refresh() : void {
         waveformLevels = []
-        textRecords = []
+        longAudioChapters = []
         if (!asset || !asset.id) {
             return
         }
         if (asset.pathStatus !== "missing") {
             waveformLevels = backend.waveformForAsset(asset.id)
         }
-        textRecords = backend.transcriptsForAsset(asset.id)
+        longAudioChapters = backend.longAudioChaptersForAsset(asset.id)
     }
 
     function playSelected() : void {
@@ -386,16 +390,89 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
+                    visible: inspector.longAudioChapters.length > 0
+                    title: qsTr("CHAPTERS")
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        Repeater {
+                            model: inspector.longAudioChapters.filter(chapter => chapter.level === 0)
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 44
+                                radius: 6
+                                color: chapterMouse.containsMouse
+                                    ? Theme.surfaceSubtle : Theme.transparent
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 7
+                                    anchors.rightMargin: 7
+                                    spacing: 8
+
+                                    Text {
+                                        text: inspector.formatPosition(modelData.startMillis)
+                                        color: Theme.accent
+                                        font.pixelSize: Theme.fontMeta
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.soundCaption
+                                            color: Theme.textPrimary
+                                            font.pixelSize: Theme.fontBody
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: modelData.summary.length > 0
+                                            text: modelData.summary
+                                            color: Theme.textSecondary
+                                            font.pixelSize: Theme.fontMeta
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: chapterMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (inspector.loadedPath !== inspector.asset.path) {
+                                            player.play(inspector.asset.path)
+                                            inspector.loadedPath = inspector.asset.path
+                                        }
+                                        player.seek(modelData.startMillis)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                InspectorSection {
+                    Layout.fillWidth: true
                     title: qsTr("TEXT")
 
                     Text {
                         Layout.fillWidth: true
-                        text: inspector.textRecords.length > 0
-                            ? inspector.textRecords[0].text
+                        text: inspector.hasAsset && inspector.asset.textPreview.length > 0
+                            ? inspector.asset.textPreview
                             : inspector.jobStats.pending > 0 || inspector.jobStats.running > 0
                                 ? qsTr("Echo is extracting text in the background…")
                                 : qsTr("No text has been extracted from this sound yet.")
-                        color: inspector.textRecords.length > 0
+                        color: inspector.hasAsset && inspector.asset.textPreview.length > 0
                             ? Theme.textPrimary : Theme.textDisabled
                         font.pixelSize: Theme.fontBody
                         lineHeight: 1.35

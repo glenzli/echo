@@ -1340,6 +1340,11 @@
     </message>
     <message>
         <location filename="../qml/SoundInspector.qml" line="389"/>
+        <source>CHAPTERS</source>
+        <translation>段落</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundInspector.qml" line="389"/>
         <source>TEXT</source>
         <translation>文字</translation>
     </message>

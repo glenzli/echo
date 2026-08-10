@@ -69,7 +69,10 @@ pub fn list_audio_space(
          (SELECT f.display_value FROM contextual_browse_facets f \
           WHERE f.asset_id = a.id AND f.facet_kind = 'event' \
           ORDER BY f.analysis_record_id DESC LIMIT 1), \
-         (SELECT value FROM analysis_records r WHERE r.asset_id = a.id \
+         (SELECT json_set(r.value, '$.text', \
+             substr(COALESCE(json_extract(r.value, '$.text'), ''), 1, 2048), \
+             '$.segments', json('[]'), '$.runtime', NULL) \
+          FROM analysis_records r WHERE r.asset_id = a.id \
           AND r.kind = 'transcript' ORDER BY r.id DESC LIMIT 1), \
          COALESCE(u.liked, 0), COALESCE(u.rating, 0), \
          m.container_format, m.sample_rate, m.channel_count, m.entries_json, \

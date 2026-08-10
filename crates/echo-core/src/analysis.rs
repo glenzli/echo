@@ -94,6 +94,56 @@ pub fn record_runtime_transcript(
     )
 }
 
+pub(crate) fn record_aggregate_transcript(
+    catalog: &echo_catalog::Catalog,
+    asset_id: AssetId,
+    payload: &TranscriptPayload,
+    plan_version: u32,
+) -> Result<(), CoreError> {
+    record_transcript_with_model(
+        catalog,
+        asset_id,
+        payload,
+        ModelIdentity::new(
+            "echo/long-audio-aggregate".to_owned(),
+            format!("plan-{plan_version}"),
+        ),
+    )
+}
+
+pub(crate) fn record_aggregate_alignment(
+    catalog: &echo_catalog::Catalog,
+    asset_id: AssetId,
+    value: &serde_json::Value,
+    plan_version: u32,
+) -> Result<(), CoreError> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| {
+            i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
+        });
+    catalog
+        .with_transaction(|transaction| {
+            record_analysis(
+                transaction,
+                &AppendAnalysisRecord {
+                    asset_id,
+                    record: AnalysisRecord::new(
+                        AnalysisKind::Alignment,
+                        value.clone(),
+                        ModelIdentity::new(
+                            "echo/long-audio-aggregate".to_owned(),
+                            format!("plan-{plan_version}"),
+                        ),
+                        None,
+                        now,
+                    ),
+                },
+            )
+        })
+        .map_err(CoreError::from)
+}
+
 fn record_transcript_with_model(
     catalog: &echo_catalog::Catalog,
     asset_id: AssetId,
