@@ -77,6 +77,9 @@ pub fn list_audio_space(
          adj.fade_out_millis, adj.fade_in_curve, adj.fade_out_curve, \
          adj.gain_centibels, adj.low_cut_hertz, adj.eq_low_gain_centibels, \
          adj.eq_mid_gain_centibels, adj.eq_high_gain_centibels, \
+         adj.compressor_enabled, adj.compressor_threshold_centibels, \
+         adj.compressor_ratio_tenths, adj.compressor_attack_millis, \
+         adj.compressor_release_millis, adj.compressor_makeup_centibels, \
          adj.created_at_millis \
          FROM assets a LEFT JOIN asset_user_state u ON u.asset_id = a.id \
          LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
@@ -133,13 +136,34 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
                     .expect("mid EQ gain fits centibels"),
                 i16::try_from(row.get::<_, i64>(30).expect("high EQ gain reads"))
                     .expect("high EQ gain fits centibels"),
-            )),
+            ))
+            .with_compressor(echo_domain::CompressorSettings {
+                enabled: row.get::<_, i64>(31).expect("compressor enabled reads") != 0,
+                threshold_centibels: i16::try_from(
+                    row.get::<_, i64>(32).expect("compressor threshold reads"),
+                )
+                .expect("compressor threshold fits centibels"),
+                ratio_tenths: u16::try_from(row.get::<_, i64>(33).expect("compressor ratio reads"))
+                    .expect("compressor ratio fits tenths"),
+                attack_millis: u16::try_from(
+                    row.get::<_, i64>(34).expect("compressor attack reads"),
+                )
+                .expect("compressor attack fits milliseconds"),
+                release_millis: u16::try_from(
+                    row.get::<_, i64>(35).expect("compressor release reads"),
+                )
+                .expect("compressor release fits milliseconds"),
+                makeup_centibels: i16::try_from(
+                    row.get::<_, i64>(36).expect("compressor makeup reads"),
+                )
+                .expect("compressor makeup fits centibels"),
+            }),
         )
         .expect("stored adjustment is valid");
         crate::AssetAdjustmentRevision {
             revision_id,
             graph,
-            created_at_millis: row.get(31).expect("adjustment timestamp reads"),
+            created_at_millis: row.get(37).expect("adjustment timestamp reads"),
         }
     });
     Ok(AudioSpaceAsset {

@@ -47,6 +47,9 @@ class PlaybackSession {
     /// session. The producer coalesces rapid updates and crossfades filter
     /// state before the audio reaches the realtime ring.
     void update_equalizer(ThreeBandEqualizerAdjustment adjustment);
+    /// Publishes a latest-wins compressor target. The producer applies it to
+    /// the persistent detector without restarting playback.
+    void update_compressor(CompressorAdjustment adjustment);
 
     [[nodiscard]] bool is_paused() const;
     [[nodiscard]] bool is_stopped() const;

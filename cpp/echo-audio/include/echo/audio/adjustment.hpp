@@ -19,6 +19,17 @@ struct ThreeBandEqualizerAdjustment {
     std::int16_t high_gain_centibels = 0;
 };
 
+/// Stereo-linked soft-knee compressor intent. Time values are milliseconds;
+/// ratio is stored in tenths so the cross-language contract stays exact.
+struct CompressorAdjustment {
+    bool enabled = false;
+    std::int16_t threshold_centibels = -1800;
+    std::uint16_t ratio_tenths = 30;
+    std::uint16_t attack_millis = 10;
+    std::uint16_t release_millis = 120;
+    std::int16_t makeup_centibels = 0;
+};
+
 /// Authored non-destructive playback adjustments. Milliseconds, centibels,
 /// and hertz are explicit so the cross-language boundary never relies on
 /// floating-point UI units. A zero `trim_end_millis` means source end.
@@ -33,6 +44,7 @@ struct PlaybackAdjustment {
     /// High-pass cutoff in hertz, or zero when disabled.
     std::uint16_t low_cut_hertz = 0;
     ThreeBandEqualizerAdjustment equalizer;
+    CompressorAdjustment compressor;
 };
 
 /// Playback-ready adjustment compiled once before decoding begins.
@@ -53,8 +65,11 @@ class PreparedAdjustment {
     [[nodiscard]] std::uint64_t trim_end_millis() const;
     [[nodiscard]] std::uint16_t low_cut_hertz() const;
     [[nodiscard]] ThreeBandEqualizerAdjustment equalizer() const;
+    [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] std::uint64_t clamp_seek_millis(std::uint64_t millis) const;
     [[nodiscard]] float amplitude_at(std::uint64_t source_frame) const;
+    [[nodiscard]] float gain_amplitude() const;
+    [[nodiscard]] float envelope_at(std::uint64_t source_frame) const;
 
   private:
     std::uint64_t start_frame_ = 0;
@@ -68,6 +83,7 @@ class PreparedAdjustment {
     float gain_amplitude_ = 1.0F;
     std::uint16_t low_cut_hertz_ = 0;
     ThreeBandEqualizerAdjustment equalizer_;
+    CompressorAdjustment compressor_;
 };
 
 } // namespace echo::audio

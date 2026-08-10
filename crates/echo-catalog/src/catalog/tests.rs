@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn previous_catalog_revision_migrates_equalizer_without_losing_assets() {
+fn previous_catalog_revision_migrates_dynamics_without_losing_assets() {
     let root = std::env::temp_dir().join(format!("echo-schema-migration-{}", std::process::id()));
     let path = root.join("catalog.sqlite");
     let catalog = open_catalog(&path).expect("current catalog opens");
@@ -46,9 +46,12 @@ fn previous_catalog_revision_migrates_equalizer_without_losing_assets() {
                 2,
             )?;
             for column in [
-                "eq_low_gain_centibels",
-                "eq_mid_gain_centibels",
-                "eq_high_gain_centibels",
+                "compressor_enabled",
+                "compressor_threshold_centibels",
+                "compressor_ratio_tenths",
+                "compressor_attack_millis",
+                "compressor_release_millis",
+                "compressor_makeup_centibels",
             ] {
                 transaction.execute(
                     &format!("ALTER TABLE asset_adjustment_revisions DROP COLUMN {column}"),
@@ -56,7 +59,7 @@ fn previous_catalog_revision_migrates_equalizer_without_losing_assets() {
                 )?;
             }
             transaction.execute(
-                "UPDATE catalog_meta SET value = '20260810.3' WHERE key = 'schema_version'",
+                "UPDATE catalog_meta SET value = '20260810.4' WHERE key = 'schema_version'",
                 [],
             )?;
             Ok(())
@@ -65,7 +68,7 @@ fn previous_catalog_revision_migrates_equalizer_without_losing_assets() {
     drop(catalog);
 
     let migrated = open_catalog(&path).expect("previous revision migrates");
-    let (version, asset_count, equalizer_column_count): (String, i64, i64) = migrated
+    let (version, asset_count, dynamics_column_count): (String, i64, i64) = migrated
         .with_transaction(|transaction| -> Result<_, CatalogError> {
             Ok((
                 transaction.query_row(
@@ -76,17 +79,16 @@ fn previous_catalog_revision_migrates_equalizer_without_losing_assets() {
                 transaction.query_row("SELECT COUNT(*) FROM assets", [], |row| row.get(0))?,
                 transaction.query_row(
                     "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
-                     WHERE name IN ('eq_low_gain_centibels', 'eq_mid_gain_centibels', \
-                                    'eq_high_gain_centibels')",
+                     WHERE name LIKE 'compressor_%'",
                     [],
                     |row| row.get(0),
                 )?,
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260810.4");
+    assert_eq!(version, "20260810.5");
     assert_eq!(asset_count, 1);
-    assert_eq!(equalizer_column_count, 3);
+    assert_eq!(dynamics_column_count, 6);
     let adjustment = migrated
         .with_transaction(|transaction| {
             let asset_id: String =
@@ -108,5 +110,9 @@ fn previous_catalog_revision_migrates_equalizer_without_losing_assets() {
     );
     assert_eq!(adjustment.graph.low_cut_hertz(), 0);
     assert!(adjustment.graph.equalizer().is_flat());
+    assert_eq!(
+        adjustment.graph.compressor(),
+        echo_domain::CompressorSettings::default()
+    );
     let _ = std::fs::remove_dir_all(root);
 }

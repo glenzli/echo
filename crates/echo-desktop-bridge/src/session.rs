@@ -64,6 +64,12 @@ struct AdjustmentWireFields {
     eq_low_gain_centibels: i16,
     eq_mid_gain_centibels: i16,
     eq_high_gain_centibels: i16,
+    compressor_enabled: bool,
+    compressor_threshold_centibels: i16,
+    compressor_ratio_tenths: u16,
+    compressor_attack_millis: u16,
+    compressor_release_millis: u16,
+    compressor_makeup_centibels: i16,
 }
 
 fn adjustment_wire_fields(
@@ -84,6 +90,12 @@ fn adjustment_wire_fields(
             eq_low_gain_centibels: 0,
             eq_mid_gain_centibels: 0,
             eq_high_gain_centibels: 0,
+            compressor_enabled: false,
+            compressor_threshold_centibels: -1_800,
+            compressor_ratio_tenths: 30,
+            compressor_attack_millis: 10,
+            compressor_release_millis: 120,
+            compressor_makeup_centibels: 0,
         },
         |revision| AdjustmentWireFields {
             revision: revision.revision_id,
@@ -100,6 +112,12 @@ fn adjustment_wire_fields(
             eq_low_gain_centibels: revision.graph.equalizer().low_gain_centibels(),
             eq_mid_gain_centibels: revision.graph.equalizer().mid_gain_centibels(),
             eq_high_gain_centibels: revision.graph.equalizer().high_gain_centibels(),
+            compressor_enabled: revision.graph.compressor().enabled,
+            compressor_threshold_centibels: revision.graph.compressor().threshold_centibels,
+            compressor_ratio_tenths: revision.graph.compressor().ratio_tenths,
+            compressor_attack_millis: revision.graph.compressor().attack_millis,
+            compressor_release_millis: revision.graph.compressor().release_millis,
+            compressor_makeup_centibels: revision.graph.compressor().makeup_centibels,
         },
     )
 }
@@ -190,6 +208,12 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         eq_low_gain_centibels: adjustment.eq_low_gain_centibels,
         eq_mid_gain_centibels: adjustment.eq_mid_gain_centibels,
         eq_high_gain_centibels: adjustment.eq_high_gain_centibels,
+        compressor_enabled: adjustment.compressor_enabled,
+        compressor_threshold_centibels: adjustment.compressor_threshold_centibels,
+        compressor_ratio_tenths: adjustment.compressor_ratio_tenths,
+        compressor_attack_millis: adjustment.compressor_attack_millis,
+        compressor_release_millis: adjustment.compressor_release_millis,
+        compressor_makeup_centibels: adjustment.compressor_makeup_centibels,
         container_format,
         sample_rate,
         channel_count,
@@ -403,7 +427,15 @@ impl LibrarySession {
                 adjustment.eq_low_gain_centibels,
                 adjustment.eq_mid_gain_centibels,
                 adjustment.eq_high_gain_centibels,
-            )),
+            ))
+            .with_compressor(echo_domain::CompressorSettings {
+                enabled: adjustment.compressor_enabled,
+                threshold_centibels: adjustment.compressor_threshold_centibels,
+                ratio_tenths: adjustment.compressor_ratio_tenths,
+                attack_millis: adjustment.compressor_attack_millis,
+                release_millis: adjustment.compressor_release_millis,
+                makeup_centibels: adjustment.compressor_makeup_centibels,
+            }),
         )
         .map_err(|error| SessionError {
             message: error.to_string(),

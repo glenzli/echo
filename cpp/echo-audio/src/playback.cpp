@@ -1,5 +1,6 @@
 #include "echo/audio/playback.hpp"
 
+#include "echo/audio/dynamics_processor.hpp"
 #include "echo/audio/ffmpeg_include.hpp"
 #include "echo/audio/low_cut_filter.hpp"
 #include "echo/audio/output_guard.hpp"
@@ -300,6 +301,8 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        dynamics_processor_ =
+            std::make_unique<DynamicsProcessor>(adjustment_->compressor(), kCanonicalSampleRate);
         output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
         applied_equalizer_ = pack_equalizer(adjustment_->equalizer());
         requested_equalizer_.store(applied_equalizer_, std::memory_order_release);
@@ -376,6 +379,17 @@ class PlaybackSession::Impl {
         control_cv_.notify_one();
     }
 
+    void update_compressor(CompressorAdjustment adjustment) {
+        // Validate on the caller thread without disturbing the live detector.
+        [[maybe_unused]] const DynamicsProcessor validation(adjustment, kCanonicalSampleRate);
+        {
+            std::lock_guard<std::mutex> lock(dynamics_mutex_);
+            pending_compressor_ = adjustment;
+            compressor_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
     bool is_paused() const {
         return paused_.load(std::memory_order_acquire);
     }
@@ -441,6 +455,7 @@ class PlaybackSession::Impl {
             decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
             low_cut_filter_->reset();
             equalizer_->reset();
+            dynamics_processor_->reset();
             output_guard_->reset();
         }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
@@ -531,17 +546,31 @@ class PlaybackSession::Impl {
                         equalizer_->transition_to(unpack_equalizer(requested));
                         applied_equalizer_ = requested;
                     }
+                    {
+                        std::lock_guard<std::mutex> lock(dynamics_mutex_);
+                        if (compressor_update_pending_) {
+                            dynamics_processor_->update(pending_compressor_);
+                            compressor_update_pending_ = false;
+                        }
+                    }
                     for (std::size_t index = 0; index < chunk; ++index) {
-                        const std::uint64_t source_frame =
-                            selected_start + static_cast<std::uint64_t>(written + index);
-                        const float amplitude = adjustment_->amplitude_at(source_frame);
                         for (std::size_t channel = 0; channel < channel_count_; ++channel) {
                             const float filtered = low_cut_filter_->process_sample(
                                 planes[channel][input_offset + written + index],
                                 channel
                             );
                             const float equalized = equalizer_->process_sample(filtered, channel);
-                            scratch[index * channel_count_ + channel] = equalized * amplitude;
+                            scratch[index * channel_count_ + channel] =
+                                equalized * adjustment_->gain_amplitude();
+                        }
+                    }
+                    dynamics_processor_->process_interleaved(scratch, chunk, channel_count_);
+                    for (std::size_t index = 0; index < chunk; ++index) {
+                        const std::uint64_t source_frame =
+                            selected_start + static_cast<std::uint64_t>(written + index);
+                        const float envelope = adjustment_->envelope_at(source_frame);
+                        for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                            scratch[index * channel_count_ + channel] *= envelope;
                         }
                     }
                     output_guard_->process_interleaved(scratch, chunk, channel_count_);
@@ -625,10 +654,14 @@ class PlaybackSession::Impl {
     std::unique_ptr<PreparedAdjustment> adjustment_;
     std::unique_ptr<LowCutFilter> low_cut_filter_;
     std::unique_ptr<ThreeBandEqualizer> equalizer_;
+    std::unique_ptr<DynamicsProcessor> dynamics_processor_;
     std::unique_ptr<OutputGuard> output_guard_;
     std::uint64_t decoded_frame_cursor_ = 0;
     std::atomic<std::uint64_t> requested_equalizer_{0};
     std::uint64_t applied_equalizer_ = 0;
+    std::mutex dynamics_mutex_;
+    CompressorAdjustment pending_compressor_;
+    bool compressor_update_pending_ = false;
 
     std::thread thread_;
     std::mutex control_mutex_;
@@ -668,6 +701,9 @@ void PlaybackSession::seek(std::uint64_t millis) {
 }
 void PlaybackSession::update_equalizer(ThreeBandEqualizerAdjustment adjustment) {
     impl_->update_equalizer(adjustment);
+}
+void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
+    impl_->update_compressor(adjustment);
 }
 
 bool PlaybackSession::is_paused() const {

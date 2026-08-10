@@ -6,6 +6,7 @@ add_library(
     echo-audio STATIC
     src/adjustment.cpp
     src/decode.cpp
+    src/dynamics_processor.cpp
     src/low_cut_filter.cpp
     src/output_guard.cpp
     src/playback.cpp
@@ -46,6 +47,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-adjustment-engine-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-adjustment-engine-test)
     add_test(NAME echo-adjustment-engine-test COMMAND echo-adjustment-engine-test)
+
+    add_executable(
+        echo-dynamics-processor-test
+        tests/dynamics_processor_test.cpp
+    )
+    target_link_libraries(echo-dynamics-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-dynamics-processor-test)
+    add_test(NAME echo-dynamics-processor-test COMMAND echo-dynamics-processor-test)
 
     add_executable(
         echo-low-cut-filter-test

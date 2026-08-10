@@ -20,7 +20,14 @@ int main() {
          .gain_centibels = -600,
          .low_cut_hertz = 80,
          .equalizer =
-             {.low_gain_centibels = 250, .mid_gain_centibels = -175, .high_gain_centibels = 300}},
+             {.low_gain_centibels = 250, .mid_gain_centibels = -175, .high_gain_centibels = 300},
+         .compressor =
+             {.enabled = true,
+              .threshold_centibels = -2000,
+              .ratio_tenths = 40,
+              .attack_millis = 12,
+              .release_millis = 160,
+              .makeup_centibels = 225}},
         10'000,
         48'000
     );
@@ -38,6 +45,10 @@ int main() {
     assert(prepared.equalizer().low_gain_centibels == 250);
     assert(prepared.equalizer().mid_gain_centibels == -175);
     assert(prepared.equalizer().high_gain_centibels == 300);
+    assert(prepared.compressor().enabled);
+    assert(prepared.compressor().threshold_centibels == -2000);
+    assert(std::abs(prepared.gain_amplitude() - 0.501187F) < 0.001F);
+    assert(std::abs(prepared.envelope_at(240'000) - 1.0F) < 0.0001F);
 
     const echo::audio::PreparedAdjustment linear(
         {.trim_end_millis = 1'000, .fade_in_millis = 1'000},
@@ -90,6 +101,18 @@ int main() {
     try {
         [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_equalizer(
             {.equalizer = {.mid_gain_centibels = 1'201}},
+            10'000,
+            48'000
+        );
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    rejected = false;
+    try {
+        [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_compressor(
+            {.compressor = {.ratio_tenths = 201}},
             10'000,
             48'000
         );

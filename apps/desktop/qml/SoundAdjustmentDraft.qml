@@ -20,6 +20,12 @@ QtObject {
     property int eqLowGainCentibels: 0
     property int eqMidGainCentibels: 0
     property int eqHighGainCentibels: 0
+    property bool compressorEnabled: false
+    property int compressorThresholdCentibels: -1800
+    property int compressorRatioTenths: 30
+    property int compressorAttackMillis: 10
+    property int compressorReleaseMillis: 120
+    property int compressorMakeupCentibels: 0
 
     property var _savedSnapshot: ({})
     property var _history: []
@@ -41,13 +47,17 @@ QtObject {
         && gainCentibels === 0 && lowCutHertz === 0
         && eqLowGainCentibels === 0 && eqMidGainCentibels === 0
         && eqHighGainCentibels === 0
+        && !compressorEnabled
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis,
                          int fadeIn, int fadeOut,
                          int fadeInCurve, int fadeOutCurve,
                          int gain, int lowCut,
-                         int eqLowGain, int eqMidGain, int eqHighGain)
+                         int eqLowGain, int eqMidGain, int eqHighGain,
+                         bool compressorEnabled, int compressorThreshold,
+                         int compressorRatio, int compressorAttack,
+                         int compressorRelease, int compressorMakeup)
 
     function clamp(value: real, minimum: real, maximum: real) : real {
         return Math.max(minimum, Math.min(maximum, value))
@@ -65,7 +75,13 @@ QtObject {
             lowCutHertz: lowCutHertz,
             eqLowGainCentibels: eqLowGainCentibels,
             eqMidGainCentibels: eqMidGainCentibels,
-            eqHighGainCentibels: eqHighGainCentibels
+            eqHighGainCentibels: eqHighGainCentibels,
+            compressorEnabled: compressorEnabled,
+            compressorThresholdCentibels: compressorThresholdCentibels,
+            compressorRatioTenths: compressorRatioTenths,
+            compressorAttackMillis: compressorAttackMillis,
+            compressorReleaseMillis: compressorReleaseMillis,
+            compressorMakeupCentibels: compressorMakeupCentibels
         }
     }
 
@@ -81,7 +97,13 @@ QtObject {
             lowCutHertz: Number(value.lowCutHertz),
             eqLowGainCentibels: Number(value.eqLowGainCentibels),
             eqMidGainCentibels: Number(value.eqMidGainCentibels),
-            eqHighGainCentibels: Number(value.eqHighGainCentibels)
+            eqHighGainCentibels: Number(value.eqHighGainCentibels),
+            compressorEnabled: Boolean(value.compressorEnabled),
+            compressorThresholdCentibels: Number(value.compressorThresholdCentibels),
+            compressorRatioTenths: Number(value.compressorRatioTenths),
+            compressorAttackMillis: Number(value.compressorAttackMillis),
+            compressorReleaseMillis: Number(value.compressorReleaseMillis),
+            compressorMakeupCentibels: Number(value.compressorMakeupCentibels)
         }
     }
 
@@ -101,6 +123,18 @@ QtObject {
                 === Number(right.eqMidGainCentibels)
             && Number(left.eqHighGainCentibels)
                 === Number(right.eqHighGainCentibels)
+            && Boolean(left.compressorEnabled)
+                === Boolean(right.compressorEnabled)
+            && Number(left.compressorThresholdCentibels)
+                === Number(right.compressorThresholdCentibels)
+            && Number(left.compressorRatioTenths)
+                === Number(right.compressorRatioTenths)
+            && Number(left.compressorAttackMillis)
+                === Number(right.compressorAttackMillis)
+            && Number(left.compressorReleaseMillis)
+                === Number(right.compressorReleaseMillis)
+            && Number(left.compressorMakeupCentibels)
+                === Number(right.compressorMakeupCentibels)
     }
 
     function assetSnapshot() : var {
@@ -111,7 +145,13 @@ QtObject {
                 fadeInCurve: 0, fadeOutCurve: 0,
                 gainCentibels: 0, lowCutHertz: 0,
                 eqLowGainCentibels: 0, eqMidGainCentibels: 0,
-                eqHighGainCentibels: 0
+                eqHighGainCentibels: 0,
+                compressorEnabled: false,
+                compressorThresholdCentibels: -1800,
+                compressorRatioTenths: 30,
+                compressorAttackMillis: 10,
+                compressorReleaseMillis: 120,
+                compressorMakeupCentibels: 0
             }
         }
         const duration = Math.max(0, Number(asset.durationMillis))
@@ -131,7 +171,18 @@ QtObject {
             eqMidGainCentibels: clamp(
                 Number(asset.eqMidGainCentibels || 0), -1200, 1200),
             eqHighGainCentibels: clamp(
-                Number(asset.eqHighGainCentibels || 0), -1200, 1200)
+                Number(asset.eqHighGainCentibels || 0), -1200, 1200),
+            compressorEnabled: Boolean(asset.compressorEnabled),
+            compressorThresholdCentibels: clamp(
+                Number(asset.compressorThresholdCentibels ?? -1800), -6000, 0),
+            compressorRatioTenths: clamp(
+                Number(asset.compressorRatioTenths ?? 30), 10, 200),
+            compressorAttackMillis: clamp(
+                Number(asset.compressorAttackMillis ?? 10), 1, 200),
+            compressorReleaseMillis: clamp(
+                Number(asset.compressorReleaseMillis ?? 120), 20, 2000),
+            compressorMakeupCentibels: clamp(
+                Number(asset.compressorMakeupCentibels ?? 0), 0, 2400)
         }
     }
 
@@ -148,6 +199,12 @@ QtObject {
         eqLowGainCentibels = Number(value.eqLowGainCentibels)
         eqMidGainCentibels = Number(value.eqMidGainCentibels)
         eqHighGainCentibels = Number(value.eqHighGainCentibels)
+        compressorEnabled = Boolean(value.compressorEnabled)
+        compressorThresholdCentibels = Number(value.compressorThresholdCentibels)
+        compressorRatioTenths = Number(value.compressorRatioTenths)
+        compressorAttackMillis = Number(value.compressorAttackMillis)
+        compressorReleaseMillis = Number(value.compressorReleaseMillis)
+        compressorMakeupCentibels = Number(value.compressorMakeupCentibels)
         _restoring = false
     }
 
@@ -256,6 +313,38 @@ QtObject {
         pushCurrent()
     }
 
+    function setCompressorEnabled(enabled: bool) : void {
+        compressorEnabled = enabled
+        pushCurrent()
+    }
+
+    function setCompressorParameter(parameter: string, value: int) : void {
+        if (parameter === "threshold") {
+            compressorThresholdCentibels = Math.round(clamp(value, -6000, 0))
+        } else if (parameter === "ratio") {
+            compressorRatioTenths = Math.round(clamp(value, 10, 200))
+        } else if (parameter === "attack") {
+            compressorAttackMillis = Math.round(clamp(value, 1, 200))
+        } else if (parameter === "release") {
+            compressorReleaseMillis = Math.round(clamp(value, 20, 2000))
+        } else if (parameter === "makeup") {
+            compressorMakeupCentibels = Math.round(clamp(value, 0, 2400))
+        } else {
+            return
+        }
+        pushCurrent()
+    }
+
+    function resetCompressor() : void {
+        compressorEnabled = false
+        compressorThresholdCentibels = -1800
+        compressorRatioTenths = 30
+        compressorAttackMillis = 10
+        compressorReleaseMillis = 120
+        compressorMakeupCentibels = 0
+        pushCurrent()
+    }
+
     function clear() : void {
         applySnapshot({
             trimStartMillis: 0,
@@ -268,7 +357,13 @@ QtObject {
             lowCutHertz: 0,
             eqLowGainCentibels: 0,
             eqMidGainCentibels: 0,
-            eqHighGainCentibels: 0
+            eqHighGainCentibels: 0,
+            compressorEnabled: false,
+            compressorThresholdCentibels: -1800,
+            compressorRatioTenths: 30,
+            compressorAttackMillis: 10,
+            compressorReleaseMillis: 120,
+            compressorMakeupCentibels: 0
         })
         pushCurrent()
     }
@@ -284,7 +379,10 @@ QtObject {
             fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve,
             gainCentibels, lowCutHertz,
             eqLowGainCentibels, eqMidGainCentibels,
-            eqHighGainCentibels)
+            eqHighGainCentibels, compressorEnabled,
+            compressorThresholdCentibels, compressorRatioTenths,
+            compressorAttackMillis, compressorReleaseMillis,
+            compressorMakeupCentibels)
     }
 
     function markSaved() : void {

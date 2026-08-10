@@ -19,6 +19,45 @@ pub const MAX_LOW_CUT_HERTZ: u16 = 240;
 pub const MIN_EQ_GAIN_CENTIBELS: i16 = -1_200;
 /// Highest supported gain for one equalizer band, in hundredths of a decibel.
 pub const MAX_EQ_GAIN_CENTIBELS: i16 = 1_200;
+pub const MIN_COMPRESSOR_THRESHOLD_CENTIBELS: i16 = -6_000;
+pub const MAX_COMPRESSOR_THRESHOLD_CENTIBELS: i16 = 0;
+pub const MIN_COMPRESSOR_RATIO_TENTHS: u16 = 10;
+pub const MAX_COMPRESSOR_RATIO_TENTHS: u16 = 200;
+pub const MIN_COMPRESSOR_ATTACK_MILLIS: u16 = 1;
+pub const MAX_COMPRESSOR_ATTACK_MILLIS: u16 = 200;
+pub const MIN_COMPRESSOR_RELEASE_MILLIS: u16 = 20;
+pub const MAX_COMPRESSOR_RELEASE_MILLIS: u16 = 2_000;
+pub const MAX_COMPRESSOR_MAKEUP_CENTIBELS: i16 = 2_400;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompressorSettings {
+    pub enabled: bool,
+    pub threshold_centibels: i16,
+    pub ratio_tenths: u16,
+    pub attack_millis: u16,
+    pub release_millis: u16,
+    pub makeup_centibels: i16,
+}
+
+impl Default for CompressorSettings {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl CompressorSettings {
+    #[must_use]
+    pub const fn standard() -> Self {
+        Self {
+            enabled: false,
+            threshold_centibels: -1_800,
+            ratio_tenths: 30,
+            attack_millis: 10,
+            release_millis: 120,
+            makeup_centibels: 0,
+        }
+    }
+}
 
 /// Authored gain for Echo's fixed restoration equalizer bands.
 ///
@@ -150,6 +189,7 @@ pub struct AdjustmentEffects {
     pub gain_centibels: i16,
     pub low_cut_hertz: u16,
     pub equalizer: ThreeBandEqualizer,
+    pub compressor: CompressorSettings,
 }
 
 impl AdjustmentEffects {
@@ -160,12 +200,19 @@ impl AdjustmentEffects {
             gain_centibels,
             low_cut_hertz,
             equalizer: ThreeBandEqualizer::new(0, 0, 0),
+            compressor: CompressorSettings::standard(),
         }
     }
 
     #[must_use]
     pub const fn with_equalizer(mut self, equalizer: ThreeBandEqualizer) -> Self {
         self.equalizer = equalizer;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_compressor(mut self, compressor: CompressorSettings) -> Self {
+        self.compressor = compressor;
         self
     }
 }
@@ -182,6 +229,7 @@ pub struct AdjustmentGraph {
     gain_centibels: i16,
     low_cut_hertz: u16,
     equalizer: ThreeBandEqualizer,
+    compressor: CompressorSettings,
 }
 
 impl AdjustmentGraph {
@@ -225,6 +273,19 @@ impl AdjustmentGraph {
                 return Err(AdjustmentGraphError::EqualizerGainOutOfRange);
             }
         }
+        let compressor = effects.compressor;
+        if !(MIN_COMPRESSOR_THRESHOLD_CENTIBELS..=MAX_COMPRESSOR_THRESHOLD_CENTIBELS)
+            .contains(&compressor.threshold_centibels)
+            || !(MIN_COMPRESSOR_RATIO_TENTHS..=MAX_COMPRESSOR_RATIO_TENTHS)
+                .contains(&compressor.ratio_tenths)
+            || !(MIN_COMPRESSOR_ATTACK_MILLIS..=MAX_COMPRESSOR_ATTACK_MILLIS)
+                .contains(&compressor.attack_millis)
+            || !(MIN_COMPRESSOR_RELEASE_MILLIS..=MAX_COMPRESSOR_RELEASE_MILLIS)
+                .contains(&compressor.release_millis)
+            || !(0..=MAX_COMPRESSOR_MAKEUP_CENTIBELS).contains(&compressor.makeup_centibels)
+        {
+            return Err(AdjustmentGraphError::CompressorOutOfRange);
+        }
         Ok(Self {
             trim_start_millis,
             trim_end_millis,
@@ -235,6 +296,7 @@ impl AdjustmentGraph {
             gain_centibels: effects.gain_centibels,
             low_cut_hertz: effects.low_cut_hertz,
             equalizer: effects.equalizer,
+            compressor,
         })
     }
 
@@ -300,6 +362,11 @@ impl AdjustmentGraph {
     pub const fn equalizer(self) -> ThreeBandEqualizer {
         self.equalizer
     }
+
+    #[must_use]
+    pub const fn compressor(self) -> CompressorSettings {
+        self.compressor
+    }
 }
 
 /// Stable validation failures for authored adjustment intent.
@@ -310,6 +377,7 @@ pub enum AdjustmentGraphError {
     GainOutOfRange,
     LowCutOutOfRange,
     EqualizerGainOutOfRange,
+    CompressorOutOfRange,
 }
 
 impl std::fmt::Display for AdjustmentGraphError {
@@ -322,6 +390,7 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::EqualizerGainOutOfRange => {
                 "equalizer band gain must be between -12 dB and +12 dB"
             }
+            Self::CompressorOutOfRange => "compressor parameters are outside the supported range",
         })
     }
 }

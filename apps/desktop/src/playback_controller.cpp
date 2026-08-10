@@ -44,14 +44,25 @@ void PlaybackController::playAdjusted(
     int lowCutHertz,
     int eqLowGainCentibels,
     int eqMidGainCentibels,
-    int eqHighGainCentibels
+    int eqHighGainCentibels,
+    bool compressorEnabled,
+    int compressorThresholdCentibels,
+    int compressorRatioTenths,
+    int compressorAttackMillis,
+    int compressorReleaseMillis,
+    int compressorMakeupCentibels
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
         || fadeOutCurve > 2 || gainCentibels < -2400 || gainCentibels > 1200
         || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
         || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200 || eqMidGainCentibels < -1200
-        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200) {
+        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200
+        || compressorThresholdCentibels < -6000 || compressorThresholdCentibels > 0
+        || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
+        || compressorAttackMillis > 200 || compressorReleaseMillis < 20
+        || compressorReleaseMillis > 2000 || compressorMakeupCentibels < 0
+        || compressorMakeupCentibels > 2400) {
         qWarning("invalid playback adjustment");
         return;
     }
@@ -64,10 +75,19 @@ void PlaybackController::playAdjusted(
         .fade_out_curve = static_cast<echo::audio::FadeCurve>(fadeOutCurve),
         .gain_centibels = static_cast<std::int16_t>(gainCentibels),
         .low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz),
-        .equalizer = {
-            .low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels),
-            .mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels),
-            .high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels),
+        .equalizer =
+            {
+                .low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels),
+                .mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels),
+                .high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels),
+            },
+        .compressor = {
+            .enabled = compressorEnabled,
+            .threshold_centibels = static_cast<std::int16_t>(compressorThresholdCentibels),
+            .ratio_tenths = static_cast<std::uint16_t>(compressorRatioTenths),
+            .attack_millis = static_cast<std::uint16_t>(compressorAttackMillis),
+            .release_millis = static_cast<std::uint16_t>(compressorReleaseMillis),
+            .makeup_centibels = static_cast<std::int16_t>(compressorMakeupCentibels),
         },
     };
     startSession(path, adjustment);
@@ -92,6 +112,37 @@ bool PlaybackController::updateEqualizer(
         });
     } catch (const std::exception& error) {
         qWarning("cannot update playback equalizer: %s", error.what());
+        return false;
+    }
+    return true;
+}
+
+bool PlaybackController::updateCompressor(
+    bool enabled,
+    int thresholdCentibels,
+    int ratioTenths,
+    int attackMillis,
+    int releaseMillis,
+    int makeupCentibels
+) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    if (session == nullptr || thresholdCentibels < -6000 || thresholdCentibels > 0
+        || ratioTenths < 10 || ratioTenths > 200 || attackMillis < 1 || attackMillis > 200
+        || releaseMillis < 20 || releaseMillis > 2000 || makeupCentibels < 0
+        || makeupCentibels > 2400) {
+        return false;
+    }
+    try {
+        session->update_compressor({
+            .enabled = enabled,
+            .threshold_centibels = static_cast<std::int16_t>(thresholdCentibels),
+            .ratio_tenths = static_cast<std::uint16_t>(ratioTenths),
+            .attack_millis = static_cast<std::uint16_t>(attackMillis),
+            .release_millis = static_cast<std::uint16_t>(releaseMillis),
+            .makeup_centibels = static_cast<std::int16_t>(makeupCentibels),
+        });
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback compressor: %s", error.what());
         return false;
     }
     return true;

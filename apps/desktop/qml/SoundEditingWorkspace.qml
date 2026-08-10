@@ -75,7 +75,13 @@ Rectangle {
         return playbackBaseAdjustmentKey() + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.eqLowGainCentibels) + ":"
             + (auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels) + ":"
-            + (auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels)
+            + (auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels) + ":"
+            + (auditionOriginal ? false : adjustmentDraft.compressorEnabled) + ":"
+            + (auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels) + ":"
+            + (auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths) + ":"
+            + (auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis) + ":"
+            + (auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis) + ":"
+            + (auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels)
     }
 
     function refreshAsset() : void {
@@ -97,7 +103,13 @@ Rectangle {
                             auditionOriginal ? 0 : adjustmentDraft.lowCutHertz,
                             auditionOriginal ? 0 : adjustmentDraft.eqLowGainCentibels,
                             auditionOriginal ? 0 : adjustmentDraft.eqMidGainCentibels,
-                            auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels)
+                            auditionOriginal ? 0 : adjustmentDraft.eqHighGainCentibels,
+                            auditionOriginal ? false : adjustmentDraft.compressorEnabled,
+                            auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels,
+                            auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths,
+                            auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis,
+                            auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis,
+                            auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels)
         loadedPath = asset.path
         loadedBaseAdjustmentKey = playbackBaseAdjustmentKey()
         loadedAdjustmentKey = adjustmentKey()
@@ -127,13 +139,13 @@ Rectangle {
             : adjustmentDraft.trimStartMillis
     }
 
-    function scheduleEqualizerPreview() : void {
+    function scheduleEffectsPreview() : void {
         if (auditionOriginal || !player.active || !hasAsset
                 || loadedPath !== asset.path
                 || loadedBaseAdjustmentKey !== playbackBaseAdjustmentKey()) {
             return
         }
-        equalizerPreviewTimer.restart()
+        effectsPreviewTimer.restart()
     }
 
     function togglePlayback() : void {
@@ -169,6 +181,11 @@ Rectangle {
         adjustmentDraft.setEqualizerBand("mid", next)
     }
 
+    function debugEnableCompressor() : void {
+        adjustmentDraft.setCompressorEnabled(true)
+        adjustmentDraft.setCompressorParameter("threshold", -2400)
+    }
+
     onAssetChanged: {
         player.stop()
         auditionOriginal = false
@@ -193,11 +210,17 @@ Rectangle {
 
         onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut,
                                   fadeInCurve, fadeOutCurve, gain, lowCut,
-                                  eqLowGain, eqMidGain, eqHighGain) {
+                                  eqLowGain, eqMidGain, eqHighGain,
+                                  compressorEnabled, compressorThreshold,
+                                  compressorRatio, compressorAttack,
+                                  compressorRelease, compressorMakeup) {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                            fadeIn, fadeOut, fadeInCurve,
                                            fadeOutCurve, gain, lowCut,
-                                           eqLowGain, eqMidGain, eqHighGain)) {
+                                           eqLowGain, eqMidGain, eqHighGain,
+                                           compressorEnabled, compressorThreshold,
+                                           compressorRatio, compressorAttack,
+                                           compressorRelease, compressorMakeup)) {
                 adjustmentDraft.markSaved()
                 workspace.auditionOriginal = false
                 workspace.loadedBaseAdjustmentKey = ""
@@ -210,18 +233,36 @@ Rectangle {
         target: adjustmentDraft
 
         function onEqLowGainCentibelsChanged() : void {
-            workspace.scheduleEqualizerPreview()
+            workspace.scheduleEffectsPreview()
         }
         function onEqMidGainCentibelsChanged() : void {
-            workspace.scheduleEqualizerPreview()
+            workspace.scheduleEffectsPreview()
         }
         function onEqHighGainCentibelsChanged() : void {
-            workspace.scheduleEqualizerPreview()
+            workspace.scheduleEffectsPreview()
+        }
+        function onCompressorEnabledChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
+        function onCompressorThresholdCentibelsChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
+        function onCompressorRatioTenthsChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
+        function onCompressorAttackMillisChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
+        function onCompressorReleaseMillisChanged() : void {
+            workspace.scheduleEffectsPreview()
+        }
+        function onCompressorMakeupCentibelsChanged() : void {
+            workspace.scheduleEffectsPreview()
         }
     }
 
     Timer {
-        id: equalizerPreviewTimer
+        id: effectsPreviewTimer
 
         interval: 16
         repeat: false
@@ -232,9 +273,18 @@ Rectangle {
                         !== workspace.playbackBaseAdjustmentKey()) {
                 return
             }
-            if (player.updateEqualizer(adjustmentDraft.eqLowGainCentibels,
-                                       adjustmentDraft.eqMidGainCentibels,
-                                       adjustmentDraft.eqHighGainCentibels)) {
+            const equalizerUpdated = player.updateEqualizer(
+                adjustmentDraft.eqLowGainCentibels,
+                adjustmentDraft.eqMidGainCentibels,
+                adjustmentDraft.eqHighGainCentibels)
+            const compressorUpdated = player.updateCompressor(
+                adjustmentDraft.compressorEnabled,
+                adjustmentDraft.compressorThresholdCentibels,
+                adjustmentDraft.compressorRatioTenths,
+                adjustmentDraft.compressorAttackMillis,
+                adjustmentDraft.compressorReleaseMillis,
+                adjustmentDraft.compressorMakeupCentibels)
+            if (equalizerUpdated && compressorUpdated) {
                 workspace.loadedAdjustmentKey = workspace.adjustmentKey()
             }
         }

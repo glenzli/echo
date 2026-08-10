@@ -98,6 +98,27 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("eqHighGainCentibels"),
             static_cast<int>(asset.eq_high_gain_centibels)
         );
+        entry.insert(QStringLiteral("compressorEnabled"), asset.compressor_enabled);
+        entry.insert(
+            QStringLiteral("compressorThresholdCentibels"),
+            static_cast<int>(asset.compressor_threshold_centibels)
+        );
+        entry.insert(
+            QStringLiteral("compressorRatioTenths"),
+            static_cast<int>(asset.compressor_ratio_tenths)
+        );
+        entry.insert(
+            QStringLiteral("compressorAttackMillis"),
+            static_cast<int>(asset.compressor_attack_millis)
+        );
+        entry.insert(
+            QStringLiteral("compressorReleaseMillis"),
+            static_cast<int>(asset.compressor_release_millis)
+        );
+        entry.insert(
+            QStringLiteral("compressorMakeupCentibels"),
+            static_cast<int>(asset.compressor_makeup_centibels)
+        );
         entry.insert(
             QStringLiteral("containerFormat"),
             QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
@@ -216,14 +237,25 @@ bool DesktopBackend::setAssetAdjustment(
     int lowCutHertz,
     int eqLowGainCentibels,
     int eqMidGainCentibels,
-    int eqHighGainCentibels
+    int eqHighGainCentibels,
+    bool compressorEnabled,
+    int compressorThresholdCentibels,
+    int compressorRatioTenths,
+    int compressorAttackMillis,
+    int compressorReleaseMillis,
+    int compressorMakeupCentibels
 ) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200
         || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
         || eqLowGainCentibels < -1200 || eqLowGainCentibels > 1200 || eqMidGainCentibels < -1200
-        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200) {
+        || eqMidGainCentibels > 1200 || eqHighGainCentibels < -1200 || eqHighGainCentibels > 1200
+        || compressorThresholdCentibels < -6000 || compressorThresholdCentibels > 0
+        || compressorRatioTenths < 10 || compressorRatioTenths > 200 || compressorAttackMillis < 1
+        || compressorAttackMillis > 200 || compressorReleaseMillis < 20
+        || compressorReleaseMillis > 2000 || compressorMakeupCentibels < 0
+        || compressorMakeupCentibels > 2400) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
@@ -240,6 +272,14 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.eq_low_gain_centibels = static_cast<std::int16_t>(eqLowGainCentibels);
         adjustment.eq_mid_gain_centibels = static_cast<std::int16_t>(eqMidGainCentibels);
         adjustment.eq_high_gain_centibels = static_cast<std::int16_t>(eqHighGainCentibels);
+        adjustment.compressor_enabled = compressorEnabled;
+        adjustment.compressor_threshold_centibels =
+            static_cast<std::int16_t>(compressorThresholdCentibels);
+        adjustment.compressor_ratio_tenths = static_cast<std::uint16_t>(compressorRatioTenths);
+        adjustment.compressor_attack_millis = static_cast<std::uint16_t>(compressorAttackMillis);
+        adjustment.compressor_release_millis = static_cast<std::uint16_t>(compressorReleaseMillis);
+        adjustment.compressor_makeup_centibels =
+            static_cast<std::int16_t>(compressorMakeupCentibels);
         session_->session_set_asset_adjustment(id.toStdString(), adjustment);
         emit assetsChanged();
         return true;

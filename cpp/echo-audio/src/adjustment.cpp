@@ -14,6 +14,15 @@ constexpr std::uint16_t kMinimumLowCutHertz = 20;
 constexpr std::uint16_t kMaximumLowCutHertz = 240;
 constexpr std::int16_t kMinimumEqualizerGainCentibels = -1200;
 constexpr std::int16_t kMaximumEqualizerGainCentibels = 1200;
+constexpr std::int16_t kMinimumCompressorThresholdCentibels = -6000;
+constexpr std::int16_t kMaximumCompressorThresholdCentibels = 0;
+constexpr std::uint16_t kMinimumCompressorRatioTenths = 10;
+constexpr std::uint16_t kMaximumCompressorRatioTenths = 200;
+constexpr std::uint16_t kMinimumCompressorAttackMillis = 1;
+constexpr std::uint16_t kMaximumCompressorAttackMillis = 200;
+constexpr std::uint16_t kMinimumCompressorReleaseMillis = 20;
+constexpr std::uint16_t kMaximumCompressorReleaseMillis = 2000;
+constexpr std::int16_t kMaximumCompressorMakeupCentibels = 2400;
 constexpr float kHalfPi = 1.5707963267948966F;
 
 bool valid_curve(FadeCurve curve) {
@@ -91,6 +100,19 @@ PreparedAdjustment::PreparedAdjustment(
             throw std::invalid_argument("adjustment equalizer gain is outside the supported range");
         }
     }
+    const CompressorAdjustment compressor = authored.compressor;
+    if (compressor.threshold_centibels < kMinimumCompressorThresholdCentibels
+        || compressor.threshold_centibels > kMaximumCompressorThresholdCentibels
+        || compressor.ratio_tenths < kMinimumCompressorRatioTenths
+        || compressor.ratio_tenths > kMaximumCompressorRatioTenths
+        || compressor.attack_millis < kMinimumCompressorAttackMillis
+        || compressor.attack_millis > kMaximumCompressorAttackMillis
+        || compressor.release_millis < kMinimumCompressorReleaseMillis
+        || compressor.release_millis > kMaximumCompressorReleaseMillis
+        || compressor.makeup_centibels < 0
+        || compressor.makeup_centibels > kMaximumCompressorMakeupCentibels) {
+        throw std::invalid_argument("adjustment compressor is outside the supported range");
+    }
 
     trim_start_millis_ = authored.trim_start_millis;
     trim_end_millis_ = authored.trim_end_millis;
@@ -103,6 +125,7 @@ PreparedAdjustment::PreparedAdjustment(
     gain_amplitude_ = std::pow(10.0F, static_cast<float>(authored.gain_centibels) / 2000.0F);
     low_cut_hertz_ = authored.low_cut_hertz;
     equalizer_ = authored.equalizer;
+    compressor_ = authored.compressor;
 }
 
 std::uint64_t PreparedAdjustment::start_frame() const {
@@ -129,11 +152,23 @@ ThreeBandEqualizerAdjustment PreparedAdjustment::equalizer() const {
     return equalizer_;
 }
 
+CompressorAdjustment PreparedAdjustment::compressor() const {
+    return compressor_;
+}
+
 std::uint64_t PreparedAdjustment::clamp_seek_millis(std::uint64_t millis) const {
     return std::clamp(millis, trim_start_millis_, trim_end_millis_);
 }
 
 float PreparedAdjustment::amplitude_at(std::uint64_t source_frame) const {
+    return gain_amplitude_ * envelope_at(source_frame);
+}
+
+float PreparedAdjustment::gain_amplitude() const {
+    return gain_amplitude_;
+}
+
+float PreparedAdjustment::envelope_at(std::uint64_t source_frame) const {
     if (source_frame < start_frame_ || source_frame >= end_frame_) {
         return 0.0F;
     }
@@ -150,7 +185,7 @@ float PreparedAdjustment::amplitude_at(std::uint64_t source_frame) const {
         const float fade_out = evaluate_curve(progress, fade_out_curve_);
         envelope = std::min(envelope, fade_out);
     }
-    return gain_amplitude_ * envelope;
+    return envelope;
 }
 
 } // namespace echo::audio

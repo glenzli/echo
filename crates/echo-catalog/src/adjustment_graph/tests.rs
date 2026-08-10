@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use echo_domain::{AdjustmentEffects, AdjustmentGraph, ContentHash, FadeCurve, FadeCurves};
+use echo_domain::{
+    AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, FadeCurve, FadeCurves,
+};
 
 use super::*;
 use crate::{AssetRegistrationInput, RegisterAsset, open_catalog, register_asset};
@@ -46,7 +48,15 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
             -300,
             80,
         )
-        .with_equalizer(echo_domain::ThreeBandEqualizer::new(300, -150, 225)),
+        .with_equalizer(echo_domain::ThreeBandEqualizer::new(300, -150, 225))
+        .with_compressor(CompressorSettings {
+            enabled: true,
+            threshold_centibels: -2_100,
+            ratio_tenths: 40,
+            attack_millis: 15,
+            release_millis: 180,
+            makeup_centibels: 250,
+        }),
     )
     .expect("graph validates");
     let first = catalog
@@ -60,6 +70,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
         first.graph.equalizer(),
         echo_domain::ThreeBandEqualizer::new(300, -150, 225)
     );
+    assert_eq!(first.graph.compressor(), graph.compressor());
 
     let second_graph = AdjustmentGraph::new(
         10_000,

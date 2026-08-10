@@ -144,7 +144,10 @@ ApplicationWindow {
         id: debugEqualizerTimer
 
         interval: 150
-        onTriggered: soundEditor.debugNudgeEqualizer()
+        onTriggered: {
+            soundEditor.debugNudgeEqualizer()
+            soundEditor.debugEnableCompressor()
+        }
     }
 
     Timer {

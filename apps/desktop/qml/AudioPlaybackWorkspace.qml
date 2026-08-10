@@ -42,6 +42,18 @@ Rectangle {
         ? Number(asset.eqMidGainCentibels) : 0
     readonly property int eqHighGainCentibels: hasAsset
         ? Number(asset.eqHighGainCentibels) : 0
+    readonly property bool compressorEnabled: hasAsset
+        ? Boolean(asset.compressorEnabled) : false
+    readonly property int compressorThresholdCentibels: hasAsset
+        ? Number(asset.compressorThresholdCentibels) : -1800
+    readonly property int compressorRatioTenths: hasAsset
+        ? Number(asset.compressorRatioTenths) : 30
+    readonly property int compressorAttackMillis: hasAsset
+        ? Number(asset.compressorAttackMillis) : 10
+    readonly property int compressorReleaseMillis: hasAsset
+        ? Number(asset.compressorReleaseMillis) : 120
+    readonly property int compressorMakeupCentibels: hasAsset
+        ? Number(asset.compressorMakeupCentibels) : 0
 
     color: Theme.panelRaised
     border.color: Theme.border
@@ -91,7 +103,10 @@ Rectangle {
             + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve
             + ":" + gainCentibels + ":" + lowCutHertz
             + ":" + eqLowGainCentibels + ":" + eqMidGainCentibels
-            + ":" + eqHighGainCentibels
+            + ":" + eqHighGainCentibels + ":" + compressorEnabled
+            + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths
+            + ":" + compressorAttackMillis + ":" + compressorReleaseMillis
+            + ":" + compressorMakeupCentibels
     }
 
     function playFrom(millis: int) : void {
@@ -102,7 +117,10 @@ Rectangle {
                             fadeInMillis, fadeOutMillis, fadeInCurve,
                             fadeOutCurve, gainCentibels, lowCutHertz,
                             eqLowGainCentibels, eqMidGainCentibels,
-                            eqHighGainCentibels)
+                            eqHighGainCentibels, compressorEnabled,
+                            compressorThresholdCentibels, compressorRatioTenths,
+                            compressorAttackMillis, compressorReleaseMillis,
+                            compressorMakeupCentibels)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis))

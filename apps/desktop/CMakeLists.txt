@@ -138,6 +138,7 @@ qt_add_qml_module(
         qml/AudioPlaybackWorkspace.qml
         qml/AudioSpaceWorkspace.qml
         qml/BasicAdjustmentPanel.qml
+        qml/DynamicsPanel.qml
         qml/EchoButton.qml
         qml/EchoIcon.qml
         qml/EchoIconButton.qml
@@ -182,6 +183,7 @@ qt_add_qml_module(
         icons/undo.svg
         icons/redo.svg
         icons/crop.svg
+        icons/dynamics.svg
         icons/reset-all.svg
         icons/high-pass.svg
         icons/gain.svg

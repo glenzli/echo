@@ -1,7 +1,9 @@
 //! Append-only persistence for user-authored, non-destructive sound
 //! adjustments. Originals and analysis evidence are never modified.
 
-use echo_domain::{AdjustmentEffects, AdjustmentGraph, AssetId, FadeCurve, ThreeBandEqualizer};
+use echo_domain::{
+    AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, FadeCurve, ThreeBandEqualizer,
+};
 use rusqlite::{OptionalExtension, Transaction};
 
 use crate::{CatalogError, CatalogErrorKind};
@@ -43,7 +45,10 @@ pub fn latest_adjustment_graph(
             "SELECT id, trim_start_millis, trim_end_millis, fade_in_millis, \
              fade_out_millis, fade_in_curve, fade_out_curve, gain_centibels, \
              low_cut_hertz, eq_low_gain_centibels, eq_mid_gain_centibels, \
-             eq_high_gain_centibels, created_at_millis \
+             eq_high_gain_centibels, compressor_enabled, \
+             compressor_threshold_centibels, compressor_ratio_tenths, \
+             compressor_attack_millis, compressor_release_millis, \
+             compressor_makeup_centibels, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
             [asset_id.to_string()],
@@ -62,6 +67,12 @@ pub fn latest_adjustment_graph(
                     row.get::<_, i64>(10)?,
                     row.get::<_, i64>(11)?,
                     row.get::<_, i64>(12)?,
+                    row.get::<_, i64>(13)?,
+                    row.get::<_, i64>(14)?,
+                    row.get::<_, i64>(15)?,
+                    row.get::<_, i64>(16)?,
+                    row.get::<_, i64>(17)?,
+                    row.get::<_, i64>(18)?,
                 ))
             },
         )
@@ -79,6 +90,12 @@ pub fn latest_adjustment_graph(
         eq_low_gain,
         eq_mid_gain,
         eq_high_gain,
+        compressor_enabled,
+        compressor_threshold,
+        compressor_ratio,
+        compressor_attack,
+        compressor_release,
+        compressor_makeup,
         created_at,
     )) = stored
     else {
@@ -107,7 +124,15 @@ pub fn latest_adjustment_graph(
             stored_centibels(eq_low_gain, "low equalizer gain")?,
             stored_centibels(eq_mid_gain, "mid equalizer gain")?,
             stored_centibels(eq_high_gain, "high equalizer gain")?,
-        )),
+        ))
+        .with_compressor(CompressorSettings {
+            enabled: compressor_enabled != 0,
+            threshold_centibels: stored_centibels(compressor_threshold, "compressor threshold")?,
+            ratio_tenths: stored_u16(compressor_ratio, "compressor ratio")?,
+            attack_millis: stored_u16(compressor_attack, "compressor attack")?,
+            release_millis: stored_u16(compressor_release, "compressor release")?,
+            makeup_centibels: stored_centibels(compressor_makeup, "compressor makeup")?,
+        }),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
     Ok(Some(AssetAdjustmentRevision {
@@ -155,7 +180,8 @@ pub fn record_adjustment_graph(
             graph.gain_centibels(),
             graph.low_cut_hertz(),
         )
-        .with_equalizer(graph.equalizer()),
+        .with_equalizer(graph.equalizer())
+        .with_compressor(graph.compressor()),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
     if let Some(current) = latest_adjustment_graph(transaction, asset_id)?
@@ -167,8 +193,12 @@ pub fn record_adjustment_graph(
         "INSERT INTO asset_adjustment_revisions (asset_id, trim_start_millis, \
          trim_end_millis, fade_in_millis, fade_out_millis, fade_in_curve, \
          fade_out_curve, gain_centibels, low_cut_hertz, eq_low_gain_centibels, \
-         eq_mid_gain_centibels, eq_high_gain_centibels, created_at_millis) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+         eq_mid_gain_centibels, eq_high_gain_centibels, compressor_enabled, \
+         compressor_threshold_centibels, compressor_ratio_tenths, \
+         compressor_attack_millis, compressor_release_millis, \
+         compressor_makeup_centibels, created_at_millis) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
+                 ?14, ?15, ?16, ?17, ?18, ?19)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -182,6 +212,12 @@ pub fn record_adjustment_graph(
             i64::from(validated.equalizer().low_gain_centibels()),
             i64::from(validated.equalizer().mid_gain_centibels()),
             i64::from(validated.equalizer().high_gain_centibels()),
+            i64::from(validated.compressor().enabled),
+            i64::from(validated.compressor().threshold_centibels),
+            i64::from(validated.compressor().ratio_tenths),
+            i64::from(validated.compressor().attack_millis),
+            i64::from(validated.compressor().release_millis),
+            i64::from(validated.compressor().makeup_centibels),
             now_millis,
         ],
     )?;
@@ -199,6 +235,15 @@ fn stored_curve(value: i64) -> Result<FadeCurve, CatalogError> {
 
 fn stored_centibels(value: i64, field: &str) -> Result<i16, CatalogError> {
     i16::try_from(value).map_err(|_| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored {field} is invalid"),
+        )
+    })
+}
+
+fn stored_u16(value: i64, field: &str) -> Result<u16, CatalogError> {
+    u16::try_from(value).map_err(|_| {
         CatalogError::new(
             CatalogErrorKind::Other,
             format!("stored {field} is invalid"),

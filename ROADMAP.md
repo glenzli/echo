@@ -327,6 +327,13 @@ InferenceBackend
     处理 PCM，同时避免两秒旧声音掩盖交互结果。设备输出前增加不属于 authored graph 的安全
     保护 owner：短攻击／释放包络配合可微软上限，替代 `[-1, 1]` 硬截幅；Seek 同时重置滤波和
     保护状态。此修正不改变 Catalog schema，也不把安全保护冒充为可编辑 Dynamics／Limiter。
+  - 首个 Dynamics 切片（2026-08-10）：`AdjustmentGraph` 与 Catalog `20260810.5` 增加可旁路的
+    立体声联动软拐点压缩器，稳定保存 Threshold、Ratio、Attack、Release 与 Makeup authored
+    intent。C++ 独立 `DynamicsProcessor` 在三段均衡和 Clip Gain 之后、淡入淡出包络与设备安全
+    保护之前执行；跨解码块保留检测包络，Seek 重置状态，实时参数变更只更新最新目标而不重启
+    播放。调整工作台新增紧凑 Dynamics 面板与真实传递曲线，所有控制进入同一草稿历史、Original
+    A/B、显式保存和 Audio Space 已保存版本播放合同。此切片是峰值压缩，不宣称已经具备 LUFS
+    响度测量、自动增益、Limiter authored effect、多段压缩或降噪。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 

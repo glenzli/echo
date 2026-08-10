@@ -13,7 +13,15 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             -350,
             80,
         )
-        .with_equalizer(ThreeBandEqualizer::new(250, -175, 400)),
+        .with_equalizer(ThreeBandEqualizer::new(250, -175, 400))
+        .with_compressor(CompressorSettings {
+            enabled: true,
+            threshold_centibels: -2_000,
+            ratio_tenths: 40,
+            attack_millis: 12,
+            release_millis: 180,
+            makeup_centibels: 250,
+        }),
     )
     .expect("valid graph builds");
     assert_eq!(graph.trim_start_millis(), 1_000);
@@ -25,6 +33,8 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.gain_centibels(), -350);
     assert_eq!(graph.low_cut_hertz(), 80);
     assert_eq!(graph.equalizer(), ThreeBandEqualizer::new(250, -175, 400));
+    assert!(graph.compressor().enabled);
+    assert_eq!(graph.compressor().ratio_tenths, 40);
 }
 
 #[test]
@@ -81,5 +91,19 @@ fn graph_rejects_out_of_source_and_overlapping_envelopes() {
                 .with_equalizer(ThreeBandEqualizer::new(0, MAX_EQ_GAIN_CENTIBELS + 1, 0)),
         ),
         Err(AdjustmentGraphError::EqualizerGainOutOfRange)
+    );
+    assert_eq!(
+        AdjustmentGraph::new(
+            1_000,
+            0,
+            1_000,
+            0,
+            0,
+            AdjustmentEffects::default().with_compressor(CompressorSettings {
+                ratio_tenths: MAX_COMPRESSOR_RATIO_TENTHS + 1,
+                ..CompressorSettings::default()
+            }),
+        ),
+        Err(AdjustmentGraphError::CompressorOutOfRange)
     );
 }

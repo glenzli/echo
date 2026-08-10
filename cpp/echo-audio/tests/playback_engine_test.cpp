@@ -264,6 +264,14 @@ int main(int argc, char* argv[]) {
             .low_cut_hertz = 80,
             .equalizer =
                 {.low_gain_centibels = 200, .mid_gain_centibels = -100, .high_gain_centibels = 150},
+            .compressor = {
+                .enabled = true,
+                .threshold_centibels = -1800,
+                .ratio_tenths = 30,
+                .attack_millis = 10,
+                .release_millis = 120,
+                .makeup_centibels = 0,
+            },
         };
         echo::audio::PlaybackSession adjusted(path.string(), adjustment);
         std::vector<float> adjusted_buffer(48'000, 0.0F);
@@ -302,6 +310,29 @@ int main(int argc, char* argv[]) {
             rejected_update = true;
         }
         expect(rejected_update, "live equalizer update preserves the authored gain bounds");
+        const std::uint64_t position_before_compressor_update = adjusted.position_millis();
+        adjusted.update_compressor({
+            .enabled = true,
+            .threshold_centibels = -2400,
+            .ratio_tenths = 60,
+            .attack_millis = 15,
+            .release_millis = 180,
+            .makeup_centibels = 200,
+        });
+        const std::size_t dynamics_updated =
+            pull_until(adjusted, updated_buffer.data(), 1'024, 200);
+        expect(dynamics_updated > 0, "live compressor update keeps returning audio");
+        expect(
+            adjusted.position_millis() > position_before_compressor_update,
+            "live compressor update does not restart the playback timeline"
+        );
+        rejected_update = false;
+        try {
+            adjusted.update_compressor({.ratio_tenths = 201});
+        } catch (const std::invalid_argument&) {
+            rejected_update = true;
+        }
+        expect(rejected_update, "live compressor update preserves the authored bounds");
         adjusted.seek(0);
         expect(adjusted.position_millis() >= 500, "adjusted seek clamps to trim start");
         adjusted.stop();

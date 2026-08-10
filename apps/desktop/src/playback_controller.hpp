@@ -43,10 +43,24 @@ class PlaybackController : public QObject {
         int lowCutHertz,
         int eqLowGainCentibels,
         int eqMidGainCentibels,
-        int eqHighGainCentibels
+        int eqHighGainCentibels,
+        bool compressorEnabled,
+        int compressorThresholdCentibels,
+        int compressorRatioTenths,
+        int compressorAttackMillis,
+        int compressorReleaseMillis,
+        int compressorMakeupCentibels
     );
     Q_INVOKABLE bool
     updateEqualizer(int eqLowGainCentibels, int eqMidGainCentibels, int eqHighGainCentibels);
+    Q_INVOKABLE bool updateCompressor(
+        bool enabled,
+        int thresholdCentibels,
+        int ratioTenths,
+        int attackMillis,
+        int releaseMillis,
+        int makeupCentibels
+    );
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 millis);

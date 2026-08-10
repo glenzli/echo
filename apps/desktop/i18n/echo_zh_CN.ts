@@ -244,117 +244,117 @@
 <context>
     <name>AudioPlaybackWorkspace</name>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="323"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="358"/>
         <source>Understanding this sound in the background…</source>
         <translation>正在后台理解这个声音…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="346"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="381"/>
         <source>Retry sound understanding</source>
         <translation>重试声音理解</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="149"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="187"/>
         <source>Select a recording</source>
         <translation>选择一段录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="158"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="196"/>
         <source>The waveform, playback controls, and extracted text stay together in this workspace.</source>
         <translation>波形、播放控制和提取的文字会始终集中在这个工作区中。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="209"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="247"/>
         <source>Missing</source>
         <translation>缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="211"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="249"/>
         <source>Original preserved</source>
         <translation>原始文件已保留</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="211"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="249"/>
         <source>Saved version</source>
         <translation>已保存版本</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="258"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="295"/>
         <source>Original file is unavailable</source>
         <translation>原始文件当前不可用</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="258"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="295"/>
         <source>Preparing waveform…</source>
         <translation>正在准备波形…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="273"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="310"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="273"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="310"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="289"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="325"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="320"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="355"/>
         <source>Text</source>
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="348"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="383"/>
         <source>Retry timing analysis</source>
         <translation>重试时间对齐</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="372"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="407"/>
         <source>Echo is extracting text from this sound through Infer Runtime.</source>
         <translation>Echo 正在通过 Infer Runtime 从这段声音中提取文字。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="330"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="365"/>
         <source>Extracting text in the background…</source>
         <translation>正在后台提取文字…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="333"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="368"/>
         <source>Text is extracted automatically</source>
         <translation>文字会自动提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="348"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="383"/>
         <source>Retry text extraction</source>
         <translation>重试文字提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="374"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="409"/>
         <source>Background text extraction did not complete. You can retry this sound.</source>
         <translation>后台文字提取未完成，你可以重试这段声音。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="375"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="410"/>
         <source>Text is extracted automatically after import.</source>
         <translation>导入后会自动提取文字。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="328"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="363"/>
         <source>Click a segment to seek</source>
         <translation>点击片段即可定位</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="327"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="362"/>
         <source>Refining word timing in the background…</source>
         <translation>正在后台细化文字时间…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="332"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="367"/>
         <source>Background analysis needs attention</source>
         <translation>后台分析需要处理</translation>
     </message>
@@ -390,6 +390,126 @@
         <location filename="../qml/AudioSpaceWorkspace.qml" line="82"/>
         <source>Missing originals</source>
         <translation>原始文件缺失</translation>
+    </message>
+</context>
+<context>
+    <name>BasicAdjustmentPanel</name>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="44"/>
+        <source>Basic adjustments</source>
+        <translation>基础调整</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="62"/>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="103"/>
+        <source>In</source>
+        <translation>入点</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="67"/>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="112"/>
+        <source>Out</source>
+        <translation>出点</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="72"/>
+        <source>Duration</source>
+        <translation>时长</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="94"/>
+        <source>Fades</source>
+        <translation>淡化</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="79"/>
+        <source>Crop to selection</source>
+        <translation>裁切到选区</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="53"/>
+        <source>Clip</source>
+        <translation>片段</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="171"/>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="181"/>
+        <source>Clip gain</source>
+        <translation>片段增益</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="126"/>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="155"/>
+        <source>Low cut</source>
+        <translation>低切</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="138"/>
+        <source>Enable low cut</source>
+        <translation>启用低切</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="138"/>
+        <source>Disable low cut</source>
+        <translation>停用低切</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="154"/>
+        <source>Bypass</source>
+        <translation>旁路</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="318"/>
+        <source>Linear</source>
+        <translation>线性</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="322"/>
+        <source>Smooth</source>
+        <translation>平滑</translation>
+    </message>
+    <message>
+        <location filename="../qml/BasicAdjustmentPanel.qml" line="326"/>
+        <source>Equal power</source>
+        <translation>等功率</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicsPanel</name>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="45"/>
+        <source>Dynamics</source>
+        <translation>动态</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="79"/>
+        <source>Reset compressor</source>
+        <translation>重置压缩器</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="170"/>
+        <source>Threshold</source>
+        <translation>阈值</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="179"/>
+        <source>Ratio</source>
+        <translation>压缩比</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="188"/>
+        <source>Attack</source>
+        <translation>启动</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="197"/>
+        <source>Release</source>
+        <translation>释放</translation>
+    </message>
+    <message>
+        <location filename="../qml/DynamicsPanel.qml" line="206"/>
+        <source>Makeup</source>
+        <translation>补偿</translation>
     </message>
 </context>
 <context>
@@ -537,129 +657,75 @@
 <context>
     <name>MainTitleBar</name>
     <message>
-        <location filename="../qml/MainTitleBar.qml" line="25"/>
+        <location filename="../qml/MainTitleBar.qml" line="26"/>
         <source>Echo toolbar</source>
         <translation>Echo 工具栏</translation>
     </message>
     <message>
-        <location filename="../qml/MainTitleBar.qml" line="105"/>
+        <location filename="../qml/MainTitleBar.qml" line="106"/>
         <source>Audio Space</source>
         <translation>声音空间</translation>
     </message>
     <message>
-        <location filename="../qml/MainTitleBar.qml" line="130"/>
+        <location filename="../qml/MainTitleBar.qml" line="131"/>
         <source>Sound Adjustments</source>
         <translation>声音调整</translation>
     </message>
     <message>
-        <location filename="../qml/MainTitleBar.qml" line="163"/>
+        <location filename="../qml/MainTitleBar.qml" line="164"/>
         <source>Indexing %1</source>
         <translation>正在索引 %1 项</translation>
     </message>
     <message>
-        <location filename="../qml/MainTitleBar.qml" line="171"/>
+        <location filename="../qml/MainTitleBar.qml" line="220"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
+        <location filename="../qml/MainTitleBar.qml" line="187"/>
         <source>Draft</source>
         <translation>草稿</translation>
     </message>
     <message>
+        <location filename="../qml/MainTitleBar.qml" line="187"/>
         <source>Saved</source>
         <translation>已保存</translation>
     </message>
     <message>
+        <location filename="../qml/MainTitleBar.qml" line="199"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
+        <location filename="../qml/MainTitleBar.qml" line="210"/>
         <source>Redo</source>
         <translation>重做</translation>
     </message>
 </context>
 <context>
-    <name>BasicAdjustmentPanel</name>
-    <message>
-        <source>Basic adjustments</source>
-        <translation>基础调整</translation>
-    </message>
-    <message>
-        <source>In</source>
-        <translation>入点</translation>
-    </message>
-    <message>
-        <source>Out</source>
-        <translation>出点</translation>
-    </message>
-    <message>
-        <source>Duration</source>
-        <translation>时长</translation>
-    </message>
-    <message>
-        <source>Fades</source>
-        <translation>淡化</translation>
-    </message>
-    <message>
-        <source>Crop to selection</source>
-        <translation>裁切到选区</translation>
-    </message>
-    <message>
-        <source>Clip</source>
-        <translation>片段</translation>
-    </message>
-    <message>
-        <source>Clip gain</source>
-        <translation>片段增益</translation>
-    </message>
-    <message>
-        <source>Low cut</source>
-        <translation>低切</translation>
-    </message>
-    <message>
-        <source>Enable low cut</source>
-        <translation>启用低切</translation>
-    </message>
-    <message>
-        <source>Disable low cut</source>
-        <translation>停用低切</translation>
-    </message>
-    <message>
-        <source>Bypass</source>
-        <translation>旁路</translation>
-    </message>
-    <message>
-        <source>Linear</source>
-        <translation>线性</translation>
-    </message>
-    <message>
-        <source>Smooth</source>
-        <translation>平滑</translation>
-    </message>
-    <message>
-        <source>Equal power</source>
-        <translation>等功率</translation>
-    </message>
-</context>
-<context>
     <name>SoundAdjustmentEditor</name>
     <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="43"/>
         <source>Adjustments</source>
         <translation>声音调整</translation>
     </message>
     <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="62"/>
         <source>Range</source>
         <translation>范围</translation>
     </message>
     <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="75"/>
         <source>Revert</source>
         <translation>还原已保存</translation>
     </message>
     <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="84"/>
         <source>Clear</source>
         <translation>清空调整</translation>
     </message>
     <message>
+        <location filename="../qml/SoundAdjustmentEditor.qml" line="98"/>
         <source>Save version</source>
         <translation>保存版本</translation>
     </message>
@@ -718,29 +784,6 @@
     </message>
 </context>
 <context>
-    <name>ToneEqualizerPanel</name>
-    <message>
-        <source>Three-band EQ</source>
-        <translation>三段均衡</translation>
-    </message>
-    <message>
-        <source>Reset equalizer</source>
-        <translation>重置均衡器</translation>
-    </message>
-    <message>
-        <source>Low</source>
-        <translation>低频</translation>
-    </message>
-    <message>
-        <source>Mid</source>
-        <translation>中频</translation>
-    </message>
-    <message>
-        <source>High</source>
-        <translation>高频</translation>
-    </message>
-</context>
-<context>
     <name>SoundCard</name>
     <message>
         <location filename="../qml/SoundCard.qml" line="319"/>
@@ -766,47 +809,47 @@
 <context>
     <name>SoundEditingWorkspace</name>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="52"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="56"/>
         <source>%1 channels</source>
         <translation>%1 声道</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="163"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="329"/>
         <source>Select a sound in Audio Space</source>
         <translation>请先在声音空间中选择声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="172"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="338"/>
         <source>Choose a sound before opening adjustments.</source>
         <translation>选择声音后即可进入调整工作区。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="262"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="462"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="290"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="490"/>
         <source>Audition</source>
         <translation>试听对比</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="296"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="496"/>
         <source>Adjusted</source>
         <translation>调整后</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="303"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="503"/>
         <source>Original</source>
         <translation>原始</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="262"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="462"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="271"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="471"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
@@ -814,65 +857,69 @@
 <context>
     <name>SoundEditorTimeline</name>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="219"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="316"/>
         <source>Timeline</source>
         <translation>时间轴</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="235"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="332"/>
         <source>Follow</source>
         <translation>跟随播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="242"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="354"/>
         <source>Fit selection</source>
         <translation>适配选区</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="249"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="361"/>
         <source>Fit all</source>
         <translation>显示全部</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="255"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="367"/>
         <source>Zoom</source>
         <translation>缩放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="268"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="380"/>
         <source>Timeline zoom</source>
         <translation>时间轴缩放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="597"/>
-        <location filename="../qml/SoundEditorTimeline.qml" line="608"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="739"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="750"/>
         <source>Fade in %1</source>
         <translation>淡入 %1</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="638"/>
-        <location filename="../qml/SoundEditorTimeline.qml" line="649"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="780"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="791"/>
         <source>Fade out %1</source>
         <translation>淡出 %1</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="715"/>
+        <location filename="../qml/SoundEditorTimeline.qml" line="857"/>
         <source>Timeline position</source>
         <translation>时间轴位置</translation>
     </message>
     <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="339"/>
         <source>Loop</source>
         <translation>循环</translation>
     </message>
     <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="347"/>
         <source>Clear selection</source>
         <translation>清除选区</translation>
     </message>
     <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="880"/>
         <source>Time selection %1</source>
         <translation>时间选区 %1</translation>
     </message>
     <message>
+        <location filename="../qml/SoundEditorTimeline.qml" line="881"/>
         <source>Clip %1</source>
         <translation>片段 %1</translation>
     </message>
@@ -1139,6 +1186,34 @@
         <location filename="../qml/SoundWallBottomBar.qml" line="124"/>
         <source>Open advanced filters</source>
         <translation>打开复合筛选</translation>
+    </message>
+</context>
+<context>
+    <name>ToneEqualizerPanel</name>
+    <message>
+        <location filename="../qml/ToneEqualizerPanel.qml" line="45"/>
+        <source>Three-band EQ</source>
+        <translation>三段均衡</translation>
+    </message>
+    <message>
+        <location filename="../qml/ToneEqualizerPanel.qml" line="55"/>
+        <source>Reset equalizer</source>
+        <translation>重置均衡器</translation>
+    </message>
+    <message>
+        <location filename="../qml/ToneEqualizerPanel.qml" line="176"/>
+        <source>Low</source>
+        <translation>低频</translation>
+    </message>
+    <message>
+        <location filename="../qml/ToneEqualizerPanel.qml" line="182"/>
+        <source>Mid</source>
+        <translation>中频</translation>
+    </message>
+    <message>
+        <location filename="../qml/ToneEqualizerPanel.qml" line="188"/>
+        <source>High</source>
+        <translation>高频</translation>
     </message>
 </context>
 </TS>

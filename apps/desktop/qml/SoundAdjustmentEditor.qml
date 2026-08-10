@@ -138,7 +138,14 @@ Rectangle {
                 draft: inspector.draft
             }
 
-            // Future panels are composed here only when they own real DSP.
+            DynamicsPanel {
+                Layout.preferredWidth: 330
+                Layout.minimumWidth: 300
+                Layout.maximumWidth: 350
+                Layout.fillHeight: true
+                draft: inspector.draft
+            }
+
             Item { Layout.fillWidth: true }
         }
     }

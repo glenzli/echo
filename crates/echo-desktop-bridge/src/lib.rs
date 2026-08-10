@@ -41,6 +41,12 @@ mod ffi {
         eq_low_gain_centibels: i16,
         eq_mid_gain_centibels: i16,
         eq_high_gain_centibels: i16,
+        compressor_enabled: bool,
+        compressor_threshold_centibels: i16,
+        compressor_ratio_tenths: u16,
+        compressor_attack_millis: u16,
+        compressor_release_millis: u16,
+        compressor_makeup_centibels: i16,
         container_format: String,
         sample_rate: u32,
         channel_count: u32,
@@ -63,6 +69,12 @@ mod ffi {
         eq_low_gain_centibels: i16,
         eq_mid_gain_centibels: i16,
         eq_high_gain_centibels: i16,
+        compressor_enabled: bool,
+        compressor_threshold_centibels: i16,
+        compressor_ratio_tenths: u16,
+        compressor_attack_millis: u16,
+        compressor_release_millis: u16,
+        compressor_makeup_centibels: i16,
     }
 
     /// One indexed keyword facet over the newest contextual evidence.
