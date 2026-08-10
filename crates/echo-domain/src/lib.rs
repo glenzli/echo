@@ -21,6 +21,7 @@ mod original;
 
 pub use adjustment::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, CompressorSettings, DeEsserSettings,
+    EFFECT_NODE_COUNT, EffectChain, EffectChainError, EffectNodeKind, EffectNodeKindValueError,
     EqualizerFilterKind, FadeCurve, FadeCurveValueError, FadeCurves, LimiterSettings,
     MAX_COMPRESSOR_ATTACK_MILLIS, MAX_COMPRESSOR_MAKEUP_CENTIBELS, MAX_COMPRESSOR_RATIO_TENTHS,
     MAX_COMPRESSOR_RELEASE_MILLIS, MAX_COMPRESSOR_THRESHOLD_CENTIBELS,

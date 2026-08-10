@@ -2,8 +2,8 @@
 //! adjustments. Originals and analysis evidence are never modified.
 
 use echo_domain::{
-    AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, FadeCurve, LimiterSettings,
-    ParametricEqualizer, RestorationSettings, ReverbSettings,
+    AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, EffectChain, FadeCurve,
+    LimiterSettings, ParametricEqualizer, RestorationSettings, ReverbSettings,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
@@ -36,6 +36,7 @@ struct StoredAdjustment {
     compressor_makeup: i64,
     reverb_json: String,
     restoration_json: String,
+    effect_chain_json: String,
     limiter_enabled: i64,
     limiter_ceiling: i64,
     limiter_release: i64,
@@ -73,7 +74,7 @@ pub fn latest_adjustment_graph(
              low_cut_hertz, parametric_equalizer_json, compressor_enabled, \
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
-             compressor_makeup_centibels, reverb_json, restoration_json, limiter_enabled, \
+             compressor_makeup_centibels, reverb_json, restoration_json, effect_chain_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
@@ -106,10 +107,11 @@ fn stored_adjustment_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Store
         compressor_makeup: row.get(15)?,
         reverb_json: row.get(16)?,
         restoration_json: row.get(17)?,
-        limiter_enabled: row.get(18)?,
-        limiter_ceiling: row.get(19)?,
-        limiter_release: row.get(20)?,
-        created_at: row.get(21)?,
+        effect_chain_json: row.get(18)?,
+        limiter_enabled: row.get(19)?,
+        limiter_ceiling: row.get(20)?,
+        limiter_release: row.get(21)?,
+        created_at: row.get(22)?,
     })
 }
 
@@ -150,6 +152,7 @@ fn restore_adjustment_graph(
             makeup_centibels: stored_centibels(stored.compressor_makeup, "compressor makeup")?,
         })
         .with_reverb(stored_reverb(&stored.reverb_json)?)
+        .with_effect_chain(stored_effect_chain(&stored.effect_chain_json)?)
         .with_limiter(LimiterSettings {
             enabled: stored.limiter_enabled != 0,
             ceiling_centibels: stored_centibels(stored.limiter_ceiling, "limiter ceiling")?,
@@ -206,7 +209,8 @@ pub fn record_adjustment_graph(
         .with_restoration(graph.restoration())
         .with_compressor(graph.compressor())
         .with_reverb(graph.reverb())
-        .with_limiter(graph.limiter()),
+        .with_limiter(graph.limiter())
+        .with_effect_chain(graph.effect_chain()),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))?;
     if let Some(current) = latest_adjustment_graph(transaction, asset_id)?
@@ -222,10 +226,10 @@ pub fn record_adjustment_graph(
          compressor_enabled, \
          compressor_threshold_centibels, compressor_ratio_tenths, \
          compressor_attack_millis, compressor_release_millis, \
-         compressor_makeup_centibels, reverb_json, restoration_json, limiter_enabled, limiter_ceiling_centibels, \
+         compressor_makeup_centibels, reverb_json, restoration_json, effect_chain_json, limiter_enabled, limiter_ceiling_centibels, \
          limiter_release_millis, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
-                 ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)",
+                 ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -256,6 +260,10 @@ pub fn record_adjustment_graph(
             serde_json::to_string(&validated.restoration()).map_err(|error| CatalogError::new(
                 CatalogErrorKind::Other,
                 format!("cannot encode restoration chain: {error}"),
+            ))?,
+            serde_json::to_string(&validated.effect_chain()).map_err(|error| CatalogError::new(
+                CatalogErrorKind::Other,
+                format!("cannot encode effect chain: {error}"),
             ))?,
             i64::from(validated.limiter().enabled),
             i64::from(validated.limiter().ceiling_centibels),
@@ -300,6 +308,22 @@ fn stored_restoration(value: &str) -> Result<RestorationSettings, CatalogError> 
             format!("stored restoration chain is invalid: {error}"),
         )
     })
+}
+
+fn stored_effect_chain(value: &str) -> Result<EffectChain, CatalogError> {
+    let chain: EffectChain = serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored effect chain is invalid: {error}"),
+        )
+    })?;
+    if !chain.is_valid() {
+        return Err(CatalogError::new(
+            CatalogErrorKind::Other,
+            "stored effect chain violates the singleton chain contract",
+        ));
+    }
+    Ok(chain)
 }
 
 fn stored_centibels(value: i64, field: &str) -> Result<i16, CatalogError> {

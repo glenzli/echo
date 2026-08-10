@@ -2,6 +2,7 @@
 
 std::optional<echo::audio::RestorationAdjustment>
 RestorationProjection::fromQml(const QVariantMap& value) {
+    const bool enabled = value.value(QStringLiteral("enabled"), true).toBool();
     const bool noise_enabled = value.value(QStringLiteral("noiseEnabled"), false).toBool();
     const int noise_reduction = value.value(QStringLiteral("noiseReductionCentibels"), 900).toInt();
     const int noise_sensitivity =
@@ -21,6 +22,7 @@ RestorationProjection::fromQml(const QVariantMap& value) {
         return std::nullopt;
     }
     return echo::audio::RestorationAdjustment{
+        .enabled = enabled,
         .noise_reduction =
             {
                 .enabled = noise_enabled,

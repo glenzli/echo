@@ -81,6 +81,7 @@ int main() {
     assert(prepared.compressor().threshold_centibels == -2000);
     assert(prepared.limiter().enabled);
     assert(prepared.limiter().ceiling_centibels == -125);
+    assert(prepared.effect_chain().front() == echo::audio::EffectNodeKind::Restoration);
     assert(std::abs(prepared.gain_amplitude() - 0.501187F) < 0.001F);
     assert(std::abs(prepared.envelope_at(240'000) - 1.0F) < 0.0001F);
 
@@ -111,6 +112,23 @@ int main() {
     try {
         [[maybe_unused]] const echo::audio::PreparedAdjustment invalid(
             {.trim_start_millis = 1'000, .trim_end_millis = 500},
+            10'000,
+            48'000
+        );
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    rejected = false;
+    try {
+        [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_chain(
+            {.effect_chain =
+                 {echo::audio::EffectNodeKind::Space,
+                  echo::audio::EffectNodeKind::Equalizer,
+                  echo::audio::EffectNodeKind::Dynamics,
+                  echo::audio::EffectNodeKind::Master,
+                  echo::audio::EffectNodeKind::Restoration}},
             10'000,
             48'000
         );

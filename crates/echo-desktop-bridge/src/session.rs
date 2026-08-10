@@ -64,6 +64,7 @@ struct AdjustmentWireFields {
     fade_out_curve: u8,
     gain_centibels: i16,
     low_cut_hertz: u16,
+    restoration_enabled: bool,
     noise_reduction_enabled: bool,
     noise_reduction_centibels: u16,
     noise_reduction_sensitivity_percent: u8,
@@ -72,6 +73,7 @@ struct AdjustmentWireFields {
     de_esser_frequency_hertz: u16,
     de_esser_threshold_centibels: i16,
     de_esser_reduction_centibels: u16,
+    equalizer_enabled: bool,
     equalizer_bands: Vec<EqualizerBandWire>,
     compressor_enabled: bool,
     compressor_threshold_centibels: i16,
@@ -90,6 +92,7 @@ struct AdjustmentWireFields {
     limiter_enabled: bool,
     limiter_ceiling_centibels: i16,
     limiter_release_millis: u16,
+    effect_chain: Vec<u8>,
 }
 
 struct SourceMetadataWireFields {
@@ -143,6 +146,7 @@ fn equalizer_wire_bands(equalizer: echo_domain::ParametricEqualizer) -> Vec<Equa
 }
 
 fn equalizer_from_wire(
+    enabled: bool,
     bands: &[EqualizerBandWire],
 ) -> Result<echo_domain::ParametricEqualizer, SessionError> {
     let authored: Vec<_> = bands
@@ -163,7 +167,33 @@ fn equalizer_from_wire(
     let bands = authored.try_into().map_err(|_: Vec<_>| SessionError {
         message: "parametric equalizer must contain exactly six bands".to_owned(),
     })?;
-    Ok(echo_domain::ParametricEqualizer::new(bands))
+    Ok(echo_domain::ParametricEqualizer::new(bands).with_enabled(enabled))
+}
+
+fn effect_chain_wire(chain: echo_domain::EffectChain) -> Vec<u8> {
+    chain
+        .nodes()
+        .into_iter()
+        .map(echo_domain::EffectNodeKind::wire_value)
+        .collect()
+}
+
+fn effect_chain_from_wire(values: &[u8]) -> Result<echo_domain::EffectChain, SessionError> {
+    let nodes: Vec<_> = values
+        .iter()
+        .copied()
+        .map(|value| {
+            echo_domain::EffectNodeKind::from_wire_value(value).map_err(|error| SessionError {
+                message: error.to_string(),
+            })
+        })
+        .collect::<Result<_, _>>()?;
+    let nodes = nodes.try_into().map_err(|_: Vec<_>| SessionError {
+        message: "effect chain must contain exactly five nodes".to_owned(),
+    })?;
+    echo_domain::EffectChain::new(nodes).map_err(|error| SessionError {
+        message: error.to_string(),
+    })
 }
 
 fn adjustment_wire_fields(
@@ -181,6 +211,7 @@ fn adjustment_wire_fields(
             fade_out_curve: 0,
             gain_centibels: 0,
             low_cut_hertz: 0,
+            restoration_enabled: true,
             noise_reduction_enabled: false,
             noise_reduction_centibels: 900,
             noise_reduction_sensitivity_percent: 50,
@@ -189,6 +220,7 @@ fn adjustment_wire_fields(
             de_esser_frequency_hertz: 6_500,
             de_esser_threshold_centibels: -2_400,
             de_esser_reduction_centibels: 600,
+            equalizer_enabled: true,
             equalizer_bands: equalizer_wire_bands(echo_domain::ParametricEqualizer::flat()),
             compressor_enabled: false,
             compressor_threshold_centibels: -1_800,
@@ -207,6 +239,7 @@ fn adjustment_wire_fields(
             limiter_enabled: false,
             limiter_ceiling_centibels: -100,
             limiter_release_millis: 100,
+            effect_chain: effect_chain_wire(echo_domain::EffectChain::standard()),
         },
         |revision| AdjustmentWireFields {
             revision: revision.revision_id,
@@ -220,6 +253,7 @@ fn adjustment_wire_fields(
                 .expect("fade curve catalog values fit u8"),
             gain_centibels: revision.graph.gain_centibels(),
             low_cut_hertz: revision.graph.low_cut_hertz(),
+            restoration_enabled: revision.graph.restoration().enabled,
             noise_reduction_enabled: revision.graph.restoration().noise_reduction.enabled,
             noise_reduction_centibels: revision
                 .graph
@@ -240,6 +274,7 @@ fn adjustment_wire_fields(
             de_esser_frequency_hertz: revision.graph.restoration().de_esser.frequency_hertz,
             de_esser_threshold_centibels: revision.graph.restoration().de_esser.threshold_centibels,
             de_esser_reduction_centibels: revision.graph.restoration().de_esser.reduction_centibels,
+            equalizer_enabled: revision.graph.equalizer().enabled(),
             equalizer_bands: equalizer_wire_bands(revision.graph.equalizer()),
             compressor_enabled: revision.graph.compressor().enabled,
             compressor_threshold_centibels: revision.graph.compressor().threshold_centibels,
@@ -258,6 +293,7 @@ fn adjustment_wire_fields(
             limiter_enabled: revision.graph.limiter().enabled,
             limiter_ceiling_centibels: revision.graph.limiter().ceiling_centibels,
             limiter_release_millis: revision.graph.limiter().release_millis,
+            effect_chain: effect_chain_wire(revision.graph.effect_chain()),
         },
     )
 }
@@ -314,6 +350,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         fade_out_curve: adjustment.fade_out_curve,
         gain_centibels: adjustment.gain_centibels,
         low_cut_hertz: adjustment.low_cut_hertz,
+        restoration_enabled: adjustment.restoration_enabled,
         noise_reduction_enabled: adjustment.noise_reduction_enabled,
         noise_reduction_centibels: adjustment.noise_reduction_centibels,
         noise_reduction_sensitivity_percent: adjustment.noise_reduction_sensitivity_percent,
@@ -322,6 +359,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         de_esser_frequency_hertz: adjustment.de_esser_frequency_hertz,
         de_esser_threshold_centibels: adjustment.de_esser_threshold_centibels,
         de_esser_reduction_centibels: adjustment.de_esser_reduction_centibels,
+        equalizer_enabled: adjustment.equalizer_enabled,
         equalizer_bands: adjustment.equalizer_bands,
         compressor_enabled: adjustment.compressor_enabled,
         compressor_threshold_centibels: adjustment.compressor_threshold_centibels,
@@ -340,6 +378,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         limiter_enabled: adjustment.limiter_enabled,
         limiter_ceiling_centibels: adjustment.limiter_ceiling_centibels,
         limiter_release_millis: adjustment.limiter_release_millis,
+        effect_chain: adjustment.effect_chain,
         container_format: source_metadata.container_format,
         sample_rate: source_metadata.sample_rate,
         channel_count: source_metadata.channel_count,
@@ -664,6 +703,7 @@ impl LibrarySession {
                 adjustment.low_cut_hertz,
             )
             .with_restoration(echo_domain::RestorationSettings {
+                enabled: adjustment.restoration_enabled,
                 noise_reduction: echo_domain::NoiseReductionSettings {
                     enabled: adjustment.noise_reduction_enabled,
                     reduction_centibels: adjustment.noise_reduction_centibels,
@@ -677,7 +717,10 @@ impl LibrarySession {
                     reduction_centibels: adjustment.de_esser_reduction_centibels,
                 },
             })
-            .with_equalizer(equalizer_from_wire(&adjustment.equalizer_bands)?)
+            .with_equalizer(equalizer_from_wire(
+                adjustment.equalizer_enabled,
+                &adjustment.equalizer_bands,
+            )?)
             .with_compressor(echo_domain::CompressorSettings {
                 enabled: adjustment.compressor_enabled,
                 threshold_centibels: adjustment.compressor_threshold_centibels,
@@ -700,7 +743,8 @@ impl LibrarySession {
                 enabled: adjustment.limiter_enabled,
                 ceiling_centibels: adjustment.limiter_ceiling_centibels,
                 release_millis: adjustment.limiter_release_millis,
-            }),
+            })
+            .with_effect_chain(effect_chain_from_wire(&adjustment.effect_chain)?),
         )
         .map_err(|error| SessionError {
             message: error.to_string(),

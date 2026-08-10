@@ -55,6 +55,21 @@ int main() {
     echo::audio::ParametricEqualizer low_boost(gainAt(0, 600), kSampleRate, 1);
     expect(measured_rms(low_boost, 80.0) > flat_low * 1.65, "low shelf boosts lows");
 
+    auto disabled_boost_adjustment = gainAt(0, 600);
+    disabled_boost_adjustment.enabled = false;
+    echo::audio::ParametricEqualizer disabled_boost(disabled_boost_adjustment, kSampleRate, 1);
+    expect(disabled_boost.is_bypassed(), "whole-node bypass ignores active bands");
+    expect(
+        std::abs(
+            echo::audio::ParametricEqualizer::response_decibels(
+                disabled_boost_adjustment,
+                kSampleRate,
+                80.0
+            )
+        ) < 0.0001,
+        "whole-node bypass reports a flat response"
+    );
+
     echo::audio::ParametricEqualizer mid_cut(gainAt(2, -600), kSampleRate, 1);
     echo::audio::ParametricEqualizer flat_mid({}, kSampleRate, 1);
     expect(

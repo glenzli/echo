@@ -49,6 +49,7 @@ mod ffi {
         fade_out_curve: u8,
         gain_centibels: i16,
         low_cut_hertz: u16,
+        restoration_enabled: bool,
         noise_reduction_enabled: bool,
         noise_reduction_centibels: u16,
         noise_reduction_sensitivity_percent: u8,
@@ -57,6 +58,7 @@ mod ffi {
         de_esser_frequency_hertz: u16,
         de_esser_threshold_centibels: i16,
         de_esser_reduction_centibels: u16,
+        equalizer_enabled: bool,
         equalizer_bands: Vec<EqualizerBandWire>,
         compressor_enabled: bool,
         compressor_threshold_centibels: i16,
@@ -75,6 +77,7 @@ mod ffi {
         limiter_enabled: bool,
         limiter_ceiling_centibels: i16,
         limiter_release_millis: u16,
+        effect_chain: Vec<u8>,
         container_format: String,
         sample_rate: u32,
         channel_count: u32,
@@ -94,6 +97,7 @@ mod ffi {
         fade_out_curve: u8,
         gain_centibels: i16,
         low_cut_hertz: u16,
+        restoration_enabled: bool,
         noise_reduction_enabled: bool,
         noise_reduction_centibels: u16,
         noise_reduction_sensitivity_percent: u8,
@@ -102,6 +106,7 @@ mod ffi {
         de_esser_frequency_hertz: u16,
         de_esser_threshold_centibels: i16,
         de_esser_reduction_centibels: u16,
+        equalizer_enabled: bool,
         equalizer_bands: Vec<EqualizerBandWire>,
         compressor_enabled: bool,
         compressor_threshold_centibels: i16,
@@ -120,6 +125,7 @@ mod ffi {
         limiter_enabled: bool,
         limiter_ceiling_centibels: i16,
         limiter_release_millis: u16,
+        effect_chain: Vec<u8>,
     }
 
     /// Completed offline-render evidence crossing the desktop ABI atomically.

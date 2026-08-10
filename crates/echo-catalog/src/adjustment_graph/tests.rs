@@ -2,8 +2,8 @@ use std::path::Path;
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, DeEsserSettings,
-    FadeCurve, FadeCurves, LimiterSettings, NoiseReductionSettings, RestorationSettings,
-    ReverbSettings,
+    EffectChain, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings, NoiseReductionSettings,
+    RestorationSettings, ReverbSettings,
 };
 
 use super::*;
@@ -54,6 +54,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
     assert_eq!(first.graph.compressor(), graph.compressor());
     assert_eq!(first.graph.reverb(), graph.reverb());
     assert_eq!(first.graph.limiter(), graph.limiter());
+    assert_eq!(first.graph.effect_chain(), graph.effect_chain());
 
     let second_graph = AdjustmentGraph::new(
         10_000,
@@ -98,6 +99,7 @@ fn fully_configured_graph() -> AdjustmentGraph {
             80,
         )
         .with_restoration(RestorationSettings {
+            enabled: true,
             noise_reduction: NoiseReductionSettings {
                 enabled: true,
                 reduction_centibels: 1_100,
@@ -136,7 +138,17 @@ fn fully_configured_graph() -> AdjustmentGraph {
             enabled: true,
             ceiling_centibels: -125,
             release_millis: 160,
-        }),
+        })
+        .with_effect_chain(
+            EffectChain::new([
+                EffectNodeKind::Space,
+                EffectNodeKind::Restoration,
+                EffectNodeKind::Equalizer,
+                EffectNodeKind::Dynamics,
+                EffectNodeKind::Master,
+            ])
+            .expect("valid reordered chain"),
+        ),
     )
     .expect("graph validates")
 }

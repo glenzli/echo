@@ -43,6 +43,21 @@ bool valid_curve(FadeCurve curve) {
     return false;
 }
 
+bool valid_effect_chain(const std::array<EffectNodeKind, kEffectNodeCount>& nodes) {
+    if (nodes.back() != EffectNodeKind::Master) {
+        return false;
+    }
+    std::array<bool, kEffectNodeCount> seen{};
+    for (const EffectNodeKind node : nodes) {
+        const auto value = static_cast<std::size_t>(node);
+        if (value >= seen.size() || seen[value]) {
+            return false;
+        }
+        seen[value] = true;
+    }
+    return true;
+}
+
 float evaluate_curve(float progress, FadeCurve curve) {
     const float bounded = std::clamp(progress, 0.0F, 1.0F);
     switch (curve) {
@@ -98,6 +113,11 @@ PreparedAdjustment::PreparedAdjustment(
         && (authored.low_cut_hertz < kMinimumLowCutHertz
             || authored.low_cut_hertz > kMaximumLowCutHertz)) {
         throw std::invalid_argument("adjustment low cut is outside the supported range");
+    }
+    if (!valid_effect_chain(authored.effect_chain)) {
+        throw std::invalid_argument(
+            "adjustment effect chain must contain singleton nodes with master last"
+        );
     }
     const NoiseReductionAdjustment noise_reduction = authored.restoration.noise_reduction;
     if (noise_reduction.reduction_centibels > 2400 || noise_reduction.sensitivity_percent > 100
@@ -164,6 +184,7 @@ PreparedAdjustment::PreparedAdjustment(
     compressor_ = authored.compressor;
     reverb_ = authored.reverb;
     limiter_ = authored.limiter;
+    effect_chain_ = authored.effect_chain;
 }
 
 std::uint64_t PreparedAdjustment::start_frame() const {
@@ -204,6 +225,10 @@ ReverbAdjustment PreparedAdjustment::reverb() const {
 
 LimiterAdjustment PreparedAdjustment::limiter() const {
     return limiter_;
+}
+
+std::array<EffectNodeKind, kEffectNodeCount> PreparedAdjustment::effect_chain() const {
+    return effect_chain_;
 }
 
 std::uint64_t PreparedAdjustment::clamp_seek_millis(std::uint64_t millis) const {

@@ -15,6 +15,15 @@ enum class FadeCurve : std::uint8_t {
 };
 
 inline constexpr std::size_t kParametricEqualizerBandCount = 6;
+inline constexpr std::size_t kEffectNodeCount = 5;
+
+enum class EffectNodeKind : std::uint8_t {
+    Restoration = 0,
+    Equalizer = 1,
+    Dynamics = 2,
+    Space = 3,
+    Master = 4,
+};
 
 enum class EqualizerFilterKind : std::uint8_t {
     Bell = 0,
@@ -33,6 +42,7 @@ struct ParametricEqualizerBand {
 };
 
 struct ParametricEqualizerAdjustment {
+    bool enabled = true;
     std::array<ParametricEqualizerBand, kParametricEqualizerBandCount> bands{{
         {true, EqualizerFilterKind::LowShelf, 120, 71, 0},
         {false, EqualizerFilterKind::Bell, 250, 100, 0},
@@ -69,6 +79,7 @@ struct DeEsserAdjustment {
 };
 
 struct RestorationAdjustment {
+    bool enabled = true;
     NoiseReductionAdjustment noise_reduction;
     DeEsserAdjustment de_esser;
 };
@@ -110,6 +121,13 @@ struct PlaybackAdjustment {
     CompressorAdjustment compressor;
     ReverbAdjustment reverb;
     LimiterAdjustment limiter;
+    std::array<EffectNodeKind, kEffectNodeCount> effect_chain{{
+        EffectNodeKind::Restoration,
+        EffectNodeKind::Equalizer,
+        EffectNodeKind::Dynamics,
+        EffectNodeKind::Space,
+        EffectNodeKind::Master,
+    }};
 };
 
 /// Playback-ready adjustment compiled once before decoding begins.
@@ -134,6 +152,7 @@ class PreparedAdjustment {
     [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] ReverbAdjustment reverb() const;
     [[nodiscard]] LimiterAdjustment limiter() const;
+    [[nodiscard]] std::array<EffectNodeKind, kEffectNodeCount> effect_chain() const;
     [[nodiscard]] std::uint64_t clamp_seek_millis(std::uint64_t millis) const;
     [[nodiscard]] float amplitude_at(std::uint64_t source_frame) const;
     [[nodiscard]] float gain_amplitude() const;
@@ -155,6 +174,7 @@ class PreparedAdjustment {
     CompressorAdjustment compressor_;
     ReverbAdjustment reverb_;
     LimiterAdjustment limiter_;
+    std::array<EffectNodeKind, kEffectNodeCount> effect_chain_;
 };
 
 } // namespace echo::audio

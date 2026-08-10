@@ -59,6 +59,137 @@ pub const MAX_DE_ESSER_FREQUENCY_HERTZ: u16 = 12_000;
 pub const MIN_DE_ESSER_THRESHOLD_CENTIBELS: i16 = -6_000;
 pub const MAX_DE_ESSER_THRESHOLD_CENTIBELS: i16 = 0;
 pub const MAX_DE_ESSER_REDUCTION_CENTIBELS: u16 = 1_800;
+/// Echo's first authored chain is deliberately bounded to singleton effects.
+pub const EFFECT_NODE_COUNT: usize = 5;
+
+const fn enabled_by_default() -> bool {
+    true
+}
+
+/// Stable identity for one authored effect node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[repr(u8)]
+pub enum EffectNodeKind {
+    Restoration = 0,
+    Equalizer = 1,
+    Dynamics = 2,
+    Space = 3,
+    Master = 4,
+}
+
+impl EffectNodeKind {
+    #[must_use]
+    pub const fn wire_value(self) -> u8 {
+        self as u8
+    }
+
+    /// Restores the stable desktop wire representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EffectNodeKindValueError`] for an unknown value.
+    pub const fn from_wire_value(value: u8) -> Result<Self, EffectNodeKindValueError> {
+        match value {
+            0 => Ok(Self::Restoration),
+            1 => Ok(Self::Equalizer),
+            2 => Ok(Self::Dynamics),
+            3 => Ok(Self::Space),
+            4 => Ok(Self::Master),
+            _ => Err(EffectNodeKindValueError),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EffectNodeKindValueError;
+
+impl std::fmt::Display for EffectNodeKindValueError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("effect node kind is outside the stable chain contract")
+    }
+}
+
+impl std::error::Error for EffectNodeKindValueError {}
+
+/// A bounded linear effect chain. The four insert effects may be reordered;
+/// master output remains the unique terminal node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EffectChain {
+    nodes: [EffectNodeKind; EFFECT_NODE_COUNT],
+}
+
+impl Default for EffectChain {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl EffectChain {
+    #[must_use]
+    pub const fn standard() -> Self {
+        Self {
+            nodes: [
+                EffectNodeKind::Restoration,
+                EffectNodeKind::Equalizer,
+                EffectNodeKind::Dynamics,
+                EffectNodeKind::Space,
+                EffectNodeKind::Master,
+            ],
+        }
+    }
+
+    /// Creates a closed singleton chain with master fixed at the tail.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EffectChainError`] for duplicates, omissions, or a movable
+    /// master node.
+    pub const fn new(nodes: [EffectNodeKind; EFFECT_NODE_COUNT]) -> Result<Self, EffectChainError> {
+        if !valid_effect_chain(nodes) {
+            return Err(EffectChainError);
+        }
+        Ok(Self { nodes })
+    }
+
+    #[must_use]
+    pub const fn nodes(self) -> [EffectNodeKind; EFFECT_NODE_COUNT] {
+        self.nodes
+    }
+
+    #[must_use]
+    pub const fn is_valid(self) -> bool {
+        valid_effect_chain(self.nodes)
+    }
+}
+
+const fn valid_effect_chain(nodes: [EffectNodeKind; EFFECT_NODE_COUNT]) -> bool {
+    if !matches!(nodes[4], EffectNodeKind::Master) {
+        return false;
+    }
+    let mut seen = [false; EFFECT_NODE_COUNT];
+    let mut index = 0;
+    while index < EFFECT_NODE_COUNT {
+        let value = nodes[index] as usize;
+        if seen[value] {
+            return false;
+        }
+        seen[value] = true;
+        index += 1;
+    }
+    true
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EffectChainError;
+
+impl std::fmt::Display for EffectChainError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("effect chain must contain each singleton node once with master last")
+    }
+}
+
+impl std::error::Error for EffectChainError {}
 
 /// Authored adaptive broadband noise-reduction intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -115,16 +246,25 @@ impl DeEsserSettings {
 }
 
 /// Stable restoration chain authored before tone and dynamics processing.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RestorationSettings {
+    #[serde(default = "enabled_by_default")]
+    pub enabled: bool,
     pub noise_reduction: NoiseReductionSettings,
     pub de_esser: DeEsserSettings,
+}
+
+impl Default for RestorationSettings {
+    fn default() -> Self {
+        Self::standard()
+    }
 }
 
 impl RestorationSettings {
     #[must_use]
     pub const fn standard() -> Self {
         Self {
+            enabled: true,
             noise_reduction: NoiseReductionSettings::gentle(),
             de_esser: DeEsserSettings::speech(),
         }
@@ -303,6 +443,8 @@ impl ParametricEqualizerBand {
 /// Six-band authored equalizer intent shared by persistence and execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParametricEqualizer {
+    #[serde(default = "enabled_by_default")]
+    enabled: bool,
     bands: [ParametricEqualizerBand; PARAMETRIC_EQ_BAND_COUNT],
 }
 
@@ -315,7 +457,10 @@ impl Default for ParametricEqualizer {
 impl ParametricEqualizer {
     #[must_use]
     pub const fn new(bands: [ParametricEqualizerBand; PARAMETRIC_EQ_BAND_COUNT]) -> Self {
-        Self { bands }
+        Self {
+            enabled: true,
+            bands,
+        }
     }
 
     #[must_use]
@@ -344,6 +489,17 @@ impl ParametricEqualizer {
     #[must_use]
     pub const fn bands(self) -> [ParametricEqualizerBand; PARAMETRIC_EQ_BAND_COUNT] {
         self.bands
+    }
+
+    #[must_use]
+    pub const fn enabled(self) -> bool {
+        self.enabled
+    }
+
+    #[must_use]
+    pub const fn with_enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
     }
 
     #[must_use]
@@ -441,6 +597,7 @@ pub struct AdjustmentEffects {
     pub compressor: CompressorSettings,
     pub reverb: ReverbSettings,
     pub limiter: LimiterSettings,
+    pub effect_chain: EffectChain,
 }
 
 impl AdjustmentEffects {
@@ -455,6 +612,7 @@ impl AdjustmentEffects {
             compressor: CompressorSettings::standard(),
             reverb: ReverbSettings::studio_room(),
             limiter: LimiterSettings::standard(),
+            effect_chain: EffectChain::standard(),
         }
     }
 
@@ -487,6 +645,12 @@ impl AdjustmentEffects {
         self.limiter = limiter;
         self
     }
+
+    #[must_use]
+    pub const fn with_effect_chain(mut self, effect_chain: EffectChain) -> Self {
+        self.effect_chain = effect_chain;
+        self
+    }
 }
 
 /// One validated, non-destructive adjustment graph.
@@ -508,6 +672,8 @@ pub struct AdjustmentGraph {
     reverb: ReverbSettings,
     #[serde(default)]
     limiter: LimiterSettings,
+    #[serde(default)]
+    effect_chain: EffectChain,
 }
 
 impl AdjustmentGraph {
@@ -541,6 +707,9 @@ impl AdjustmentGraph {
             && !(MIN_LOW_CUT_HERTZ..=MAX_LOW_CUT_HERTZ).contains(&effects.low_cut_hertz)
         {
             return Err(AdjustmentGraphError::LowCutOutOfRange);
+        }
+        if !effects.effect_chain.is_valid() {
+            return Err(AdjustmentGraphError::InvalidEffectChain);
         }
         let noise_reduction = effects.restoration.noise_reduction;
         if noise_reduction.reduction_centibels > MAX_NOISE_REDUCTION_CENTIBELS
@@ -617,6 +786,7 @@ impl AdjustmentGraph {
             compressor,
             reverb,
             limiter,
+            effect_chain: effects.effect_chain,
         })
     }
 
@@ -702,6 +872,11 @@ impl AdjustmentGraph {
     pub const fn limiter(self) -> LimiterSettings {
         self.limiter
     }
+
+    #[must_use]
+    pub const fn effect_chain(self) -> EffectChain {
+        self.effect_chain
+    }
 }
 
 /// Stable validation failures for authored adjustment intent.
@@ -717,6 +892,7 @@ pub enum AdjustmentGraphError {
     CompressorOutOfRange,
     ReverbOutOfRange,
     LimiterOutOfRange,
+    InvalidEffectChain,
 }
 
 impl std::fmt::Display for AdjustmentGraphError {
@@ -736,6 +912,9 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::CompressorOutOfRange => "compressor parameters are outside the supported range",
             Self::ReverbOutOfRange => "reverb parameters are outside the supported range",
             Self::LimiterOutOfRange => "limiter parameters are outside the supported range",
+            Self::InvalidEffectChain => {
+                "effect chain must contain each singleton node once with master last"
+            }
         })
     }
 }

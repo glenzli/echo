@@ -51,7 +51,7 @@ Rectangle {
                 implicitWidth: statusText.implicitWidth + 12
                 implicitHeight: 18
                 radius: 9
-                color: panel.draft.reverbEnabled ? Theme.accentSoft : Theme.surfaceSubtle
+                color: panel.draft.reverbEnabled ? Theme.surfaceSelected : Theme.surfaceSubtle
 
                 Text {
                     id: statusText
@@ -65,27 +65,6 @@ Rectangle {
             }
 
             Item { Layout.fillWidth: true }
-
-            Rectangle {
-                implicitWidth: 30
-                implicitHeight: 17
-                radius: height / 2
-                color: panel.draft.reverbEnabled ? Theme.accent : Theme.track
-
-                Rectangle {
-                    width: 13
-                    height: 13
-                    radius: width / 2
-                    y: 2
-                    x: panel.draft.reverbEnabled ? parent.width - width - 2 : 2
-                    color: panel.draft.reverbEnabled ? Theme.accentText : Theme.panelRaised
-                    Behavior on x { NumberAnimation { duration: 90 } }
-                }
-
-                TapHandler {
-                    onTapped: panel.draft.setReverbEnabled(!panel.draft.reverbEnabled)
-                }
-            }
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"

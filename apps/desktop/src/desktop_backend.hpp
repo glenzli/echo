@@ -47,6 +47,7 @@ class DesktopBackend : public QObject {
         int fadeOutCurve,
         int gainCentibels,
         int lowCutHertz,
+        bool restorationEnabled,
         bool noiseReductionEnabled,
         int noiseReductionCentibels,
         int noiseReductionSensitivityPercent,
@@ -55,6 +56,7 @@ class DesktopBackend : public QObject {
         int deEsserFrequencyHertz,
         int deEsserThresholdCentibels,
         int deEsserReductionCentibels,
+        bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,
         int compressorThresholdCentibels,
@@ -72,7 +74,8 @@ class DesktopBackend : public QObject {
         int reverbHighCutHertz,
         bool limiterEnabled,
         int limiterCeilingCentibels,
-        int limiterReleaseMillis
+        int limiterReleaseMillis,
+        const QVariantList& effectChain
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;

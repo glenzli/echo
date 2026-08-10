@@ -48,6 +48,7 @@ class PlaybackController : public QObject {
         int gainCentibels,
         int lowCutHertz,
         const QVariantMap& restoration,
+        bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,
         int compressorThresholdCentibels,
@@ -58,9 +59,10 @@ class PlaybackController : public QObject {
         const QVariantMap& reverb,
         bool limiterEnabled,
         int limiterCeilingCentibels,
-        int limiterReleaseMillis
+        int limiterReleaseMillis,
+        const QVariantList& effectChain
     );
-    Q_INVOKABLE bool updateEqualizer(const QVariantList& equalizerBands);
+    Q_INVOKABLE bool updateEqualizer(bool enabled, const QVariantList& equalizerBands);
     Q_INVOKABLE bool updateRestoration(const QVariantMap& restoration);
     Q_INVOKABLE QVariantList
     equalizerResponse(const QVariantList& equalizerBands, int pointCount) const;

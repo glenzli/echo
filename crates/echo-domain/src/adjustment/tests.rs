@@ -14,6 +14,7 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             80,
         )
         .with_restoration(RestorationSettings {
+            enabled: true,
             noise_reduction: NoiseReductionSettings {
                 enabled: true,
                 reduction_centibels: 1_200,
@@ -28,6 +29,16 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             },
         })
         .with_equalizer(ParametricEqualizer::from_legacy_gains(250, -175, 400))
+        .with_effect_chain(
+            EffectChain::new([
+                EffectNodeKind::Equalizer,
+                EffectNodeKind::Restoration,
+                EffectNodeKind::Space,
+                EffectNodeKind::Dynamics,
+                EffectNodeKind::Master,
+            ])
+            .expect("valid reordered chain"),
+        )
         .with_compressor(CompressorSettings {
             enabled: true,
             threshold_centibels: -2_000,
@@ -75,6 +86,64 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.reverb().decay_millis, 2_400);
     assert_eq!(graph.reverb().mix_percent, 24);
     assert_eq!(graph.limiter().ceiling_centibels, -125);
+    assert_eq!(graph.effect_chain().nodes()[0], EffectNodeKind::Equalizer);
+}
+
+#[test]
+fn effect_chain_has_closed_identity_and_fixed_master_tail() {
+    let reordered = EffectChain::new([
+        EffectNodeKind::Space,
+        EffectNodeKind::Equalizer,
+        EffectNodeKind::Restoration,
+        EffectNodeKind::Dynamics,
+        EffectNodeKind::Master,
+    ])
+    .expect("valid reorder");
+    assert!(reordered.is_valid());
+    assert_eq!(EffectNodeKind::Space.wire_value(), 3);
+    assert_eq!(
+        EffectNodeKind::from_wire_value(3),
+        Ok(EffectNodeKind::Space)
+    );
+    assert_eq!(
+        EffectNodeKind::from_wire_value(9),
+        Err(EffectNodeKindValueError)
+    );
+
+    assert_eq!(
+        EffectChain::new([
+            EffectNodeKind::Restoration,
+            EffectNodeKind::Equalizer,
+            EffectNodeKind::Dynamics,
+            EffectNodeKind::Space,
+            EffectNodeKind::Restoration,
+        ]),
+        Err(EffectChainError)
+    );
+    assert_eq!(
+        EffectChain::new([
+            EffectNodeKind::Master,
+            EffectNodeKind::Equalizer,
+            EffectNodeKind::Dynamics,
+            EffectNodeKind::Space,
+            EffectNodeKind::Restoration,
+        ]),
+        Err(EffectChainError)
+    );
+}
+
+#[test]
+fn legacy_effect_json_defaults_whole_node_bypass_to_enabled() {
+    let restoration: RestorationSettings = serde_json::from_str(
+        r#"{"noise_reduction":{"enabled":false,"reduction_centibels":900,"sensitivity_percent":50,"smoothing_millis":240},"de_esser":{"enabled":false,"frequency_hertz":6500,"threshold_centibels":-2400,"reduction_centibels":600}}"#,
+    )
+    .expect("legacy restoration decodes");
+    assert!(restoration.enabled);
+
+    let bands = serde_json::to_string(&ParametricEqualizer::flat().bands()).expect("bands encode");
+    let equalizer: ParametricEqualizer =
+        serde_json::from_str(&format!(r#"{{"bands":{bands}}}"#)).expect("legacy equalizer decodes");
+    assert!(equalizer.enabled());
 }
 
 #[test]

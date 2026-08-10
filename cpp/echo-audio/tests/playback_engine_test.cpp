@@ -376,6 +376,71 @@ int main(int argc, char* argv[]) {
         adjusted.stop();
     }
 
+    // The authored chain is executable order, not presentation metadata. A
+    // nonlinear compressor and time-domain room must produce different audio
+    // when their order is exchanged while every parameter stays identical.
+    {
+        const echo::audio::PlaybackAdjustment dynamics_then_space{
+            .compressor =
+                {.enabled = true,
+                 .threshold_centibels = -2400,
+                 .ratio_tenths = 60,
+                 .attack_millis = 5,
+                 .release_millis = 180,
+                 .makeup_centibels = 300},
+            .reverb =
+                {.enabled = true,
+                 .mix_percent = 70,
+                 .pre_delay_millis = 0,
+                 .decay_millis = 1800,
+                 .size_percent = 70,
+                 .damping_percent = 35,
+                 .low_cut_hertz = 120,
+                 .high_cut_hertz = 10000},
+            .effect_chain = {
+                echo::audio::EffectNodeKind::Restoration,
+                echo::audio::EffectNodeKind::Equalizer,
+                echo::audio::EffectNodeKind::Dynamics,
+                echo::audio::EffectNodeKind::Space,
+                echo::audio::EffectNodeKind::Master
+            },
+        };
+        auto space_then_dynamics = dynamics_then_space;
+        space_then_dynamics.effect_chain = {
+            echo::audio::EffectNodeKind::Restoration,
+            echo::audio::EffectNodeKind::Equalizer,
+            echo::audio::EffectNodeKind::Space,
+            echo::audio::EffectNodeKind::Dynamics,
+            echo::audio::EffectNodeKind::Master
+        };
+
+        echo::audio::PlaybackSession first_order(path.string(), dynamics_then_space);
+        echo::audio::PlaybackSession second_order(path.string(), space_then_dynamics);
+        std::vector<float> first_samples(32'000, 0.0F);
+        std::vector<float> second_samples(32'000, 0.0F);
+        const std::size_t first_frames =
+            pull_until(first_order, first_samples.data(), 12'000, 1'000);
+        const std::size_t second_frames =
+            pull_until(second_order, second_samples.data(), 12'000, 1'000);
+        expect(first_frames == second_frames && first_frames >= 12'000, "both chain orders render");
+        double absolute_difference = 0.0;
+        const std::size_t compared_samples =
+            std::min(first_frames, second_frames) * first_order.channel_count();
+        for (std::size_t index = 0; index < compared_samples; ++index) {
+            absolute_difference += std::abs(
+                static_cast<double>(first_samples[index])
+                - static_cast<double>(second_samples[index])
+            );
+        }
+        expect(
+            compared_samples > 0
+                && absolute_difference / static_cast<double>(compared_samples) > 0.0001,
+            "changing authored node order changes processed audio"
+        );
+        first_order.stop();
+        second_order.stop();
+    }
+
     // Positive EQ on near-full-scale material must not recreate the former
     // hard-clipped plateau at the device boundary.
     {

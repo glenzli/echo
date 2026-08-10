@@ -58,6 +58,7 @@ void RenderExportController::exportAdjusted(
     int gainCentibels,
     int lowCutHertz,
     const QVariantMap& restoration,
+    bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
@@ -68,7 +69,8 @@ void RenderExportController::exportAdjusted(
     const QVariantMap& reverb,
     bool limiterEnabled,
     int limiterCeilingCentibels,
-    int limiterReleaseMillis
+    int limiterReleaseMillis,
+    const QVariantList& effectChain
 ) {
     if (assetId.isEmpty() || adjustmentRevisionId < 0 || sourcePath.isEmpty()) {
         reject(QStringLiteral("render source identity is invalid"));
@@ -93,6 +95,7 @@ void RenderExportController::exportAdjusted(
         gainCentibels,
         lowCutHertz,
         restoration,
+        equalizerEnabled,
         equalizerBands,
         compressorEnabled,
         compressorThresholdCentibels,
@@ -103,7 +106,8 @@ void RenderExportController::exportAdjusted(
         reverb,
         limiterEnabled,
         limiterCeilingCentibels,
-        limiterReleaseMillis
+        limiterReleaseMillis,
+        effectChain
     );
     if (!adjustment.has_value()) {
         reject(QStringLiteral("render adjustment is outside the supported range"));

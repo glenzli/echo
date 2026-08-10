@@ -42,11 +42,6 @@
     </message>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="40"/>
-        <source>EQ</source>
-        <translation>均衡</translation>
-    </message>
-    <message>
-        <location filename="../qml/AdvancedEffectsRack.qml" line="40"/>
         <source>Dynamics</source>
         <translation>动态</translation>
     </message>
@@ -60,6 +55,18 @@
         <source>Master</source>
         <translation>母线</translation>
     </message>
+    <message><source>Equalizer</source><translation>均衡器</translation></message>
+    <message><source>Noise reduction · De-esser</source><translation>降噪 · 去齿音</translation></message>
+    <message><source>6-band parametric</source><translation>六段参数均衡</translation></message>
+    <message><source>Stereo compressor</source><translation>立体声压缩器</translation></message>
+    <message><source>Algorithmic room</source><translation>算法空间</translation></message>
+    <message><source>Limiter · Loudness</source><translation>限制器 · 响度</translation></message>
+    <message><source>EFFECT CHAIN</source><translation>效果链</translation></message>
+    <message><source>Signal flows from top to bottom. Master stays last.</source><translation>信号自上而下流动；母线固定在末端。</translation></message>
+</context>
+<context>
+    <name>EffectChainNode</name>
+    <message><source>Bypassed</source><translation>已旁路</translation></message>
 </context>
 <context>
     <name>AudioLibrarySidebar</name>

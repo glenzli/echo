@@ -55,30 +55,6 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
-            Rectangle {
-                implicitWidth: 30
-                implicitHeight: 17
-                radius: height / 2
-                color: panel.draft.compressorEnabled
-                    ? Theme.accent : Theme.track
-
-                Rectangle {
-                    width: 13
-                    height: 13
-                    radius: width / 2
-                    y: 2
-                    x: panel.draft.compressorEnabled ? parent.width - width - 2 : 2
-                    color: panel.draft.compressorEnabled
-                        ? Theme.accentText : Theme.panelRaised
-                    Behavior on x { NumberAnimation { duration: 90 } }
-                }
-
-                TapHandler {
-                    onTapped: panel.draft.setCompressorEnabled(
-                        !panel.draft.compressorEnabled)
-                }
-            }
-
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset compressor")

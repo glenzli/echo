@@ -41,6 +41,7 @@ class RenderExportController : public QObject {
         int gainCentibels,
         int lowCutHertz,
         const QVariantMap& restoration,
+        bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,
         int compressorThresholdCentibels,
@@ -51,7 +52,8 @@ class RenderExportController : public QObject {
         const QVariantMap& reverb,
         bool limiterEnabled,
         int limiterCeilingCentibels,
-        int limiterReleaseMillis
+        int limiterReleaseMillis,
+        const QVariantList& effectChain
     );
     Q_INVOKABLE void cancel();
 

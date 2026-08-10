@@ -159,6 +159,9 @@ bool ParametricEqualizer::same(
     ParametricEqualizerAdjustment left,
     ParametricEqualizerAdjustment right
 ) {
+    if (left.enabled != right.enabled) {
+        return false;
+    }
     for (std::size_t index = 0; index < left.bands.size(); ++index) {
         const auto& a = left.bands[index];
         const auto& b = right.bands[index];
@@ -179,15 +182,16 @@ ParametricEqualizer::Bank ParametricEqualizer::prepare(
     validate(adjustment, sample_rate);
     Bank bank;
     bank.adjustment = adjustment;
-    bank.bypassed = true;
+    bool all_neutral = true;
     for (std::size_t index = 0; index < adjustment.bands.size(); ++index) {
         const auto band = adjustment.bands[index];
         bank.sections[index] = prepare_section(band, sample_rate, channel_count);
-        bank.bypassed =
-            bank.bypassed
+        all_neutral =
+            all_neutral
             && (!band.enabled
                 || (band.filter_kind != EqualizerFilterKind::Notch && band.gain_centibels == 0));
     }
+    bank.bypassed = !adjustment.enabled || all_neutral;
     return bank;
 }
 
@@ -272,6 +276,9 @@ double ParametricEqualizer::response_decibels(
     double frequency_hertz
 ) {
     validate(adjustment, sample_rate);
+    if (!adjustment.enabled) {
+        return 0.0;
+    }
     const double omega = 2.0 * kPi * frequency_hertz / static_cast<double>(sample_rate);
     const std::complex<double> z1 = std::polar(1.0, -omega);
     const std::complex<double> z2 = z1 * z1;

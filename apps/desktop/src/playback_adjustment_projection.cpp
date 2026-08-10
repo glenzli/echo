@@ -4,9 +4,36 @@
 #include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
 
+namespace {
+
+std::optional<std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount>>
+effectChainFromQml(const QVariantList& values) {
+    if (values.size() != static_cast<qsizetype>(echo::audio::kEffectNodeCount)) {
+        return std::nullopt;
+    }
+    std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result{};
+    std::array<bool, echo::audio::kEffectNodeCount> seen{};
+    for (qsizetype index = 0; index < values.size(); ++index) {
+        const int value = values[index].toInt();
+        if (value < 0 || value >= static_cast<int>(echo::audio::kEffectNodeCount)
+            || seen[static_cast<std::size_t>(value)]) {
+            return std::nullopt;
+        }
+        seen[static_cast<std::size_t>(value)] = true;
+        result[static_cast<std::size_t>(index)] = static_cast<echo::audio::EffectNodeKind>(value);
+    }
+    if (result.back() != echo::audio::EffectNodeKind::Master) {
+        return std::nullopt;
+    }
+    return result;
+}
+
+} // namespace
+
 std::optional<echo::audio::PlaybackAdjustment>
 PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
     const QVariantMap restoration{
+        {QStringLiteral("enabled"), asset.value(QStringLiteral("restorationEnabled"), true)},
         {QStringLiteral("noiseEnabled"), asset.value(QStringLiteral("noiseReductionEnabled"))},
         {QStringLiteral("noiseReductionCentibels"),
          asset.value(QStringLiteral("noiseReductionCentibels"))},
@@ -42,6 +69,7 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         asset.value(QStringLiteral("gainCentibels")).toInt(),
         asset.value(QStringLiteral("lowCutHertz")).toInt(),
         restoration,
+        asset.value(QStringLiteral("equalizerEnabled"), true).toBool(),
         asset.value(QStringLiteral("equalizerBands")).toList(),
         asset.value(QStringLiteral("compressorEnabled")).toBool(),
         asset.value(QStringLiteral("compressorThresholdCentibels")).toInt(),
@@ -52,7 +80,8 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         reverb,
         asset.value(QStringLiteral("limiterEnabled")).toBool(),
         asset.value(QStringLiteral("limiterCeilingCentibels")).toInt(),
-        asset.value(QStringLiteral("limiterReleaseMillis")).toInt()
+        asset.value(QStringLiteral("limiterReleaseMillis")).toInt(),
+        asset.value(QStringLiteral("effectChain")).toList()
     );
 }
 
@@ -66,6 +95,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     int gainCentibels,
     int lowCutHertz,
     const QVariantMap& restorationValue,
+    bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
@@ -76,7 +106,8 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const QVariantMap& reverbValue,
     bool limiterEnabled,
     int limiterCeilingCentibels,
-    int limiterReleaseMillis
+    int limiterReleaseMillis,
+    const QVariantList& effectChainValue
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
@@ -91,12 +122,15 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
         || limiterReleaseMillis > 1000) {
         return std::nullopt;
     }
-    const auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
+    auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
     const auto reverb = ReverbProjection::fromQml(reverbValue);
     const auto restoration = RestorationProjection::fromQml(restorationValue);
-    if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()) {
+    const auto effectChain = effectChainFromQml(effectChainValue);
+    if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()
+        || !effectChain.has_value()) {
         return std::nullopt;
     }
+    equalizer->enabled = equalizerEnabled;
     return echo::audio::PlaybackAdjustment{
         .trim_start_millis = static_cast<std::uint64_t>(trimStartMillis),
         .trim_end_millis = static_cast<std::uint64_t>(trimEndMillis),
@@ -118,10 +152,12 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
                 .makeup_centibels = static_cast<std::int16_t>(compressorMakeupCentibels),
             },
         .reverb = *reverb,
-        .limiter = {
-            .enabled = limiterEnabled,
-            .ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels),
-            .release_millis = static_cast<std::uint16_t>(limiterReleaseMillis),
-        },
+        .limiter =
+            {
+                .enabled = limiterEnabled,
+                .ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels),
+                .release_millis = static_cast<std::uint16_t>(limiterReleaseMillis),
+            },
+        .effect_chain = *effectChain,
     };
 }

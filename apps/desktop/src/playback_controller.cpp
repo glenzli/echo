@@ -49,6 +49,7 @@ void PlaybackController::playAdjusted(
     int gainCentibels,
     int lowCutHertz,
     const QVariantMap& restorationValue,
+    bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
@@ -59,7 +60,8 @@ void PlaybackController::playAdjusted(
     const QVariantMap& reverbValue,
     bool limiterEnabled,
     int limiterCeilingCentibels,
-    int limiterReleaseMillis
+    int limiterReleaseMillis,
+    const QVariantList& effectChain
 ) {
     const auto adjustment = PlaybackAdjustmentProjection::fromQml(
         trimStartMillis,
@@ -71,6 +73,7 @@ void PlaybackController::playAdjusted(
         gainCentibels,
         lowCutHertz,
         restorationValue,
+        equalizerEnabled,
         equalizerBands,
         compressorEnabled,
         compressorThresholdCentibels,
@@ -81,7 +84,8 @@ void PlaybackController::playAdjusted(
         reverbValue,
         limiterEnabled,
         limiterCeilingCentibels,
-        limiterReleaseMillis
+        limiterReleaseMillis,
+        effectChain
     );
     if (!adjustment.has_value()) {
         qWarning("invalid playback adjustment");
@@ -120,12 +124,13 @@ bool PlaybackController::updateReverb(const QVariantMap& reverbValue) {
     return true;
 }
 
-bool PlaybackController::updateEqualizer(const QVariantList& equalizerBands) {
+bool PlaybackController::updateEqualizer(bool enabled, const QVariantList& equalizerBands) {
     const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
-    const auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
+    auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
     if (session == nullptr || !equalizer.has_value()) {
         return false;
     }
+    equalizer->enabled = enabled;
     try {
         session->update_equalizer(*equalizer);
     } catch (const std::exception& error) {

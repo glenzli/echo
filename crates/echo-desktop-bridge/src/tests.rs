@@ -189,6 +189,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         fade_out_curve: 2,
         gain_centibels: -350,
         low_cut_hertz: 80,
+        restoration_enabled: true,
         noise_reduction_enabled: true,
         noise_reduction_centibels: 1_200,
         noise_reduction_sensitivity_percent: 62,
@@ -197,6 +198,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         de_esser_frequency_hertz: 7_200,
         de_esser_threshold_centibels: -2_800,
         de_esser_reduction_centibels: 750,
+        equalizer_enabled: false,
         equalizer_bands: test_equalizer_bands(),
         compressor_enabled: true,
         compressor_threshold_centibels: -2_000,
@@ -215,6 +217,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
+        effect_chain: vec![3, 0, 1, 2, 4],
     };
     session
         .set_asset_adjustment(&asset.id.to_string(), &adjustment)
@@ -230,6 +233,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].fade_out_curve, 2);
     assert_eq!(projected[0].gain_centibels, -350);
     assert_eq!(projected[0].low_cut_hertz, 80);
+    assert!(projected[0].restoration_enabled);
     assert!(projected[0].noise_reduction_enabled);
     assert_eq!(projected[0].noise_reduction_centibels, 1_200);
     assert_eq!(projected[0].noise_reduction_sensitivity_percent, 62);
@@ -238,6 +242,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].de_esser_frequency_hertz, 7_200);
     assert_eq!(projected[0].de_esser_threshold_centibels, -2_800);
     assert_eq!(projected[0].de_esser_reduction_centibels, 750);
+    assert!(!projected[0].equalizer_enabled);
     assert_eq!(projected[0].equalizer_bands.len(), 6);
     assert_eq!(projected[0].equalizer_bands[0].gain_centibels, 250);
     assert_eq!(projected[0].equalizer_bands[2].gain_centibels, -175);
@@ -259,6 +264,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert!(projected[0].limiter_enabled);
     assert_eq!(projected[0].limiter_ceiling_centibels, -125);
     assert_eq!(projected[0].limiter_release_millis, 160);
+    assert_eq!(projected[0].effect_chain, [3, 0, 1, 2, 4]);
     let _ = std::fs::remove_dir_all(root);
 }
 

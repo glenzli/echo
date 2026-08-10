@@ -98,22 +98,30 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 7);
+    CatalogSchemaRevision::new(20_260_811, 8);
 pub(crate) const LEGACY_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 6);
+    CatalogSchemaRevision::new(20_260_811, 7);
 pub(crate) const OLDER_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 5);
+    CatalogSchemaRevision::new(20_260_811, 6);
 pub(crate) const OLDEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 4);
+    CatalogSchemaRevision::new(20_260_811, 5);
 pub(crate) const ANCIENT_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 3);
+    CatalogSchemaRevision::new(20_260_811, 4);
 pub(crate) const PRIMITIVE_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
-    CatalogSchemaRevision::new(20_260_811, 2);
+    CatalogSchemaRevision::new(20_260_811, 3);
 pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 2);
+pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 8);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 9);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.8-delivery-formats";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.9-effect-chain";
+
+pub(crate) const EFFECT_CHAIN_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN effect_chain_json TEXT NOT NULL DEFAULT
+    '{"nodes":["restoration","equalizer","dynamics","space","master"]}';
+"#;
 
 pub(crate) const DELIVERY_FORMATS_MIGRATION_SQL: &str = r"
 DROP INDEX IF EXISTS render_exports_asset_created;
@@ -466,7 +474,7 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     eq_high_gain_centibels INTEGER NOT NULL DEFAULT 0
                            CHECK (eq_high_gain_centibels BETWEEN -1200 AND 1200),
     parametric_equalizer_json TEXT NOT NULL DEFAULT
-                           '{\"bands\":[{\"enabled\":true,\"filter_kind\":\"low_shelf\",\"frequency_hertz\":120,\"q_hundredths\":71,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":250,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":true,\"filter_kind\":\"bell\",\"frequency_hertz\":1000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":3000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":5000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":true,\"filter_kind\":\"high_shelf\",\"frequency_hertz\":8000,\"q_hundredths\":71,\"gain_centibels\":0}]}',
+                           '{\"enabled\":true,\"bands\":[{\"enabled\":true,\"filter_kind\":\"low_shelf\",\"frequency_hertz\":120,\"q_hundredths\":71,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":250,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":true,\"filter_kind\":\"bell\",\"frequency_hertz\":1000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":3000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":false,\"filter_kind\":\"bell\",\"frequency_hertz\":5000,\"q_hundredths\":100,\"gain_centibels\":0},{\"enabled\":true,\"filter_kind\":\"high_shelf\",\"frequency_hertz\":8000,\"q_hundredths\":71,\"gain_centibels\":0}]}',
     compressor_enabled     INTEGER NOT NULL DEFAULT 0
                            CHECK (compressor_enabled IN (0, 1)),
     compressor_threshold_centibels INTEGER NOT NULL DEFAULT -1800
@@ -482,7 +490,9 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     reverb_json             TEXT NOT NULL DEFAULT
                            '{\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
     restoration_json        TEXT NOT NULL DEFAULT
-                           '{\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
+                           '{\"enabled\":true,\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
+    effect_chain_json       TEXT NOT NULL DEFAULT
+                           '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\"]}',
     limiter_enabled        INTEGER NOT NULL DEFAULT 0
                            CHECK (limiter_enabled IN (0, 1)),
     limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100

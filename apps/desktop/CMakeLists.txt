@@ -157,6 +157,7 @@ qt_add_qml_module(
         qml/AudioSpaceWorkspace.qml
         qml/BasicAdjustmentPanel.qml
         qml/DynamicsPanel.qml
+        qml/EffectChainNode.qml
         qml/EchoButton.qml
         qml/EchoIcon.qml
         qml/EchoIconButton.qml

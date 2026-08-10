@@ -37,6 +37,23 @@ Rectangle {
     readonly property int fadeOutCurve: hasAsset ? Number(asset.fadeOutCurve) : 0
     readonly property int gainCentibels: hasAsset ? Number(asset.gainCentibels) : 0
     readonly property int lowCutHertz: hasAsset ? Number(asset.lowCutHertz) : 0
+    readonly property var restorationValue: ({
+        enabled: hasAsset ? Boolean(asset.restorationEnabled) : true,
+        noiseEnabled: hasAsset ? Boolean(asset.noiseReductionEnabled) : false,
+        noiseReductionCentibels: hasAsset ? Number(asset.noiseReductionCentibels) : 900,
+        noiseSensitivityPercent: hasAsset
+            ? Number(asset.noiseReductionSensitivityPercent) : 50,
+        noiseSmoothingMillis: hasAsset
+            ? Number(asset.noiseReductionSmoothingMillis) : 240,
+        deEsserEnabled: hasAsset ? Boolean(asset.deEsserEnabled) : false,
+        deEsserFrequencyHertz: hasAsset ? Number(asset.deEsserFrequencyHertz) : 6500,
+        deEsserThresholdCentibels: hasAsset
+            ? Number(asset.deEsserThresholdCentibels) : -2400,
+        deEsserReductionCentibels: hasAsset
+            ? Number(asset.deEsserReductionCentibels) : 600
+    })
+    readonly property bool equalizerEnabled: hasAsset
+        ? Boolean(asset.equalizerEnabled) : true
     readonly property var equalizerBands: hasAsset ? asset.equalizerBands : []
     readonly property bool compressorEnabled: hasAsset
         ? Boolean(asset.compressorEnabled) : false
@@ -66,6 +83,7 @@ Rectangle {
         ? Number(asset.limiterCeilingCentibels) : -100
     readonly property int limiterReleaseMillis: hasAsset
         ? Number(asset.limiterReleaseMillis) : 100
+    readonly property var effectChain: hasAsset ? asset.effectChain : [0, 1, 2, 3, 4]
 
     color: Theme.panelRaised
     border.color: Theme.border
@@ -117,12 +135,15 @@ Rectangle {
         return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis
             + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve
             + ":" + gainCentibels + ":" + lowCutHertz
-            + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled
+            + ":" + JSON.stringify(restorationValue)
+            + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands)
+            + ":" + compressorEnabled
             + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths
             + ":" + compressorAttackMillis + ":" + compressorReleaseMillis
             + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue)
             + ":" + limiterEnabled
             + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis
+            + ":" + JSON.stringify(effectChain)
     }
 
     function playFrom(millis: int) : void {
@@ -132,11 +153,13 @@ Rectangle {
         player.playAdjusted(asset.path, trimStartMillis, trimEndMillis,
                             fadeInMillis, fadeOutMillis, fadeInCurve,
                             fadeOutCurve, gainCentibels, lowCutHertz,
-                            equalizerBands, compressorEnabled,
+                            restorationValue, equalizerEnabled, equalizerBands,
+                            compressorEnabled,
                             compressorThresholdCentibels, compressorRatioTenths,
                             compressorAttackMillis, compressorReleaseMillis,
                             compressorMakeupCentibels, reverbValue, limiterEnabled,
-                            limiterCeilingCentibels, limiterReleaseMillis)
+                            limiterCeilingCentibels, limiterReleaseMillis,
+                            effectChain)
         loadedPath = asset.path
         loadedAdjustmentKey = adjustmentKey()
         const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis))

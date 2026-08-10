@@ -1,5 +1,5 @@
-//! One compact advanced-effects region. Tabs keep future effects from
-//! consuming horizontal workspace while each semantic panel stays separate.
+//! Authored linear effect chain with direct node selection and a focused
+//! parameter surface. The draft owns order, bypass, history, and persistence.
 
 pragma ComponentBehavior: Bound
 
@@ -16,7 +16,7 @@ Rectangle {
     required property string sourcePath
     required property string analysisKey
 
-    property int currentIndex: 0
+    property int currentKind: 0
 
     radius: Theme.compactControlRadius
     color: Theme.panel
@@ -25,51 +25,99 @@ Rectangle {
 
     function runAnalysis() : void { masterPanel.runAnalysis() }
 
-    ColumnLayout {
+    function nodeTitle(kind: int) : string {
+        if (kind === 0) return qsTr("Restore")
+        if (kind === 1) return qsTr("Equalizer")
+        if (kind === 2) return qsTr("Dynamics")
+        if (kind === 3) return qsTr("Space")
+        return qsTr("Master")
+    }
+
+    function nodeSummary(kind: int) : string {
+        if (kind === 0) return qsTr("Noise reduction · De-esser")
+        if (kind === 1) return qsTr("6-band parametric")
+        if (kind === 2) return qsTr("Stereo compressor")
+        if (kind === 3) return qsTr("Algorithmic room")
+        return qsTr("Limiter · Loudness")
+    }
+
+    function nodeIcon(kind: int) : string {
+        if (kind === 0) return "qrc:/EchoDesktop/icons/high-pass.svg"
+        if (kind === 1) return "qrc:/EchoDesktop/icons/equalizer.svg"
+        if (kind === 2) return "qrc:/EchoDesktop/icons/dynamics.svg"
+        if (kind === 3) return "qrc:/EchoDesktop/icons/waveform.svg"
+        return "qrc:/EchoDesktop/icons/gain.svg"
+    }
+
+    RowLayout {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 31
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            spacing: 2
+        Rectangle {
+            Layout.preferredWidth: 204
+            Layout.fillHeight: true
+            color: Theme.panelRaised
 
-            Repeater {
-                model: [qsTr("Restore"), qsTr("EQ"), qsTr("Dynamics"), qsTr("Space"), qsTr("Master")]
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 7
+                spacing: 4
 
-                delegate: Rectangle {
-                    required property int index
-                    required property string modelData
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 7
+                    Layout.topMargin: 2
+                    text: qsTr("EFFECT CHAIN")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    font.letterSpacing: 0.7
+                    font.weight: Font.DemiBold
+                }
 
-                    Layout.preferredWidth: 82
-                    Layout.minimumWidth: 82
-                    Layout.maximumWidth: 82
-                    Layout.preferredHeight: 24
-                    radius: Theme.compactControlRadius
-                    color: rack.currentIndex === index ? Theme.surfaceSelected : "transparent"
+                Repeater {
+                    model: rack.draft.effectChain
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: parent.modelData
-                        color: rack.currentIndex === parent.index
-                            ? Theme.textPrimary : Theme.textSecondary
-                        font.pixelSize: Theme.fontMeta
-                        font.weight: rack.currentIndex === parent.index
-                            ? Font.DemiBold : Font.Normal
+                    delegate: EffectChainNode {
+                        required property int index
+                        required property int modelData
+
+                        Layout.fillWidth: true
+                        kind: modelData
+                        orderIndex: index
+                        title: rack.nodeTitle(kind)
+                        summary: rack.nodeSummary(kind)
+                        iconSource: rack.nodeIcon(kind)
+                        nodeEnabled: rack.draft.effectNodeEnabled(kind)
+                        selected: rack.currentKind === kind
+                        terminal: kind === 4
+                        canMoveUp: index > 0 && kind !== 4
+                        canMoveDown: index < 3 && kind !== 4
+                        onSelectedRequested: rack.currentKind = kind
+                        onEnabledRequested: enabled =>
+                            rack.draft.setEffectNodeEnabled(kind, enabled)
+                        onMoveRequested: direction =>
+                            rack.draft.moveEffectNode(kind, direction)
                     }
+                }
 
-                    TapHandler { onTapped: rack.currentIndex = parent.index }
+                Item { Layout.fillHeight: true }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 7
+                    Layout.rightMargin: 5
+                    Layout.bottomMargin: 3
+                    text: qsTr("Signal flows from top to bottom. Master stays last.")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    wrapMode: Text.WordWrap
                 }
             }
-
-            Item { Layout.fillWidth: true }
         }
 
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
+            Layout.preferredWidth: 1
+            Layout.fillHeight: true
             color: Theme.border
         }
 
@@ -79,28 +127,28 @@ Rectangle {
 
             ToneEqualizerPanel {
                 anchors.fill: parent
-                visible: rack.currentIndex === 1
+                visible: rack.currentKind === 1
                 draft: rack.draft
                 responseProvider: rack.meterSource
             }
 
             DynamicsPanel {
                 anchors.fill: parent
-                visible: rack.currentIndex === 2
+                visible: rack.currentKind === 2
                 draft: rack.draft
                 meterSource: rack.meterSource
             }
 
             SpaceReverbPanel {
                 anchors.fill: parent
-                visible: rack.currentIndex === 3
+                visible: rack.currentKind === 3
                 draft: rack.draft
             }
 
             MasterOutputPanel {
                 id: masterPanel
                 anchors.fill: parent
-                visible: rack.currentIndex === 4
+                visible: rack.currentKind === 4
                 draft: rack.draft
                 meterSource: rack.meterSource
                 analyzer: rack.analyzer
@@ -110,7 +158,7 @@ Rectangle {
 
             RestorationPanel {
                 anchors.fill: parent
-                visible: rack.currentIndex === 0
+                visible: rack.currentKind === 0
                 draft: rack.draft
             }
         }

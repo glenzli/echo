@@ -74,12 +74,13 @@ Rectangle {
     function adjustmentKey() : string {
         return playbackBaseAdjustmentKey() + ":"
             + JSON.stringify(auditionOriginal
-                ? { noiseEnabled: false, noiseReductionCentibels: 900,
+                ? { enabled: false, noiseEnabled: false, noiseReductionCentibels: 900,
                     noiseSensitivityPercent: 50, noiseSmoothingMillis: 240,
                     deEsserEnabled: false, deEsserFrequencyHertz: 6500,
                     deEsserThresholdCentibels: -2400,
                     deEsserReductionCentibels: 600 }
                 : adjustmentDraft.restorationValue()) + ":"
+            + (auditionOriginal ? false : adjustmentDraft.equalizerEnabled) + ":"
             + JSON.stringify(auditionOriginal
                 ? adjustmentDraft.defaultEqualizerBands()
                 : adjustmentDraft.equalizerBands) + ":"
@@ -96,7 +97,10 @@ Rectangle {
                 : adjustmentDraft.reverbValue()) + ":"
             + (auditionOriginal ? false : adjustmentDraft.limiterEnabled) + ":"
             + (auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels) + ":"
-            + (auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis)
+            + (auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis) + ":"
+            + JSON.stringify(auditionOriginal
+                ? adjustmentDraft.defaultEffectChain()
+                : adjustmentDraft.effectChain)
     }
 
     function refreshAsset() : void {
@@ -117,13 +121,15 @@ Rectangle {
                             auditionOriginal ? 0 : adjustmentDraft.gainCentibels,
                             auditionOriginal ? 0 : adjustmentDraft.lowCutHertz,
                             auditionOriginal
-                                ? { noiseEnabled: false, noiseReductionCentibels: 900,
+                                ? { enabled: false, noiseEnabled: false,
+                                    noiseReductionCentibels: 900,
                                     noiseSensitivityPercent: 50,
                                     noiseSmoothingMillis: 240, deEsserEnabled: false,
                                     deEsserFrequencyHertz: 6500,
                                     deEsserThresholdCentibels: -2400,
                                     deEsserReductionCentibels: 600 }
                                 : adjustmentDraft.restorationValue(),
+                            auditionOriginal ? false : adjustmentDraft.equalizerEnabled,
                             auditionOriginal
                                 ? adjustmentDraft.defaultEqualizerBands()
                                 : adjustmentDraft.equalizerBands,
@@ -141,7 +147,9 @@ Rectangle {
                                 : adjustmentDraft.reverbValue(),
                             auditionOriginal ? false : adjustmentDraft.limiterEnabled,
                             auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels,
-                            auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis)
+                            auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis,
+                            auditionOriginal ? adjustmentDraft.defaultEffectChain()
+                                             : adjustmentDraft.effectChain)
         loadedPath = asset.path
         loadedBaseAdjustmentKey = playbackBaseAdjustmentKey()
         loadedAdjustmentKey = adjustmentKey()
@@ -257,11 +265,12 @@ Rectangle {
 
         onSaveRequested: function(startMillis, endMillis, fadeIn, fadeOut,
                                   fadeInCurve, fadeOutCurve, gain, lowCut,
+                                  restorationEnabled,
                                   noiseEnabled, noiseReduction,
                                   noiseSensitivity, noiseSmoothing,
                                   deEsserEnabled, deEsserFrequency,
                                   deEsserThreshold, deEsserReduction,
-                                  equalizerBands,
+                                  equalizerEnabled, equalizerBands,
                                   compressorEnabled, compressorThreshold,
                                   compressorRatio, compressorAttack,
                                   compressorRelease, compressorMakeup,
@@ -269,14 +278,16 @@ Rectangle {
                                   reverbDecay, reverbSize, reverbDamping,
                                   reverbLowCut, reverbHighCut,
                                   limiterEnabled, limiterCeiling,
-                                  limiterRelease) {
+                                  limiterRelease, effectChain) {
             if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis,
                                            fadeIn, fadeOut, fadeInCurve,
                                            fadeOutCurve, gain, lowCut,
+                                           restorationEnabled,
                                            noiseEnabled, noiseReduction,
                                            noiseSensitivity, noiseSmoothing,
                                            deEsserEnabled, deEsserFrequency,
                                            deEsserThreshold, deEsserReduction,
+                                           equalizerEnabled,
                                            equalizerBands,
                                            compressorEnabled, compressorThreshold,
                                            compressorRatio, compressorAttack,
@@ -286,7 +297,7 @@ Rectangle {
                                            reverbSize, reverbDamping,
                                            reverbLowCut, reverbHighCut,
                                            limiterEnabled, limiterCeiling,
-                                           limiterRelease)) {
+                                           limiterRelease, effectChain)) {
                 adjustmentDraft.markSaved()
                 workspace.auditionOriginal = false
                 workspace.loadedBaseAdjustmentKey = ""
@@ -308,6 +319,8 @@ Rectangle {
         function onEqualizerBandsChanged() : void {
             workspace.scheduleEffectsPreview()
         }
+        function onEqualizerEnabledChanged() : void { workspace.scheduleEffectsPreview() }
+        function onRestorationEnabledChanged() : void { workspace.scheduleEffectsPreview() }
         function onNoiseReductionEnabledChanged() : void { workspace.scheduleEffectsPreview() }
         function onNoiseReductionCentibelsChanged() : void { workspace.scheduleEffectsPreview() }
         function onNoiseReductionSensitivityPercentChanged() : void { workspace.scheduleEffectsPreview() }
@@ -351,6 +364,12 @@ Rectangle {
         function onLimiterReleaseMillisChanged() : void {
             workspace.scheduleEffectsPreview()
         }
+        function onEffectChainChanged() : void {
+            if (workspace.auditionOriginal || !player.active || !workspace.hasAsset
+                    || workspace.loadedPath !== workspace.asset.path) return
+            const resumeAt = player.position
+            Qt.callLater(function() { workspace.playFrom(resumeAt) })
+        }
     }
 
     Timer {
@@ -366,7 +385,7 @@ Rectangle {
                 return
             }
             const equalizerUpdated = player.updateEqualizer(
-                adjustmentDraft.equalizerBands)
+                adjustmentDraft.equalizerEnabled, adjustmentDraft.equalizerBands)
             const restorationUpdated = player.updateRestoration(
                 adjustmentDraft.restorationValue())
             const compressorUpdated = player.updateCompressor(

@@ -291,6 +291,7 @@ class PlaybackSession::Impl {
         loudness_meter_ = std::make_unique<LoudnessMeter>(kCanonicalSampleRate, channel_count_);
         pending_equalizer_ = adjustment_->equalizer();
         pending_restoration_ = adjustment_->restoration();
+        restoration_enabled_ = adjustment_->restoration().enabled;
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -605,6 +606,7 @@ class PlaybackSession::Impl {
                         if (restoration_update_pending_) {
                             noise_reducer_->update(pending_restoration_.noise_reduction);
                             de_esser_->update(pending_restoration_.de_esser);
+                            restoration_enabled_ = pending_restoration_.enabled;
                             restoration_update_pending_ = false;
                         }
                         if (compressor_update_pending_) {
@@ -629,18 +631,38 @@ class PlaybackSession::Impl {
                             scratch[index * channel_count_ + channel] = filtered;
                         }
                     }
-                    noise_reducer_->process_interleaved(scratch, chunk, channel_count_);
-                    de_esser_->process_interleaved(scratch, chunk, channel_count_);
-                    for (std::size_t index = 0; index < chunk; ++index) {
-                        for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                            const std::size_t sample_index = index * channel_count_ + channel;
-                            scratch[sample_index] =
-                                equalizer_->process_sample(scratch[sample_index], channel)
-                                * adjustment_->gain_amplitude();
+                    const auto effect_chain = adjustment_->effect_chain();
+                    for (std::size_t node_index = 0; node_index + 1 < effect_chain.size();
+                         ++node_index) {
+                        switch (effect_chain[node_index]) {
+                        case EffectNodeKind::Restoration:
+                            if (restoration_enabled_) {
+                                noise_reducer_->process_interleaved(scratch, chunk, channel_count_);
+                                de_esser_->process_interleaved(scratch, chunk, channel_count_);
+                            }
+                            break;
+                        case EffectNodeKind::Equalizer:
+                            for (std::size_t index = 0; index < chunk; ++index) {
+                                for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                                    const std::size_t sample_index =
+                                        index * channel_count_ + channel;
+                                    scratch[sample_index] =
+                                        equalizer_->process_sample(scratch[sample_index], channel)
+                                        * adjustment_->gain_amplitude();
+                                }
+                            }
+                            break;
+                        case EffectNodeKind::Dynamics:
+                            dynamics_processor_
+                                ->process_interleaved(scratch, chunk, channel_count_);
+                            break;
+                        case EffectNodeKind::Space:
+                            reverb_->process_interleaved(scratch, chunk, channel_count_);
+                            break;
+                        case EffectNodeKind::Master:
+                            break;
                         }
                     }
-                    dynamics_processor_->process_interleaved(scratch, chunk, channel_count_);
-                    reverb_->process_interleaved(scratch, chunk, channel_count_);
                     for (std::size_t index = 0; index < chunk; ++index) {
                         const std::uint64_t source_frame =
                             selected_start + static_cast<std::uint64_t>(written + index);
@@ -763,6 +785,7 @@ class PlaybackSession::Impl {
     ParametricEqualizerAdjustment pending_equalizer_;
     bool equalizer_update_pending_ = false;
     RestorationAdjustment pending_restoration_;
+    bool restoration_enabled_ = true;
     bool restoration_update_pending_ = false;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;

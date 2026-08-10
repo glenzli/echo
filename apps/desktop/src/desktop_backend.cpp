@@ -5,6 +5,8 @@
 #include <QFileInfo>
 #include <QString>
 
+#include <array>
+
 #include "parametric_equalizer_projection.hpp"
 
 namespace {
@@ -39,6 +41,31 @@ QVariantList equalizerBandsForQml(const rust::Vec<echo::desktop::EqualizerBandWi
         value.insert(QStringLiteral("qHundredths"), static_cast<int>(band.q_hundredths));
         value.insert(QStringLiteral("gainCentibels"), static_cast<int>(band.gain_centibels));
         result.append(value);
+    }
+    return result;
+}
+
+bool appendEffectChain(const QVariantList& values, rust::Vec<std::uint8_t>& destination) {
+    if (values.size() != 5 || values.back().toInt() != 4) {
+        return false;
+    }
+    std::array<bool, 5> seen{};
+    for (const QVariant& item : values) {
+        const int value = item.toInt();
+        if (value < 0 || value >= static_cast<int>(seen.size())
+            || seen[static_cast<std::size_t>(value)]) {
+            return false;
+        }
+        seen[static_cast<std::size_t>(value)] = true;
+        destination.push_back(static_cast<std::uint8_t>(value));
+    }
+    return true;
+}
+
+QVariantList effectChainForQml(const rust::Vec<std::uint8_t>& chain) {
+    QVariantList result;
+    for (const std::uint8_t node : chain) {
+        result.append(static_cast<int>(node));
     }
     return result;
 }
@@ -126,6 +153,7 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("fadeOutCurve"), static_cast<int>(asset.fade_out_curve));
         entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
         entry.insert(QStringLiteral("lowCutHertz"), static_cast<int>(asset.low_cut_hertz));
+        entry.insert(QStringLiteral("restorationEnabled"), asset.restoration_enabled);
         entry.insert(QStringLiteral("noiseReductionEnabled"), asset.noise_reduction_enabled);
         entry.insert(
             QStringLiteral("noiseReductionCentibels"),
@@ -152,6 +180,7 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("deEsserReductionCentibels"),
             static_cast<int>(asset.de_esser_reduction_centibels)
         );
+        entry.insert(QStringLiteral("equalizerEnabled"), asset.equalizer_enabled);
         entry.insert(QStringLiteral("equalizerBands"), equalizerBandsForQml(asset.equalizer_bands));
         entry.insert(QStringLiteral("compressorEnabled"), asset.compressor_enabled);
         entry.insert(
@@ -212,6 +241,7 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("limiterReleaseMillis"),
             static_cast<int>(asset.limiter_release_millis)
         );
+        entry.insert(QStringLiteral("effectChain"), effectChainForQml(asset.effect_chain));
         entry.insert(
             QStringLiteral("containerFormat"),
             QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
@@ -425,6 +455,7 @@ bool DesktopBackend::setAssetAdjustment(
     int fadeOutCurve,
     int gainCentibels,
     int lowCutHertz,
+    bool restorationEnabled,
     bool noiseReductionEnabled,
     int noiseReductionCentibels,
     int noiseReductionSensitivityPercent,
@@ -433,6 +464,7 @@ bool DesktopBackend::setAssetAdjustment(
     int deEsserFrequencyHertz,
     int deEsserThresholdCentibels,
     int deEsserReductionCentibels,
+    bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
     int compressorThresholdCentibels,
@@ -450,7 +482,8 @@ bool DesktopBackend::setAssetAdjustment(
     int reverbHighCutHertz,
     bool limiterEnabled,
     int limiterCeilingCentibels,
-    int limiterReleaseMillis
+    int limiterReleaseMillis,
+    const QVariantList& effectChain
 ) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
@@ -487,6 +520,7 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.fade_out_curve = static_cast<std::uint8_t>(fadeOutCurve);
         adjustment.gain_centibels = static_cast<std::int16_t>(gainCentibels);
         adjustment.low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz);
+        adjustment.restoration_enabled = restorationEnabled;
         adjustment.noise_reduction_enabled = noiseReductionEnabled;
         adjustment.noise_reduction_centibels = static_cast<std::uint16_t>(noiseReductionCentibels);
         adjustment.noise_reduction_sensitivity_percent =
@@ -499,6 +533,7 @@ bool DesktopBackend::setAssetAdjustment(
             static_cast<std::int16_t>(deEsserThresholdCentibels);
         adjustment.de_esser_reduction_centibels =
             static_cast<std::uint16_t>(deEsserReductionCentibels);
+        adjustment.equalizer_enabled = equalizerEnabled;
         if (!appendEqualizerBands(equalizerBands, adjustment.equalizer_bands)) {
             qWarning("parametric equalizer is outside the supported range");
             return false;
@@ -522,6 +557,10 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.limiter_enabled = limiterEnabled;
         adjustment.limiter_ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels);
         adjustment.limiter_release_millis = static_cast<std::uint16_t>(limiterReleaseMillis);
+        if (!appendEffectChain(effectChain, adjustment.effect_chain)) {
+            qWarning("effect chain is outside the supported contract");
+            return false;
+        }
         session_->session_set_asset_adjustment(id.toStdString(), adjustment);
         emit assetsChanged();
         return true;
