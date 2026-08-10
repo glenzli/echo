@@ -137,6 +137,7 @@ qt_add_qml_module(
         qml/AudioLibrarySidebar.qml
         qml/AudioPlaybackWorkspace.qml
         qml/AudioSpaceWorkspace.qml
+        qml/BasicAdjustmentPanel.qml
         qml/EchoButton.qml
         qml/EchoIcon.qml
         qml/EchoIconButton.qml

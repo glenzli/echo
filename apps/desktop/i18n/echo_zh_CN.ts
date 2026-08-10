@@ -579,49 +579,26 @@
     </message>
 </context>
 <context>
-    <name>SoundAdjustmentEditor</name>
+    <name>BasicAdjustmentPanel</name>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="127"/>
         <source>Basic adjustments</source>
         <translation>基础调整</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="149"/>
-        <source>Save version</source>
-        <translation>保存版本</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="135"/>
-        <source>Revert</source>
-        <translation>还原已保存</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="142"/>
-        <source>Clear</source>
-        <translation>清空调整</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="163"/>
         <source>In</source>
         <translation>入点</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="164"/>
         <source>Out</source>
         <translation>出点</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAdjustmentEditor.qml" line="165"/>
         <source>Duration</source>
         <translation>时长</translation>
     </message>
     <message>
         <source>Fades</source>
         <translation>淡化</translation>
-    </message>
-    <message>
-        <source>Range</source>
-        <translation>范围</translation>
     </message>
     <message>
         <source>Crop to selection</source>
@@ -662,6 +639,29 @@
     <message>
         <source>Equal power</source>
         <translation>等功率</translation>
+    </message>
+</context>
+<context>
+    <name>SoundAdjustmentEditor</name>
+    <message>
+        <source>Adjustments</source>
+        <translation>声音调整</translation>
+    </message>
+    <message>
+        <source>Range</source>
+        <translation>范围</translation>
+    </message>
+    <message>
+        <source>Revert</source>
+        <translation>还原已保存</translation>
+    </message>
+    <message>
+        <source>Clear</source>
+        <translation>清空调整</translation>
+    </message>
+    <message>
+        <source>Save version</source>
+        <translation>保存版本</translation>
     </message>
 </context>
 <context>
