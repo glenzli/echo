@@ -1,4 +1,4 @@
-//! Compact authored controls for Echo's real algorithmic room processor.
+//! Compact authored controls for Echo's algorithmic space characters.
 
 pragma ComponentBehavior: Bound
 
@@ -28,7 +28,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
+            Layout.preferredHeight: Theme.editorPanelHeaderHeight
             Layout.leftMargin: 12
             Layout.rightMargin: 8
             spacing: 7
@@ -40,7 +40,7 @@ Rectangle {
             }
 
             Text {
-                text: qsTr("Algorithmic room")
+                text: qsTr("Algorithmic space")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontBody
                 font.weight: Font.DemiBold
@@ -67,10 +67,19 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
+            EchoSegmentedControl {
+                objectName: "spaceCharacterSelector"
+                Layout.preferredWidth: 198
+                Layout.preferredHeight: 28
+                model: [qsTr("Room"), qsTr("Hall"), qsTr("Plate")]
+                currentIndex: panel.draft.reverbCharacter
+                onActivated: index => panel.draft.setReverbCharacter(index)
+            }
+
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
-                toolTipText: qsTr("Reset room")
-                enabled: panel.draft.reverbEnabled || panel.draft.reverbMixPercent !== 18 || panel.draft.reverbPreDelayMillis !== 20 || panel.draft.reverbDecayMillis !== 1800 || panel.draft.reverbSizePercent !== 55 || panel.draft.reverbDampingPercent !== 45 || panel.draft.reverbLowCutHertz !== 120 || panel.draft.reverbHighCutHertz !== 10000
+                toolTipText: qsTr("Reset space")
+                enabled: panel.draft.reverbCharacter !== 0 || panel.draft.reverbEnabled || panel.draft.reverbMixPercent !== 18 || panel.draft.reverbPreDelayMillis !== 20 || panel.draft.reverbDecayMillis !== 1800 || panel.draft.reverbSizePercent !== 55 || panel.draft.reverbDampingPercent !== 45 || panel.draft.reverbLowCutHertz !== 120 || panel.draft.reverbHighCutHertz !== 10000
                 buttonSize: 25
                 iconSize: 14
                 onClicked: panel.draft.resetReverb()

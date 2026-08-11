@@ -35,6 +35,8 @@ Rectangle {
                 required property int index
                 required property var modelData
 
+                objectName: "segmentedChoice-" + index
+
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 padding: 0

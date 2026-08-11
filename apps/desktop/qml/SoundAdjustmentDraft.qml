@@ -1339,6 +1339,7 @@ QtObject {
     }
 
     function resetReverb(): void {
+        reverbCharacter = 0;
         reverbEnabled = false;
         reverbMixPercent = 18;
         reverbPreDelayMillis = 20;

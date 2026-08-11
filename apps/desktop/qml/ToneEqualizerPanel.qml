@@ -40,7 +40,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 42
+            Layout.preferredHeight: Theme.editorPanelHeaderHeight
             Layout.leftMargin: 14
             Layout.rightMargin: 9
             spacing: 8

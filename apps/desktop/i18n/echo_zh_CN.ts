@@ -47,8 +47,8 @@
     </message>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="60"/>
-        <source>Algorithmic room</source>
-        <translation>算法空间</translation>
+        <source>Room · Hall · Plate</source>
+        <translation>房间 · 大厅 · 板式</translation>
     </message>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="67"/>
@@ -3180,7 +3180,7 @@
     <name>SpaceReverbPanel</name>
     <message>
         <location filename="../qml/SpaceReverbPanel.qml" line="43"/>
-        <source>Algorithmic room</source>
+        <source>Algorithmic space</source>
         <translation>算法空间</translation>
     </message>
     <message>
@@ -3195,8 +3195,23 @@
     </message>
     <message>
         <location filename="../qml/SpaceReverbPanel.qml" line="72"/>
-        <source>Reset room</source>
+        <source>Reset space</source>
         <translation>重置空间效果</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="75"/>
+        <source>Room</source>
+        <translation>房间</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="75"/>
+        <source>Hall</source>
+        <translation>大厅</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="75"/>
+        <source>Plate</source>
+        <translation>板式</translation>
     </message>
     <message>
         <location filename="../qml/SpaceReverbPanel.qml" line="104"/>

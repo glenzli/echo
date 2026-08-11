@@ -551,8 +551,9 @@ InferenceBackend
     character 或其他参数变化继续在完整引擎间做 50 ms 过渡；三者报告零处理延迟，Pre-delay 与
     湿声首达只属于效果内容，不进入 DeClick 时间线补偿。Catalog、桌面只读投影、轻量播放、
     实时试听、整段分析及单次／批量离线导出共用同一 character；桌面保存入口现已显式携带并验证
-    character，草稿变更可沿统一发布合同写入 Catalog。视觉选择器仍由 UI owner 集成，只需在
-    Space 面板调用既有 draft setter 并完成文案与翻译；本数据合同补丁不争抢其布局。Spring
+    character，草稿变更可沿统一发布合同写入 Catalog。Space 面板以 Room／Hall／Plate 三段选择器
+    调用同一 draft setter，选择进入 Undo／Redo、dirty、保存和重载；面板与信号链标题共享统一几何。
+    Spring
     必须由色散／模态独立 owner 实现，卷积与 IR 资产许可、哈希和延迟合同也另立里程碑，二者都
     不伪装成 FDN preset 或 Restoration。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数

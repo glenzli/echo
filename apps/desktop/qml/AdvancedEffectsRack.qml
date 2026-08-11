@@ -57,7 +57,7 @@ Item {
         if (kind === 2)
             return qsTr("Stereo compressor");
         if (kind === 3)
-            return qsTr("Algorithmic room");
+            return qsTr("Room · Hall · Plate");
         if (kind === 5)
             return qsTr("Mains hum and harmonics");
         if (kind === 6)
