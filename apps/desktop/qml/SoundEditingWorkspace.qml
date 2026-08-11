@@ -97,7 +97,14 @@ Rectangle {
             sensitivityPercent: 50,
             maximumClickMicroseconds: 1000,
             repairPercent: 100
-        } : adjustmentDraft.deClickValue()) + ":" + (auditionOriginal ? false : adjustmentDraft.equalizerEnabled) + ":" + JSON.stringify(auditionOriginal ? adjustmentDraft.defaultEqualizerBands() : adjustmentDraft.equalizerBands) + ":" + (auditionOriginal ? false : adjustmentDraft.compressorEnabled) + ":" + (auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels) + ":" + (auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths) + ":" + (auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis) + ":" + (auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis) + ":" + (auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels) + ":" + JSON.stringify(auditionOriginal ? {
+        } : adjustmentDraft.deClickValue()) + ":" + JSON.stringify(auditionOriginal ? {
+            enabled: false,
+            invertLeft: false,
+            invertRight: false,
+            swapChannels: false,
+            monoFoldDown: false,
+            balancePercent: 0
+        } : adjustmentDraft.channelRepairValue()) + ":" + (auditionOriginal ? false : adjustmentDraft.equalizerEnabled) + ":" + JSON.stringify(auditionOriginal ? adjustmentDraft.defaultEqualizerBands() : adjustmentDraft.equalizerBands) + ":" + (auditionOriginal ? false : adjustmentDraft.compressorEnabled) + ":" + (auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels) + ":" + (auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths) + ":" + (auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis) + ":" + (auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis) + ":" + (auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels) + ":" + JSON.stringify(auditionOriginal ? {
             enabled: false,
             mixPercent: 18,
             preDelayMillis: 20,
@@ -145,7 +152,14 @@ Rectangle {
             sensitivityPercent: 50,
             maximumClickMicroseconds: 1000,
             repairPercent: 100
-        } : adjustmentDraft.deClickValue(), auditionOriginal ? false : adjustmentDraft.equalizerEnabled, auditionOriginal ? adjustmentDraft.defaultEqualizerBands() : adjustmentDraft.equalizerBands, auditionOriginal ? false : adjustmentDraft.compressorEnabled, auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels, auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths, auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis, auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis, auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels, auditionOriginal ? {
+        } : adjustmentDraft.deClickValue(), auditionOriginal ? {
+            enabled: false,
+            invertLeft: false,
+            invertRight: false,
+            swapChannels: false,
+            monoFoldDown: false,
+            balancePercent: 0
+        } : adjustmentDraft.channelRepairValue(), auditionOriginal ? false : adjustmentDraft.equalizerEnabled, auditionOriginal ? adjustmentDraft.defaultEqualizerBands() : adjustmentDraft.equalizerBands, auditionOriginal ? false : adjustmentDraft.compressorEnabled, auditionOriginal ? -1800 : adjustmentDraft.compressorThresholdCentibels, auditionOriginal ? 30 : adjustmentDraft.compressorRatioTenths, auditionOriginal ? 10 : adjustmentDraft.compressorAttackMillis, auditionOriginal ? 120 : adjustmentDraft.compressorReleaseMillis, auditionOriginal ? 0 : adjustmentDraft.compressorMakeupCentibels, auditionOriginal ? {
             enabled: false,
             mixPercent: 18,
             preDelayMillis: 20,
@@ -346,8 +360,8 @@ Rectangle {
 
         asset: workspace.asset
 
-        onSaveRequested: function (startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks) {
-            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks)) {
+        onSaveRequested: function (startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks) {
+            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks)) {
                 adjustmentDraft.markSaved();
                 workspace.auditionOriginal = false;
                 workspace.loadedBaseAdjustmentKey = "";
@@ -441,6 +455,24 @@ Rectangle {
         function onDeClickRepairPercentChanged(): void {
             workspace.scheduleEffectsPreview();
         }
+        function onChannelRepairEnabledChanged(): void {
+            workspace.scheduleEffectsPreview();
+        }
+        function onChannelRepairInvertLeftChanged(): void {
+            workspace.scheduleEffectsPreview();
+        }
+        function onChannelRepairInvertRightChanged(): void {
+            workspace.scheduleEffectsPreview();
+        }
+        function onChannelRepairSwapChannelsChanged(): void {
+            workspace.scheduleEffectsPreview();
+        }
+        function onChannelRepairMonoFoldDownChanged(): void {
+            workspace.scheduleEffectsPreview();
+        }
+        function onChannelRepairBalancePercentChanged(): void {
+            workspace.scheduleEffectsPreview();
+        }
         function onCompressorEnabledChanged(): void {
             workspace.scheduleEffectsPreview();
         }
@@ -531,10 +563,11 @@ Rectangle {
             const restorationUpdated = player.updateRestoration(adjustmentDraft.restorationValue());
             const deHumUpdated = player.updateDeHum(adjustmentDraft.deHumValue());
             const deClickUpdated = player.updateDeClick(adjustmentDraft.deClickValue());
+            const channelRepairUpdated = player.updateChannelRepair(adjustmentDraft.channelRepairValue());
             const compressorUpdated = player.updateCompressor(adjustmentDraft.compressorEnabled, adjustmentDraft.compressorThresholdCentibels, adjustmentDraft.compressorRatioTenths, adjustmentDraft.compressorAttackMillis, adjustmentDraft.compressorReleaseMillis, adjustmentDraft.compressorMakeupCentibels);
             const limiterUpdated = player.updateLimiter(adjustmentDraft.limiterEnabled, adjustmentDraft.limiterCeilingCentibels, adjustmentDraft.limiterReleaseMillis);
             const reverbUpdated = player.updateReverb(adjustmentDraft.reverbValue());
-            if (restorationUpdated && deHumUpdated && deClickUpdated && equalizerUpdated && compressorUpdated && reverbUpdated && limiterUpdated) {
+            if (restorationUpdated && deHumUpdated && deClickUpdated && channelRepairUpdated && equalizerUpdated && compressorUpdated && reverbUpdated && limiterUpdated) {
                 workspace.loadedAdjustmentKey = workspace.adjustmentKey();
             }
         }
@@ -708,8 +741,9 @@ Rectangle {
                 id: editorTimeline
 
                 SplitView.fillWidth: true
-                SplitView.preferredHeight: 320
-                SplitView.minimumHeight: 190
+                SplitView.preferredHeight: 286
+                SplitView.minimumHeight: 176
+                SplitView.maximumHeight: 420
                 waveformLevels: workspace.waveformLevels
                 sourceDurationMillis: adjustmentDraft.sourceDurationMillis
                 trimStartMillis: adjustmentDraft.trimStartMillis
@@ -743,7 +777,7 @@ Rectangle {
                 id: adjustmentEditor
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.minimumHeight: 310
+                SplitView.minimumHeight: 330
                 draft: adjustmentDraft
                 meterSource: player
                 analyzer: loudnessAnalyzer
@@ -755,59 +789,76 @@ Rectangle {
             }
         }
 
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 42
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: Theme.compactControlRadius
+            color: Theme.panelRaised
+            border.width: 1
+            border.color: Theme.border
 
-            EchoIconButton {
-                source: workspace.hasAsset && player.playing && workspace.ownsActivePlayback() ? "qrc:/EchoDesktop/icons/pause.svg" : "qrc:/EchoDesktop/icons/play.svg"
-                toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
-                enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
-                buttonSize: 40
-                iconSize: 19
-                onClicked: workspace.togglePlayback()
-            }
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 6
+                anchors.rightMargin: 8
+                spacing: 8
 
-            EchoIconButton {
-                source: "qrc:/EchoDesktop/icons/stop.svg"
-                toolTipText: qsTr("Stop")
-                enabled: workspace.ownsActivePlayback()
-                buttonSize: 36
-                iconSize: 16
-                onClicked: player.stop()
-            }
+                EchoIconButton {
+                    source: workspace.hasAsset && player.playing && workspace.ownsActivePlayback() ? "qrc:/EchoDesktop/icons/pause.svg" : "qrc:/EchoDesktop/icons/play.svg"
+                    toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
+                    enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing"
+                    buttonSize: 36
+                    iconSize: 18
+                    onClicked: workspace.togglePlayback()
+                }
 
-            Text {
-                text: workspace.formatDuration(player.position) + " / " + workspace.formatDuration(player.duration)
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontBody
-                font.bold: true
-                Layout.preferredWidth: 124
-            }
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/stop.svg"
+                    toolTipText: qsTr("Stop")
+                    enabled: workspace.ownsActivePlayback()
+                    buttonSize: 32
+                    iconSize: 15
+                    onClicked: player.stop()
+                }
 
-            Item {
-                Layout.fillWidth: true
-            }
+                Rectangle {
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 20
+                    color: Theme.border
+                }
 
-            Text {
-                text: qsTr("Audition")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-            }
+                Text {
+                    text: workspace.formatDuration(player.position) + " / " + workspace.formatDuration(player.duration)
+                    color: Theme.textPrimary
+                    font.family: "Menlo"
+                    font.pixelSize: Theme.fontBody
+                    font.weight: Font.DemiBold
+                    Layout.preferredWidth: 124
+                }
 
-            EchoButton {
-                text: qsTr("Adjusted")
-                ghost: true
-                selected: !workspace.auditionOriginal
-                onClicked: workspace.setOriginalAudition(false)
-            }
+                Item {
+                    Layout.fillWidth: true
+                }
 
-            EchoButton {
-                text: qsTr("Original")
-                ghost: true
-                selected: workspace.auditionOriginal
-                onClicked: workspace.setOriginalAudition(true)
+                Text {
+                    text: qsTr("Audition")
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontMeta
+                }
+
+                EchoButton {
+                    text: qsTr("Adjusted")
+                    ghost: true
+                    selected: !workspace.auditionOriginal
+                    onClicked: workspace.setOriginalAudition(false)
+                }
+
+                EchoButton {
+                    text: qsTr("Original")
+                    ghost: true
+                    selected: workspace.auditionOriginal
+                    onClicked: workspace.setOriginalAudition(true)
+                }
             }
         }
     }

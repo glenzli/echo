@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use super::{
     InferRuntimeClient, InferRuntimeError, InferRuntimeErrorKind, RuntimeProvenance,
-    default_background_constraints, validate_succeeded_job,
+    RuntimeSession, default_background_constraints, validate_succeeded_job,
 };
 
 /// Stable Runtime Intent used for Echo's contextual metadata.
@@ -91,14 +91,13 @@ impl InferRuntimeClient {
         }
         self.validate_token()?;
         let session = self.begin_session()?;
-        let metadata = super::metadata_for_contract(&intent.metadata, session.contract)?;
         let request = ResponsesRequest {
             model: &intent.model,
             input,
             instructions: &intent.instructions,
             stream: false,
             background: false,
-            metadata: &metadata,
+            metadata: &intent.metadata,
             max_output_tokens: intent.max_output_tokens,
         };
         let url = session.url("/v1/responses");
@@ -155,7 +154,7 @@ impl InferRuntimeClient {
         Ok(ContextualResponse {
             output_text,
             runtime: RuntimeProvenance {
-                contract_version: session.contract_version().to_owned(),
+                contract_version: RuntimeSession::contract_version().to_owned(),
                 job,
             },
         })

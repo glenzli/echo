@@ -19,7 +19,7 @@ Item {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitHeight: 320
+    implicitHeight: 340
 
     function analyzeOutput(): void {
         effectsRack.runAnalysis();
@@ -28,10 +28,10 @@ Item {
     AdvancedEffectsRack {
         id: effectsRack
         anchors.fill: parent
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
-        anchors.topMargin: 6
-        anchors.bottomMargin: 6
+        anchors.leftMargin: 10
+        anchors.rightMargin: 10
+        anchors.topMargin: 8
+        anchors.bottomMargin: 8
         draft: inspector.draft
         meterSource: inspector.meterSource
         analyzer: inspector.analyzer

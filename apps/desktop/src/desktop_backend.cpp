@@ -196,13 +196,15 @@ QString processingComponentId(std::uint8_t value) {
         return QStringLiteral("space");
     case 7:
         return QStringLiteral("master");
+    case 8:
+        return QStringLiteral("channelRepair");
     default:
         return {};
     }
 }
 
 bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8_t>& destination) {
-    std::array<bool, 8> seen{};
+    std::array<bool, 9> seen{};
     for (const QVariant& item : values) {
         const QString componentId = item.toString();
         int value = -1;
@@ -222,6 +224,8 @@ bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8
             value = 6;
         } else if (componentId == QStringLiteral("master")) {
             value = 7;
+        } else if (componentId == QStringLiteral("channelRepair")) {
+            value = 8;
         }
         if (value < 0 || seen[static_cast<std::size_t>(value)]) {
             return false;
@@ -291,6 +295,10 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(
             QStringLiteral("textPreview"),
             QString::fromUtf8(asset.text_preview.data(), asset.text_preview.size())
+        );
+        entry.insert(
+            QStringLiteral("language"),
+            QString::fromUtf8(asset.language.data(), asset.language.size())
         );
         entry.insert(QStringLiteral("liked"), asset.liked);
         entry.insert(QStringLiteral("rating"), static_cast<int>(asset.rating));
@@ -388,6 +396,21 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(
             QStringLiteral("deClickRepairPercent"),
             static_cast<int>(asset.de_click_repair_percent)
+        );
+        entry.insert(QStringLiteral("channelRepairEnabled"), asset.channel_repair_enabled);
+        entry.insert(QStringLiteral("channelRepairInvertLeft"), asset.channel_repair_invert_left);
+        entry.insert(QStringLiteral("channelRepairInvertRight"), asset.channel_repair_invert_right);
+        entry.insert(
+            QStringLiteral("channelRepairSwapChannels"),
+            asset.channel_repair_swap_channels
+        );
+        entry.insert(
+            QStringLiteral("channelRepairMonoFoldDown"),
+            asset.channel_repair_mono_fold_down
+        );
+        entry.insert(
+            QStringLiteral("channelRepairBalancePercent"),
+            static_cast<int>(asset.channel_repair_balance_percent)
         );
         entry.insert(QStringLiteral("equalizerEnabled"), asset.equalizer_enabled);
         entry.insert(QStringLiteral("equalizerBands"), equalizerBandsForQml(asset.equalizer_bands));
@@ -1009,6 +1032,12 @@ bool DesktopBackend::setAssetAdjustment(
     int deClickSensitivityPercent,
     int deClickMaximumClickMicroseconds,
     int deClickRepairPercent,
+    bool channelRepairEnabled,
+    bool channelRepairInvertLeft,
+    bool channelRepairInvertRight,
+    bool channelRepairSwapChannels,
+    bool channelRepairMonoFoldDown,
+    int channelRepairBalancePercent,
     bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
@@ -1051,7 +1080,8 @@ bool DesktopBackend::setAssetAdjustment(
         || deHumDepthCentibels < 0 || deHumDepthCentibels > 4800 || deClickSensitivityPercent < 0
         || deClickSensitivityPercent > 100 || deClickMaximumClickMicroseconds < 50
         || deClickMaximumClickMicroseconds > 2000 || deClickRepairPercent < 0
-        || deClickRepairPercent > 100 || compressorThresholdCentibels < -6000
+        || deClickRepairPercent > 100 || channelRepairBalancePercent < -100
+        || channelRepairBalancePercent > 100 || compressorThresholdCentibels < -6000
         || compressorThresholdCentibels > 0 || compressorRatioTenths < 10
         || compressorRatioTenths > 200 || compressorAttackMillis < 1 || compressorAttackMillis > 200
         || compressorReleaseMillis < 20 || compressorReleaseMillis > 2000
@@ -1107,6 +1137,13 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.de_click_maximum_click_microseconds =
             static_cast<std::uint16_t>(deClickMaximumClickMicroseconds);
         adjustment.de_click_repair_percent = static_cast<std::uint8_t>(deClickRepairPercent);
+        adjustment.channel_repair_enabled = channelRepairEnabled;
+        adjustment.channel_repair_invert_left = channelRepairInvertLeft;
+        adjustment.channel_repair_invert_right = channelRepairInvertRight;
+        adjustment.channel_repair_swap_channels = channelRepairSwapChannels;
+        adjustment.channel_repair_mono_fold_down = channelRepairMonoFoldDown;
+        adjustment.channel_repair_balance_percent =
+            static_cast<std::int8_t>(channelRepairBalancePercent);
         adjustment.equalizer_enabled = equalizerEnabled;
         if (!appendEqualizerBands(equalizerBands, adjustment.equalizer_bands)) {
             qWarning("parametric equalizer is outside the supported range");

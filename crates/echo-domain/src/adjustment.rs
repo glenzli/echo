@@ -77,8 +77,10 @@ pub const MAX_DE_CLICK_SENSITIVITY_PERCENT: u8 = 100;
 pub const MIN_DE_CLICK_DURATION_MICROSECONDS: u16 = 50;
 pub const MAX_DE_CLICK_DURATION_MICROSECONDS: u16 = 2_000;
 pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
+pub const MIN_CHANNEL_BALANCE_PERCENT: i8 = -100;
+pub const MAX_CHANNEL_BALANCE_PERCENT: i8 = 100;
 /// Echo's authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 7;
+pub const EFFECT_NODE_COUNT: usize = 8;
 const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
@@ -97,6 +99,7 @@ pub enum EffectNodeKind {
     Master = 4,
     DeHum = 5,
     DeClick = 6,
+    ChannelRepair = 7,
 }
 
 impl EffectNodeKind {
@@ -119,6 +122,7 @@ impl EffectNodeKind {
             4 => Ok(Self::Master),
             5 => Ok(Self::DeHum),
             6 => Ok(Self::DeClick),
+            7 => Ok(Self::ChannelRepair),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -160,10 +164,11 @@ impl<'de> Deserialize<'de> for EffectChain {
         let stored = StoredEffectChain::deserialize(deserializer)?;
         let legacy_node_count = stored.nodes.len();
         if legacy_node_count != usize::from(STANDARD_EFFECT_NODE_COUNT)
+            && legacy_node_count != EFFECT_NODE_COUNT - 1
             && legacy_node_count != EFFECT_NODE_COUNT
         {
             return Err(D::Error::custom(
-                "effect chain must contain the five legacy nodes or seven current nodes",
+                "effect chain must contain five, seven, or eight stable nodes",
             ));
         }
         let active_count = stored.active_count.unwrap_or(STANDARD_EFFECT_NODE_COUNT);
@@ -198,6 +203,7 @@ impl EffectChain {
                 EffectNodeKind::Master,
                 EffectNodeKind::DeHum,
                 EffectNodeKind::DeClick,
+                EffectNodeKind::ChannelRepair,
             ],
             active_count: STANDARD_EFFECT_NODE_COUNT,
         }
@@ -421,6 +427,40 @@ pub struct DeClickSettings {
     pub sensitivity_percent: u8,
     pub maximum_click_microseconds: u16,
     pub repair_percent: u8,
+}
+
+/// Authored recovery for common stereo-channel faults. The audio engine
+/// compiles these controls to one smoothed matrix; no execution coefficient is
+/// persisted as user intent.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChannelRepairSettings {
+    pub enabled: bool,
+    pub invert_left: bool,
+    pub invert_right: bool,
+    pub swap_channels: bool,
+    pub mono_fold_down: bool,
+    pub balance_percent: i8,
+}
+
+impl Default for ChannelRepairSettings {
+    fn default() -> Self {
+        Self::identity()
+    }
+}
+
+impl ChannelRepairSettings {
+    #[must_use]
+    pub const fn identity() -> Self {
+        Self {
+            enabled: false,
+            invert_left: false,
+            invert_right: false,
+            swap_channels: false,
+            mono_fold_down: false,
+            balance_percent: 0,
+        }
+    }
 }
 
 impl Default for DeClickSettings {
@@ -794,6 +834,7 @@ pub struct AdjustmentEffects {
     pub restoration: RestorationSettings,
     pub de_hum: DeHumSettings,
     pub de_click: DeClickSettings,
+    pub channel_repair: ChannelRepairSettings,
     pub equalizer: ParametricEqualizer,
     pub compressor: CompressorSettings,
     pub reverb: ReverbSettings,
@@ -813,6 +854,7 @@ impl AdjustmentEffects {
             restoration: RestorationSettings::standard(),
             de_hum: DeHumSettings::standard(),
             de_click: DeClickSettings::standard(),
+            channel_repair: ChannelRepairSettings::identity(),
             equalizer: ParametricEqualizer::flat(),
             compressor: CompressorSettings::standard(),
             reverb: ReverbSettings::studio_room(),
@@ -838,6 +880,12 @@ impl AdjustmentEffects {
     #[must_use]
     pub const fn with_de_click(mut self, de_click: DeClickSettings) -> Self {
         self.de_click = de_click;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_channel_repair(mut self, channel_repair: ChannelRepairSettings) -> Self {
+        self.channel_repair = channel_repair;
         self
     }
 
@@ -906,6 +954,8 @@ pub struct AdjustmentGraph {
     de_hum: DeHumSettings,
     #[serde(default)]
     de_click: DeClickSettings,
+    #[serde(default)]
+    channel_repair: ChannelRepairSettings,
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     #[serde(default)]
@@ -934,6 +984,8 @@ struct StoredAdjustmentGraph {
     de_hum: DeHumSettings,
     #[serde(default)]
     de_click: DeClickSettings,
+    #[serde(default)]
+    channel_repair: ChannelRepairSettings,
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     #[serde(default)]
@@ -968,6 +1020,7 @@ impl<'de> Deserialize<'de> for AdjustmentGraph {
             .with_restoration(stored.restoration)
             .with_de_hum(stored.de_hum)
             .with_de_click(stored.de_click)
+            .with_channel_repair(stored.channel_repair)
             .with_equalizer(stored.equalizer)
             .with_compressor(stored.compressor)
             .with_reverb(stored.reverb)
@@ -1073,6 +1126,7 @@ impl AdjustmentGraph {
             restoration: effects.restoration,
             de_hum: effects.de_hum,
             de_click: effects.de_click,
+            channel_repair: effects.channel_repair,
             equalizer: effects.equalizer,
             compressor,
             reverb,
@@ -1154,6 +1208,11 @@ impl AdjustmentGraph {
     #[must_use]
     pub const fn de_click(&self) -> DeClickSettings {
         self.de_click
+    }
+
+    #[must_use]
+    pub const fn channel_repair(&self) -> ChannelRepairSettings {
+        self.channel_repair
     }
 
     #[must_use]
@@ -1248,6 +1307,11 @@ fn validate_restorative_effects(effects: &AdjustmentEffects) -> Result<(), Adjus
     {
         return Err(AdjustmentGraphError::DeClickOutOfRange);
     }
+    if !(MIN_CHANNEL_BALANCE_PERCENT..=MAX_CHANNEL_BALANCE_PERCENT)
+        .contains(&effects.channel_repair.balance_percent)
+    {
+        return Err(AdjustmentGraphError::ChannelRepairOutOfRange);
+    }
     let noise_reduction = effects.restoration.noise_reduction;
     if noise_reduction.reduction_centibels > MAX_NOISE_REDUCTION_CENTIBELS
         || noise_reduction.sensitivity_percent > MAX_NOISE_REDUCTION_SENSITIVITY_PERCENT
@@ -1280,6 +1344,7 @@ pub enum AdjustmentGraphError {
     DePlosiveOutOfRange,
     DeHumOutOfRange,
     DeClickOutOfRange,
+    ChannelRepairOutOfRange,
     EqualizerBandOutOfRange,
     CompressorOutOfRange,
     ReverbOutOfRange,
@@ -1303,6 +1368,9 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::DePlosiveOutOfRange => "de-plosive parameters are outside the supported range",
             Self::DeHumOutOfRange => "de-hum parameters are outside the supported range",
             Self::DeClickOutOfRange => "de-click parameters are outside the supported range",
+            Self::ChannelRepairOutOfRange => {
+                "channel repair balance must be between -100 and 100 percent"
+            }
             Self::EqualizerBandOutOfRange => {
                 "equalizer band frequency, Q, or gain is outside the supported range"
             }

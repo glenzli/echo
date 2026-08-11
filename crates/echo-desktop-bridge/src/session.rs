@@ -90,6 +90,12 @@ struct AdjustmentWireFields {
     de_click_sensitivity_percent: u8,
     de_click_maximum_click_microseconds: u16,
     de_click_repair_percent: u8,
+    channel_repair_enabled: bool,
+    channel_repair_invert_left: bool,
+    channel_repair_invert_right: bool,
+    channel_repair_swap_channels: bool,
+    channel_repair_mono_fold_down: bool,
+    channel_repair_balance_percent: i8,
     equalizer_enabled: bool,
     equalizer_bands: Vec<EqualizerBandWire>,
     compressor_enabled: bool,
@@ -339,6 +345,19 @@ fn effect_masks_from_wire(
         .collect()
 }
 
+fn channel_repair_from_wire(
+    adjustment: &crate::ffi::AssetAdjustmentWire,
+) -> echo_domain::ChannelRepairSettings {
+    echo_domain::ChannelRepairSettings {
+        enabled: adjustment.channel_repair_enabled,
+        invert_left: adjustment.channel_repair_invert_left,
+        invert_right: adjustment.channel_repair_invert_right,
+        swap_channels: adjustment.channel_repair_swap_channels,
+        mono_fold_down: adjustment.channel_repair_mono_fold_down,
+        balance_percent: adjustment.channel_repair_balance_percent,
+    }
+}
+
 fn adjustment_graph_from_wire(
     duration: u64,
     adjustment: &crate::ffi::AssetAdjustmentWire,
@@ -398,6 +417,7 @@ fn adjustment_graph_from_wire(
             maximum_click_microseconds: adjustment.de_click_maximum_click_microseconds,
             repair_percent: adjustment.de_click_repair_percent,
         })
+        .with_channel_repair(channel_repair_from_wire(adjustment))
         .with_equalizer(equalizer_from_wire(
             adjustment.equalizer_enabled,
             &adjustment.equalizer_bands,
@@ -477,6 +497,12 @@ fn adjustment_wire_fields(
             de_click_sensitivity_percent: 50,
             de_click_maximum_click_microseconds: 1_000,
             de_click_repair_percent: 100,
+            channel_repair_enabled: false,
+            channel_repair_invert_left: false,
+            channel_repair_invert_right: false,
+            channel_repair_swap_channels: false,
+            channel_repair_mono_fold_down: false,
+            channel_repair_balance_percent: 0,
             equalizer_enabled: true,
             equalizer_bands: equalizer_wire_bands(echo_domain::ParametricEqualizer::flat()),
             compressor_enabled: false,
@@ -572,6 +598,12 @@ fn adjustment_wire_fields(
                 .de_click()
                 .maximum_click_microseconds,
             de_click_repair_percent: revision.graph.de_click().repair_percent,
+            channel_repair_enabled: revision.graph.channel_repair().enabled,
+            channel_repair_invert_left: revision.graph.channel_repair().invert_left,
+            channel_repair_invert_right: revision.graph.channel_repair().invert_right,
+            channel_repair_swap_channels: revision.graph.channel_repair().swap_channels,
+            channel_repair_mono_fold_down: revision.graph.channel_repair().mono_fold_down,
+            channel_repair_balance_percent: revision.graph.channel_repair().balance_percent,
             equalizer_enabled: revision.graph.equalizer().enabled(),
             equalizer_bands: equalizer_wire_bands(revision.graph.equalizer()),
             compressor_enabled: revision.graph.compressor().enabled,
@@ -634,10 +666,20 @@ fn transcript_preview(value: Option<&serde_json::Value>) -> String {
         .map_or_else(String::new, |payload| payload.text)
 }
 
+fn transcript_language(value: Option<&serde_json::Value>) -> String {
+    value
+        .and_then(|value| {
+            serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
+        })
+        .and_then(|payload| payload.language)
+        .unwrap_or_default()
+}
+
 fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire {
     let adjustment = adjustment_wire_fields(asset.adjustment, asset.duration_millis);
     let (sound_caption, summary) = contextual_preview(asset.contextual.as_ref());
     let text_preview = transcript_preview(asset.transcript.as_ref());
+    let language = transcript_language(asset.transcript.as_ref());
     let source_metadata = source_metadata_wire_fields(asset.source_metadata.as_ref());
     AssetSummaryWire {
         id: asset.id,
@@ -654,6 +696,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         mood: asset.contextual_mood.unwrap_or_default(),
         keywords: asset.contextual_keywords,
         text_preview,
+        language,
         liked: asset.liked,
         rating: asset.rating,
         adjustment_revision: adjustment.revision,
@@ -688,6 +731,12 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         de_click_sensitivity_percent: adjustment.de_click_sensitivity_percent,
         de_click_maximum_click_microseconds: adjustment.de_click_maximum_click_microseconds,
         de_click_repair_percent: adjustment.de_click_repair_percent,
+        channel_repair_enabled: adjustment.channel_repair_enabled,
+        channel_repair_invert_left: adjustment.channel_repair_invert_left,
+        channel_repair_invert_right: adjustment.channel_repair_invert_right,
+        channel_repair_swap_channels: adjustment.channel_repair_swap_channels,
+        channel_repair_mono_fold_down: adjustment.channel_repair_mono_fold_down,
+        channel_repair_balance_percent: adjustment.channel_repair_balance_percent,
         equalizer_enabled: adjustment.equalizer_enabled,
         equalizer_bands: adjustment.equalizer_bands,
         compressor_enabled: adjustment.compressor_enabled,

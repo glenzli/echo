@@ -52,6 +52,8 @@ Rectangle {
             return qsTr("De-hum");
         if (componentId === "deClick")
             return qsTr("De-click");
+        if (componentId === "channelRepair")
+            return qsTr("Channel repair");
         if (componentId === "equalizer")
             return qsTr("Equalizer");
         if (componentId === "dynamics")

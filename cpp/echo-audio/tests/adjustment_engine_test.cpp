@@ -96,7 +96,8 @@ int main() {
               echo::audio::EffectNodeKind::Equalizer,
               echo::audio::EffectNodeKind::Space,
               echo::audio::EffectNodeKind::DeHum,
-              echo::audio::EffectNodeKind::DeClick},
+              echo::audio::EffectNodeKind::DeClick,
+              echo::audio::EffectNodeKind::ChannelRepair},
          .effect_chain_count = 3},
         10'000,
         48'000
@@ -149,7 +150,8 @@ int main() {
                   echo::audio::EffectNodeKind::Master,
                   echo::audio::EffectNodeKind::Restoration,
                   echo::audio::EffectNodeKind::DeHum,
-                  echo::audio::EffectNodeKind::DeClick}},
+                  echo::audio::EffectNodeKind::DeClick,
+                  echo::audio::EffectNodeKind::ChannelRepair}},
             10'000,
             48'000
         );

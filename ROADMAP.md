@@ -95,13 +95,14 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 物理模型路由、下载器或驻留进程管理。正式接入采用 Infer Build 已有的
 `audio.transcribe` / `audio.align` 任务接口，不预建没有消费方的第二套调度机制。
 
-正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.2` 合同，以独立、非资源管理员的 Echo
+正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.3` 合同，以独立、非资源管理员的 Echo
 App 身份调用。endpoint 选择顺序固定为显式 `ECHO_INFER_ENDPOINT`／产品设置 override、
-`infra.discovery.registration@20260810.1` 中精确匹配的 `infer-runtime.consumer` loopback offer、
-迁移期 `http://127.0.0.1:8787` 兼容兜底；generation 变化、lease 到期或连接失败后重新发现。
+`infra.discovery.registration@20260812.1` 中精确匹配的 `infer-runtime.consumer` loopback offer。
+没有合法 Discovery 且未显式 override 时必须失败，不猜测固定端口。稳定 manifest 不含心跳或
+存活时间戳；Echo 只把
+它视为连接候选，在 generation／offer 变化或连接失败后重新发现，且不修改或删除 Provider manifest。
 所有 Consumer HTTP 请求禁用 proxy 与 automatic redirect，且只接受 canonical numeric loopback
-origin。固定端口兜底仅在 Runtime publisher 新版本完成重启与 soak、所有登记 Consumer 均完成
-适配后删除。Echo 只从自身的 owner-only 安全存储读取 bearer token；明文不跨 Rust/C++/QML
+origin。Echo 只从自身的 owner-only 安全存储读取 bearer token；明文不跨 Rust/C++/QML
 边界，也不写入设置、通用日志或命令行参数。Runtime consumer 独立拥有合同探测、严格
 multipart、HTTP status／`error.code` 分类和 Job snapshot 解码；
 Echo 的后台 worker 只提交产品 Intent、记录本地任务状态并把 Runtime 的 Job／Attempt／
@@ -114,10 +115,10 @@ Schema structured-output 合同，因此格式不合格必须作为稳定的派�
 修补正文或回退为裸 Ollama／MLX 调用。成功结果与音频结果一样，必须先核验 App-scoped Job、
 local-first／local_only／background／no fallback 约束，再写入分析证据。
 
-自然语言检索继续沿用同一 Echo Consumer 身份，但只增加 `vision.embed_text` 最小 Intent 权限，
+自然语言检索继续沿用同一 Echo Consumer 身份，但只增加 `semantic.embed_text` 最小 Intent 权限，
 不获得图片、人脸或资源管理能力。Echo 通过 typed
 `POST /infer/v1/vision/text-embeddings` 获取 768 维、L2 normalized 的文本向量，严格核验
-`0.1.0-candidate.2`、App-scoped Job、local-first／local_only／background／offline／
+`0.1.0-candidate.3`、App-scoped Job、local-first／local_only／background／offline／
 no fallback／零成本约束，以及 provider/deployment/model build 和精确 embedding-space 身份。
 当前能力来自 SigLIP2 的文本塔：它适合在同一跨模态空间内提供 provisional 的文本证据近邻，
 但不是专为通用 text-text 检索优化的 encoder，也不能冒充尚未接入的 CLAP 音频向量。
@@ -258,7 +259,7 @@ InferenceBackend
   - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
     导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
   - 已完成（正式 Runtime 切片，2026-08-09；Discovery 与声音事件迁移 2026-08-11）：Echo 以独立
-    非管理员 App 身份消费 `0.1.0-candidate.3`，并通过 owner-only leased registration 发现本机
+    非管理员 App 身份消费 `0.1.0-candidate.3`，并通过 owner-only 稳定 registration 发现本机
     Consumer endpoint；后台队列提交 `audio.transcribe`，非空文字继续 `audio.align`，有效空文字
     改走 `audio.detect_events`。每条路径都读取 App-scoped Job/Attempt，并把合同版本、
     provider/deployment、physical model/build 与稳定错误码写入 Catalog。桌面读取层以最新对齐
@@ -534,6 +535,19 @@ InferenceBackend
     有量化误差内的一致性回归。同期移除 De-esser 的块内临时分配，Qt 音频回调仍只复制已处理
     ring buffer。本切片不冒充去风噪、去混响、神经修复或任意多实例插件，也不改变声音空间、卡片、
     全局颜色和图标体系。
+  - 声道修复切片（2026-08-11）：`AdjustmentGraph` 与 Catalog `20260811.16` 追加默认不进入
+    authored chain 的单实例 Channel Repair 节点，保存左右极性反转、声道交换、单声道折叠与
+    `-100..100` 平衡意图；旧 revision、默认声音和既有处理方案迁移后保持原试听。独立 C++ owner
+    将所有参数合成为 `2×2` 声道矩阵，按“极性 → 交换 → 无增益平衡 → 双声道居中单声道”顺序
+    执行，并以 20 ms 逐样本过渡处理参数、启停与旁路，实时线程不分配。节点进入统一草稿历史、
+    效果目录、遮罩、处理方案、实时播放、整段分析和离线导出；首版不把立体声宽度、空间化、
+    相位旋转或创作型声像自动化混入恢复工具。
+  - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
+    在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
+    Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，
+    其滑块仍保持短而可精调。参数卡紧邻所选链节点，剩余空间作为安静背景；时间轨道与下方工作台
+    的比例继续可拖动，底部 A/B 试听收敛为紧凑控制条。此切片只调整 presentation，不改变草稿、
+    Undo/Redo、遮罩手势或 DSP 所有权，也不以更多全宽容器制造专业感。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
   - 用户声音相册首个切片（2026-08-11）：Catalog 将用户相册与成员关系保存为独立 UserState
     事实，名称、封面声音、成员身份和修改时间不依赖可重建 Analysis。Audio Space 左侧把用户相册

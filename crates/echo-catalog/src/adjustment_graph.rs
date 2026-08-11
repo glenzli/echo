@@ -2,9 +2,9 @@
 //! adjustments. Originals and analysis evidence are never modified.
 
 use echo_domain::{
-    AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, DeClickSettings,
-    DeHumSettings, EditTimeline, EffectChain, EffectMask, FadeCurve, LimiterSettings,
-    ParametricEqualizer, RestorationSettings, ReverbSettings,
+    AdjustmentEffects, AdjustmentGraph, AssetId, ChannelRepairSettings, CompressorSettings,
+    DeClickSettings, DeHumSettings, EditTimeline, EffectChain, EffectMask, FadeCurve,
+    LimiterSettings, ParametricEqualizer, RestorationSettings, ReverbSettings,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
@@ -39,6 +39,7 @@ struct StoredAdjustment {
     restoration_json: String,
     de_hum_json: String,
     de_click_json: String,
+    channel_repair_json: String,
     effect_chain_json: String,
     edit_timeline_json: String,
     effect_masks_json: String,
@@ -69,7 +70,7 @@ pub fn latest_adjustment_graph(
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
-             de_click_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
+             de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
@@ -110,7 +111,7 @@ pub fn adjustment_graph_at_revision(
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
-             de_click_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
+             de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 AND id = ?2",
             rusqlite::params![asset_id.to_string(), revision_id],
@@ -165,13 +166,14 @@ fn stored_adjustment_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Store
         restoration_json: row.get(17)?,
         de_hum_json: row.get(18)?,
         de_click_json: row.get(19)?,
-        effect_chain_json: row.get(20)?,
-        edit_timeline_json: row.get(21)?,
-        effect_masks_json: row.get(22)?,
-        limiter_enabled: row.get(23)?,
-        limiter_ceiling: row.get(24)?,
-        limiter_release: row.get(25)?,
-        created_at: row.get(26)?,
+        channel_repair_json: row.get(20)?,
+        effect_chain_json: row.get(21)?,
+        edit_timeline_json: row.get(22)?,
+        effect_masks_json: row.get(23)?,
+        limiter_enabled: row.get(24)?,
+        limiter_ceiling: row.get(25)?,
+        limiter_release: row.get(26)?,
+        created_at: row.get(27)?,
     })
 }
 
@@ -204,6 +206,7 @@ fn restore_adjustment_graph(
         .with_restoration(stored_restoration(&stored.restoration_json)?)
         .with_de_hum(stored_de_hum(&stored.de_hum_json)?)
         .with_de_click(stored_de_click(&stored.de_click_json)?)
+        .with_channel_repair(stored_channel_repair(&stored.channel_repair_json)?)
         .with_compressor(CompressorSettings {
             enabled: stored.compressor_enabled != 0,
             threshold_centibels: stored_centibels(
@@ -280,12 +283,12 @@ pub fn record_adjustment_graph(
          compressor_threshold_centibels, compressor_ratio_tenths, \
          compressor_attack_millis, compressor_release_millis, \
          compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
-         de_click_json, effect_chain_json, edit_timeline_json, effect_masks_json, \
+         de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, \
          limiter_enabled, limiter_ceiling_centibels, \
          limiter_release_millis, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
                  ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, \
-                 ?27, ?28, ?29, ?30)",
+                 ?27, ?28, ?29, ?30, ?31)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -325,6 +328,7 @@ pub fn record_adjustment_graph(
                 CatalogErrorKind::Other,
                 format!("cannot encode de-click settings: {error}"),
             ))?,
+            encode_channel_repair(validated.channel_repair())?,
             serde_json::to_string(&validated.effect_chain()).map_err(|error| CatalogError::new(
                 CatalogErrorKind::Other,
                 format!("cannot encode effect chain: {error}"),
@@ -350,6 +354,15 @@ pub fn record_adjustment_graph(
     })
 }
 
+fn encode_channel_repair(settings: ChannelRepairSettings) -> Result<String, CatalogError> {
+    serde_json::to_string(&settings).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("cannot encode channel repair settings: {error}"),
+        )
+    })
+}
+
 fn validated_adjustment_graph(
     duration: u64,
     graph: &AdjustmentGraph,
@@ -369,6 +382,7 @@ fn validated_adjustment_graph(
         .with_restoration(graph.restoration())
         .with_de_hum(graph.de_hum())
         .with_de_click(graph.de_click())
+        .with_channel_repair(graph.channel_repair())
         .with_compressor(graph.compressor())
         .with_reverb(graph.reverb())
         .with_limiter(graph.limiter())
@@ -425,6 +439,15 @@ fn stored_de_click(value: &str) -> Result<DeClickSettings, CatalogError> {
         CatalogError::new(
             CatalogErrorKind::Other,
             format!("stored de-click settings are invalid: {error}"),
+        )
+    })
+}
+
+fn stored_channel_repair(value: &str) -> Result<ChannelRepairSettings, CatalogError> {
+    serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored channel repair settings are invalid: {error}"),
         )
     })
 }

@@ -151,6 +151,10 @@ PreparedAdjustment::PreparedAdjustment(
         || de_click.maximum_click_microseconds > 2000 || de_click.repair_percent > 100) {
         throw std::invalid_argument("adjustment de-click is outside the supported range");
     }
+    if (authored.channel_repair.balance_percent < -100
+        || authored.channel_repair.balance_percent > 100) {
+        throw std::invalid_argument("adjustment channel repair is outside the supported range");
+    }
     for (const ParametricEqualizerBand& band : authored.equalizer.bands) {
         if (band.gain_centibels < kMinimumEqualizerGainCentibels
             || band.gain_centibels > kMaximumEqualizerGainCentibels
@@ -203,6 +207,7 @@ PreparedAdjustment::PreparedAdjustment(
     restoration_ = authored.restoration;
     de_hum_ = authored.de_hum;
     de_click_ = authored.de_click;
+    channel_repair_ = authored.channel_repair;
     equalizer_ = authored.equalizer;
     compressor_ = authored.compressor;
     reverb_ = authored.reverb;
@@ -241,6 +246,10 @@ DeHumAdjustment PreparedAdjustment::de_hum() const {
 
 DeClickAdjustment PreparedAdjustment::de_click() const {
     return de_click_;
+}
+
+ChannelRepairAdjustment PreparedAdjustment::channel_repair() const {
+    return channel_repair_;
 }
 
 ParametricEqualizerAdjustment PreparedAdjustment::equalizer() const {

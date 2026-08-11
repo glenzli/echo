@@ -61,6 +61,7 @@ class EffectProcessingChain {
     void update_restoration(RestorationAdjustment adjustment);
     void update_de_hum(DeHumAdjustment adjustment);
     void update_de_click(DeClickAdjustment adjustment);
+    void update_channel_repair(ChannelRepairAdjustment adjustment);
     void update_equalizer(ParametricEqualizerAdjustment adjustment);
     void update_compressor(CompressorAdjustment adjustment);
     void update_reverb(ReverbAdjustment adjustment);
@@ -77,6 +78,11 @@ class EffectProcessingChain {
     );
     static void validate_de_click(
         DeClickAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_channel_repair(
+        ChannelRepairAdjustment adjustment,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );

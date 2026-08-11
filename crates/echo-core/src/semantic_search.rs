@@ -7,13 +7,14 @@
 use echo_catalog::{
     Catalog, ClaimedJob, JobKind, SemanticSearchHit, SemanticSource, UpsertSemanticDocument,
     enqueue_job, index_semantic_source_text, list_semantic_sources_needing_embedding,
-    search_semantic_documents, semantic_source, upsert_semantic_document,
+    remove_semantic_documents_outside_contract, search_semantic_documents, semantic_source,
+    upsert_semantic_document,
 };
 use echo_domain::AssetId;
 
 use crate::{CoreError, CoreErrorKind, InferRuntimeClient, TextEmbeddingIntent, WorkerConfig};
 
-const SEMANTIC_DOCUMENT_REVISION: u32 = 1;
+const SEMANTIC_DOCUMENT_REVISION: u32 = 2;
 const SEMANTIC_QUERY_REVISION: u32 = 1;
 
 pub(crate) fn enqueue_missing_documents(
@@ -22,6 +23,10 @@ pub(crate) fn enqueue_missing_documents(
 ) -> Result<u64, CoreError> {
     catalog
         .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
+            remove_semantic_documents_outside_contract(
+                transaction,
+                crate::EXPECTED_CONTRACT_VERSION,
+            )?;
             let sources = list_semantic_sources_needing_embedding(transaction)?;
             for source in &sources {
                 enqueue_document(transaction, source, now_millis)?;

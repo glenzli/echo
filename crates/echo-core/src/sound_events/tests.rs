@@ -137,11 +137,11 @@ fn evidence_envelope_rejects_mixed_builds_and_overlapping_chunks() {
 }
 
 #[test]
-fn candidate2_evidence_remains_valid_during_the_coordinated_upgrade() {
+fn evidence_from_another_runtime_contract_is_rejected() {
     let mut evidence = AudioEventsEvidence::from_detection(detection(), 0.0);
-    evidence.chunks[0].detection.runtime.contract_version = "0.1.0-candidate.2".to_owned();
+    evidence.chunks[0].detection.runtime.contract_version = "0.1.0-obsolete".to_owned();
 
-    validate_evidence(&evidence).expect("candidate2 evidence remains readable during migration");
+    assert!(validate_evidence(&evidence).is_err());
 }
 
 fn detection() -> AudioEventDetection {

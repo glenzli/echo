@@ -21,96 +21,96 @@ Rectangle {
 
     color: Theme.panelRaised
 
-    function fileName(path: string) : string {
-        const normalized = path.replace(/\\/g, "/")
-        return normalized.substring(normalized.lastIndexOf("/") + 1)
+    function fileName(path: string): string {
+        const normalized = path.replace(/\\/g, "/");
+        return normalized.substring(normalized.lastIndexOf("/") + 1);
     }
 
-    function compactText(text: string, maximum: int) : string {
-        const normalized = String(text || "").replace(/\s+/g, " ").trim()
-        return normalized.length <= maximum ? normalized
-            : normalized.substring(0, maximum).trim() + "…"
+    function compactText(text: string, maximum: int): string {
+        const normalized = String(text || "").replace(/\s+/g, " ").trim();
+        return normalized.length <= maximum ? normalized : normalized.substring(0, maximum).trim() + "…";
     }
 
-    function titleFor(selected: var) : string {
+    function titleFor(selected: var): string {
         if (!selected) {
-            return ""
+            return "";
         }
         if (selected.soundCaption.length > 0) {
-            return compactText(selected.soundCaption, 68)
+            return compactText(selected.soundCaption, 68);
         }
         if (selected.sourceTitle.length > 0) {
-            return compactText(selected.sourceTitle, 68)
+            return compactText(selected.sourceTitle, 68);
         }
-        return fileName(selected.path)
+        return fileName(selected.path);
     }
 
-    function formatDuration(millis: double) : string {
+    function formatDuration(millis: double): string {
         if (!millis || millis <= 0) {
-            return qsTr("Unknown length")
+            return qsTr("Unknown length");
         }
-        const totalSeconds = Math.floor(millis / 1000)
-        const hours = Math.floor(totalSeconds / 3600)
-        const minutes = Math.floor((totalSeconds % 3600) / 60)
-        const seconds = totalSeconds % 60
+        const totalSeconds = Math.floor(millis / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
         if (hours > 0) {
-            return hours + ":" + String(minutes).padStart(2, "0") + ":"
-                + String(seconds).padStart(2, "0")
+            return hours + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
         }
-        return minutes + ":" + String(seconds).padStart(2, "0")
+        return minutes + ":" + String(seconds).padStart(2, "0");
     }
 
-    function formatPosition(millis: double) : string {
-        return formatDuration(Math.max(1, millis))
+    function formatPosition(millis: double): string {
+        return formatDuration(Math.max(1, millis));
     }
 
-    function formatDate(millis: double) : string {
+    function formatDate(millis: double): string {
         if (!millis || millis <= 0) {
-            return qsTr("Unknown")
+            return qsTr("Unknown");
         }
-        return new Date(millis).toLocaleString(Qt.locale(), Locale.ShortFormat)
+        return new Date(millis).toLocaleString(Qt.locale(), Locale.ShortFormat);
     }
 
-    function refresh() : void {
-        waveformLevels = []
-        longAudioChapters = []
+    function refresh(): void {
+        waveformLevels = [];
+        longAudioChapters = [];
         if (!asset || !asset.id) {
-            return
+            return;
         }
         if (asset.pathStatus !== "missing") {
-            waveformLevels = backend.waveformForAsset(asset.id)
+            waveformLevels = backend.waveformForAsset(asset.id);
         }
-        longAudioChapters = backend.longAudioChaptersForAsset(asset.id)
+        longAudioChapters = backend.longAudioChaptersForAsset(asset.id);
     }
 
-    function playSelected() : void {
+    function playSelected(): void {
         if (!asset || asset.pathStatus === "missing") {
-            return
+            return;
         }
         if (loadedPath !== asset.path) {
-            player.play(asset.path)
-            loadedPath = asset.path
+            player.play(asset.path);
+            loadedPath = asset.path;
         } else {
-            player.togglePause()
+            player.togglePause();
         }
     }
 
-    function keywordTags() : var {
-        const values = []
+    function keywordTags(): var {
+        const values = [];
         if (!asset) {
-            return values
+            return values;
         }
         for (let index = 0; index < asset.keywords.length; ++index) {
-            values.push(String(asset.keywords[index]))
+            values.push(String(asset.keywords[index]));
         }
-        return values
+        return values;
     }
 
     onAssetChanged: Qt.callLater(refresh)
 
     Connections {
         target: backend
-        function onAssetsChanged() : void { inspector.refresh() }
+        function onAssetsChanged(): void {
+            inspector.refresh();
+        }
     }
 
     Rectangle {
@@ -164,7 +164,9 @@ Rectangle {
                 width: detailScroll.availableWidth
                 spacing: 11
 
-                Item { Layout.preferredHeight: 3 }
+                Item {
+                    Layout.preferredHeight: 3
+                }
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -178,8 +180,7 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset
-                                ? inspector.titleFor(inspector.asset) : ""
+                            text: inspector.hasAsset ? inspector.titleFor(inspector.asset) : ""
                             color: Theme.textPrimary
                             font.pixelSize: 18
                             font.bold: true
@@ -190,10 +191,7 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset
-                                ? inspector.fileName(inspector.asset.path) + " · "
-                                    + inspector.formatDuration(inspector.asset.durationMillis)
-                                : ""
+                            text: inspector.hasAsset ? inspector.fileName(inspector.asset.path) + " · " + inspector.formatDuration(inspector.asset.durationMillis) : ""
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideMiddle
@@ -201,24 +199,22 @@ Rectangle {
                     }
 
                     Button {
+                        id: inspectorLikeButton
+
                         implicitWidth: 28
                         implicitHeight: 28
                         padding: 0
-                        onClicked: inspector.affinityRequested(
-                            inspector.asset, !inspector.asset.liked, inspector.asset.rating)
+                        onClicked: inspector.affinityRequested(inspector.asset, !inspector.asset.liked, inspector.asset.rating)
 
                         background: Rectangle {
                             radius: 7
-                            color: parent.hovered ? Theme.surfaceSubtle : Theme.transparent
+                            color: inspector.hasAsset && inspector.asset.liked ? Theme.likeSurface : inspectorLikeButton.hovered ? Theme.surfaceSubtle : Theme.transparent
                         }
 
-                        contentItem: Text {
-                            text: inspector.hasAsset && inspector.asset.liked ? "♥" : "♡"
-                            color: inspector.hasAsset && inspector.asset.liked
-                                ? "#dc4b6b" : Theme.textDisabled
-                            font.pixelSize: 18
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
+                        contentItem: EchoIcon {
+                            source: inspector.hasAsset && inspector.asset.liked ? "qrc:/EchoDesktop/icons/heart-filled.svg" : "qrc:/EchoDesktop/icons/heart.svg"
+                            color: inspector.hasAsset && inspector.asset.liked ? Theme.likeAccent : Theme.textDisabled
+                            size: 17
                         }
                     }
                 }
@@ -235,27 +231,32 @@ Rectangle {
                         font.pixelSize: Theme.fontMeta
                     }
 
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                    }
 
                     Repeater {
                         model: 5
 
-                        delegate: Text {
-                            required property int index
-                            text: inspector.hasAsset && index < inspector.asset.rating ? "★" : "☆"
-                            color: inspector.hasAsset && index < inspector.asset.rating
-                                ? "#d89a16" : Theme.textDisabled
-                            font.pixelSize: 15
+                        delegate: Button {
+                            id: inspectorRatingButton
 
-                            MouseArea {
-                                anchors.fill: parent
-                                anchors.margins: -2
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: inspector.affinityRequested(
-                                    inspector.asset,
-                                    inspector.asset.liked,
-                                    inspector.asset.rating === parent.index + 1
-                                        ? 0 : parent.index + 1)
+                            required property int index
+                            implicitWidth: 21
+                            implicitHeight: 24
+                            padding: 0
+                            focusPolicy: Qt.NoFocus
+                            onClicked: inspector.affinityRequested(inspector.asset, inspector.asset.liked, inspector.asset.rating === index + 1 ? 0 : index + 1)
+
+                            background: Rectangle {
+                                radius: 5
+                                color: inspectorRatingButton.hovered ? Theme.buttonGhostHover : Theme.transparent
+                            }
+
+                            contentItem: EchoIcon {
+                                source: inspector.hasAsset && index < inspector.asset.rating ? "qrc:/EchoDesktop/icons/star-filled.svg" : "qrc:/EchoDesktop/icons/star.svg"
+                                color: inspector.hasAsset && index < inspector.asset.rating ? Theme.ratingAccent : Theme.textDisabled
+                                size: 14
                             }
                         }
                     }
@@ -265,8 +266,8 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.leftMargin: 16
                     Layout.rightMargin: 16
-                    Layout.preferredHeight: 142
-                    radius: 9
+                    Layout.preferredHeight: 126
+                    radius: Theme.panelRadius
                     color: Theme.waveformSurface
                     border.color: Theme.borderStrong
 
@@ -277,9 +278,11 @@ Rectangle {
                         anchors.topMargin: 18
                         anchors.bottomMargin: 30
                         levels: inspector.waveformLevels
-                        progress: inspector.hasAsset && player.duration > 0
-                            && inspector.loadedPath === inspector.asset.path
-                            ? player.position / player.duration : 0
+                        fillColor: Theme.waveformFill
+                        progressColor: Theme.waveformPlayed
+                        centerLineColor: Theme.waveformCenter
+                        amplitudeExponent: 0.8
+                        progress: inspector.hasAsset && player.duration > 0 && inspector.loadedPath === inspector.asset.path ? player.position / player.duration : 0
                     }
 
                     EchoIconButton {
@@ -287,13 +290,9 @@ Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.leftMargin: 9
                         anchors.bottomMargin: 7
-                        source: inspector.hasAsset && player.playing
-                            && inspector.loadedPath === inspector.asset.path
-                            ? "qrc:/EchoDesktop/icons/pause.svg"
-                            : "qrc:/EchoDesktop/icons/play.svg"
+                        source: inspector.hasAsset && player.playing && inspector.loadedPath === inspector.asset.path ? "qrc:/EchoDesktop/icons/pause.svg" : "qrc:/EchoDesktop/icons/play.svg"
                         toolTipText: player.playing ? qsTr("Pause") : qsTr("Play")
-                        enabled: inspector.hasAsset
-                            && inspector.asset.pathStatus !== "missing"
+                        enabled: inspector.hasAsset && inspector.asset.pathStatus !== "missing"
                         buttonSize: 27
                         iconSize: 14
                         onClicked: inspector.playSelected()
@@ -304,12 +303,7 @@ Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.rightMargin: 10
                         anchors.bottomMargin: 12
-                        text: inspector.hasAsset
-                            && inspector.loadedPath === inspector.asset.path
-                            ? inspector.formatDuration(player.position) + " / "
-                                + inspector.formatDuration(player.duration)
-                            : inspector.hasAsset
-                                ? inspector.formatDuration(inspector.asset.durationMillis) : "—"
+                        text: inspector.hasAsset && inspector.loadedPath === inspector.asset.path ? inspector.formatDuration(player.position) + " / " + inspector.formatDuration(player.duration) : inspector.hasAsset ? inspector.formatDuration(inspector.asset.durationMillis) : "—"
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontMeta
                     }
@@ -317,6 +311,7 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
+                    visible: inspector.hasAsset && (SoundSemantics.eventLabel(inspector.asset.eventType).length > 0 || inspector.asset.mood.length > 0 || SoundSemantics.languageLabel(inspector.asset.language).length > 0)
                     title: qsTr("SOUND ATTRIBUTES")
 
                     GridLayout {
@@ -325,32 +320,54 @@ Rectangle {
                         columnSpacing: 9
                         rowSpacing: 7
 
-                        Text { text: qsTr("Event"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
-                            Layout.fillWidth: true
-                            text: inspector.hasAsset && inspector.asset.eventType.length > 0
-                                ? inspector.asset.eventType : qsTr("Not inferred")
-                            color: inspector.hasAsset && inspector.asset.eventType.length > 0
-                                ? Theme.textPrimary : Theme.textDisabled
+                            visible: inspector.hasAsset && SoundSemantics.eventLabel(inspector.asset.eventType).length > 0
+                            text: qsTr("Event")
+                            color: Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
-                            elide: Text.ElideRight
+                        }
+                        SoundSemanticTag {
+                            visible: inspector.hasAsset && SoundSemantics.eventLabel(inspector.asset.eventType).length > 0
+                            Layout.fillWidth: true
+                            text: inspector.hasAsset ? SoundSemantics.eventLabel(inspector.asset.eventType) : ""
+                            kind: "event"
+                            compact: false
+                            maximumWidth: 180
                         }
 
-                        Text { text: qsTr("Mood"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
                         Text {
-                            Layout.fillWidth: true
-                            text: inspector.hasAsset && inspector.asset.mood.length > 0
-                                ? inspector.asset.mood : qsTr("Not inferred")
-                            color: inspector.hasAsset && inspector.asset.mood.length > 0
-                                ? Theme.textPrimary : Theme.textDisabled
+                            visible: inspector.hasAsset && inspector.asset.mood.length > 0
+                            text: qsTr("Mood")
+                            color: Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
-                            elide: Text.ElideRight
+                        }
+                        SoundSemanticTag {
+                            visible: inspector.hasAsset && inspector.asset.mood.length > 0
+                            text: inspector.hasAsset ? inspector.asset.mood : ""
+                            kind: "mood"
+                            compact: false
+                            maximumWidth: 180
+                        }
+
+                        Text {
+                            visible: inspector.hasAsset && SoundSemantics.languageLabel(inspector.asset.language).length > 0
+                            text: qsTr("Language")
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
+                        SoundSemanticTag {
+                            visible: inspector.hasAsset && SoundSemantics.languageLabel(inspector.asset.language).length > 0
+                            text: inspector.hasAsset ? SoundSemantics.languageLabel(inspector.asset.language) : ""
+                            kind: "language"
+                            compact: false
+                            maximumWidth: 180
                         }
                     }
                 }
 
                 InspectorSection {
                     Layout.fillWidth: true
+                    visible: inspector.hasAsset && inspector.asset.keywords.length > 0
                     title: qsTr("AI KEYWORDS")
 
                     Flow {
@@ -377,15 +394,6 @@ Rectangle {
                             }
                         }
                     }
-
-                    Text {
-                        Layout.fillWidth: true
-                        visible: inspector.hasAsset && inspector.asset.keywords.length === 0
-                        text: qsTr("No keywords have been extracted yet.")
-                        color: Theme.textDisabled
-                        font.pixelSize: Theme.fontBody
-                        wrapMode: Text.WordWrap
-                    }
                 }
 
                 InspectorSection {
@@ -405,8 +413,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 44
                                 radius: 6
-                                color: chapterMouse.containsMouse
-                                    ? Theme.surfaceSubtle : Theme.transparent
+                                color: chapterMouse.containsMouse ? Theme.surfaceSubtle : Theme.transparent
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -450,10 +457,10 @@ Rectangle {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         if (inspector.loadedPath !== inspector.asset.path) {
-                                            player.play(inspector.asset.path)
-                                            inspector.loadedPath = inspector.asset.path
+                                            player.play(inspector.asset.path);
+                                            inspector.loadedPath = inspector.asset.path;
                                         }
-                                        player.seek(modelData.startMillis)
+                                        player.seek(modelData.startMillis);
                                     }
                                 }
                             }
@@ -463,17 +470,13 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
+                    visible: inspector.hasAsset && (inspector.asset.textPreview.length > 0 || inspector.jobStats.pending > 0 || inspector.jobStats.running > 0)
                     title: qsTr("TEXT")
 
                     Text {
                         Layout.fillWidth: true
-                        text: inspector.hasAsset && inspector.asset.textPreview.length > 0
-                            ? inspector.asset.textPreview
-                            : inspector.jobStats.pending > 0 || inspector.jobStats.running > 0
-                                ? qsTr("Echo is extracting text in the background…")
-                                : qsTr("No text has been extracted from this sound yet.")
-                        color: inspector.hasAsset && inspector.asset.textPreview.length > 0
-                            ? Theme.textPrimary : Theme.textDisabled
+                        text: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? inspector.asset.textPreview : inspector.jobStats.pending > 0 || inspector.jobStats.running > 0 ? qsTr("Echo is extracting text in the background…") : qsTr("No text has been extracted from this sound yet.")
+                        color: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? Theme.textPrimary : Theme.textDisabled
                         font.pixelSize: Theme.fontBody
                         lineHeight: 1.35
                         wrapMode: Text.WordWrap
@@ -492,57 +495,54 @@ Rectangle {
                         columnSpacing: 9
                         rowSpacing: 7
 
-                        Text { text: qsTr("Recorded"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+                        Text {
+                            text: qsTr("Recorded")
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset
-                                && inspector.asset.sourceCreatedAt.length > 0
-                                ? inspector.asset.sourceCreatedAt
-                                : inspector.hasAsset
-                                    ? inspector.formatDate(inspector.asset.recordedAtMillis > 0
-                                    ? inspector.asset.recordedAtMillis
-                                    : inspector.asset.importedAtMillis) : ""
+                            text: inspector.hasAsset && inspector.asset.sourceCreatedAt.length > 0 ? inspector.asset.sourceCreatedAt : inspector.hasAsset ? inspector.formatDate(inspector.asset.recordedAtMillis > 0 ? inspector.asset.recordedAtMillis : inspector.asset.importedAtMillis) : ""
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
                         }
 
-                        Text { text: qsTr("Location"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+                        Text {
+                            text: qsTr("Location")
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset
-                                && inspector.asset.sourceLocation.length > 0
-                                ? inspector.asset.sourceLocation : qsTr("Not embedded")
-                            color: inspector.hasAsset
-                                && inspector.asset.sourceLocation.length > 0
-                                ? Theme.textPrimary : Theme.textDisabled
+                            text: inspector.hasAsset && inspector.asset.sourceLocation.length > 0 ? inspector.asset.sourceLocation : qsTr("Not embedded")
+                            color: inspector.hasAsset && inspector.asset.sourceLocation.length > 0 ? Theme.textPrimary : Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
                         }
 
-                        Text { text: qsTr("Format"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+                        Text {
+                            text: qsTr("Format")
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset
-                                ? inspector.asset.codec.toUpperCase()
-                                    + (inspector.asset.containerFormat.length > 0
-                                        ? " · " + inspector.asset.containerFormat : "")
-                                : ""
+                            text: inspector.hasAsset ? inspector.asset.codec.toUpperCase() + (inspector.asset.containerFormat.length > 0 ? " · " + inspector.asset.containerFormat : "") : ""
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
                         }
 
-                        Text { text: qsTr("Audio"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+                        Text {
+                            text: qsTr("Audio")
+                            color: Theme.textDisabled
+                            font.pixelSize: Theme.fontMeta
+                        }
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset && inspector.asset.sampleRate > 0
-                                ? qsTr("%1 Hz · %2 channel(s)")
-                                    .arg(inspector.asset.sampleRate)
-                                    .arg(inspector.asset.channelCount)
-                                : qsTr("Technical metadata pending")
-                            color: inspector.hasAsset && inspector.asset.sampleRate > 0
-                                ? Theme.textPrimary : Theme.textDisabled
+                            text: inspector.hasAsset && inspector.asset.sampleRate > 0 ? qsTr("%1 Hz · %2 channel(s)").arg(inspector.asset.sampleRate).arg(inspector.asset.channelCount) : qsTr("Technical metadata pending")
+                            color: inspector.hasAsset && inspector.asset.sampleRate > 0 ? Theme.textPrimary : Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideRight
                         }
@@ -564,7 +564,9 @@ Rectangle {
                     }
                 }
 
-                Item { Layout.preferredHeight: 10 }
+                Item {
+                    Layout.preferredHeight: 10
+                }
             }
         }
     }

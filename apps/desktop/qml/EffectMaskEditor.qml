@@ -39,6 +39,8 @@ Popup {
             return qsTr("Space");
         if (kind === 5)
             return qsTr("De-hum");
+        if (kind === 7)
+            return qsTr("Channel repair");
         return qsTr("Effect");
     }
 

@@ -18,9 +18,8 @@ Rectangle {
     border.width: 1
     border.color: Theme.borderStrong
 
-    function frequency(hertz: int) : string {
-        return hertz >= 1000 ? (hertz / 1000).toFixed(hertz % 1000 === 0 ? 0 : 1) + " kHz"
-                             : hertz + " Hz"
+    function frequency(hertz: int): string {
+        return hertz >= 1000 ? (hertz / 1000).toFixed(hertz % 1000 === 0 ? 0 : 1) + " kHz" : hertz + " Hz";
     }
 
     ColumnLayout {
@@ -29,9 +28,9 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 31
-            Layout.leftMargin: 10
-            Layout.rightMargin: 7
+            Layout.preferredHeight: 34
+            Layout.leftMargin: 12
+            Layout.rightMargin: 8
             spacing: 7
 
             EchoIcon {
@@ -64,19 +63,14 @@ Rectangle {
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset room")
-                enabled: panel.draft.reverbEnabled
-                    || panel.draft.reverbMixPercent !== 18
-                    || panel.draft.reverbPreDelayMillis !== 20
-                    || panel.draft.reverbDecayMillis !== 1800
-                    || panel.draft.reverbSizePercent !== 55
-                    || panel.draft.reverbDampingPercent !== 45
-                    || panel.draft.reverbLowCutHertz !== 120
-                    || panel.draft.reverbHighCutHertz !== 10000
+                enabled: panel.draft.reverbEnabled || panel.draft.reverbMixPercent !== 18 || panel.draft.reverbPreDelayMillis !== 20 || panel.draft.reverbDecayMillis !== 1800 || panel.draft.reverbSizePercent !== 55 || panel.draft.reverbDampingPercent !== 45 || panel.draft.reverbLowCutHertz !== 120 || panel.draft.reverbHighCutHertz !== 10000
                 buttonSize: 25
                 iconSize: 14
                 onClicked: panel.draft.resetReverb()
@@ -108,7 +102,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Mix")
-                    from: 0; to: 100; stepSize: 1
+                    from: 0
+                    to: 100
+                    stepSize: 1
                     value: panel.draft.reverbMixPercent
                     valueText: Math.round(value) + "%"
                     onGestureStarted: panel.draft.beginGesture()
@@ -118,7 +114,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Pre-delay")
-                    from: 0; to: 200; stepSize: 1
+                    from: 0
+                    to: 200
+                    stepSize: 1
                     value: panel.draft.reverbPreDelayMillis
                     valueText: Math.round(value) + " ms"
                     onGestureStarted: panel.draft.beginGesture()
@@ -128,7 +126,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Decay")
-                    from: 100; to: 12000; stepSize: 50
+                    from: 100
+                    to: 12000
+                    stepSize: 50
                     value: panel.draft.reverbDecayMillis
                     valueText: (value / 1000).toFixed(2) + " s"
                     onGestureStarted: panel.draft.beginGesture()
@@ -138,7 +138,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Size")
-                    from: 10; to: 100; stepSize: 1
+                    from: 10
+                    to: 100
+                    stepSize: 1
                     value: panel.draft.reverbSizePercent
                     valueText: Math.round(value) + "%"
                     onGestureStarted: panel.draft.beginGesture()
@@ -163,7 +165,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Damping")
-                    from: 0; to: 100; stepSize: 1
+                    from: 0
+                    to: 100
+                    stepSize: 1
                     value: panel.draft.reverbDampingPercent
                     valueText: Math.round(value) + "%"
                     onGestureStarted: panel.draft.beginGesture()
@@ -173,7 +177,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Low cut")
-                    from: 20; to: 1000; stepSize: 10
+                    from: 20
+                    to: 1000
+                    stepSize: 10
                     value: panel.draft.reverbLowCutHertz
                     valueText: panel.frequency(value)
                     onGestureStarted: panel.draft.beginGesture()
@@ -183,7 +189,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("High cut")
-                    from: 1000; to: 20000; stepSize: 100
+                    from: 1000
+                    to: 20000
+                    stepSize: 100
                     value: panel.draft.reverbHighCutHertz
                     valueText: panel.frequency(value)
                     onGestureStarted: panel.draft.beginGesture()
@@ -191,7 +199,9 @@ Rectangle {
                     onGestureFinished: panel.draft.endGesture()
                 }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                }
 
                 Text {
                     Layout.fillWidth: true
@@ -202,7 +212,9 @@ Rectangle {
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
         }
     }
 }

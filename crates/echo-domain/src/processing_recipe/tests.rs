@@ -55,6 +55,17 @@ fn target_effect_masks() -> Vec<EffectMask> {
     ]
 }
 
+fn target_channel_repair() -> ChannelRepairSettings {
+    ChannelRepairSettings {
+        enabled: true,
+        invert_left: false,
+        invert_right: true,
+        swap_channels: true,
+        mono_fold_down: false,
+        balance_percent: -22,
+    }
+}
+
 fn graph_with_processing(
     trim_start_millis: u64,
     trim_end_millis: u64,
@@ -109,6 +120,7 @@ fn graph_with_processing(
             maximum_click_microseconds: 700,
             repair_percent: 84,
         })
+        .with_channel_repair(target_channel_repair())
         .with_equalizer(ParametricEqualizer::new([
             ParametricEqualizerBand::new(true, crate::EqualizerFilterKind::LowShelf, 90, 80, 250),
             ParametricEqualizerBand::new(false, crate::EqualizerFilterKind::Bell, 250, 100, 0),
@@ -154,6 +166,7 @@ fn graph_with_processing(
                 EffectNodeKind::DeClick,
                 EffectNodeKind::Dynamics,
                 EffectNodeKind::Space,
+                EffectNodeKind::ChannelRepair,
                 EffectNodeKind::Master,
             ])
             .expect("source chain is valid"),
@@ -164,19 +177,15 @@ fn graph_with_processing(
 
 #[test]
 fn default_components_are_complete_and_clip_local_controls_are_absent() {
-    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 8);
-    for (wire, component) in DEFAULT_PROCESSING_COMPONENTS.iter().copied().enumerate() {
-        assert_eq!(
-            component.wire_value(),
-            u8::try_from(wire).expect("wire fits")
-        );
+    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 9);
+    for component in DEFAULT_PROCESSING_COMPONENTS.iter().copied() {
         assert_eq!(
             ProcessingComponent::from_wire_value(component.wire_value()),
             Ok(component)
         );
     }
     assert_eq!(
-        ProcessingComponent::from_wire_value(8),
+        ProcessingComponent::from_wire_value(9),
         Err(ProcessingComponentValueError)
     );
 }

@@ -15,8 +15,8 @@ Rectangle {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitWidth: 560
-    implicitHeight: 300
+    implicitWidth: 800
+    implicitHeight: 310
     radius: Theme.compactControlRadius
     color: Theme.panelRaised
     border.width: 1
@@ -50,11 +50,11 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
-            Layout.topMargin: 10
-            Layout.bottomMargin: 10
-            spacing: 14
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Layout.topMargin: 12
+            Layout.bottomMargin: 12
+            spacing: Theme.editorPanelGap + 6
 
             ColumnLayout {
                 Layout.fillWidth: true

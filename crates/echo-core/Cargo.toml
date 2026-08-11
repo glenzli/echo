@@ -18,7 +18,6 @@ serde.workspace = true
 ureq = { version = "3.0.9", default-features = false, features = ["json", "multipart"] }
 serde_json.workspace = true
 thiserror.workspace = true
-time.workspace = true
 
 [lints]
 workspace = true

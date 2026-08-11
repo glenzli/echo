@@ -83,6 +83,29 @@ pub fn semantic_source(
         .next())
 }
 
+/// Removes derived vectors whose Runtime provenance is not the current
+/// Consumer contract. Immutable inference-run audit rows are not affected.
+///
+/// # Errors
+///
+/// Returns a catalog failure when the stored projection cannot be inspected.
+pub fn remove_semantic_documents_outside_contract(
+    transaction: &Transaction<'_>,
+    contract_version: &str,
+) -> Result<u64, CatalogError> {
+    if contract_version.trim().is_empty() {
+        return Err(invalid("semantic Runtime contract is required"));
+    }
+    let removed = transaction.execute(
+        "DELETE FROM semantic_documents WHERE CASE WHEN json_valid(runtime_json) \
+         THEN COALESCE(json_extract(runtime_json, '$.runtime.contract_version'), '') <> ?1 \
+         ELSE 1 END",
+        [contract_version],
+    )?;
+    u64::try_from(removed)
+        .map_err(|error| invalid(&format!("semantic cleanup count is invalid: {error}")))
+}
+
 fn semantic_sources(
     transaction: &Transaction<'_>,
     only_stale: bool,

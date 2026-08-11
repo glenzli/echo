@@ -5,7 +5,6 @@ use std::{
 };
 
 use serde_json::json;
-use time::{Duration, OffsetDateTime, format_description::well_known::Rfc3339};
 
 use super::*;
 
@@ -41,7 +40,7 @@ fn accepts_only_canonical_numeric_loopback_origins() {
 #[test]
 fn explicit_override_wins_over_discovery() {
     let root = fixture_root("override");
-    write_registration(&root, "generation-a", "http://127.0.0.1:9111", 45);
+    write_registration(&root, "generation-a", "http://127.0.0.1:9111");
     let mut resolver = EndpointResolver::with_runtime_root("http://127.0.0.1:9222", root.clone());
 
     let selection = resolver.resolve().expect("override is valid");
@@ -52,39 +51,46 @@ fn explicit_override_wins_over_discovery() {
 }
 
 #[test]
-fn discovery_tracks_generation_and_lease() {
+fn invalid_override_is_distinct_from_missing_discovery() {
+    let root = fixture_root("invalid-override");
+    let mut resolver = EndpointResolver::with_runtime_root("http://localhost:8787", root.clone());
+
+    assert_eq!(resolver.resolve(), Err(EndpointError::InvalidEndpoint));
+
+    let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
+    assert_eq!(resolver.resolve(), Err(EndpointError::DiscoveryUnavailable));
+    std::fs::remove_dir_all(root).expect("fixture removes");
+}
+
+#[test]
+fn discovery_tracks_generation_and_offer_without_liveness_timestamps() {
     let root = fixture_root("generation");
-    write_registration(&root, "generation-a", "http://127.0.0.1:9111", 45);
+    write_registration(&root, "generation-a", "http://127.0.0.1:9111");
     let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
 
     let first = resolver.resolve().expect("first generation resolves");
     assert_eq!(first.source, EndpointSource::Discovery);
     assert_eq!(
-        first.protocol_version,
-        Some(ConsumerProtocolVersion::Candidate3)
+        first.protocol_version.as_deref(),
+        Some(CONSUMER_PROTOCOL_VERSION)
     );
     assert_eq!(first.generation.as_deref(), Some("generation-a"));
     assert_eq!(first.origin, "http://127.0.0.1:9111");
 
-    write_registration(&root, "generation-b", "http://127.0.0.1:9222", 45);
+    write_registration(&root, "generation-b", "http://127.0.0.1:9222");
     let second = resolver.resolve().expect("new generation resolves");
     assert_eq!(second.generation.as_deref(), Some("generation-b"));
     assert_eq!(second.origin, "http://127.0.0.1:9222");
-
-    write_registration(&root, "generation-b", "http://127.0.0.1:9222", -1);
-    let expired = resolver.resolve().expect("fallback remains available");
-    assert_eq!(expired.source, EndpointSource::CompatibilityFallback);
-    assert_eq!(expired.origin, COMPATIBILITY_FALLBACK_ENDPOINT);
     std::fs::remove_dir_all(root).expect("fixture removes");
 }
 
 #[test]
 fn connection_failure_refreshes_discovery_cache() {
     let root = fixture_root("connection-failure");
-    write_registration(&root, "generation-a", "http://127.0.0.1:9111", 45);
+    write_registration(&root, "generation-a", "http://127.0.0.1:9111");
     let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
     resolver.resolve().expect("first generation resolves");
-    write_registration(&root, "generation-b", "http://127.0.0.1:9222", 45);
+    write_registration(&root, "generation-b", "http://127.0.0.1:9222");
 
     resolver.connection_failed();
 
@@ -100,14 +106,23 @@ fn connection_failure_refreshes_discovery_cache() {
 #[test]
 fn rejects_registration_that_is_not_owner_only() {
     let root = fixture_root("permissions");
-    write_registration(&root, "generation-a", "http://127.0.0.1:9111", 45);
+    write_registration(&root, "generation-a", "http://127.0.0.1:9111");
     let path = root.join("registrations").join("infer-runtime--local.json");
     std::fs::set_permissions(&path, Permissions::from_mode(0o644)).expect("permissions change");
     let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
 
-    let selection = resolver.resolve().expect("fallback remains available");
+    assert!(resolver.resolve().is_err());
+    std::fs::remove_dir_all(root).expect("fixture removes");
+}
 
-    assert_eq!(selection.source, EndpointSource::CompatibilityFallback);
+#[test]
+fn rejects_a_runtime_root_without_the_shared_socket_directory() {
+    let root = fixture_root("missing-sockets");
+    write_registration(&root, "generation-a", "http://127.0.0.1:9111");
+    std::fs::remove_dir(root.join("sockets")).expect("socket directory removes");
+    let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
+
+    assert!(resolver.resolve().is_err());
     std::fs::remove_dir_all(root).expect("fixture removes");
 }
 
@@ -116,51 +131,44 @@ fn requires_exact_consumer_protocol_version() {
     let root = fixture_root("version");
     write_registration_value(
         &root,
-        &registration_value(
-            "generation-a",
-            "http://127.0.0.1:9111",
-            45,
-            "0.1.0-candidate.1",
-        ),
+        &registration_value("generation-a", "http://127.0.0.1:9111", "0.1.0-candidate.1"),
     );
     let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
 
-    let selection = resolver.resolve().expect("fallback remains available");
-
-    assert_eq!(selection.source, EndpointSource::CompatibilityFallback);
+    assert!(resolver.resolve().is_err());
     std::fs::remove_dir_all(root).expect("fixture removes");
 }
 
 #[test]
-fn accepts_candidate2_and_prefers_candidate3_when_both_are_offered() {
-    let root = fixture_root("dual-version");
+fn requires_the_single_frozen_consumer_protocol_version() {
+    let root = fixture_root("single-version");
     let mut value = registration_value(
         "generation-a",
         "http://127.0.0.1:9111",
-        45,
-        CONSUMER_PROTOCOL_CANDIDATE_2,
+        CONSUMER_PROTOCOL_VERSION,
     );
     value["offers"][0]["protocol_versions"] =
-        serde_json::json!([CONSUMER_PROTOCOL_CANDIDATE_2, CONSUMER_PROTOCOL_CANDIDATE_3]);
+        serde_json::json!([CONSUMER_PROTOCOL_VERSION, "0.1.0-obsolete"]);
     write_registration_value(&root, &value);
     let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
 
-    let selection = resolver.resolve().expect("dual-version offer resolves");
+    assert!(resolver.resolve().is_err());
+    std::fs::remove_dir_all(root).expect("fixture removes");
+}
 
-    assert_eq!(selection.source, EndpointSource::Discovery);
-    assert_eq!(
-        selection.protocol_version,
-        Some(ConsumerProtocolVersion::Candidate3)
+#[test]
+fn rejects_unknown_registration_fields() {
+    let root = fixture_root("unknown-field");
+    let mut value = registration_value(
+        "generation-a",
+        "http://127.0.0.1:9111",
+        CONSUMER_PROTOCOL_VERSION,
     );
-
-    value["offers"][0]["protocol_versions"] = serde_json::json!([CONSUMER_PROTOCOL_CANDIDATE_2]);
-    value["service"]["generation"] = serde_json::json!("generation-b");
+    value["obsolete"] = json!({});
     write_registration_value(&root, &value);
-    let selection = resolver.resolve().expect("candidate2 offer resolves");
-    assert_eq!(
-        selection.protocol_version,
-        Some(ConsumerProtocolVersion::Candidate2)
-    );
+    let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
+
+    assert!(resolver.resolve().is_err());
     std::fs::remove_dir_all(root).expect("fixture removes");
 }
 
@@ -171,34 +179,28 @@ fn fixture_root(label: &str) -> PathBuf {
         std::thread::current().id()
     ));
     let registrations = root.join("registrations");
+    let sockets = root.join("sockets");
     std::fs::create_dir_all(&registrations).expect("fixture directories create");
+    std::fs::create_dir_all(&sockets).expect("fixture socket directory creates");
     std::fs::set_permissions(&root, Permissions::from_mode(0o700)).expect("root mode sets");
     std::fs::set_permissions(&registrations, Permissions::from_mode(0o700))
         .expect("registrations mode sets");
+    std::fs::set_permissions(&sockets, Permissions::from_mode(0o700)).expect("sockets mode sets");
     root
 }
 
-fn write_registration(root: &Path, generation: &str, endpoint: &str, lease_seconds: i64) {
+fn write_registration(root: &Path, generation: &str, endpoint: &str) {
     write_registration_value(
         root,
-        &registration_value(
-            generation,
-            endpoint,
-            lease_seconds,
-            CONSUMER_PROTOCOL_CANDIDATE_3,
-        ),
+        &registration_value(generation, endpoint, CONSUMER_PROTOCOL_VERSION),
     );
 }
 
 fn registration_value(
     generation: &str,
     endpoint: &str,
-    lease_seconds: i64,
     protocol_version: &str,
 ) -> serde_json::Value {
-    let now = OffsetDateTime::now_utc();
-    let renewed = now - Duration::seconds(1);
-    let expires = now + Duration::seconds(lease_seconds);
     json!({
         "schema": DISCOVERY_SCHEMA,
         "schema_version": DISCOVERY_SCHEMA_VERSION,
@@ -206,10 +208,6 @@ fn registration_value(
             "kind": SERVICE_KIND,
             "instance_id": DEFAULT_INSTANCE_ID,
             "generation": generation
-        },
-        "lease": {
-            "renewed_at": renewed.format(&Rfc3339).expect("time formats"),
-            "expires_at": expires.format(&Rfc3339).expect("time formats")
         },
         "offers": [{
             "protocol": CONSUMER_PROTOCOL,

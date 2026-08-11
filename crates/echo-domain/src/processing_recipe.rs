@@ -10,9 +10,10 @@
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
 use crate::{
-    AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, CompressorSettings, DeClickSettings,
-    DeHumSettings, EffectChain, EffectNodeKind, FadeCurves, LimiterSettings, ParametricEqualizer,
-    ProcessingRecipeId, ProcessingRecipeRevisionId, RestorationSettings, ReverbSettings,
+    AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, ChannelRepairSettings,
+    CompressorSettings, DeClickSettings, DeHumSettings, EffectChain, EffectNodeKind, FadeCurves,
+    LimiterSettings, ParametricEqualizer, ProcessingRecipeId, ProcessingRecipeRevisionId,
+    RestorationSettings, ReverbSettings,
 };
 
 /// Stable selectable processing component identity.
@@ -28,12 +29,13 @@ pub enum ProcessingComponent {
     Dynamics = 5,
     Space = 6,
     Master = 7,
+    ChannelRepair = 8,
 }
 
 /// Echo's complete reusable restoration-processing surface.
 ///
 /// Clip-local trim, fades, and gain are intentionally absent.
-pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 8] = [
+pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 9] = [
     ProcessingComponent::LowCut,
     ProcessingComponent::Restoration,
     ProcessingComponent::DeHum,
@@ -41,6 +43,7 @@ pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 8] = [
     ProcessingComponent::Equalizer,
     ProcessingComponent::Dynamics,
     ProcessingComponent::Space,
+    ProcessingComponent::ChannelRepair,
     ProcessingComponent::Master,
 ];
 
@@ -65,6 +68,7 @@ impl ProcessingComponent {
             5 => Ok(Self::Dynamics),
             6 => Ok(Self::Space),
             7 => Ok(Self::Master),
+            8 => Ok(Self::ChannelRepair),
             _ => Err(ProcessingComponentValueError),
         }
     }
@@ -79,6 +83,7 @@ impl ProcessingComponent {
             Self::Dynamics => Some(EffectNodeKind::Dynamics),
             Self::Space => Some(EffectNodeKind::Space),
             Self::Master => Some(EffectNodeKind::Master),
+            Self::ChannelRepair => Some(EffectNodeKind::ChannelRepair),
         }
     }
 }
@@ -111,6 +116,7 @@ pub struct AdjustmentPatch {
     restoration: RestorationSettings,
     de_hum: DeHumSettings,
     de_click: DeClickSettings,
+    channel_repair: ChannelRepairSettings,
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     reverb: ReverbSettings,
@@ -125,6 +131,8 @@ struct StoredAdjustmentPatch {
     restoration: RestorationSettings,
     de_hum: DeHumSettings,
     de_click: DeClickSettings,
+    #[serde(default)]
+    channel_repair: ChannelRepairSettings,
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     reverb: ReverbSettings,
@@ -144,6 +152,7 @@ impl<'de> Deserialize<'de> for AdjustmentPatch {
             restoration: stored.restoration,
             de_hum: stored.de_hum,
             de_click: stored.de_click,
+            channel_repair: stored.channel_repair,
             equalizer: stored.equalizer,
             compressor: stored.compressor,
             reverb: stored.reverb,
@@ -173,6 +182,7 @@ impl AdjustmentPatch {
             restoration: graph.restoration(),
             de_hum: graph.de_hum(),
             de_click: graph.de_click(),
+            channel_repair: graph.channel_repair(),
             equalizer: graph.equalizer(),
             compressor: graph.compressor(),
             reverb: graph.reverb(),
@@ -226,6 +236,9 @@ impl AdjustmentPatch {
         if self.contains(ProcessingComponent::DeClick) {
             effects.de_click = self.de_click;
         }
+        if self.contains(ProcessingComponent::ChannelRepair) {
+            effects.channel_repair = self.channel_repair;
+        }
         if self.contains(ProcessingComponent::Equalizer) {
             effects.equalizer = self.equalizer;
         }
@@ -265,7 +278,7 @@ impl AdjustmentPatch {
         if self.components.is_empty() {
             return Err(ProcessingRecipeError::EmptyComponents);
         }
-        let mut seen = [false; 8];
+        let mut seen = [false; 9];
         for component in &self.components {
             let index = usize::from(component.wire_value());
             if seen[index] {
@@ -283,6 +296,7 @@ impl AdjustmentPatch {
                 .with_restoration(self.restoration)
                 .with_de_hum(self.de_hum)
                 .with_de_click(self.de_click)
+                .with_channel_repair(self.channel_repair)
                 .with_equalizer(self.equalizer)
                 .with_compressor(self.compressor)
                 .with_reverb(self.reverb)
@@ -294,7 +308,7 @@ impl AdjustmentPatch {
     }
 
     fn replacement_chain(&self) -> Result<EffectChain, ProcessingRecipeError> {
-        let mut nodes = Vec::with_capacity(8);
+        let mut nodes = Vec::with_capacity(9);
         for &node in self.effect_chain.nodes() {
             if node != EffectNodeKind::Master && self.selects_node(node) {
                 nodes.push(node);
@@ -315,7 +329,7 @@ impl AdjustmentPatch {
             return Ok(target);
         }
 
-        let mut retained = Vec::with_capacity(8);
+        let mut retained = Vec::with_capacity(9);
         let mut insertion_index = None;
         for &node in target.nodes() {
             if node == EffectNodeKind::Master {
@@ -356,6 +370,7 @@ fn processing_from_graph(graph: &AdjustmentGraph) -> AdjustmentEffects {
     .with_restoration(graph.restoration())
     .with_de_hum(graph.de_hum())
     .with_de_click(graph.de_click())
+    .with_channel_repair(graph.channel_repair())
     .with_equalizer(graph.equalizer())
     .with_compressor(graph.compressor())
     .with_reverb(graph.reverb())

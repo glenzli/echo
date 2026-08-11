@@ -26,7 +26,7 @@ Rectangle {
     signal effectMoveRequested(string effectId, int direction)
     signal addEffectRequested
 
-    implicitWidth: 224
+    implicitWidth: Theme.editorRailWidth
     implicitHeight: 320
     radius: Theme.compactControlRadius
     color: Theme.panelRaised
@@ -263,7 +263,7 @@ Rectangle {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 58
+            Layout.preferredHeight: 52
 
             Rectangle {
                 x: 16
@@ -316,7 +316,7 @@ Rectangle {
                 readonly property bool canMoveDown: chain.editable && index + 1 < chainProjection.count
 
                 width: chainList.width - 5
-                height: 50
+                height: 46
                 radius: Theme.compactControlRadius
                 color: selected ? Theme.surfaceSelected : nodeHover.hovered ? Theme.surfaceSubtle : Theme.transparent
                 border.width: selected ? 1 : 0
@@ -450,7 +450,7 @@ Rectangle {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 58
+            Layout.preferredHeight: 52
 
             Rectangle {
                 x: 16

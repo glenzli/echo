@@ -207,6 +207,7 @@ int main() {
         echo::audio::EffectNodeKind::Dynamics,
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::ChannelRepair,
     };
     latency_compensated.effect_chain_count = 3;
     const auto compensated = echo::audio::OfflineWavRenderer::render(
@@ -243,6 +244,42 @@ int main() {
     );
     for (std::size_t index = 0; index < live_de_plosive.size(); ++index) {
         assert(std::abs(live_de_plosive[index] - pcm24(de_plosive_sink.bytes(), index)) < 2.0E-6F);
+    }
+
+    auto channel_repaired = full_source;
+    channel_repaired.channel_repair = {
+        .enabled = true,
+        .invert_left = true,
+        .swap_channels = true,
+        .balance_percent = 25,
+    };
+    channel_repaired.effect_chain = {
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::DeHum,
+    };
+    channel_repaired.effect_chain_count = 4;
+    const auto live_channel_repaired = render_playback(source, channel_repaired);
+    MemorySink channel_repaired_sink;
+    const auto channel_repaired_result = echo::audio::OfflineWavRenderer::render(
+        source.string(),
+        channel_repaired,
+        channel_repaired_sink
+    );
+    assert(
+        channel_repaired_result.frame_count * channel_repaired_result.channel_count
+        == live_channel_repaired.size()
+    );
+    for (std::size_t index = 0; index < live_channel_repaired.size(); ++index) {
+        assert(
+            std::abs(live_channel_repaired[index] - pcm24(channel_repaired_sink.bytes(), index))
+            < 2.0E-6F
+        );
     }
 
     auto source_edited = full_source;

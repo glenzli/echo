@@ -16,7 +16,7 @@ Rectangle {
     property string albumError: ""
 
     signal filterRequested(string key)
-    signal manageLibraryRequested()
+    signal manageLibraryRequested
     signal createAlbumRequested(string name, var memberIds)
     signal renameAlbumRequested(var albumId, string name)
     signal deleteAlbumRequested(var albumId)
@@ -29,51 +29,43 @@ Rectangle {
 
     color: Theme.panel
 
-    function albumReason(album: var) : string {
+    function albumReason(album: var): string {
         if (album.evidence === "original") {
-            return album.facet === "time"
-                ? qsTr("Shared recording day") : qsTr("Embedded location")
+            return album.facet === "time" ? qsTr("Shared recording day") : qsTr("Embedded location");
         }
         if (album.facet === "place") {
-            return qsTr("Shared AI place")
+            return qsTr("Shared AI place");
         }
         if (album.facet === "event") {
-            return qsTr("Shared AI event")
+            return qsTr("Shared AI event");
         }
         if (album.facet === "person") {
-            return qsTr("Shared AI people hint")
+            return qsTr("Shared AI people hint");
         }
-        return qsTr("Related by AI")
+        return qsTr("Related by AI");
     }
 
-    function countFor(key: string) : int {
-        let count = 0
-        const now = Date.now()
+    function countFor(key: string): int {
+        let count = 0;
+        const now = Date.now();
         for (let index = 0; index < assets.length; ++index) {
-            const asset = assets[index]
-            if (key === "all"
-                    || (key === "recent"
-                        && asset.importedAtMillis >= now - 7 * 86400000)
-                    || (key === "liked" && asset.liked)
-                    || (key === "five-star" && asset.rating === 5)
-                    || (key === "has-speech" && asset.textPreview.length > 0)
-                    || (key === "missing" && asset.pathStatus === "missing")) {
-                count += 1
+            const asset = assets[index];
+            if (key === "all" || (key === "recent" && asset.importedAtMillis >= now - 7 * 86400000) || (key === "liked" && asset.liked) || (key === "five-star" && asset.rating === 5) || (key === "has-speech" && asset.textPreview.length > 0) || (key === "missing" && asset.pathStatus === "missing")) {
+                count += 1;
             }
         }
-        return count
+        return count;
     }
 
-    function editAlbum(mode: string, target: var, title: string,
-                       action: string, name: string) : void {
-        albumEditorMode = mode
-        albumEditorTarget = target
-        albumNameDialog.show(title, action, name)
+    function editAlbum(mode: string, target: var, title: string, action: string, name: string): void {
+        albumEditorMode = mode;
+        albumEditorTarget = target;
+        albumNameDialog.show(title, action, name);
     }
 
-    function beginCreate(memberIds: var) : void {
-        pendingInitialMemberIds = memberIds || []
-        editAlbum("create", null, qsTr("New album"), qsTr("Create"), "")
+    function beginCreate(memberIds: var): void {
+        pendingInitialMemberIds = memberIds || [];
+        editAlbum("create", null, qsTr("New album"), qsTr("Create"), "");
     }
 
     Rectangle {
@@ -101,14 +93,32 @@ Rectangle {
             font.letterSpacing: 1.3
         }
 
-        Item { Layout.preferredHeight: 3 }
+        Item {
+            Layout.preferredHeight: 3
+        }
 
         Repeater {
             model: [
-                { key: "all", label: qsTr("All sounds"), glyph: "▦" },
-                { key: "recent", label: qsTr("Recently added"), glyph: "◷" },
-                { key: "liked", label: qsTr("Liked"), glyph: "♡" },
-                { key: "five-star", label: qsTr("5 stars"), glyph: "☆" }
+                {
+                    key: "all",
+                    label: qsTr("All sounds"),
+                    iconSource: "qrc:/EchoDesktop/icons/review-grid.svg"
+                },
+                {
+                    key: "recent",
+                    label: qsTr("Recently added"),
+                    iconSource: "qrc:/EchoDesktop/icons/clock.svg"
+                },
+                {
+                    key: "liked",
+                    label: qsTr("Liked"),
+                    iconSource: "qrc:/EchoDesktop/icons/heart.svg"
+                },
+                {
+                    key: "five-star",
+                    label: qsTr("5 stars"),
+                    iconSource: "qrc:/EchoDesktop/icons/star.svg"
+                }
             ]
 
             delegate: SoundLibraryRow {
@@ -116,14 +126,16 @@ Rectangle {
 
                 Layout.fillWidth: true
                 label: modelData.label
-                glyph: modelData.glyph
+                iconSource: modelData.iconSource
                 count: sidebar.countFor(modelData.key)
                 selected: sidebar.selectedFilter === modelData.key
                 onActivated: sidebar.filterRequested(modelData.key)
             }
         }
 
-        Item { Layout.preferredHeight: 9 }
+        Item {
+            Layout.preferredHeight: 9
+        }
 
         Text {
             Layout.leftMargin: 7
@@ -141,7 +153,11 @@ Rectangle {
                     label: qsTr("With speech"),
                     iconSource: "qrc:/EchoDesktop/icons/mic.svg"
                 },
-                { key: "missing", label: qsTr("Missing originals"), glyph: "◇" }
+                {
+                    key: "missing",
+                    label: qsTr("Missing originals"),
+                    iconSource: "qrc:/EchoDesktop/icons/source-missing.svg"
+                }
             ]
 
             delegate: SoundLibraryRow {
@@ -149,7 +165,6 @@ Rectangle {
 
                 Layout.fillWidth: true
                 label: modelData.label
-                glyph: modelData.glyph || ""
                 iconSource: modelData.iconSource || ""
                 count: sidebar.countFor(modelData.key)
                 selected: sidebar.selectedFilter === modelData.key
@@ -157,7 +172,9 @@ Rectangle {
             }
         }
 
-        Item { Layout.preferredHeight: 9 }
+        Item {
+            Layout.preferredHeight: 9
+        }
 
         ScrollView {
             Layout.fillWidth: true
@@ -193,17 +210,17 @@ Rectangle {
                         count: modelData.count
                         selected: sidebar.selectedFilter === "user-album:" + modelData.id
                         onActivated: sidebar.filterRequested("user-album:" + modelData.id)
-                        onRenameRequested: sidebar.editAlbum(
-                            "rename", modelData, qsTr("Rename album"),
-                            qsTr("Rename"), modelData.name)
+                        onRenameRequested: sidebar.editAlbum("rename", modelData, qsTr("Rename album"), qsTr("Rename"), modelData.name)
                         onDeleteRequested: {
-                            sidebar.pendingDeleteAlbum = modelData
-                            deleteDialog.open()
+                            sidebar.pendingDeleteAlbum = modelData;
+                            deleteDialog.open();
                         }
                     }
                 }
 
                 Button {
+                    id: newAlbumButton
+
                     Layout.fillWidth: true
                     implicitHeight: 32
                     padding: 0
@@ -212,18 +229,17 @@ Rectangle {
 
                     background: Rectangle {
                         radius: Theme.controlRadius
-                        color: parent.hovered ? Theme.buttonGhostHover : Theme.transparent
+                        color: newAlbumButton.hovered ? Theme.buttonGhostHover : Theme.transparent
                     }
 
                     contentItem: RowLayout {
                         spacing: 8
 
-                        Text {
+                        EchoIcon {
                             Layout.preferredWidth: 17
-                            text: "+"
+                            source: "qrc:/EchoDesktop/icons/plus.svg"
+                            size: 15
                             color: Theme.accent
-                            font.pixelSize: 17
-                            horizontalAlignment: Text.AlignHCenter
                         }
 
                         Text {
@@ -268,11 +284,8 @@ Rectangle {
                         suggested: true
                         count: modelData.count
                         selected: sidebar.selectedFilter === "suggested-album:" + modelData.key
-                        onActivated: sidebar.filterRequested(
-                            "suggested-album:" + modelData.key)
-                        onSaveRequested: sidebar.editAlbum(
-                            "save-suggestion", modelData, qsTr("Save suggested album"),
-                            qsTr("Save"), modelData.label)
+                        onActivated: sidebar.filterRequested("suggested-album:" + modelData.key)
+                        onSaveRequested: sidebar.editAlbum("save-suggestion", modelData, qsTr("Save suggested album"), qsTr("Save"), modelData.label)
                     }
                 }
 
@@ -309,13 +322,15 @@ Rectangle {
         }
 
         Button {
+            id: manageFoldersButton
+
             Layout.fillWidth: true
             implicitHeight: 34
             onClicked: sidebar.manageLibraryRequested()
 
             background: Rectangle {
                 radius: Theme.controlRadius
-                color: parent.hovered ? Theme.surfaceSubtle : Theme.transparent
+                color: manageFoldersButton.hovered ? Theme.surfaceSubtle : Theme.transparent
             }
 
             contentItem: RowLayout {
@@ -340,15 +355,13 @@ Rectangle {
     SoundAlbumNameDialog {
         id: albumNameDialog
 
-        onSubmitted: function(name) {
+        onSubmitted: function (name) {
             if (sidebar.albumEditorMode === "create") {
-                sidebar.createAlbumRequested(name, sidebar.pendingInitialMemberIds)
-            } else if (sidebar.albumEditorMode === "rename"
-                       && sidebar.albumEditorTarget !== null) {
-                sidebar.renameAlbumRequested(sidebar.albumEditorTarget.id, name)
-            } else if (sidebar.albumEditorMode === "save-suggestion"
-                       && sidebar.albumEditorTarget !== null) {
-                sidebar.saveSuggestedAlbumRequested(sidebar.albumEditorTarget, name)
+                sidebar.createAlbumRequested(name, sidebar.pendingInitialMemberIds);
+            } else if (sidebar.albumEditorMode === "rename" && sidebar.albumEditorTarget !== null) {
+                sidebar.renameAlbumRequested(sidebar.albumEditorTarget.id, name);
+            } else if (sidebar.albumEditorMode === "save-suggestion" && sidebar.albumEditorTarget !== null) {
+                sidebar.saveSuggestedAlbumRequested(sidebar.albumEditorTarget, name);
             }
         }
     }
@@ -393,13 +406,17 @@ Rectangle {
                 wrapMode: Text.WordWrap
             }
 
-            Item { Layout.fillHeight: true }
+            Item {
+                Layout.fillHeight: true
+            }
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
 
-                Item { Layout.fillWidth: true }
+                Item {
+                    Layout.fillWidth: true
+                }
 
                 EchoButton {
                     text: qsTr("Cancel")
@@ -412,9 +429,9 @@ Rectangle {
                     backgroundColor: "#b64d52"
                     onClicked: {
                         if (sidebar.pendingDeleteAlbum !== null) {
-                            sidebar.deleteAlbumRequested(sidebar.pendingDeleteAlbum.id)
+                            sidebar.deleteAlbumRequested(sidebar.pendingDeleteAlbum.id);
                         }
-                        deleteDialog.close()
+                        deleteDialog.close();
                     }
                 }
             }

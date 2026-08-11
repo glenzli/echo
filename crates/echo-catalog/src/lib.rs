@@ -104,8 +104,8 @@ pub use search::{
 };
 pub use semantic_search::{
     SemanticSearchHit, SemanticSource, UpsertSemanticDocument, index_semantic_source_text,
-    list_semantic_sources_needing_embedding, search_semantic_documents, semantic_source,
-    upsert_semantic_document,
+    list_semantic_sources_needing_embedding, remove_semantic_documents_outside_contract,
+    search_semantic_documents, semantic_source, upsert_semantic_document,
 };
 pub use smart_albums::{
     SmartAlbumCandidate, SmartAlbumEvidence, SmartAlbumFacet, list_smart_album_candidates,

@@ -2,6 +2,7 @@
 
 #include "echo/audio/adaptive_noise_reducer.hpp"
 #include "echo/audio/algorithmic_reverb.hpp"
+#include "echo/audio/channel_repair_processor.hpp"
 #include "echo/audio/de_click_processor.hpp"
 #include "echo/audio/de_esser.hpp"
 #include "echo/audio/de_hum_filter.hpp"
@@ -56,6 +57,7 @@ class EffectProcessingChain::Impl {
             sample_rate,
             channel_count
         ),
+        channel_repair_(adjustment.channel_repair(), sample_rate, channel_count),
         equalizer_(adjustment.equalizer(), sample_rate, channel_count),
         dynamics_(adjustment.compressor(), sample_rate),
         reverb_(adjustment.reverb(), sample_rate, channel_count),
@@ -144,6 +146,7 @@ class EffectProcessingChain::Impl {
         de_esser_.reset();
         de_hum_.reset();
         de_click_.reset();
+        channel_repair_.reset();
         equalizer_.reset();
         dynamics_.reset();
         reverb_.reset();
@@ -174,6 +177,10 @@ class EffectProcessingChain::Impl {
             .maximum_click_microseconds = adjustment.maximum_click_microseconds,
             .repair_percent = adjustment.repair_percent,
         });
+    }
+
+    void update_channel_repair(ChannelRepairAdjustment adjustment) {
+        channel_repair_.update(adjustment);
     }
 
     void update_equalizer(ParametricEqualizerAdjustment adjustment) {
@@ -235,6 +242,9 @@ class EffectProcessingChain::Impl {
             case EffectNodeKind::DeClick:
                 de_click_.process_interleaved(samples, frame_count, channel_count_);
                 delay_source_anchors(source_frames, frame_count);
+                break;
+            case EffectNodeKind::ChannelRepair:
+                channel_repair_.process_interleaved(samples, frame_count, channel_count_);
                 break;
             case EffectNodeKind::Equalizer:
                 for (std::size_t frame = 0; frame < frame_count; ++frame) {
@@ -324,6 +334,7 @@ class EffectProcessingChain::Impl {
     DeEsser de_esser_;
     DeHumFilter de_hum_;
     DeClickProcessor de_click_;
+    ChannelRepairProcessor channel_repair_;
     ParametricEqualizer equalizer_;
     DynamicsProcessor dynamics_;
     AlgorithmicReverb reverb_;
@@ -399,6 +410,10 @@ void EffectProcessingChain::update_de_click(DeClickAdjustment adjustment) {
     impl_->update_de_click(adjustment);
 }
 
+void EffectProcessingChain::update_channel_repair(ChannelRepairAdjustment adjustment) {
+    impl_->update_channel_repair(adjustment);
+}
+
 void EffectProcessingChain::update_equalizer(ParametricEqualizerAdjustment adjustment) {
     impl_->update_equalizer(adjustment);
 }
@@ -458,6 +473,14 @@ void EffectProcessingChain::validate_de_click(
         sample_rate,
         channel_count
     );
+}
+
+void EffectProcessingChain::validate_channel_repair(
+    ChannelRepairAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const ChannelRepairProcessor processor(adjustment, sample_rate, channel_count);
 }
 
 void EffectProcessingChain::validate_equalizer(

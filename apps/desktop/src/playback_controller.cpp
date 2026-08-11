@@ -51,6 +51,7 @@ void PlaybackController::playAdjusted(
     const QVariantMap& restorationValue,
     const QVariantMap& deHumValue,
     const QVariantMap& deClickValue,
+    const QVariantMap& channelRepairValue,
     bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
@@ -79,6 +80,7 @@ void PlaybackController::playAdjusted(
         restorationValue,
         deHumValue,
         deClickValue,
+        channelRepairValue,
         equalizerEnabled,
         equalizerBands,
         compressorEnabled,
@@ -142,6 +144,21 @@ bool PlaybackController::updateDeClick(const QVariantMap& deClickValue) {
         session->update_de_click(*adjustment);
     } catch (const std::exception& error) {
         qWarning("cannot update playback de-click: %s", error.what());
+        return false;
+    }
+    return true;
+}
+
+bool PlaybackController::updateChannelRepair(const QVariantMap& channelRepairValue) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto adjustment = PlaybackAdjustmentProjection::channelRepairFromQml(channelRepairValue);
+    if (session == nullptr || !adjustment.has_value()) {
+        return false;
+    }
+    try {
+        session->update_channel_repair(*adjustment);
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback channel repair: %s", error.what());
         return false;
     }
     return true;

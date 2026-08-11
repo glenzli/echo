@@ -30,13 +30,11 @@ AI model selection, and milestone plan.
 ## Infer Runtime consumer contract
 
 Echo's production inference client uses the canonical Infer Runtime
-`0.1.0-candidate.3` vocabulary. During the coordinated upgrade window it can discover either
-`candidate.2` or `candidate.3` and emits the vocabulary selected by the exact Discovery offer:
+`0.1.0-candidate.3` vocabulary. Discovery must advertise exactly that Consumer protocol version;
+Echo emits `semantic.embed_text` with `infer.capability_floor=foundational` and fails closed for
+any other Runtime contract.
 
-- `semantic.embed_text` and `infer.capability_floor=foundational` on `candidate.3`;
-- `vision.embed_text` and `infer.quality_floor=basic` only on `candidate.2` compatibility calls.
-
-Job evidence is normalized to `capability_level`, `evaluation_status`, and
+Job evidence is validated as `capability_level`, `evaluation_status`, and
 `routing.capability_floor` before it reaches Echo's product workflows. Endpoint paths, the
 `echo` App identity, its existing managed credential, and local-only/offline/no-fallback policy do
 not change. See the upstream

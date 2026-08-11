@@ -297,6 +297,18 @@ int main(int argc, char* argv[]) {
                     .makeup_centibels = 0,
                 },
             .limiter = {.enabled = true, .ceiling_centibels = -600, .release_millis = 100},
+            .effect_chain =
+                {
+                    echo::audio::EffectNodeKind::Restoration,
+                    echo::audio::EffectNodeKind::Equalizer,
+                    echo::audio::EffectNodeKind::Dynamics,
+                    echo::audio::EffectNodeKind::Space,
+                    echo::audio::EffectNodeKind::ChannelRepair,
+                    echo::audio::EffectNodeKind::Master,
+                    echo::audio::EffectNodeKind::DeHum,
+                    echo::audio::EffectNodeKind::DeClick,
+                },
+            .effect_chain_count = 6,
         };
         echo::audio::PlaybackSession adjusted(path.string(), adjustment);
         std::vector<float> adjusted_buffer(48'000, 0.0F);
@@ -369,6 +381,27 @@ int main(int argc, char* argv[]) {
             rejected_update = true;
         }
         expect(rejected_update, "live compressor update preserves the authored bounds");
+        const std::uint64_t position_before_channel_repair_update = adjusted.position_millis();
+        adjusted.update_channel_repair({
+            .enabled = true,
+            .invert_left = true,
+            .swap_channels = true,
+            .balance_percent = -30,
+        });
+        const std::size_t channel_repair_updated =
+            pull_until(adjusted, updated_buffer.data(), 512, 200);
+        expect(channel_repair_updated > 0, "live channel repair update keeps returning audio");
+        expect(
+            adjusted.position_millis() > position_before_channel_repair_update,
+            "live channel repair update does not restart the playback timeline"
+        );
+        rejected_update = false;
+        try {
+            adjusted.update_channel_repair({.enabled = true, .balance_percent = -101});
+        } catch (const std::invalid_argument&) {
+            rejected_update = true;
+        }
+        expect(rejected_update, "live channel repair update preserves the authored bounds");
         const std::uint64_t position_before_limiter_update = adjusted.position_millis();
         adjusted.update_limiter(
             {.enabled = true, .ceiling_centibels = -300, .release_millis = 160}
@@ -419,7 +452,8 @@ int main(int argc, char* argv[]) {
                  echo::audio::EffectNodeKind::Space,
                  echo::audio::EffectNodeKind::Master,
                  echo::audio::EffectNodeKind::DeHum,
-                 echo::audio::EffectNodeKind::DeClick},
+                 echo::audio::EffectNodeKind::DeClick,
+                 echo::audio::EffectNodeKind::ChannelRepair},
             .effect_chain_count = 5,
         };
         auto space_then_dynamics = dynamics_then_space;
@@ -430,7 +464,8 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::Dynamics,
             echo::audio::EffectNodeKind::Master,
             echo::audio::EffectNodeKind::DeHum,
-            echo::audio::EffectNodeKind::DeClick
+            echo::audio::EffectNodeKind::DeClick,
+            echo::audio::EffectNodeKind::ChannelRepair
         };
 
         echo::audio::PlaybackSession first_order(path.string(), dynamics_then_space);
@@ -478,6 +513,7 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::Dynamics,
                     echo::audio::EffectNodeKind::Space,
                     echo::audio::EffectNodeKind::DeHum,
+                    echo::audio::EffectNodeKind::ChannelRepair,
                 },
             .effect_chain_count = 3,
         };
@@ -512,6 +548,7 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::Dynamics,
             echo::audio::EffectNodeKind::Space,
             echo::audio::EffectNodeKind::DeHum,
+            echo::audio::EffectNodeKind::ChannelRepair,
         };
         edited.effect_chain_count = 3;
         edited.effect_masks = {{
@@ -570,6 +607,7 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::Space,
             echo::audio::EffectNodeKind::DeHum,
             echo::audio::EffectNodeKind::DeClick,
+            echo::audio::EffectNodeKind::ChannelRepair,
         };
         hidden_gap.effect_chain_count = 1;
         hidden_gap.edit_segments = {{

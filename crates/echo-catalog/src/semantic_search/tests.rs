@@ -162,3 +162,75 @@ fn compact_vectors_rank_only_inside_the_exact_space() {
 
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn obsolete_runtime_vectors_are_removed_without_touching_current_documents() {
+    let root = std::env::temp_dir().join(format!("echo-semantic-contract-{}", std::process::id()));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let assets = catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            let mut assets = Vec::new();
+            for byte in [81, 82] {
+                let asset = match register_asset(
+                    transaction,
+                    &AssetRegistrationInput {
+                        content_hash: ContentHash::new([byte; 32]),
+                        path: Path::new("/sounds/contract-fixture.wav"),
+                        size_bytes: 100,
+                        codec: Some("pcm"),
+                        duration_millis: Some(1_000),
+                        recorded_at_millis: None,
+                        imported_at_millis: i64::from(byte),
+                    },
+                )? {
+                    RegisterAsset::Created(asset) | RegisterAsset::Existed(asset) => asset,
+                };
+                assets.push(asset);
+            }
+            Ok(assets)
+        })
+        .expect("assets register");
+    catalog
+        .with_transaction(|transaction| {
+            for (index, contract) in ["0.1.0-candidate.3", "0.1.0-obsolete"]
+                .into_iter()
+                .enumerate()
+            {
+                let source = SemanticSource {
+                    asset_id: assets[index].id,
+                    revision: format!("contract-fixture-{index}"),
+                    text: format!("document {index}"),
+                };
+                upsert_semantic_document(
+                    transaction,
+                    &UpsertSemanticDocument {
+                        source: &source,
+                        embedding_space: "space-a",
+                        values: &[1.0, 0.0, 0.0],
+                        runtime: &serde_json::json!({
+                            "runtime": {"contract_version": contract}
+                        }),
+                        updated_at_millis: 1,
+                    },
+                )?;
+            }
+            Ok::<_, crate::CatalogError>(())
+        })
+        .expect("vectors publish");
+
+    let removed = catalog
+        .with_transaction(|transaction| {
+            remove_semantic_documents_outside_contract(transaction, "0.1.0-candidate.3")
+        })
+        .expect("obsolete vectors remove");
+    assert_eq!(removed, 1);
+    let hits = catalog
+        .with_transaction(|transaction| {
+            search_semantic_documents(transaction, &[1.0, 0.0, 0.0], "space-a", 10)
+        })
+        .expect("current vectors remain searchable");
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].asset_id, assets[0].id.to_string());
+
+    let _ = std::fs::remove_dir_all(root);
+}

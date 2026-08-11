@@ -22,21 +22,17 @@ Rectangle {
     border.width: 1
     border.color: Theme.borderStrong
 
-    function formatGain(centibels: int) : string {
-        const decibels = centibels / 100
-        return (decibels >= 0 ? "+" : "") + decibels.toFixed(1) + " dB"
+    function formatGain(centibels: int): string {
+        const decibels = centibels / 100;
+        return (decibels >= 0 ? "+" : "") + decibels.toFixed(1) + " dB";
     }
 
-    function formatFrequency(hertz: int) : string {
-        return hertz >= 1000 ? (hertz / 1000).toFixed(hertz < 10000 ? 1 : 0)
-            + " kHz" : hertz + " Hz"
+    function formatFrequency(hertz: int): string {
+        return hertz >= 1000 ? (hertz / 1000).toFixed(hertz < 10000 ? 1 : 0) + " kHz" : hertz + " Hz";
     }
 
-    function editSelected(enabled: bool, filterKind: int,
-                          frequencyHertz: int, qHundredths: int,
-                          gainCentibels: int) : void {
-        draft.setEqualizerBand(graph.selectedBand, enabled, filterKind,
-            frequencyHertz, qHundredths, gainCentibels)
+    function editSelected(enabled: bool, filterKind: int, frequencyHertz: int, qHundredths: int, gainCentibels: int): void {
+        draft.setEqualizerBand(graph.selectedBand, enabled, filterKind, frequencyHertz, qHundredths, gainCentibels);
     }
 
     ColumnLayout {
@@ -45,10 +41,10 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 31
-            Layout.leftMargin: 10
-            Layout.rightMargin: 7
-            spacing: 6
+            Layout.preferredHeight: 34
+            Layout.leftMargin: 12
+            Layout.rightMargin: 8
+            spacing: 7
 
             EchoIcon {
                 source: "qrc:/EchoDesktop/icons/equalizer.svg"
@@ -61,7 +57,9 @@ Rectangle {
                 font.pixelSize: Theme.fontBody
                 font.weight: Font.DemiBold
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset equalizer")
@@ -72,7 +70,11 @@ Rectangle {
             }
         }
 
-        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.border
+        }
 
         ParametricEqGraph {
             id: graph
@@ -98,33 +100,30 @@ Rectangle {
             CheckBox {
                 checked: Boolean(panel.selected.enabled)
                 text: qsTr("Band %1").arg(graph.selectedBand + 1)
-                onToggled: panel.editSelected(checked,
-                    Number(panel.selected.filterKind),
-                    Number(panel.selected.frequencyHertz),
-                    Number(panel.selected.qHundredths),
-                    Number(panel.selected.gainCentibels))
+                onToggled: panel.editSelected(checked, Number(panel.selected.filterKind), Number(panel.selected.frequencyHertz), Number(panel.selected.qHundredths), Number(panel.selected.gainCentibels))
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             ComboBox {
                 Layout.preferredWidth: 108
-                model: [qsTr("Bell"), qsTr("Low shelf"),
-                        qsTr("High shelf"), qsTr("Notch")]
+                model: [qsTr("Bell"), qsTr("Low shelf"), qsTr("High shelf"), qsTr("Notch")]
                 currentIndex: Number(panel.selected.filterKind)
-                onActivated: index => panel.editSelected(
-                    Boolean(panel.selected.enabled), index,
-                    Number(panel.selected.frequencyHertz),
-                    Number(panel.selected.qHundredths),
-                    Number(panel.selected.gainCentibels))
+                onActivated: index => panel.editSelected(Boolean(panel.selected.enabled), index, Number(panel.selected.frequencyHertz), Number(panel.selected.qHundredths), Number(panel.selected.gainCentibels))
             }
         }
 
-        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.border
+        }
 
         ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 96
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
+            Layout.leftMargin: Math.max(10, Math.round((panel.width - (Theme.editorSectionColumnWidth * 2 - 20)) / 2))
+            Layout.rightMargin: Layout.leftMargin
             Layout.topMargin: 5
             Layout.bottomMargin: 6
             spacing: 2
@@ -135,18 +134,12 @@ Rectangle {
                 from: 0
                 to: 1000
                 stepSize: 1
-                value: Math.log(Number(panel.selected.frequencyHertz) / 20)
-                    / Math.log(1000) * 1000
+                value: Math.log(Number(panel.selected.frequencyHertz) / 20) / Math.log(1000) * 1000
                 valueWidth: 64
-                valueText: panel.formatFrequency(Math.round(
-                    20 * Math.pow(1000, value / 1000)))
+                valueText: panel.formatFrequency(Math.round(20 * Math.pow(1000, value / 1000)))
                 onGestureStarted: panel.draft.beginGesture()
                 onGestureFinished: panel.draft.endGesture()
-                onEdited: sliderValue => panel.editSelected(
-                    Boolean(panel.selected.enabled), Number(panel.selected.filterKind),
-                    Math.round(20 * Math.pow(1000, sliderValue / 1000)),
-                    Number(panel.selected.qHundredths),
-                    Number(panel.selected.gainCentibels))
+                onEdited: sliderValue => panel.editSelected(Boolean(panel.selected.enabled), Number(panel.selected.filterKind), Math.round(20 * Math.pow(1000, sliderValue / 1000)), Number(panel.selected.qHundredths), Number(panel.selected.gainCentibels))
             }
             EchoParameterSlider {
                 Layout.fillWidth: true
@@ -159,10 +152,7 @@ Rectangle {
                 valueText: (value / 100).toFixed(2)
                 onGestureStarted: panel.draft.beginGesture()
                 onGestureFinished: panel.draft.endGesture()
-                onEdited: sliderValue => panel.editSelected(
-                    Boolean(panel.selected.enabled), Number(panel.selected.filterKind),
-                    Number(panel.selected.frequencyHertz), Math.round(sliderValue),
-                    Number(panel.selected.gainCentibels))
+                onEdited: sliderValue => panel.editSelected(Boolean(panel.selected.enabled), Number(panel.selected.filterKind), Number(panel.selected.frequencyHertz), Math.round(sliderValue), Number(panel.selected.gainCentibels))
             }
             EchoParameterSlider {
                 Layout.fillWidth: true
@@ -178,10 +168,7 @@ Rectangle {
                 valueText: panel.formatGain(Math.round(value))
                 onGestureStarted: panel.draft.beginGesture()
                 onGestureFinished: panel.draft.endGesture()
-                onEdited: sliderValue => panel.editSelected(
-                    Boolean(panel.selected.enabled), Number(panel.selected.filterKind),
-                    Number(panel.selected.frequencyHertz), Number(panel.selected.qHundredths),
-                    Math.round(sliderValue))
+                onEdited: sliderValue => panel.editSelected(Boolean(panel.selected.enabled), Number(panel.selected.filterKind), Number(panel.selected.frequencyHertz), Number(panel.selected.qHundredths), Math.round(sliderValue))
             }
         }
     }

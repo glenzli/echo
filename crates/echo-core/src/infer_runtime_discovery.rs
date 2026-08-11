@@ -12,50 +12,29 @@ use std::{
 };
 
 use serde::Deserialize;
-use time::{Duration, OffsetDateTime, format_description::well_known::Rfc3339};
-
-pub(crate) const COMPATIBILITY_FALLBACK_ENDPOINT: &str = "http://127.0.0.1:8787";
 
 const DISCOVERY_SCHEMA: &str = "infra.discovery.registration";
-const DISCOVERY_SCHEMA_VERSION: &str = "20260810.1";
+const DISCOVERY_SCHEMA_VERSION: &str = "20260812.1";
 const SERVICE_KIND: &str = "infer-runtime";
 const DEFAULT_INSTANCE_ID: &str = "local";
 const CONSUMER_PROTOCOL: &str = "infer-runtime.consumer";
-const CONSUMER_PROTOCOL_CANDIDATE_2: &str = "0.1.0-candidate.2";
-const CONSUMER_PROTOCOL_CANDIDATE_3: &str = "0.1.0-candidate.3";
+const CONSUMER_PROTOCOL_VERSION: &str = "0.1.0-candidate.3";
 const CONSUMER_BINDING: &str = "infer-runtime.http-loopback";
 const MAX_REGISTRATION_BYTES: u64 = 64 * 1024;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ConsumerProtocolVersion {
-    Candidate2,
-    Candidate3,
-}
-
-impl ConsumerProtocolVersion {
-    pub(crate) const fn as_str(self) -> &'static str {
-        match self {
-            Self::Candidate2 => CONSUMER_PROTOCOL_CANDIDATE_2,
-            Self::Candidate3 => CONSUMER_PROTOCOL_CANDIDATE_3,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EndpointSource {
     ExplicitOverride,
     Discovery,
-    CompatibilityFallback,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ResolvedEndpoint {
     pub(crate) origin: String,
     pub(crate) source: EndpointSource,
-    pub(crate) protocol_version: Option<ConsumerProtocolVersion>,
+    pub(crate) protocol_version: Option<String>,
     pub(crate) instance_id: Option<String>,
     pub(crate) generation: Option<String>,
-    pub(crate) lease_expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Debug)]
@@ -91,18 +70,15 @@ impl EndpointResolver {
                 protocol_version: None,
                 instance_id: None,
                 generation: None,
-                lease_expires_at: None,
             });
         }
 
-        let now = OffsetDateTime::now_utc();
-        if let Some(selection) = self.discover(now) {
+        if let Some(selection) = self.discover() {
             if let Some(cached) = &self.cached_discovery
                 && cached.instance_id == selection.instance_id
                 && cached.generation == selection.generation
                 && cached.origin == selection.origin
                 && cached.protocol_version == selection.protocol_version
-                && cached.lease_expires_at.is_some_and(|expires| expires > now)
             {
                 return Ok(cached.clone());
             }
@@ -110,17 +86,17 @@ impl EndpointResolver {
             return Ok(selection);
         }
         self.cached_discovery = None;
-        Ok(compatibility_fallback())
+        Err(EndpointError::DiscoveryUnavailable)
     }
 
     pub(crate) fn connection_failed(&mut self) {
         self.cached_discovery = None;
         if self.explicit_override.is_none() {
-            self.cached_discovery = self.discover(OffsetDateTime::now_utc());
+            self.cached_discovery = self.discover();
         }
     }
 
-    fn discover(&self, now: OffsetDateTime) -> Option<ResolvedEndpoint> {
+    fn discover(&self) -> Option<ResolvedEndpoint> {
         let root = self
             .runtime_root_override
             .clone()
@@ -129,6 +105,8 @@ impl EndpointResolver {
         validate_owner_directory(&root, uid).ok()?;
         let registrations = root.join("registrations");
         validate_owner_directory(&registrations, uid).ok()?;
+        #[cfg(unix)]
+        validate_owner_directory(&root.join("sockets"), uid).ok()?;
         let manifest_path = registrations.join("infer-runtime--local.json");
         validate_owner_file(&manifest_path, uid).ok()?;
         let bytes = std::fs::read(&manifest_path).ok()?;
@@ -136,43 +114,39 @@ impl EndpointResolver {
             return None;
         }
         let registration: Registration = serde_json::from_slice(&bytes).ok()?;
-        registration.select_consumer(now).ok()
-    }
-}
-
-fn compatibility_fallback() -> ResolvedEndpoint {
-    ResolvedEndpoint {
-        origin: COMPATIBILITY_FALLBACK_ENDPOINT.to_owned(),
-        source: EndpointSource::CompatibilityFallback,
-        protocol_version: None,
-        instance_id: None,
-        generation: None,
-        lease_expires_at: None,
+        registration.select_consumer().ok()
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct EndpointError;
+pub(crate) enum EndpointError {
+    DiscoveryUnavailable,
+    InvalidEndpoint,
+}
 
 pub(crate) fn canonical_loopback_origin(origin: &str) -> Result<String, EndpointError> {
     if origin.is_empty() || origin.trim() != origin {
-        return Err(EndpointError);
+        return Err(EndpointError::InvalidEndpoint);
     }
-    let authority = origin.strip_prefix("http://").ok_or(EndpointError)?;
+    let authority = origin
+        .strip_prefix("http://")
+        .ok_or(EndpointError::InvalidEndpoint)?;
     if authority.is_empty()
         || authority.contains(['/', '?', '#', '@'])
         || authority.chars().any(char::is_whitespace)
     {
-        return Err(EndpointError);
+        return Err(EndpointError::InvalidEndpoint);
     }
-    let address = authority.parse::<SocketAddr>().map_err(|_| EndpointError)?;
+    let address = authority
+        .parse::<SocketAddr>()
+        .map_err(|_| EndpointError::InvalidEndpoint)?;
     if !address.ip().is_loopback() || address.port() == 0 {
-        return Err(EndpointError);
+        return Err(EndpointError::InvalidEndpoint);
     }
     let canonical = format!("http://{address}");
     (origin == canonical)
         .then_some(canonical)
-        .ok_or(EndpointError)
+        .ok_or(EndpointError::InvalidEndpoint)
 }
 
 fn discovery_runtime_root() -> Option<PathBuf> {
@@ -220,41 +194,43 @@ fn current_effective_uid() -> Option<u32> {
 fn validate_owner_directory(path: &Path, uid: u32) -> Result<(), EndpointError> {
     use std::os::unix::fs::MetadataExt;
 
-    let metadata = std::fs::symlink_metadata(path).map_err(|_| EndpointError)?;
+    let metadata =
+        std::fs::symlink_metadata(path).map_err(|_| EndpointError::DiscoveryUnavailable)?;
     if !metadata.file_type().is_dir()
         || metadata.file_type().is_symlink()
         || metadata.uid() != uid
         || metadata.mode() & 0o7777 != 0o700
     {
-        return Err(EndpointError);
+        return Err(EndpointError::DiscoveryUnavailable);
     }
     Ok(())
 }
 
 #[cfg(not(unix))]
 fn validate_owner_directory(_: &Path, _: u32) -> Result<(), EndpointError> {
-    Err(EndpointError)
+    Err(EndpointError::DiscoveryUnavailable)
 }
 
 #[cfg(unix)]
 fn validate_owner_file(path: &Path, uid: u32) -> Result<(), EndpointError> {
     use std::os::unix::fs::MetadataExt;
 
-    let metadata = std::fs::symlink_metadata(path).map_err(|_| EndpointError)?;
+    let metadata =
+        std::fs::symlink_metadata(path).map_err(|_| EndpointError::DiscoveryUnavailable)?;
     if !metadata.file_type().is_file()
         || metadata.file_type().is_symlink()
         || metadata.uid() != uid
         || metadata.mode() & 0o7777 != 0o600
         || metadata.len() > MAX_REGISTRATION_BYTES
     {
-        return Err(EndpointError);
+        return Err(EndpointError::DiscoveryUnavailable);
     }
     Ok(())
 }
 
 #[cfg(not(unix))]
 fn validate_owner_file(_: &Path, _: u32) -> Result<(), EndpointError> {
-    Err(EndpointError)
+    Err(EndpointError::DiscoveryUnavailable)
 }
 
 #[derive(Debug, Deserialize)]
@@ -263,12 +239,11 @@ struct Registration {
     schema: String,
     schema_version: String,
     service: Service,
-    lease: Lease,
     offers: Vec<Offer>,
 }
 
 impl Registration {
-    fn select_consumer(&self, now: OffsetDateTime) -> Result<ResolvedEndpoint, EndpointError> {
+    fn select_consumer(&self) -> Result<ResolvedEndpoint, EndpointError> {
         if self.schema != DISCOVERY_SCHEMA
             || self.schema_version != DISCOVERY_SCHEMA_VERSION
             || self.service.kind != SERVICE_KIND
@@ -279,17 +254,7 @@ impl Registration {
             || self.offers.is_empty()
             || self.offers.len() > 64
         {
-            return Err(EndpointError);
-        }
-        let renewed_at = parse_timestamp(&self.lease.renewed_at)?;
-        let expires_at = parse_timestamp(&self.lease.expires_at)?;
-        if renewed_at >= expires_at
-            || expires_at - renewed_at > Duration::seconds(120)
-            || renewed_at > now + Duration::seconds(15)
-            || expires_at > now + Duration::seconds(120)
-            || expires_at <= now
-        {
-            return Err(EndpointError);
+            return Err(EndpointError::DiscoveryUnavailable);
         }
 
         let mut selected = None;
@@ -297,40 +262,23 @@ impl Registration {
             offer.validate()?;
             if offer.protocol == CONSUMER_PROTOCOL
                 && offer.binding == CONSUMER_BINDING
-                && let Some(protocol_version) = preferred_consumer_version(&offer.protocol_versions)
+                && offer.protocol_versions.as_slice() == [CONSUMER_PROTOCOL_VERSION]
             {
                 if selected.is_some() {
-                    return Err(EndpointError);
+                    return Err(EndpointError::DiscoveryUnavailable);
                 }
-                selected = Some((
-                    canonical_loopback_origin(&offer.endpoint)?,
-                    protocol_version,
-                ));
+                selected = Some(canonical_loopback_origin(&offer.endpoint)?);
             }
         }
-        let (origin, protocol_version) = selected.ok_or(EndpointError)?;
+        let origin = selected.ok_or(EndpointError::DiscoveryUnavailable)?;
         Ok(ResolvedEndpoint {
             origin,
             source: EndpointSource::Discovery,
-            protocol_version: Some(protocol_version),
+            protocol_version: Some(CONSUMER_PROTOCOL_VERSION.to_owned()),
             instance_id: Some(self.service.instance_id.clone()),
             generation: Some(self.service.generation.clone()),
-            lease_expires_at: Some(expires_at),
         })
     }
-}
-
-fn preferred_consumer_version(versions: &[String]) -> Option<ConsumerProtocolVersion> {
-    if versions
-        .iter()
-        .any(|version| version == CONSUMER_PROTOCOL_CANDIDATE_3)
-    {
-        return Some(ConsumerProtocolVersion::Candidate3);
-    }
-    versions
-        .iter()
-        .any(|version| version == CONSUMER_PROTOCOL_CANDIDATE_2)
-        .then_some(ConsumerProtocolVersion::Candidate2)
 }
 
 #[derive(Debug, Deserialize)]
@@ -339,13 +287,6 @@ struct Service {
     kind: String,
     instance_id: String,
     generation: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Lease {
-    renewed_at: String,
-    expires_at: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -366,23 +307,16 @@ impl Offer {
             || self.protocol_versions.is_empty()
             || self.protocol_versions.len() > 16
         {
-            return Err(EndpointError);
+            return Err(EndpointError::DiscoveryUnavailable);
         }
         let mut unique_versions = BTreeSet::new();
         for version in &self.protocol_versions {
             if !valid_contract_version(version) || !unique_versions.insert(version) {
-                return Err(EndpointError);
+                return Err(EndpointError::DiscoveryUnavailable);
             }
         }
         Ok(())
     }
-}
-
-fn parse_timestamp(value: &str) -> Result<OffsetDateTime, EndpointError> {
-    if value.len() > 40 {
-        return Err(EndpointError);
-    }
-    OffsetDateTime::parse(value, &Rfc3339).map_err(|_| EndpointError)
 }
 
 fn valid_service_kind(value: &str) -> bool {

@@ -8,6 +8,7 @@ add_library(
     src/analysis_proxy.cpp
     src/algorithmic_reverb.cpp
     src/adjustment.cpp
+    src/channel_repair_processor.cpp
     src/decode.cpp
     src/de_click_processor.cpp
     src/de_esser.cpp
@@ -65,6 +66,17 @@ if(BUILD_TESTING)
     target_link_libraries(echo-adaptive-noise-reducer-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-adaptive-noise-reducer-test)
     add_test(NAME echo-adaptive-noise-reducer-test COMMAND echo-adaptive-noise-reducer-test)
+
+    add_executable(
+        echo-channel-repair-processor-test
+        tests/channel_repair_processor_test.cpp
+    )
+    target_link_libraries(echo-channel-repair-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-channel-repair-processor-test)
+    add_test(
+        NAME echo-channel-repair-processor-test
+        COMMAND echo-channel-repair-processor-test
+    )
 
     add_executable(
         echo-de-click-processor-test

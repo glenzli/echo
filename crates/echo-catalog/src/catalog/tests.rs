@@ -1,6 +1,122 @@
 use super::*;
 
 #[test]
+#[allow(clippy::too_many_lines)] // One migration contract protects graph and recipe history bytes.
+fn channel_repair_revision_adds_identity_without_rewriting_existing_history() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-channel-repair-migration-{}",
+        std::process::id()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    let (asset_id, revision_id, legacy_chain, legacy_patch) = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            let registered = crate::register_asset(
+                transaction,
+                &crate::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([68; 32]),
+                    path: std::path::Path::new("/voice/legacy-channels.wav"),
+                    size_bytes: 1,
+                    codec: Some("pcm"),
+                    duration_millis: Some(1_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )?;
+            let asset_id = match registered {
+                crate::RegisterAsset::Created(asset) | crate::RegisterAsset::Existed(asset) => {
+                    asset.id
+                }
+            };
+            let revision = crate::record_adjustment_graph(
+                transaction,
+                asset_id,
+                echo_domain::AdjustmentGraph::identity(1_000)
+                    .expect("identity adjustment validates"),
+                2,
+            )?;
+            let legacy_chain = r#"{"nodes":["restoration","equalizer","dynamics","space","master","de_hum","de_click"],"active_count":5}"#;
+            transaction.execute(
+                "UPDATE asset_adjustment_revisions SET effect_chain_json = ?1 WHERE id = ?2",
+                rusqlite::params![legacy_chain, revision.revision_id],
+            )?;
+            let legacy_patch = r#"{"legacy":"recipe bytes stay immutable"}"#;
+            transaction.execute(
+                "INSERT INTO processing_recipes \
+                 (id, name, created_at_millis, updated_at_millis, archived_at_millis) \
+                 VALUES ('recipe-channel-legacy', 'Legacy channel recipe', 2, 2, NULL)",
+                [],
+            )?;
+            transaction.execute(
+                "INSERT INTO processing_recipe_revisions \
+                 (id, recipe_id, revision_number, patch_json, created_at_millis) \
+                 VALUES ('recipe-channel-legacy-r1', 'recipe-channel-legacy', 1, ?1, 2)",
+                [legacy_patch],
+            )?;
+            transaction.execute(
+                "ALTER TABLE asset_adjustment_revisions DROP COLUMN channel_repair_json",
+                [],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260811.15' WHERE key = 'schema_version'",
+                [],
+            )?;
+            Ok((
+                asset_id,
+                revision.revision_id,
+                legacy_chain.to_owned(),
+                legacy_patch.to_owned(),
+            ))
+        })
+        .expect("legacy channel fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("channel repair revision migrates");
+    let (version, stored_chain, stored_patch, channel_column_count) = migrated
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok((
+                transaction.query_row(
+                    "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT effect_chain_json FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision_id],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT patch_json FROM processing_recipe_revisions \
+                     WHERE id = 'recipe-channel-legacy-r1'",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+                     WHERE name = 'channel_repair_json'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )?,
+            ))
+        })
+        .expect("migrated channel history reads");
+    assert_eq!(version, "20260811.16");
+    assert_eq!(channel_column_count, 1);
+    assert_eq!(stored_chain, legacy_chain);
+    assert_eq!(stored_patch, legacy_patch);
+    let restored = migrated
+        .with_transaction(|transaction| crate::latest_adjustment_graph(transaction, asset_id))
+        .expect("legacy adjustment restores")
+        .expect("legacy adjustment exists");
+    assert_eq!(restored.revision_id, revision_id);
+    assert_eq!(
+        restored.graph.channel_repair(),
+        echo_domain::ChannelRepairSettings::identity()
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn de_plosive_revision_preserves_legacy_restoration_json_and_defaults_disabled() {
     let root = std::env::temp_dir().join(format!(
         "echo-schema-de-plosive-migration-{}",
@@ -67,7 +183,7 @@ fn de_plosive_revision_preserves_legacy_restoration_json_and_defaults_disabled()
             ))
         })
         .expect("migrated restoration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(stored_json, legacy_json);
     assert_eq!(restored.revision_id, revision_id);
     assert_eq!(
@@ -192,7 +308,7 @@ fn source_edit_revision_adds_columns_without_rewriting_adjustments_recipes_or_re
             ))
         })
         .expect("migrated evidence reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(source_edit_columns, 2);
     assert_eq!(adjustment_ids, vec![adjustment_revision_id]);
     assert_eq!(stored_patch_json, patch_json);
@@ -311,7 +427,7 @@ fn immediately_previous_revision_adds_recipe_management_without_rewriting_histor
             },
         )
         .expect("migration schema reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(archived_column_count, 1);
     assert_eq!(revert_table_count, 2);
     assert_eq!(revision_count, 1);
@@ -411,7 +527,7 @@ fn processing_recipe_revision_adds_recipes_without_rewriting_assets() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(table_count, 4);
     assert_eq!(asset_count, 1);
     assert_eq!(stored_revision_id, revision_id);
@@ -498,7 +614,7 @@ fn restorative_effects_revision_adds_settings_without_rewriting_history() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(column_count, 2);
     assert!(!legacy_json.contains("active_count"));
     assert!(!legacy_json.contains("de_hum"));
@@ -606,7 +722,7 @@ fn fixed_chain_revision_adds_authored_effect_chain_column() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert!(default_expression.contains("restoration"));
     assert!(default_expression.contains("master"));
     let _ = std::fs::remove_dir_all(root);
@@ -650,7 +766,7 @@ fn immediately_previous_revision_adds_delivery_formats() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert!(table_sql.contains("wav_pcm16"));
     assert!(table_sql.contains("flac24"));
     let _ = std::fs::remove_dir_all(root);
@@ -697,7 +813,7 @@ fn immediately_previous_revision_adds_restoration_chain() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(restoration_column_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -765,7 +881,7 @@ fn previous_catalog_revision_adds_render_exports_without_losing_assets() {
                 ))
             })
             .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(asset_count, 1);
     assert_eq!(render_table_count, 1);
     assert_eq!(album_table_count, 1);
@@ -813,7 +929,7 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(album_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -880,7 +996,7 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(render_table_count, 1);
     assert_eq!(reverb_column_count, 1);
     assert_eq!(album_table_count, 1);
@@ -926,7 +1042,7 @@ fn immediately_previous_revision_adds_long_audio_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(segment_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -976,7 +1092,7 @@ fn immediately_previous_revision_adds_semantic_search_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260811.15");
+    assert_eq!(version, "20260811.16");
     assert_eq!(document_count, 1);
     assert_eq!(fts_count, 1);
     let _ = std::fs::remove_dir_all(root);

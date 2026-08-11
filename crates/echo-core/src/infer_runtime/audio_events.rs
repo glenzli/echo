@@ -11,7 +11,7 @@ use ureq::unversioned::multipart::Form;
 
 use super::{
     InferRuntimeClient, InferRuntimeError, InferRuntimeErrorKind, RuntimeJobSnapshot,
-    RuntimeProvenance, default_background_constraints, encode_metadata_for_contract,
+    RuntimeProvenance, RuntimeSession, default_background_constraints, encode_metadata,
     validate_succeeded_job,
 };
 
@@ -181,7 +181,7 @@ impl InferRuntimeClient {
         Self::validate_source(source)?;
         self.validate_token()?;
         let session = self.begin_session()?;
-        let metadata = encode_metadata_for_contract(&intent.metadata, session.contract)?;
+        let metadata = encode_metadata(&intent.metadata)?;
         let form = Form::new()
             .text("model", &intent.model)
             .text("metadata", &metadata)
@@ -212,7 +212,7 @@ impl InferRuntimeClient {
             policy: response.policy,
             provenance: response.provenance,
             runtime: RuntimeProvenance {
-                contract_version: session.contract_version().to_owned(),
+                contract_version: RuntimeSession::contract_version().to_owned(),
                 job,
             },
         })

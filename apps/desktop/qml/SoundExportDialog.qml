@@ -38,7 +38,7 @@ Popup {
     function startExport(): void {
         if (!asset || draft.dirty || destination.toString().length === 0)
             return;
-        exporter.exportAdjusted(asset.id, Number(asset.adjustmentRevision || 0), asset.path, destination, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks);
+        exporter.exportAdjusted(asset.id, Number(asset.adjustmentRevision || 0), asset.path, destination, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.channelRepairValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks);
     }
 
     function debugExport(destinationUrl: url): void {

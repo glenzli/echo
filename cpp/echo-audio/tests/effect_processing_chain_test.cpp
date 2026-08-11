@@ -24,6 +24,7 @@ echo::audio::PlaybackAdjustment master_only() {
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::ChannelRepair,
     };
     adjustment.effect_chain_count = 1;
     return adjustment;
@@ -39,6 +40,7 @@ echo::audio::PlaybackAdjustment bypassed_de_click() {
         echo::audio::EffectNodeKind::Equalizer,
         echo::audio::EffectNodeKind::Dynamics,
         echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::ChannelRepair,
     };
     adjustment.effect_chain_count = 3;
     return adjustment;
@@ -54,7 +56,30 @@ echo::audio::PlaybackAdjustment reordered_bypassed_de_click() {
         echo::audio::EffectNodeKind::Equalizer,
         echo::audio::EffectNodeKind::Dynamics,
         echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::ChannelRepair,
     };
+    return adjustment;
+}
+
+echo::audio::PlaybackAdjustment channel_repair_only() {
+    auto adjustment = master_only();
+    adjustment.channel_repair = {
+        .enabled = true,
+        .invert_left = true,
+        .swap_channels = true,
+        .balance_percent = 50,
+    };
+    adjustment.effect_chain = {
+        echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::DeClick,
+    };
+    adjustment.effect_chain_count = 2;
     return adjustment;
 }
 
@@ -113,6 +138,16 @@ int main() {
     }
 
     {
+        const echo::audio::PreparedAdjustment prepared(channel_repair_only(), 1000, kSampleRate);
+        echo::audio::EffectProcessingChain chain(prepared, kSampleRate, kChannels);
+        const std::vector<float> input = {0.8F, -0.2F};
+        const auto output = process_in_chunks(chain, input, 1);
+        assert(output.size() == 2);
+        assert(std::abs(output[0] - -0.1F) < 1.0E-6F);
+        assert(std::abs(output[1] - -0.8F) < 1.0E-6F);
+    }
+
+    {
         constexpr std::array<std::size_t, 5> frame_counts = {31, 96, 97, 98, 151};
         constexpr std::array<std::size_t, 4> chunk_sizes = {1, 13, 64, 101};
         for (const std::size_t frame_count : frame_counts) {
@@ -161,6 +196,7 @@ int main() {
             echo::audio::EffectNodeKind::Space,
             echo::audio::EffectNodeKind::DeHum,
             echo::audio::EffectNodeKind::DeClick,
+            echo::audio::EffectNodeKind::ChannelRepair,
         };
         adjustment.effect_chain_count = 2;
         adjustment.equalizer.bands[0].gain_centibels = 1200;

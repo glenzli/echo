@@ -72,6 +72,8 @@ class PlaybackSession {
     /// Publishes a latest-wins short-transient repair target. The node's
     /// fixed latency remains stable for the lifetime of the session.
     void update_de_click(DeClickAdjustment adjustment);
+    /// Publishes a click-free stereo fault-repair target without restarting.
+    void update_channel_repair(ChannelRepairAdjustment adjustment);
     /// Publishes a latest-wins compressor target. The producer applies it to
     /// the persistent detector without restarting playback.
     void update_compressor(CompressorAdjustment adjustment);

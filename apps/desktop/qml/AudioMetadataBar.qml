@@ -15,39 +15,44 @@ Rectangle {
     radius: Theme.controlRadius
     border.color: Theme.border
 
-    function formatDuration(millis: int) : string {
+    function formatDuration(millis: int): string {
         if (!millis || millis <= 0) {
-            return qsTr("Unknown")
+            return qsTr("Unknown");
         }
-        const totalSeconds = Math.floor(millis / 1000)
-        const minutes = Math.floor(totalSeconds / 60)
-        const seconds = totalSeconds % 60
-        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+        const totalSeconds = Math.floor(millis / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
     }
 
-    function formatDate(millis: double) : string {
+    function formatDate(millis: double): string {
         if (!millis || millis <= 0) {
-            return qsTr("Unknown")
+            return qsTr("Unknown");
         }
-        return new Date(millis).toLocaleString(Qt.locale(), Locale.ShortFormat)
+        return new Date(millis).toLocaleString(Qt.locale(), Locale.ShortFormat);
     }
 
-    function insightTags() : string {
+    function insightTags(): string {
         if (asset === null) {
-            return ""
+            return "";
         }
-        const parts = []
-        if (asset.eventType.length > 0) {
-            parts.push(asset.eventType)
+        const parts = [];
+        const eventLabel = SoundSemantics.eventLabel(asset.eventType);
+        if (eventLabel.length > 0) {
+            parts.push(eventLabel);
         }
         if (asset.mood.length > 0) {
-            parts.push(asset.mood)
+            parts.push(asset.mood);
         }
-        const keywords = asset.keywords
+        const languageLabel = SoundSemantics.languageLabel(asset.language);
+        if (languageLabel.length > 0) {
+            parts.push(languageLabel);
+        }
+        const keywords = asset.keywords;
         for (let index = 0; index < keywords.length; ++index) {
-            parts.push(String(keywords[index]))
+            parts.push(String(keywords[index]));
         }
-        return parts.join(" · ")
+        return parts.join(" · ");
     }
 
     ColumnLayout {
@@ -66,8 +71,7 @@ Rectangle {
                 model: metadata.asset !== null ? [
                     {
                         label: qsTr("Format"),
-                        value: metadata.asset.codec.length > 0
-                            ? metadata.asset.codec.toUpperCase() : qsTr("Audio")
+                        value: metadata.asset.codec.length > 0 ? metadata.asset.codec.toUpperCase() : qsTr("Audio")
                     },
                     {
                         label: qsTr("Duration"),
@@ -75,9 +79,7 @@ Rectangle {
                     },
                     {
                         label: qsTr("Recorded"),
-                        value: metadata.formatDate(metadata.asset.recordedAtMillis > 0
-                            ? metadata.asset.recordedAtMillis
-                            : metadata.asset.importedAtMillis)
+                        value: metadata.formatDate(metadata.asset.recordedAtMillis > 0 ? metadata.asset.recordedAtMillis : metadata.asset.importedAtMillis)
                     }
                 ] : []
 
@@ -100,14 +102,14 @@ Rectangle {
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            visible: metadata.asset !== null
-                && (metadata.asset.summary.length > 0
-                    || metadata.insightTags().length > 0)
+            visible: metadata.asset !== null && (metadata.asset.summary.length > 0 || metadata.insightTags().length > 0)
             spacing: 10
 
             Text {

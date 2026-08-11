@@ -10,21 +10,26 @@ Rectangle {
     id: panel
     required property var draft
 
+    radius: Theme.compactControlRadius
     color: Theme.panelRaised
+    border.width: 1
+    border.color: Theme.borderStrong
 
-    function toggle(enabled: bool, callback: var) : void {
-        panel.draft.beginGesture()
-        callback(!enabled)
-        panel.draft.endGesture()
+    function toggle(enabled: bool, callback: var): void {
+        panel.draft.beginGesture();
+        callback(!enabled);
+        panel.draft.endGesture();
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 8
+        spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.preferredHeight: 34
+            Layout.leftMargin: 12
+            Layout.rightMargin: 8
             spacing: 7
 
             EchoIcon {
@@ -38,7 +43,9 @@ Rectangle {
                 font.pixelSize: Theme.fontBody
                 font.weight: Font.DemiBold
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset restoration")
@@ -48,16 +55,30 @@ Rectangle {
             }
         }
 
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.border
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 16
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
+            spacing: Theme.editorPanelGap
 
             DePlosivePanel {
                 draft: panel.draft
             }
 
-            Rectangle { Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.border }
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                color: Theme.border
+            }
 
             ColumnLayout {
                 Layout.preferredWidth: 230
@@ -74,21 +95,29 @@ Rectangle {
                         font.pixelSize: Theme.fontBody
                         font.weight: Font.DemiBold
                     }
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                    }
                     Rectangle {
-                        implicitWidth: 30; implicitHeight: 17
+                        implicitWidth: 30
+                        implicitHeight: 17
                         radius: height / 2
                         color: panel.draft.noiseReductionEnabled ? Theme.accent : Theme.track
                         Rectangle {
-                            width: 13; height: 13; radius: 7; y: 2
+                            width: 13
+                            height: 13
+                            radius: 7
+                            y: 2
                             x: panel.draft.noiseReductionEnabled ? parent.width - width - 2 : 2
-                            color: panel.draft.noiseReductionEnabled
-                                ? Theme.accentText : Theme.panelRaised
-                            Behavior on x { NumberAnimation { duration: 90 } }
+                            color: panel.draft.noiseReductionEnabled ? Theme.accentText : Theme.panelRaised
+                            Behavior on x {
+                                NumberAnimation {
+                                    duration: 90
+                                }
+                            }
                         }
                         TapHandler {
-                            onTapped: panel.toggle(panel.draft.noiseReductionEnabled,
-                                enabled => panel.draft.noiseReductionEnabled = enabled)
+                            onTapped: panel.toggle(panel.draft.noiseReductionEnabled, enabled => panel.draft.noiseReductionEnabled = enabled)
                         }
                     }
                 }
@@ -96,7 +125,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Reduction")
-                    from: 0; to: 2400; stepSize: 50
+                    from: 0
+                    to: 2400
+                    stepSize: 50
                     value: panel.draft.noiseReductionCentibels
                     valueText: (value / 100).toFixed(1) + " dB"
                     onGestureStarted: panel.draft.beginGesture()
@@ -106,7 +137,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Sensitivity")
-                    from: 0; to: 100; stepSize: 1
+                    from: 0
+                    to: 100
+                    stepSize: 1
                     value: panel.draft.noiseReductionSensitivityPercent
                     valueText: Math.round(value) + "%"
                     onGestureStarted: panel.draft.beginGesture()
@@ -116,7 +149,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Release")
-                    from: 20; to: 1000; stepSize: 10
+                    from: 20
+                    to: 1000
+                    stepSize: 10
                     value: panel.draft.noiseReductionSmoothingMillis
                     valueText: Math.round(value) + " ms"
                     onGestureStarted: panel.draft.beginGesture()
@@ -133,7 +168,11 @@ Rectangle {
                 }
             }
 
-            Rectangle { Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.border }
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                color: Theme.border
+            }
 
             ColumnLayout {
                 Layout.preferredWidth: 230
@@ -150,21 +189,29 @@ Rectangle {
                         font.pixelSize: Theme.fontBody
                         font.weight: Font.DemiBold
                     }
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                    }
                     Rectangle {
-                        implicitWidth: 30; implicitHeight: 17
+                        implicitWidth: 30
+                        implicitHeight: 17
                         radius: height / 2
                         color: panel.draft.deEsserEnabled ? Theme.accent : Theme.track
                         Rectangle {
-                            width: 13; height: 13; radius: 7; y: 2
+                            width: 13
+                            height: 13
+                            radius: 7
+                            y: 2
                             x: panel.draft.deEsserEnabled ? parent.width - width - 2 : 2
-                            color: panel.draft.deEsserEnabled
-                                ? Theme.accentText : Theme.panelRaised
-                            Behavior on x { NumberAnimation { duration: 90 } }
+                            color: panel.draft.deEsserEnabled ? Theme.accentText : Theme.panelRaised
+                            Behavior on x {
+                                NumberAnimation {
+                                    duration: 90
+                                }
+                            }
                         }
                         TapHandler {
-                            onTapped: panel.toggle(panel.draft.deEsserEnabled,
-                                enabled => panel.draft.deEsserEnabled = enabled)
+                            onTapped: panel.toggle(panel.draft.deEsserEnabled, enabled => panel.draft.deEsserEnabled = enabled)
                         }
                     }
                 }
@@ -172,7 +219,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Frequency")
-                    from: 3000; to: 12000; stepSize: 100
+                    from: 3000
+                    to: 12000
+                    stepSize: 100
                     value: panel.draft.deEsserFrequencyHertz
                     valueText: (value / 1000).toFixed(1) + " kHz"
                     onGestureStarted: panel.draft.beginGesture()
@@ -182,7 +231,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Threshold")
-                    from: -6000; to: 0; stepSize: 50
+                    from: -6000
+                    to: 0
+                    stepSize: 50
                     value: panel.draft.deEsserThresholdCentibels
                     valueText: (value / 100).toFixed(1) + " dB"
                     onGestureStarted: panel.draft.beginGesture()
@@ -192,7 +243,9 @@ Rectangle {
                 EchoParameterSlider {
                     Layout.fillWidth: true
                     label: qsTr("Limit")
-                    from: 0; to: 1800; stepSize: 50
+                    from: 0
+                    to: 1800
+                    stepSize: 50
                     value: panel.draft.deEsserReductionCentibels
                     valueText: (value / 100).toFixed(1) + " dB"
                     onGestureStarted: panel.draft.beginGesture()
@@ -209,7 +262,9 @@ Rectangle {
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
         }
     }
 }

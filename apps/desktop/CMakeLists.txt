@@ -143,6 +143,7 @@ if(APPLE)
     target_sources(echo-desktop PRIVATE "${ECHO_APP_ICON_FILE}")
 endif()
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(qml/SoundSemantics.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(
     echo-desktop
     URI EchoDesktop
@@ -157,6 +158,7 @@ qt_add_qml_module(
         qml/AdjustmentPanelHeader.qml
         qml/AudioSpaceWorkspace.qml
         qml/BasicAdjustmentPanel.qml
+        qml/ChannelRepairPanel.qml
         qml/DeClickPanel.qml
         qml/DePlosivePanel.qml
         qml/DeHumPanel.qml
@@ -204,6 +206,8 @@ qt_add_qml_module(
         qml/SoundMultiSelectionToolbar.qml
         qml/SoundPresentationToolbar.qml
         qml/SoundSelectionToolbar.qml
+        qml/SoundSemanticTag.qml
+        qml/SoundSemantics.qml
         qml/SoundWall.qml
         qml/SoundWallBottomBar.qml
         qml/Theme.qml
@@ -236,6 +240,18 @@ qt_add_qml_module(
         icons/equalizer.svg
         icons/export.svg
         icons/history.svg
+        icons/heart.svg
+        icons/heart-filled.svg
+        icons/star.svg
+        icons/star-filled.svg
+        icons/clock.svg
+        icons/source-missing.svg
+        icons/album.svg
+        icons/album-add.svg
+        icons/sparkles.svg
+        icons/plus.svg
+        icons/more-horizontal.svg
+        icons/chevron-down.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

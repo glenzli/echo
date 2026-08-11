@@ -16,7 +16,7 @@ enum class FadeCurve : std::uint8_t {
 };
 
 inline constexpr std::size_t kParametricEqualizerBandCount = 6;
-inline constexpr std::size_t kEffectNodeCount = 7;
+inline constexpr std::size_t kEffectNodeCount = 8;
 
 enum class EffectNodeKind : std::uint8_t {
     Restoration = 0,
@@ -26,6 +26,7 @@ enum class EffectNodeKind : std::uint8_t {
     Master = 4,
     DeHum = 5,
     DeClick = 6,
+    ChannelRepair = 7,
 };
 
 enum class EditSegmentState : std::uint8_t {
@@ -141,6 +142,17 @@ struct DeClickAdjustment {
     std::uint8_t repair_percent = 100;
 };
 
+/// Recovery controls for common stereo-channel faults. Balance is expressed
+/// as -100..100 percent: negative attenuates right, positive attenuates left.
+struct ChannelRepairAdjustment {
+    bool enabled = false;
+    bool invert_left = false;
+    bool invert_right = false;
+    bool swap_channels = false;
+    bool mono_fold_down = false;
+    std::int16_t balance_percent = 0;
+};
+
 /// Stereo-linked final-output peak limiter intent.
 struct LimiterAdjustment {
     bool enabled = false;
@@ -176,6 +188,7 @@ struct PlaybackAdjustment {
     RestorationAdjustment restoration;
     DeHumAdjustment de_hum;
     DeClickAdjustment de_click;
+    ChannelRepairAdjustment channel_repair;
     ParametricEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
     ReverbAdjustment reverb;
@@ -188,6 +201,7 @@ struct PlaybackAdjustment {
         EffectNodeKind::Master,
         EffectNodeKind::DeHum,
         EffectNodeKind::DeClick,
+        EffectNodeKind::ChannelRepair,
     }};
     std::uint8_t effect_chain_count = 5;
     std::vector<EditSegment> edit_segments;
@@ -214,6 +228,7 @@ class PreparedAdjustment {
     [[nodiscard]] RestorationAdjustment restoration() const;
     [[nodiscard]] DeHumAdjustment de_hum() const;
     [[nodiscard]] DeClickAdjustment de_click() const;
+    [[nodiscard]] ChannelRepairAdjustment channel_repair() const;
     [[nodiscard]] ParametricEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] ReverbAdjustment reverb() const;
@@ -239,6 +254,7 @@ class PreparedAdjustment {
     RestorationAdjustment restoration_;
     DeHumAdjustment de_hum_;
     DeClickAdjustment de_click_;
+    ChannelRepairAdjustment channel_repair_;
     ParametricEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
     ReverbAdjustment reverb_;

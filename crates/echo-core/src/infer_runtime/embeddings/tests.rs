@@ -47,7 +47,6 @@ fn text_embedding_requires_local_constraints_and_matching_provenance() {
         request["metadata"]["infer.capability_floor"],
         "foundational"
     );
-    assert!(request["metadata"].get("infer.quality_floor").is_none());
     assert_eq!(request["metadata"]["infer.fallback"], "none");
     assert_eq!(request["metadata"]["infer.max_cost_usd"], "0");
     assert_eq!(request["metadata"].as_object().unwrap().len(), 9);
@@ -74,41 +73,6 @@ fn text_embedding_rejects_a_wrong_vector_contract() {
     assert_eq!(error.kind, InferRuntimeErrorKind::Protocol);
     assert_eq!(error.code, "invalid_text_embedding_payload");
     server.join().expect("server exits");
-}
-
-#[test]
-fn text_embedding_translates_candidate2_vocabulary_and_normalizes_provenance() {
-    let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
-        json_response(&embedding_response("space-v1", 768)),
-        json_response(&candidate2_job_snapshot()),
-    ]);
-    let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let payload = client
-        .embed_text(
-            "fixture semantic document",
-            &TextEmbeddingIntent::new("source-revision-1"),
-        )
-        .expect("candidate2 response is translated at the wire boundary");
-
-    assert_eq!(payload.runtime.contract_version, "0.1.0-candidate.2");
-    assert_eq!(payload.runtime.job.intent, TEXT_EMBEDDING_INTENT);
-    assert_eq!(payload.runtime.job.capability_level, "foundational");
-    assert_eq!(
-        payload.runtime.job.constraints.capability_floor.as_deref(),
-        Some("foundational")
-    );
-    assert_eq!(payload.runtime.job.routing.capability_floor, "foundational");
-
-    let requests = server.join().expect("server exits");
-    let request: Value = serde_json::from_slice(&requests[1]).expect("request JSON decodes");
-    assert_eq!(request["model"], "vision.embed_text");
-    assert_eq!(request["metadata"]["infer.quality_floor"], "basic");
-    assert!(request["metadata"].get("infer.capability_floor").is_none());
 }
 
 fn candidate3_contract() -> String {
@@ -200,34 +164,6 @@ fn job_snapshot() -> String {
         }]
     })
     .to_string()
-}
-
-fn candidate2_job_snapshot() -> String {
-    let mut job: Value = serde_json::from_str(&job_snapshot()).expect("job fixture decodes");
-    job["intent"] = json!("vision.embed_text");
-    job.as_object_mut()
-        .expect("job is object")
-        .insert("quality_grade".to_owned(), json!("basic"));
-    job.as_object_mut()
-        .expect("job is object")
-        .insert("rating_status".to_owned(), json!("provisional"));
-    job.as_object_mut()
-        .expect("job is object")
-        .remove("capability_level");
-    job.as_object_mut()
-        .expect("job is object")
-        .remove("evaluation_status");
-    job["constraints"]["quality_floor"] = json!("basic");
-    job["constraints"]
-        .as_object_mut()
-        .expect("constraints are object")
-        .remove("capability_floor");
-    job["routing"]["quality_floor"] = json!("basic");
-    job["routing"]
-        .as_object_mut()
-        .expect("routing is object")
-        .remove("capability_floor");
-    job.to_string()
 }
 
 fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<Vec<Vec<u8>>>) {

@@ -15,15 +15,14 @@ Rectangle {
     property bool suggested: false
     property string subtitle: ""
 
-    signal activated()
-    signal saveRequested()
-    signal renameRequested()
-    signal deleteRequested()
+    signal activated
+    signal saveRequested
+    signal renameRequested
+    signal deleteRequested
 
     implicitHeight: subtitle.length > 0 ? 46 : 36
     radius: Theme.controlRadius
-    color: selected ? Theme.accentSurfaceQuiet
-                    : hover.hovered ? Theme.surfaceSubtle : Theme.transparent
+    color: selected ? Theme.accentSurfaceQuiet : hover.hovered ? Theme.surfaceSubtle : Theme.transparent
 
     Rectangle {
         anchors.left: parent.left
@@ -35,7 +34,9 @@ Rectangle {
         color: Theme.accent
     }
 
-    HoverHandler { id: hover }
+    HoverHandler {
+        id: hover
+    }
 
     TapHandler {
         acceptedButtons: Qt.LeftButton
@@ -48,10 +49,10 @@ Rectangle {
         anchors.rightMargin: 4
         spacing: 7
 
-        Text {
-            text: row.suggested ? "✦" : "▱"
+        EchoIcon {
+            source: row.suggested ? "qrc:/EchoDesktop/icons/sparkles.svg" : "qrc:/EchoDesktop/icons/album.svg"
             color: row.suggested ? Theme.accent : Theme.textSecondary
-            font.pixelSize: 14
+            size: 15
         }
 
         ColumnLayout {
@@ -91,8 +92,10 @@ Rectangle {
             padding: 0
             focusPolicy: Qt.NoFocus
             onClicked: {
-                if (row.suggested) row.saveRequested()
-                else actionMenu.popup(actionButton, 0, actionButton.height)
+                if (row.suggested)
+                    row.saveRequested();
+                else
+                    actionMenu.popup(actionButton, 0, actionButton.height);
             }
 
             ToolTip.visible: hovered
@@ -104,12 +107,10 @@ Rectangle {
                 color: actionButton.hovered ? Theme.buttonGhostHover : Theme.transparent
             }
 
-            contentItem: Text {
-                text: row.suggested ? "+" : "···"
+            contentItem: EchoIcon {
+                source: row.suggested ? "qrc:/EchoDesktop/icons/plus.svg" : "qrc:/EchoDesktop/icons/more-horizontal.svg"
                 color: Theme.textSecondary
-                font.pixelSize: row.suggested ? 17 : 13
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+                size: row.suggested ? 15 : 14
             }
         }
     }

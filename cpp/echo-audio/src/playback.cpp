@@ -306,6 +306,7 @@ class PlaybackSession::Impl {
         pending_restoration_ = adjustment_->restoration();
         pending_de_hum_ = adjustment_->de_hum();
         pending_de_click_ = adjustment_->de_click();
+        pending_channel_repair_ = adjustment_->channel_repair();
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -442,6 +443,20 @@ class PlaybackSession::Impl {
             std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_de_click_ = adjustment;
             de_click_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
+    void update_channel_repair(ChannelRepairAdjustment adjustment) {
+        EffectProcessingChain::validate_channel_repair(
+            adjustment,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        {
+            std::lock_guard<std::mutex> lock(effect_mutex_);
+            pending_channel_repair_ = adjustment;
+            channel_repair_update_pending_ = true;
         }
         control_cv_.notify_one();
     }
@@ -627,6 +642,10 @@ class PlaybackSession::Impl {
         if (de_click_update_pending_) {
             effect_chain_->update_de_click(pending_de_click_);
             de_click_update_pending_ = false;
+        }
+        if (channel_repair_update_pending_) {
+            effect_chain_->update_channel_repair(pending_channel_repair_);
+            channel_repair_update_pending_ = false;
         }
         if (compressor_update_pending_) {
             effect_chain_->update_compressor(pending_compressor_);
@@ -998,6 +1017,8 @@ class PlaybackSession::Impl {
     bool de_hum_update_pending_ = false;
     DeClickAdjustment pending_de_click_;
     bool de_click_update_pending_ = false;
+    ChannelRepairAdjustment pending_channel_repair_;
+    bool channel_repair_update_pending_ = false;
     CompressorAdjustment pending_compressor_;
     bool compressor_update_pending_ = false;
     ReverbAdjustment pending_reverb_;
@@ -1062,6 +1083,9 @@ void PlaybackSession::update_de_hum(DeHumAdjustment adjustment) {
 }
 void PlaybackSession::update_de_click(DeClickAdjustment adjustment) {
     impl_->update_de_click(adjustment);
+}
+void PlaybackSession::update_channel_repair(ChannelRepairAdjustment adjustment) {
+    impl_->update_channel_repair(adjustment);
 }
 void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
     impl_->update_compressor(adjustment);

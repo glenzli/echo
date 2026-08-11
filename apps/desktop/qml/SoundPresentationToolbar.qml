@@ -20,12 +20,12 @@ ToolBar {
     signal searchRequested(string text)
     signal viewModeRequested(string mode)
     signal cardWidthRequested(real width)
-    signal processingRecipesRequested()
-    signal processingRecipeManagementRequested()
-    signal processingHistoryRequested()
-    signal batchExportRequested()
+    signal processingRecipesRequested
+    signal processingRecipeManagementRequested
+    signal processingHistoryRequested
+    signal batchExportRequested
 
-    implicitHeight: 44
+    implicitHeight: 46
     leftPadding: 14
     rightPadding: 12
     topPadding: 6
@@ -44,28 +44,38 @@ ToolBar {
     }
 
     contentItem: RowLayout {
-        spacing: 8
+        spacing: 9
 
         Text {
-            text: toolbar.collectionName.toUpperCase()
-            color: Theme.textSecondary
-            font.pixelSize: 9
+            Layout.maximumWidth: 150
+            text: toolbar.collectionName
+            color: Theme.textPrimary
+            font.pixelSize: 12
             font.bold: true
-            font.letterSpacing: 0.8
             elide: Text.ElideRight
         }
 
-        Text {
-            text: qsTr("%1 visible").arg(toolbar.visibleCount)
-            color: Theme.textPrimary
-            font.pixelSize: Theme.fontMeta
+        Rectangle {
+            Layout.preferredWidth: visibleCountText.implicitWidth + 12
+            Layout.preferredHeight: 22
+            radius: 7
+            color: Theme.surfaceSubtle
+
+            Text {
+                id: visibleCountText
+                anchors.centerIn: parent
+                text: qsTr("%1 visible").arg(toolbar.visibleCount)
+                color: Theme.textMuted
+                font.pixelSize: 9
+                font.bold: true
+            }
         }
 
         EchoTextField {
-            Layout.leftMargin: 8
-            Layout.minimumWidth: 140
-            Layout.preferredWidth: 230
-            Layout.maximumWidth: 280
+            Layout.leftMargin: 4
+            Layout.minimumWidth: 150
+            Layout.preferredWidth: 240
+            Layout.maximumWidth: 300
             implicitHeight: Theme.compactControlHeight
             text: toolbar.searchText
             placeholderText: qsTr("Search sounds by words or meaning…")
@@ -80,99 +90,158 @@ ToolBar {
             Accessible.name: qsTr("Searching meaning")
         }
 
-        Item { Layout.fillWidth: true }
-
-        EchoIconButton {
-            source: "qrc:/EchoDesktop/icons/tune.svg"
-            enabled: toolbar.visibleCount > 0
-            toolTipText: qsTr("Apply processing recipe")
-            accessibleName: toolTipText
-            buttonSize: 28
-            iconSize: 15
-            onClicked: toolbar.processingRecipesRequested()
-        }
-
-        EchoIconButton {
-            source: "qrc:/EchoDesktop/icons/equalizer.svg"
-            toolTipText: qsTr("Manage processing recipes")
-            accessibleName: toolTipText
-            buttonSize: 28
-            iconSize: 15
-            onClicked: toolbar.processingRecipeManagementRequested()
-        }
-
-        EchoIconButton {
-            source: "qrc:/EchoDesktop/icons/history.svg"
-            toolTipText: qsTr("Processing history")
-            accessibleName: toolTipText
-            buttonSize: 28
-            iconSize: 15
-            onClicked: toolbar.processingHistoryRequested()
-        }
-
-        EchoIconButton {
-            source: "qrc:/EchoDesktop/icons/export.svg"
-            enabled: toolbar.visibleCount > 0 && !batchExporter.running
-            selected: batchExporter.running || batchExporter.recoverable
-            toolTipText: batchExporter.recoverable
-                ? qsTr("Resume batch export") : qsTr("Export current results")
-            accessibleName: toolTipText
-            buttonSize: 28
-            iconSize: 15
-            onClicked: toolbar.batchExportRequested()
+        Item {
+            Layout.fillWidth: true
         }
 
         Rectangle {
-            Layout.preferredWidth: 1
-            Layout.preferredHeight: 18
-            color: Theme.border
+            Layout.preferredWidth: processingActions.implicitWidth + 6
+            Layout.preferredHeight: 32
+            radius: 8
+            color: Theme.surfaceSubtle
+
+            RowLayout {
+                id: processingActions
+                anchors.centerIn: parent
+                spacing: 0
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/tune.svg"
+                    enabled: toolbar.visibleCount > 0
+                    toolTipText: qsTr("Apply processing recipe")
+                    accessibleName: toolTipText
+                    buttonSize: 28
+                    iconSize: 15
+                    onClicked: toolbar.processingRecipesRequested()
+                }
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/equalizer.svg"
+                    toolTipText: qsTr("Manage processing recipes")
+                    accessibleName: toolTipText
+                    buttonSize: 28
+                    iconSize: 15
+                    onClicked: toolbar.processingRecipeManagementRequested()
+                }
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/history.svg"
+                    toolTipText: qsTr("Processing history")
+                    accessibleName: toolTipText
+                    buttonSize: 28
+                    iconSize: 15
+                    onClicked: toolbar.processingHistoryRequested()
+                }
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/export.svg"
+                    enabled: toolbar.visibleCount > 0 && !batchExporter.running
+                    selected: batchExporter.running || batchExporter.recoverable
+                    toolTipText: batchExporter.recoverable ? qsTr("Resume batch export") : qsTr("Export current results")
+                    accessibleName: toolTipText
+                    buttonSize: 28
+                    iconSize: 15
+                    onClicked: toolbar.batchExportRequested()
+                }
+            }
         }
 
-        EchoIconButton {
-            source: "qrc:/EchoDesktop/icons/review-grid.svg"
-            selected: toolbar.viewMode === "grid"
-            toolTipText: qsTr("Grid view")
-            accessibleName: toolTipText
-            buttonSize: 28
-            iconSize: 15
-            onClicked: toolbar.viewModeRequested("grid")
+        Rectangle {
+            Layout.preferredWidth: viewActions.implicitWidth + 6
+            Layout.preferredHeight: 32
+            radius: 8
+            color: Theme.surfaceSubtle
+
+            RowLayout {
+                id: viewActions
+                anchors.centerIn: parent
+                spacing: 0
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/review-grid.svg"
+                    selected: toolbar.viewMode === "grid"
+                    toolTipText: qsTr("Grid view")
+                    accessibleName: toolTipText
+                    buttonSize: 28
+                    iconSize: 15
+                    onClicked: toolbar.viewModeRequested("grid")
+                }
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/filmstrip.svg"
+                    selected: toolbar.viewMode === "focus"
+                    toolTipText: qsTr("Single sound with filmstrip")
+                    accessibleName: toolTipText
+                    buttonSize: 28
+                    iconSize: 15
+                    onClicked: toolbar.viewModeRequested("focus")
+                }
+            }
         }
 
-        EchoIconButton {
-            source: "qrc:/EchoDesktop/icons/filmstrip.svg"
-            selected: toolbar.viewMode === "focus"
-            toolTipText: qsTr("Single sound with filmstrip")
-            accessibleName: toolTipText
-            buttonSize: 28
-            iconSize: 15
-            onClicked: toolbar.viewModeRequested("focus")
-        }
-
-        Text {
+        Item {
             visible: toolbar.viewMode === "grid"
-            text: qsTr("SCALE")
-            color: Theme.textSecondary
-            font.pixelSize: 9
-            font.bold: true
-            font.letterSpacing: 0.7
-        }
-
-        Slider {
-            id: cardScaleSlider
-
-            visible: toolbar.viewMode === "grid"
-            Layout.preferredWidth: 138
+            Layout.preferredWidth: 154
             Layout.preferredHeight: 28
-            from: 180
-            to: 420
-            stepSize: 8
-            value: toolbar.cardWidth
-            onMoved: toolbar.cardWidthRequested(value)
 
-            ToolTip.visible: hovered || pressed
-            ToolTip.text: qsTr("Sound card size")
-            ToolTip.delay: 400
-            Accessible.name: ToolTip.text
+            RowLayout {
+                anchors.fill: parent
+                spacing: 7
+
+                EchoIcon {
+                    source: "qrc:/EchoDesktop/icons/waveform.svg"
+                    size: 14
+                    color: Theme.textMuted
+                }
+
+                Slider {
+                    id: cardScaleSlider
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 26
+                    from: 180
+                    to: 420
+                    stepSize: 8
+                    value: toolbar.cardWidth
+                    onMoved: toolbar.cardWidthRequested(value)
+
+                    ToolTip.visible: hovered || pressed
+                    ToolTip.text: qsTr("Sound card size")
+                    ToolTip.delay: 400
+                    Accessible.name: qsTr("SCALE")
+
+                    background: Rectangle {
+                        x: cardScaleSlider.leftPadding
+                        y: Math.round((cardScaleSlider.height - height) / 2)
+                        width: cardScaleSlider.availableWidth
+                        height: 3
+                        radius: 2
+                        color: Theme.track
+                    }
+
+                    handle: Rectangle {
+                        x: cardScaleSlider.leftPadding + cardScaleSlider.visualPosition * (cardScaleSlider.availableWidth - width)
+                        y: Math.round((cardScaleSlider.height - height) / 2)
+                        implicitWidth: cardScaleSlider.pressed ? 13 : 11
+                        implicitHeight: cardScaleSlider.pressed ? 13 : 11
+                        radius: width / 2
+                        color: Theme.panelRaised
+                        border.width: 1
+                        border.color: Theme.accent
+
+                        Behavior on implicitWidth {
+                            NumberAnimation {
+                                duration: 80
+                            }
+                        }
+                        Behavior on implicitHeight {
+                            NumberAnimation {
+                                duration: 80
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

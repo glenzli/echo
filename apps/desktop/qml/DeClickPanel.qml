@@ -20,9 +20,9 @@ Rectangle {
     border.color: Theme.borderStrong
 
     function toggleEnabled(): void {
-        draft.beginGesture()
-        draft.setDeClickEnabled(!draft.deClickEnabled)
-        draft.endGesture()
+        draft.beginGesture();
+        draft.setDeClickEnabled(!draft.deClickEnabled);
+        draft.endGesture();
     }
 
     ColumnLayout {
@@ -31,9 +31,9 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
-            Layout.leftMargin: 10
-            Layout.rightMargin: 7
+            Layout.preferredHeight: 34
+            Layout.leftMargin: 12
+            Layout.rightMargin: 8
             spacing: 7
 
             EchoIcon {
@@ -49,12 +49,13 @@ Rectangle {
                 font.weight: Font.DemiBold
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             Text {
                 text: qsTr("Enabled")
-                color: panel.draft.deClickEnabled
-                    ? Theme.textSecondary : Theme.textDisabled
+                color: panel.draft.deClickEnabled ? Theme.textSecondary : Theme.textDisabled
                 font.pixelSize: Theme.fontMeta
             }
 
@@ -70,22 +71,24 @@ Rectangle {
                     radius: 7
                     y: 2
                     x: panel.draft.deClickEnabled ? parent.width - width - 2 : 2
-                    color: panel.draft.deClickEnabled
-                        ? Theme.accentText : Theme.panelRaised
+                    color: panel.draft.deClickEnabled ? Theme.accentText : Theme.panelRaised
 
-                    Behavior on x { NumberAnimation { duration: 90 } }
+                    Behavior on x {
+                        NumberAnimation {
+                            duration: 90
+                        }
+                    }
                 }
 
-                TapHandler { onTapped: panel.toggleEnabled() }
+                TapHandler {
+                    onTapped: panel.toggleEnabled()
+                }
             }
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset de-click")
-                enabled: panel.draft.deClickEnabled
-                    || panel.draft.deClickSensitivityPercent !== 50
-                    || panel.draft.deClickMaximumClickMicroseconds !== 1000
-                    || panel.draft.deClickRepairPercent !== 100
+                enabled: panel.draft.deClickEnabled || panel.draft.deClickSensitivityPercent !== 50 || panel.draft.deClickMaximumClickMicroseconds !== 1000 || panel.draft.deClickRepairPercent !== 100
                 buttonSize: 25
                 iconSize: 14
                 onClicked: panel.draft.resetDeClick()
@@ -159,7 +162,9 @@ Rectangle {
                 wrapMode: Text.WordWrap
             }
 
-            Item { Layout.fillHeight: true }
+            Item {
+                Layout.fillHeight: true
+            }
         }
     }
 }

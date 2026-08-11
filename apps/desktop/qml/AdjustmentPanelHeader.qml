@@ -12,10 +12,10 @@ RowLayout {
     required property string title
     required property string iconSource
 
-    implicitHeight: 30
-    Layout.leftMargin: 10
-    Layout.rightMargin: 8
-    spacing: 6
+    implicitHeight: 34
+    Layout.leftMargin: 12
+    Layout.rightMargin: 10
+    spacing: 7
 
     EchoIcon {
         source: header.iconSource
@@ -30,5 +30,7 @@ RowLayout {
         font.weight: Font.DemiBold
     }
 
-    Item { Layout.fillWidth: true }
+    Item {
+        Layout.fillWidth: true
+    }
 }

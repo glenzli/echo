@@ -79,6 +79,8 @@ Popup {
             return qsTr("De-hum");
         if (componentId === "deClick")
             return qsTr("De-click");
+        if (componentId === "channelRepair")
+            return qsTr("Channel repair");
         if (componentId === "equalizer")
             return qsTr("Equalizer");
         if (componentId === "dynamics")
@@ -111,7 +113,7 @@ Popup {
         const current = dialog.recipeComponents();
         for (let index = 0; index < current.length; ++index)
             selected[String(current[index])] = true;
-        const orderedIds = ["lowCut", "restoration", "deHum", "deClick", "equalizer", "dynamics", "space", "master"];
+        const orderedIds = ["lowCut", "restoration", "deHum", "deClick", "channelRepair", "equalizer", "dynamics", "space", "master"];
         updateComponents.clear();
         for (let index = 0; index < orderedIds.length; ++index) {
             const componentId = orderedIds[index];

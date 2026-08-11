@@ -17,16 +17,15 @@ Rectangle {
     required property string density
     required property var userAlbums
 
-    readonly property int cardHeight: density === "overview"
-        ? 184 : density === "rich" ? 292 : 228
+    readonly property int cardHeight: density === "overview" ? 184 : density === "rich" ? 292 : 232
 
     signal assetSelectionRequested(var asset, int modifiers)
     signal assetOpened(var asset)
-    signal processingRecipeRequested()
-    signal selectionClearRequested()
+    signal processingRecipeRequested
+    signal selectionClearRequested
     signal affinityRequested(var asset, bool liked, int rating)
     signal albumMembershipRequested(var asset, var album, bool included)
-    signal createAlbumRequested()
+    signal createAlbumRequested
 
     color: Theme.window
 
@@ -34,19 +33,19 @@ Rectangle {
         id: soundGrid
 
         readonly property int spacing: 12
-        readonly property int columns: Math.max(1,
-            Math.round((width + spacing) / (wall.preferredCardWidth + spacing)))
+        readonly property int columns: Math.max(1, Math.round((width + spacing) / (wall.preferredCardWidth + spacing)))
 
         anchors.fill: parent
-        anchors.margins: 14
+        anchors.leftMargin: 16
+        anchors.rightMargin: 14
+        anchors.topMargin: 14
+        anchors.bottomMargin: 12
         clip: true
         model: wall.assets
         cellWidth: width / columns
         cellHeight: wall.cardHeight + spacing
         boundsBehavior: Flickable.StopAtBounds
-        bottomMargin: singleSelectionToolbar.visible
-            ? singleSelectionToolbar.height + 42
-            : multiSelectionToolbar.visible ? multiSelectionToolbar.height + 42 : 18
+        bottomMargin: singleSelectionToolbar.visible ? singleSelectionToolbar.height + 42 : multiSelectionToolbar.visible ? multiSelectionToolbar.height + 42 : 18
 
         delegate: Item {
             required property var modelData
@@ -95,8 +94,7 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            text: wall.searchText.trim().length > 0
-                ? qsTr("No matching sounds") : qsTr("This collection is empty")
+            text: wall.searchText.trim().length > 0 ? qsTr("No matching sounds") : qsTr("This collection is empty")
             color: Theme.textPrimary
             font.pixelSize: 16
             font.bold: true
@@ -105,9 +103,7 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            text: wall.searchText.trim().length > 0
-                ? qsTr("Try another word, event, or filename.")
-                : qsTr("Imported recordings will appear here as sound cards.")
+            text: wall.searchText.trim().length > 0 ? qsTr("Try another word, event, or filename.") : qsTr("Imported recordings will appear here as sound cards.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontBody
             wrapMode: Text.WordWrap
@@ -126,11 +122,11 @@ Rectangle {
         visible: wall.selectedAsset !== null && wall.selectedAssetIds.length <= 1
         userAlbums: wall.userAlbums
         z: 20
-        onAffinityRequested: function(liked, rating) {
-            wall.affinityRequested(wall.selectedAsset, liked, rating)
+        onAffinityRequested: function (liked, rating) {
+            wall.affinityRequested(wall.selectedAsset, liked, rating);
         }
-        onAlbumMembershipRequested: function(album, included) {
-            wall.albumMembershipRequested(wall.selectedAsset, album, included)
+        onAlbumMembershipRequested: function (album, included) {
+            wall.albumMembershipRequested(wall.selectedAsset, album, included);
         }
         onCreateAlbumRequested: wall.createAlbumRequested()
     }

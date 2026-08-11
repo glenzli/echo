@@ -1,10 +1,10 @@
 use std::path::Path;
 
 use echo_domain::{
-    AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, DeClickSettings,
-    DeEsserSettings, DeHumSettings, DePlosiveSettings, EditSegment, EditSegmentState, EditTimeline,
-    EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings,
-    NoiseReductionSettings, RestorationSettings, ReverbSettings,
+    AdjustmentEffects, AdjustmentGraph, ChannelRepairSettings, CompressorSettings, ContentHash,
+    DeClickSettings, DeEsserSettings, DeHumSettings, DePlosiveSettings, EditSegment,
+    EditSegmentState, EditTimeline, EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves,
+    LimiterSettings, NoiseReductionSettings, RestorationSettings, ReverbSettings,
 };
 
 use super::*;
@@ -59,6 +59,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
     assert_eq!(first.graph.compressor(), graph.compressor());
     assert_eq!(first.graph.de_hum(), graph.de_hum());
     assert_eq!(first.graph.de_click(), graph.de_click());
+    assert_eq!(first.graph.channel_repair(), graph.channel_repair());
     assert_eq!(first.graph.reverb(), graph.reverb());
     assert_eq!(first.graph.limiter(), graph.limiter());
     assert_eq!(first.graph.effect_chain(), graph.effect_chain());
@@ -321,6 +322,14 @@ fn fully_configured_graph() -> AdjustmentGraph {
             maximum_click_microseconds: 650,
             repair_percent: 88,
         })
+        .with_channel_repair(ChannelRepairSettings {
+            enabled: true,
+            invert_left: true,
+            invert_right: false,
+            swap_channels: true,
+            mono_fold_down: false,
+            balance_percent: 24,
+        })
         .with_equalizer(echo_domain::ParametricEqualizer::from_legacy_gains(
             300, -150, 225,
         ))
@@ -355,6 +364,7 @@ fn fully_configured_graph() -> AdjustmentGraph {
                 EffectNodeKind::DeClick,
                 EffectNodeKind::Equalizer,
                 EffectNodeKind::Dynamics,
+                EffectNodeKind::ChannelRepair,
                 EffectNodeKind::Master,
             ])
             .expect("valid reordered chain"),

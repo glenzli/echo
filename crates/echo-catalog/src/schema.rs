@@ -98,6 +98,8 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 15);
+pub(crate) const DE_PLOSIVE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 14);
 pub(crate) const SOURCE_EDIT_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 13);
@@ -125,9 +127,15 @@ pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 15);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 16);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.15-de-plosive";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.16-channel-repair";
+
+pub(crate) const CHANNEL_REPAIR_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN channel_repair_json TEXT NOT NULL DEFAULT
+    '{"enabled":false,"invert_left":false,"invert_right":false,"swap_channels":false,"mono_fold_down":false,"balance_percent":0}';
+"#;
 
 pub(crate) const SOURCE_EDIT_MIGRATION_SQL: &str = r"
 ALTER TABLE asset_adjustment_revisions
@@ -609,8 +617,10 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            '{\"enabled\":false,\"fundamental_hertz\":50,\"harmonic_count\":4,\"quality_tenths\":300,\"depth_centibels\":2400}',
     de_click_json           TEXT NOT NULL DEFAULT
                            '{\"enabled\":false,\"sensitivity_percent\":50,\"maximum_click_microseconds\":1000,\"repair_percent\":100}',
+    channel_repair_json     TEXT NOT NULL DEFAULT
+                           '{\"enabled\":false,\"invert_left\":false,\"invert_right\":false,\"swap_channels\":false,\"mono_fold_down\":false,\"balance_percent\":0}',
     effect_chain_json       TEXT NOT NULL DEFAULT
-                           '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\",\"de_hum\",\"de_click\"],\"active_count\":5}',
+                           '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\",\"de_hum\",\"de_click\",\"channel_repair\"],\"active_count\":5}',
     edit_timeline_json      TEXT NOT NULL DEFAULT '',
     effect_masks_json       TEXT NOT NULL DEFAULT '[]',
     limiter_enabled        INTEGER NOT NULL DEFAULT 0

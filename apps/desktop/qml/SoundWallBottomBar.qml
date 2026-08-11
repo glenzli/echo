@@ -19,10 +19,9 @@ ToolBar {
     signal likedFilterRequested(bool enabled)
     signal ratingFilterRequested(int minimumRating)
     signal speechFilterRequested(bool enabled)
-    signal clearAllFiltersRequested()
+    signal clearAllFiltersRequested
 
-    readonly property bool anyFilterActive: likedOnly || minimumRating > 0
-        || speechOnly || filterState.activeCount > 0
+    readonly property bool anyFilterActive: likedOnly || minimumRating > 0 || speechOnly || filterState.activeCount > 0
 
     implicitHeight: 44
     topPadding: 5
@@ -56,8 +55,7 @@ ToolBar {
             width: filterControls.implicitWidth + 10
             height: 32
             radius: 8
-            color: bar.anyFilterActive ? Theme.accentSurfaceQuiet
-                                       : Theme.surfaceSubtle
+            color: bar.anyFilterActive ? Theme.accentSurfaceQuiet : Theme.surfaceSubtle
 
             RowLayout {
                 id: filterControls
@@ -72,10 +70,8 @@ ToolBar {
                     Layout.preferredWidth: 82
                     Layout.preferredHeight: 26
                     model: [qsTr("Date"), qsTr("Duration"), qsTr("Rating")]
-                    currentIndex: Math.max(0, ["date", "duration", "rating"]
-                        .indexOf(bar.sortMode))
-                    onActivated: index => bar.sortRequested(
-                        ["date", "duration", "rating"][index])
+                    currentIndex: Math.max(0, ["date", "duration", "rating"].indexOf(bar.sortMode))
+                    onActivated: index => bar.sortRequested(["date", "duration", "rating"][index])
 
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Sort sounds")
@@ -91,12 +87,12 @@ ToolBar {
                         elide: Text.ElideRight
                     }
 
-                    indicator: Text {
+                    indicator: EchoIcon {
                         x: sortBox.width - width - 7
                         y: Math.round((sortBox.height - height) / 2) - 1
-                        text: "⌄"
+                        source: "qrc:/EchoDesktop/icons/chevron-down.svg"
                         color: Theme.textSecondary
-                        font.pixelSize: 12
+                        size: 12
                     }
 
                     background: Rectangle {
@@ -179,17 +175,13 @@ ToolBar {
 
                     background: Rectangle {
                         radius: 6
-                        color: bar.likedOnly ? Theme.accentSurface
-                            : likedFilter.hovered ? Theme.buttonGhostHover
-                                                  : Theme.transparent
+                        color: bar.likedOnly ? Theme.likeSurface : likedFilter.hovered ? Theme.buttonGhostHover : Theme.transparent
                     }
 
-                    contentItem: Text {
-                        text: bar.likedOnly ? "♥" : "♡"
-                        color: bar.likedOnly ? "#dc4b6b" : Theme.textSecondary
-                        font.pixelSize: 15
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                    contentItem: EchoIcon {
+                        source: bar.likedOnly ? "qrc:/EchoDesktop/icons/heart-filled.svg" : "qrc:/EchoDesktop/icons/heart.svg"
+                        color: bar.likedOnly ? Theme.likeAccent : Theme.textSecondary
+                        size: 15
                     }
                 }
 
@@ -209,8 +201,7 @@ ToolBar {
                             height: 26
                             padding: 0
                             focusPolicy: Qt.NoFocus
-                            onClicked: bar.ratingFilterRequested(
-                                bar.minimumRating === ratingValue ? 0 : ratingValue)
+                            onClicked: bar.ratingFilterRequested(bar.minimumRating === ratingValue ? 0 : ratingValue)
 
                             ToolTip.visible: hovered
                             ToolTip.text: qsTr("At least %1 stars").arg(ratingValue)
@@ -219,18 +210,13 @@ ToolBar {
 
                             background: Rectangle {
                                 radius: 4
-                                color: ratingFilter.hovered
-                                    ? Theme.buttonGhostHover : Theme.transparent
+                                color: ratingFilter.hovered ? Theme.buttonGhostHover : Theme.transparent
                             }
 
-                            contentItem: Text {
-                                text: ratingFilter.ratingValue <= bar.minimumRating
-                                    ? "★" : "☆"
-                                color: ratingFilter.ratingValue <= bar.minimumRating
-                                    ? "#d89a16" : Theme.textDisabled
-                                font.pixelSize: 13
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                            contentItem: EchoIcon {
+                                source: ratingFilter.ratingValue <= bar.minimumRating ? "qrc:/EchoDesktop/icons/star-filled.svg" : "qrc:/EchoDesktop/icons/star.svg"
+                                color: ratingFilter.ratingValue <= bar.minimumRating ? Theme.ratingAccent : Theme.textDisabled
+                                size: 13
                             }
                         }
                     }
@@ -246,6 +232,5 @@ ToolBar {
                 }
             }
         }
-
     }
 }

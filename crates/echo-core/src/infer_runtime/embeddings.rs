@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     InferRuntimeClient, InferRuntimeError, InferRuntimeErrorKind, RuntimeJobSnapshot,
-    RuntimeProvenance, checked_json_response, default_background_constraints,
+    RuntimeProvenance, RuntimeSession, checked_json_response, default_background_constraints,
     validate_succeeded_job,
 };
 
@@ -110,14 +110,12 @@ impl InferRuntimeClient {
         validate_request(text, intent)?;
         self.validate_token()?;
         let session = self.begin_session()?;
-        let wire_model = super::wire_intent_for_contract(&intent.model, session.contract);
-        let metadata = super::metadata_for_contract(&intent.metadata, session.contract)?;
         let request = TextEmbeddingRequest {
-            model: wire_model,
+            model: &intent.model,
             text,
             query_revision: &intent.revision,
             language: intent.language.as_deref(),
-            metadata: &metadata,
+            metadata: &intent.metadata,
         };
         let url = session.url("/infer/v1/vision/text-embeddings");
         let response = ureq::post(&url)
@@ -154,7 +152,7 @@ impl InferRuntimeClient {
             space: response.embedding.space,
             provider: response.provenance,
             runtime: RuntimeProvenance {
-                contract_version: session.contract_version().to_owned(),
+                contract_version: RuntimeSession::contract_version().to_owned(),
                 job,
             },
         })

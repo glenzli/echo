@@ -26,6 +26,7 @@ std::optional<EffectChainProjection> effectChainFromQml(const QVariantList& valu
         echo::audio::EffectNodeKind::Master,
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::ChannelRepair,
     };
     std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result = standard;
     std::array<bool, echo::audio::kEffectNodeCount> seen{};
@@ -127,7 +128,7 @@ std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQmlImpl(
         const qint64 feather = value.value(QStringLiteral("featherMillis"), 10).toLongLong();
         const QVariantList nodes = value.value(QStringLiteral("effectNodes")).toList();
         if (start < trimStartMillis || end > trimEndMillis || end <= start || feather < 0
-            || feather > 100 || nodes.isEmpty() || nodes.size() > 5) {
+            || feather > 100 || nodes.isEmpty() || nodes.size() > 6) {
             return std::nullopt;
         }
         echo::audio::EffectMask mask{
@@ -185,6 +186,22 @@ std::optional<echo::audio::DeClickAdjustment> deClickFromQmlImpl(const QVariantM
     };
 }
 
+std::optional<echo::audio::ChannelRepairAdjustment>
+channelRepairFromQmlImpl(const QVariantMap& value) {
+    const int balance = value.value(QStringLiteral("balancePercent"), 0).toInt();
+    if (balance < -100 || balance > 100) {
+        return std::nullopt;
+    }
+    return echo::audio::ChannelRepairAdjustment{
+        .enabled = value.value(QStringLiteral("enabled")).toBool(),
+        .invert_left = value.value(QStringLiteral("invertLeft")).toBool(),
+        .invert_right = value.value(QStringLiteral("invertRight")).toBool(),
+        .swap_channels = value.value(QStringLiteral("swapChannels")).toBool(),
+        .mono_fold_down = value.value(QStringLiteral("monoFoldDown")).toBool(),
+        .balance_percent = static_cast<std::int16_t>(balance),
+    };
+}
+
 } // namespace
 
 std::optional<std::vector<echo::audio::EditSegment>>
@@ -218,6 +235,11 @@ PlaybackAdjustmentProjection::deHumFromQml(const QVariantMap& value) {
 std::optional<echo::audio::DeClickAdjustment>
 PlaybackAdjustmentProjection::deClickFromQml(const QVariantMap& value) {
     return deClickFromQmlImpl(value);
+}
+
+std::optional<echo::audio::ChannelRepairAdjustment>
+PlaybackAdjustmentProjection::channelRepairFromQml(const QVariantMap& value) {
+    return channelRepairFromQmlImpl(value);
 }
 
 std::optional<echo::audio::PlaybackAdjustment>
@@ -256,6 +278,15 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
          asset.value(QStringLiteral("deClickMaximumClickMicroseconds"), 1000)},
         {QStringLiteral("repairPercent"), asset.value(QStringLiteral("deClickRepairPercent"), 100)},
     };
+    const QVariantMap channel_repair{
+        {QStringLiteral("enabled"), asset.value(QStringLiteral("channelRepairEnabled"))},
+        {QStringLiteral("invertLeft"), asset.value(QStringLiteral("channelRepairInvertLeft"))},
+        {QStringLiteral("invertRight"), asset.value(QStringLiteral("channelRepairInvertRight"))},
+        {QStringLiteral("swapChannels"), asset.value(QStringLiteral("channelRepairSwapChannels"))},
+        {QStringLiteral("monoFoldDown"), asset.value(QStringLiteral("channelRepairMonoFoldDown"))},
+        {QStringLiteral("balancePercent"),
+         asset.value(QStringLiteral("channelRepairBalancePercent"), 0)},
+    };
     const QVariantMap reverb{
         {QStringLiteral("enabled"), asset.value(QStringLiteral("reverbEnabled"))},
         {QStringLiteral("mixPercent"), asset.value(QStringLiteral("reverbMixPercent"))},
@@ -278,6 +309,7 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         restoration,
         de_hum,
         de_click,
+        channel_repair,
         asset.value(QStringLiteral("equalizerEnabled"), true).toBool(),
         asset.value(QStringLiteral("equalizerBands")).toList(),
         asset.value(QStringLiteral("compressorEnabled")).toBool(),
@@ -308,6 +340,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const QVariantMap& restorationValue,
     const QVariantMap& deHumValue,
     const QVariantMap& deClickValue,
+    const QVariantMap& channelRepairValue,
     bool equalizerEnabled,
     const QVariantList& equalizerBands,
     bool compressorEnabled,
@@ -342,11 +375,12 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const auto restoration = RestorationProjection::fromQml(restorationValue);
     const auto deHum = deHumFromQml(deHumValue);
     const auto deClick = deClickFromQml(deClickValue);
+    const auto channelRepair = channelRepairFromQml(channelRepairValue);
     const auto effectChain = effectChainFromQml(effectChainValue);
     auto editSegments = editSegmentsFromQmlImpl(editSegmentsValue, trimStartMillis, trimEndMillis);
     if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()
-        || !deHum.has_value() || !deClick.has_value() || !effectChain.has_value()
-        || !editSegments.has_value()) {
+        || !deHum.has_value() || !deClick.has_value() || !channelRepair.has_value()
+        || !effectChain.has_value() || !editSegments.has_value()) {
         return std::nullopt;
     }
     auto effectMasks =
@@ -367,6 +401,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
         .restoration = *restoration,
         .de_hum = *deHum,
         .de_click = *deClick,
+        .channel_repair = *channelRepair,
         .equalizer = *equalizer,
         .compressor =
             {

@@ -14,7 +14,7 @@ Rectangle {
 
     signal affinityRequested(bool liked, int rating)
     signal albumMembershipRequested(var album, bool included)
-    signal createAlbumRequested()
+    signal createAlbumRequested
 
     visible: asset !== null
     implicitWidth: operations.implicitWidth + 20
@@ -44,28 +44,22 @@ Rectangle {
             Layout.preferredHeight: 30
             padding: 0
             focusPolicy: Qt.NoFocus
-            onClicked: toolbar.affinityRequested(
-                toolbar.asset !== null && !toolbar.asset.liked,
-                toolbar.asset !== null ? toolbar.asset.rating : 0)
+            onClicked: toolbar.affinityRequested(toolbar.asset !== null && !toolbar.asset.liked, toolbar.asset !== null ? toolbar.asset.rating : 0)
 
             ToolTip.visible: hovered
-            ToolTip.text: toolbar.asset !== null && toolbar.asset.liked
-                ? qsTr("Remove Like") : qsTr("Like")
+            ToolTip.text: toolbar.asset !== null && toolbar.asset.liked ? qsTr("Remove Like") : qsTr("Like")
             ToolTip.delay: 500
             Accessible.name: ToolTip.text
 
             background: Rectangle {
                 radius: Theme.compactControlRadius
-                color: likeButton.hovered ? Theme.buttonGhostHover : Theme.transparent
+                color: toolbar.asset !== null && toolbar.asset.liked ? Theme.likeSurface : likeButton.hovered ? Theme.buttonGhostHover : Theme.transparent
             }
 
-            contentItem: Text {
-                text: toolbar.asset !== null && toolbar.asset.liked ? "♥" : "♡"
-                color: toolbar.asset !== null && toolbar.asset.liked
-                    ? "#dc4b6b" : Theme.textSecondary
-                font.pixelSize: 17
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+            contentItem: EchoIcon {
+                source: toolbar.asset !== null && toolbar.asset.liked ? "qrc:/EchoDesktop/icons/heart-filled.svg" : "qrc:/EchoDesktop/icons/heart.svg"
+                color: toolbar.asset !== null && toolbar.asset.liked ? Theme.likeAccent : Theme.textSecondary
+                size: 16
             }
         }
 
@@ -87,10 +81,7 @@ Rectangle {
                 Layout.preferredHeight: 30
                 padding: 0
                 focusPolicy: Qt.NoFocus
-                onClicked: toolbar.affinityRequested(
-                    toolbar.asset !== null && toolbar.asset.liked,
-                    toolbar.asset !== null && toolbar.asset.rating === ratingValue
-                        ? 0 : ratingValue)
+                onClicked: toolbar.affinityRequested(toolbar.asset !== null && toolbar.asset.liked, toolbar.asset !== null && toolbar.asset.rating === ratingValue ? 0 : ratingValue)
 
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Set %1 stars").arg(ratingValue)
@@ -99,19 +90,13 @@ Rectangle {
 
                 background: Rectangle {
                     radius: 4
-                    color: starButton.hovered
-                        ? Theme.buttonGhostHover : Theme.transparent
+                    color: starButton.hovered ? Theme.buttonGhostHover : Theme.transparent
                 }
 
-                contentItem: Text {
-                    text: toolbar.asset !== null
-                        && starButton.ratingValue <= toolbar.asset.rating ? "★" : "☆"
-                    color: toolbar.asset !== null
-                        && starButton.ratingValue <= toolbar.asset.rating
-                        ? "#d89a16" : Theme.textDisabled
-                    font.pixelSize: 15
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                contentItem: EchoIcon {
+                    source: toolbar.asset !== null && starButton.ratingValue <= toolbar.asset.rating ? "qrc:/EchoDesktop/icons/star-filled.svg" : "qrc:/EchoDesktop/icons/star.svg"
+                    color: toolbar.asset !== null && starButton.ratingValue <= toolbar.asset.rating ? Theme.ratingAccent : Theme.textDisabled
+                    size: 14
                 }
             }
         }
@@ -141,15 +126,12 @@ Rectangle {
                 color: albumButton.hovered ? Theme.buttonGhostHover : Theme.transparent
             }
 
-            contentItem: Text {
-                text: "▱+"
+            contentItem: EchoIcon {
+                source: "qrc:/EchoDesktop/icons/album-add.svg"
                 color: Theme.textSecondary
-                font.pixelSize: 13
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+                size: 16
             }
         }
-
     }
 
     Menu {
@@ -163,8 +145,7 @@ Rectangle {
 
                 text: modelData.name
                 checkable: true
-                checked: toolbar.asset !== null
-                    && modelData.memberIds.includes(toolbar.asset.id)
+                checked: toolbar.asset !== null && modelData.memberIds.includes(toolbar.asset.id)
                 onTriggered: toolbar.albumMembershipRequested(modelData, checked)
             }
         }

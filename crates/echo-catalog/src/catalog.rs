@@ -10,8 +10,9 @@ use rusqlite::{Connection, OptionalExtension};
 use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
-        ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION, CatalogSchemaRevision,
-        DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL, DELIVERY_FORMATS_MIGRATION_SQL,
+        ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION,
+        CHANNEL_REPAIR_MIGRATION_SQL, CatalogSchemaRevision, DE_CLICK_MIGRATION_SQL,
+        DE_HUM_MIGRATION_SQL, DE_PLOSIVE_SCHEMA_VERSION, DELIVERY_FORMATS_MIGRATION_SQL,
         EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
         EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
         INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
@@ -102,6 +103,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
+        {
+            migrate_channel_repair_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == DE_PLOSIVE_SCHEMA_VERSION) =>
         {
             migrate_de_plosive_schema(connection)?;
         }
@@ -207,6 +215,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_channel_repair_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_channel_repair_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 
@@ -366,6 +382,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
 }
 
 fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), CatalogError> {
+    apply_channel_repair_migration(transaction)?;
     apply_source_edit_migration(transaction)?;
     apply_processing_recipes_migration(transaction)?;
     apply_processing_recipe_management_migration(transaction)?;
@@ -378,6 +395,21 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_channel_repair_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'channel_repair_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    if column_count == 0 {
+        transaction.execute_batch(CHANNEL_REPAIR_MIGRATION_SQL)?;
+    }
     Ok(())
 }
 

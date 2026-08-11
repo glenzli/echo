@@ -50,6 +50,14 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             maximum_click_microseconds: 750,
             repair_percent: 85,
         })
+        .with_channel_repair(ChannelRepairSettings {
+            enabled: true,
+            invert_left: true,
+            invert_right: false,
+            swap_channels: true,
+            mono_fold_down: false,
+            balance_percent: 18,
+        })
         .with_equalizer(ParametricEqualizer::from_legacy_gains(250, -175, 400))
         .with_effect_chain(
             EffectChain::new([
@@ -105,6 +113,9 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.de_hum().harmonic_count, 6);
     assert_eq!(graph.de_click().maximum_click_microseconds, 750);
     assert_eq!(graph.de_click().repair_percent, 85);
+    assert!(graph.channel_repair().invert_left);
+    assert!(graph.channel_repair().swap_channels);
+    assert_eq!(graph.channel_repair().balance_percent, 18);
     assert_eq!(
         graph.equalizer(),
         ParametricEqualizer::from_legacy_gains(250, -175, 400)
@@ -131,13 +142,14 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     assert_eq!(EffectNodeKind::Space.wire_value(), 3);
     assert_eq!(EffectNodeKind::DeHum.wire_value(), 5);
     assert_eq!(EffectNodeKind::DeClick.wire_value(), 6);
-    assert_eq!(EFFECT_NODE_COUNT, 7);
+    assert_eq!(EffectNodeKind::ChannelRepair.wire_value(), 7);
+    assert_eq!(EFFECT_NODE_COUNT, 8);
     assert_eq!(
         EffectNodeKind::from_wire_value(3),
         Ok(EffectNodeKind::Space)
     );
     assert_eq!(
-        EffectNodeKind::from_wire_value(9),
+        EffectNodeKind::from_wire_value(8),
         Err(EffectNodeKindValueError)
     );
 
@@ -179,7 +191,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
     let encoded_value: serde_json::Value =
         serde_json::from_str(&encoded).expect("encoded chain is JSON");
-    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(7));
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(8));
     assert_eq!(encoded_value["active_count"], 3);
     let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
     assert_eq!(decoded, reduced);
@@ -203,7 +215,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]
     );
     let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(7));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(8));
     assert_eq!(normalized["active_count"], 3);
 
     assert_eq!(
@@ -428,6 +440,39 @@ fn graph_rejects_de_hum_and_de_click_parameters_outside_the_authored_contract() 
                 AdjustmentEffects::default().with_de_click(de_click),
             ),
             Err(AdjustmentGraphError::DeClickOutOfRange)
+        );
+    }
+}
+
+#[test]
+fn channel_repair_defaults_to_identity_and_bounds_balance() {
+    let graph = AdjustmentGraph::identity(1_000).expect("identity graph validates");
+    assert_eq!(graph.channel_repair(), ChannelRepairSettings::identity());
+    assert!(
+        !graph
+            .effect_chain()
+            .nodes()
+            .contains(&EffectNodeKind::ChannelRepair)
+    );
+
+    let encoded = serde_json::to_string(&graph).expect("graph encodes");
+    let decoded: AdjustmentGraph = serde_json::from_str(&encoded).expect("graph decodes");
+    assert_eq!(decoded.channel_repair(), ChannelRepairSettings::identity());
+
+    for balance_percent in [-101, 101] {
+        assert_eq!(
+            AdjustmentGraph::new(
+                1_000,
+                0,
+                1_000,
+                0,
+                0,
+                AdjustmentEffects::default().with_channel_repair(ChannelRepairSettings {
+                    balance_percent,
+                    ..ChannelRepairSettings::identity()
+                }),
+            ),
+            Err(AdjustmentGraphError::ChannelRepairOutOfRange)
         );
     }
 }

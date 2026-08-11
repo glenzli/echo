@@ -70,6 +70,14 @@ Rectangle {
             maximumClickMicroseconds: hasAsset ? Number(asset.deClickMaximumClickMicroseconds ?? 1000) : 1000,
             repairPercent: hasAsset ? Number(asset.deClickRepairPercent ?? 100) : 100
         })
+    readonly property var channelRepairValue: ({
+            enabled: hasAsset ? Boolean(asset.channelRepairEnabled) : false,
+            invertLeft: hasAsset ? Boolean(asset.channelRepairInvertLeft) : false,
+            invertRight: hasAsset ? Boolean(asset.channelRepairInvertRight) : false,
+            swapChannels: hasAsset ? Boolean(asset.channelRepairSwapChannels) : false,
+            monoFoldDown: hasAsset ? Boolean(asset.channelRepairMonoFoldDown) : false,
+            balancePercent: hasAsset ? Number(asset.channelRepairBalancePercent ?? 0) : 0
+        })
     readonly property bool equalizerEnabled: hasAsset ? Boolean(asset.equalizerEnabled) : true
     readonly property var equalizerBands: hasAsset ? asset.equalizerBands : []
     readonly property bool compressorEnabled: hasAsset ? Boolean(asset.compressorEnabled) : false
@@ -146,14 +154,14 @@ Rectangle {
     }
 
     function adjustmentKey(): string {
-        return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve + ":" + gainCentibels + ":" + lowCutHertz + ":" + JSON.stringify(restorationValue) + ":" + JSON.stringify(deHumValue) + ":" + JSON.stringify(deClickValue) + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths + ":" + compressorAttackMillis + ":" + compressorReleaseMillis + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue) + ":" + limiterEnabled + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis + ":" + JSON.stringify(effectChain) + ":" + JSON.stringify(editSegments) + ":" + JSON.stringify(effectMasks);
+        return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve + ":" + gainCentibels + ":" + lowCutHertz + ":" + JSON.stringify(restorationValue) + ":" + JSON.stringify(deHumValue) + ":" + JSON.stringify(deClickValue) + ":" + JSON.stringify(channelRepairValue) + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths + ":" + compressorAttackMillis + ":" + compressorReleaseMillis + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue) + ":" + limiterEnabled + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis + ":" + JSON.stringify(effectChain) + ":" + JSON.stringify(editSegments) + ":" + JSON.stringify(effectMasks);
     }
 
     function playFrom(millis: int): void {
         if (!asset || asset.pathStatus === "missing") {
             return;
         }
-        player.playAdjusted(asset.path, trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationValue, deHumValue, deClickValue, equalizerEnabled, equalizerBands, compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbValue, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, effectChain, editSegments, effectMasks);
+        player.playAdjusted(asset.path, trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationValue, deHumValue, deClickValue, channelRepairValue, equalizerEnabled, equalizerBands, compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbValue, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, effectChain, editSegments, effectMasks);
         loadedPath = asset.path;
         loadedAdjustmentKey = adjustmentKey();
         const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis));

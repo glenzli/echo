@@ -50,6 +50,7 @@ class PlaybackController : public QObject {
         const QVariantMap& restoration,
         const QVariantMap& deHum,
         const QVariantMap& deClick,
+        const QVariantMap& channelRepair,
         bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,
@@ -70,6 +71,7 @@ class PlaybackController : public QObject {
     Q_INVOKABLE bool updateRestoration(const QVariantMap& restoration);
     Q_INVOKABLE bool updateDeHum(const QVariantMap& deHum);
     Q_INVOKABLE bool updateDeClick(const QVariantMap& deClick);
+    Q_INVOKABLE bool updateChannelRepair(const QVariantMap& channelRepair);
     Q_INVOKABLE QVariantList
     equalizerResponse(const QVariantList& equalizerBands, int pointCount) const;
     Q_INVOKABLE bool updateCompressor(

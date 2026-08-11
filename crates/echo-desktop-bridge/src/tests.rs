@@ -147,6 +147,9 @@ fn transcripts_round_trip_through_a_live_catalog() {
     assert_eq!(wires[0].language, "zh");
     assert_eq!(wires[0].segments.len(), 1);
     assert!((wires[0].segments[0].end - 2.1).abs() < f64::EPSILON);
+    let assets = session.list_assets().expect("asset summaries project");
+    assert_eq!(assets.len(), 1);
+    assert_eq!(assets[0].language, "zh");
 
     let _ = std::fs::remove_dir_all(root);
 }
@@ -213,6 +216,12 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         de_click_sensitivity_percent: 68,
         de_click_maximum_click_microseconds: 720,
         de_click_repair_percent: 86,
+        channel_repair_enabled: true,
+        channel_repair_invert_left: true,
+        channel_repair_invert_right: false,
+        channel_repair_swap_channels: true,
+        channel_repair_mono_fold_down: false,
+        channel_repair_balance_percent: -24,
         equalizer_enabled: false,
         equalizer_bands: test_equalizer_bands(),
         compressor_enabled: true,
@@ -232,7 +241,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
-        effect_chain: vec![5, 3, 0, 6, 1, 2, 4],
+        effect_chain: vec![5, 7, 3, 0, 6, 1, 2, 4],
         edit_segments: vec![
             crate::ffi::EditSegmentWire {
                 source_start_millis: 1_000,
@@ -276,6 +285,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         .expect("stored adjustment exists");
     assert!(stored.graph.de_hum().enabled);
     assert!(stored.graph.de_click().enabled);
+    assert!(stored.graph.channel_repair().enabled);
     let projected = session.list_assets().expect("assets project");
     assert_eq!(projected.len(), 1);
     assert!(projected[0].adjustment_revision > 0);
@@ -311,6 +321,12 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].de_click_sensitivity_percent, 68);
     assert_eq!(projected[0].de_click_maximum_click_microseconds, 720);
     assert_eq!(projected[0].de_click_repair_percent, 86);
+    assert!(projected[0].channel_repair_enabled);
+    assert!(projected[0].channel_repair_invert_left);
+    assert!(!projected[0].channel_repair_invert_right);
+    assert!(projected[0].channel_repair_swap_channels);
+    assert!(!projected[0].channel_repair_mono_fold_down);
+    assert_eq!(projected[0].channel_repair_balance_percent, -24);
     assert!(!projected[0].equalizer_enabled);
     assert_eq!(projected[0].equalizer_bands.len(), 6);
     assert_eq!(projected[0].equalizer_bands[0].gain_centibels, 250);
@@ -333,7 +349,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert!(projected[0].limiter_enabled);
     assert_eq!(projected[0].limiter_ceiling_centibels, -125);
     assert_eq!(projected[0].limiter_release_millis, 160);
-    assert_eq!(projected[0].effect_chain, [5, 3, 0, 6, 1, 2, 4]);
+    assert_eq!(projected[0].effect_chain, [5, 7, 3, 0, 6, 1, 2, 4]);
     assert_eq!(projected[0].edit_segments.len(), 2);
     assert_eq!(projected[0].edit_segments[0].source_start_millis, 1_000);
     assert_eq!(projected[0].edit_segments[0].gap_after_millis, 200);
@@ -375,12 +391,13 @@ fn alignment_refines_matching_segment_boundaries_without_mutating_text() {
             { "text": "界", "start": 1.12, "end": 1.44 }
         ],
         "runtime": {
-            "contract_version": "0.1.0-candidate.2",
+            "contract_version": "0.1.0-candidate.3",
             "job": {
                 "id": "align-1", "app_id": "echo", "intent": "audio.align",
                 "provider": "mlx-audio-local", "deployment": "aligner",
                 "model_profile": "aligner", "model_build": "build",
                 "physical_model": "Qwen3-ForcedAligner", "placement": "local",
+                "capability_level": "foundational", "evaluation_status": "provisional",
                 "state": "succeeded", "policy": "local-first",
                 "priority": "background", "attempts": []
             }
@@ -473,6 +490,7 @@ fn contextual_stage_and_keyword_facets_project_through_the_live_session() {
     assert_eq!(assets[0].keywords, ["Rain", "Train platform"]);
     assert_eq!(assets[0].mood, "calm");
     assert_eq!(assets[0].event_type, "rainfall");
+    assert_eq!(assets[0].language, "en");
     let facets = session.keyword_facets().expect("facets project");
     assert_eq!(facets.len(), 2);
     assert_eq!(facets[0].count, 1);

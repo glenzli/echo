@@ -20,13 +20,13 @@ Rectangle {
     border.width: 1
     border.color: Theme.borderStrong
 
-    function decibels(centibels: int, signed: bool) : string {
-        const value = centibels / 100
-        return (signed && value > 0 ? "+" : "") + value.toFixed(1) + " dB"
+    function decibels(centibels: int, signed: bool): string {
+        const value = centibels / 100;
+        return (signed && value > 0 ? "+" : "") + value.toFixed(1) + " dB";
     }
 
-    function meterText(value: real, unit: string) : string {
-        return value <= -69.9 ? "—" : value.toFixed(1) + " " + unit
+    function meterText(value: real, unit: string): string {
+        return value <= -69.9 ? "—" : value.toFixed(1) + " " + unit;
     }
 
     ColumnLayout {
@@ -35,10 +35,10 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
-            Layout.leftMargin: 10
-            Layout.rightMargin: 7
-            spacing: 6
+            Layout.preferredHeight: 34
+            Layout.leftMargin: 12
+            Layout.rightMargin: 8
+            spacing: 7
 
             EchoIcon {
                 source: "qrc:/EchoDesktop/icons/dynamics.svg"
@@ -53,17 +53,14 @@ Rectangle {
                 font.weight: Font.DemiBold
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset compressor")
-                enabled: panel.draft.compressorEnabled
-                    || panel.draft.compressorThresholdCentibels !== -1800
-                    || panel.draft.compressorRatioTenths !== 30
-                    || panel.draft.compressorAttackMillis !== 10
-                    || panel.draft.compressorReleaseMillis !== 120
-                    || panel.draft.compressorMakeupCentibels !== 0
+                enabled: panel.draft.compressorEnabled || panel.draft.compressorThresholdCentibels !== -1800 || panel.draft.compressorRatioTenths !== 30 || panel.draft.compressorAttackMillis !== 10 || panel.draft.compressorReleaseMillis !== 120 || panel.draft.compressorMakeupCentibels !== 0
                 buttonSize: 25
                 iconSize: 14
                 onClicked: panel.draft.resetCompressor()
@@ -100,56 +97,58 @@ Rectangle {
                     opacity: panel.draft.compressorEnabled ? 1 : 0.45
 
                     function outputLevel(input) {
-                        const threshold = panel.draft.compressorThresholdCentibels / 100
-                        const ratio = panel.draft.compressorRatioTenths / 10
-                        const offset = input - threshold
-                        if (offset > 3) return threshold + offset / ratio
-                        if (offset <= -3) return input
-                        const knee = offset + 3
-                        return input + (1 / ratio - 1) * knee * knee / 12
+                        const threshold = panel.draft.compressorThresholdCentibels / 100;
+                        const ratio = panel.draft.compressorRatioTenths / 10;
+                        const offset = input - threshold;
+                        if (offset > 3)
+                            return threshold + offset / ratio;
+                        if (offset <= -3)
+                            return input;
+                        const knee = offset + 3;
+                        return input + (1 / ratio - 1) * knee * knee / 12;
                     }
 
                     function coordinate(level) {
-                        return (level + 60) / 60
+                        return (level + 60) / 60;
                     }
 
                     onPaint: {
-                        const context = getContext("2d")
-                        context.clearRect(0, 0, width, height)
-                        context.strokeStyle = Theme.border
-                        context.lineWidth = 1
-                        context.beginPath()
-                        context.moveTo(0, height)
-                        context.lineTo(width, 0)
-                        context.stroke()
-                        context.strokeStyle = Theme.accent
-                        context.lineWidth = 2
-                        context.beginPath()
+                        const context = getContext("2d");
+                        context.clearRect(0, 0, width, height);
+                        context.strokeStyle = Theme.border;
+                        context.lineWidth = 1;
+                        context.beginPath();
+                        context.moveTo(0, height);
+                        context.lineTo(width, 0);
+                        context.stroke();
+                        context.strokeStyle = Theme.accent;
+                        context.lineWidth = 2;
+                        context.beginPath();
                         for (let input = -60; input <= 0; input += 1) {
-                            const x = coordinate(input) * width
-                            const output = outputLevel(input)
-                                + panel.draft.compressorMakeupCentibels / 100
-                            const y = height - coordinate(Math.max(-60,
-                                Math.min(0, output))) * height
-                            if (input === -60) context.moveTo(x, y)
-                            else context.lineTo(x, y)
+                            const x = coordinate(input) * width;
+                            const output = outputLevel(input) + panel.draft.compressorMakeupCentibels / 100;
+                            const y = height - coordinate(Math.max(-60, Math.min(0, output))) * height;
+                            if (input === -60)
+                                context.moveTo(x, y);
+                            else
+                                context.lineTo(x, y);
                         }
-                        context.stroke()
+                        context.stroke();
                     }
 
                     Connections {
                         target: panel.draft
                         function onCompressorEnabledChanged() {
-                            transferCurve.requestPaint()
+                            transferCurve.requestPaint();
                         }
                         function onCompressorThresholdCentibelsChanged() {
-                            transferCurve.requestPaint()
+                            transferCurve.requestPaint();
                         }
                         function onCompressorRatioTenthsChanged() {
-                            transferCurve.requestPaint()
+                            transferCurve.requestPaint();
                         }
                         function onCompressorMakeupCentibelsChanged() {
-                            transferCurve.requestPaint()
+                            transferCurve.requestPaint();
                         }
                     }
                 }
@@ -180,13 +179,14 @@ Rectangle {
                         value: panel.meterSource.gainReductionDb
                         minimum: 0
                         maximum: 24
-                        valueText: panel.meterSource.active
-                            ? value.toFixed(1) + " dB" : "—"
+                        valueText: panel.meterSource.active ? value.toFixed(1) + " dB" : "—"
                         meterColor: Theme.accentSelectionText
                     }
                 }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                }
             }
 
             Rectangle {
@@ -248,10 +248,14 @@ Rectangle {
                     onParameterEdited: value => panel.draft.setCompressorParameter("makeup", value)
                 }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                }
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
         }
     }
 
@@ -278,8 +282,7 @@ Rectangle {
         property real maximum: 1
         property string valueText: ""
         property color meterColor: Theme.accent
-        readonly property real meterProgress: Math.max(0, Math.min(1,
-            (value - minimum) / Math.max(0.0001, maximum - minimum)))
+        readonly property real meterProgress: Math.max(0, Math.min(1, (value - minimum) / Math.max(0.0001, maximum - minimum)))
 
         Layout.fillWidth: true
         Layout.minimumWidth: 72
@@ -315,7 +318,11 @@ Rectangle {
                 height: parent.height
                 radius: parent.radius
                 color: readout.meterColor
-                Behavior on width { NumberAnimation { duration: 70 } }
+                Behavior on width {
+                    NumberAnimation {
+                        duration: 70
+                    }
+                }
             }
         }
     }

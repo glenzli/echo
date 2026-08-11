@@ -20,6 +20,8 @@ class PlaybackAdjustmentProjection {
     deHumFromQml(const QVariantMap& value);
     [[nodiscard]] static std::optional<echo::audio::DeClickAdjustment>
     deClickFromQml(const QVariantMap& value);
+    [[nodiscard]] static std::optional<echo::audio::ChannelRepairAdjustment>
+    channelRepairFromQml(const QVariantMap& value);
     [[nodiscard]] static std::optional<std::vector<echo::audio::EditSegment>>
     editSegmentsFromQml(const QVariantList& values, qint64 trimStartMillis, qint64 trimEndMillis);
     [[nodiscard]] static std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQml(
@@ -41,6 +43,7 @@ class PlaybackAdjustmentProjection {
         const QVariantMap& restoration,
         const QVariantMap& deHum,
         const QVariantMap& deClick,
+        const QVariantMap& channelRepair,
         bool equalizerEnabled,
         const QVariantList& equalizerBands,
         bool compressorEnabled,

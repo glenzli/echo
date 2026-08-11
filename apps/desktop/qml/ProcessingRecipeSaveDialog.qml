@@ -58,6 +58,12 @@ Popup {
                 included: true
             },
             {
+                componentId: "channelRepair",
+                title: qsTr("Channel repair"),
+                summary: qsTr("Polarity, routing, balance and mono repair"),
+                included: true
+            },
+            {
                 componentId: "equalizer",
                 title: qsTr("Equalizer"),
                 summary: qsTr("Tone shaping"),

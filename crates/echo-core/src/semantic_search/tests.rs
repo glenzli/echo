@@ -44,6 +44,7 @@ fn evidence_revision_enqueues_one_idempotent_embedding_job() {
         .expect("literal source index searches before Runtime vector publication");
     assert_eq!(literal_hits.len(), 1);
     let first_job = document_job_id(&first_source);
+    assert!(first_job.starts_with("embed-text-v2-"));
     let job = catalog
         .with_transaction(|transaction| job_by_id(transaction, &first_job))
         .expect("job reads")

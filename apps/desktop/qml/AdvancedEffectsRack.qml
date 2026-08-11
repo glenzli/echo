@@ -22,6 +22,8 @@ Item {
 
     property string selectedNodeId: "clip"
     readonly property int currentKind: effectKind(selectedNodeId)
+    readonly property int preferredParameterWidth: selectedNodeId === "clip" ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 3 : currentKind === 0 ? Theme.editorControlTrackWidth * 3 - Theme.editorPanelGap * 2 : currentKind === 1 ? Theme.editorParameterMaxWidth : currentKind === 2 ? 760 : currentKind === 3 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 6 : currentKind === 4 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 2 : Theme.editorControlTrackWidth * 2 + Theme.editorPanelGap * 2
+    readonly property int preferredParameterHeight: currentKind === 1 ? 330 : currentKind === 4 ? 340 : 310
 
     implicitHeight: 320
 
@@ -42,6 +44,8 @@ Item {
             return qsTr("De-hum");
         if (kind === 6)
             return qsTr("De-click");
+        if (kind === 7)
+            return qsTr("Channel repair");
         return qsTr("Master");
     }
 
@@ -58,6 +62,8 @@ Item {
             return qsTr("Mains hum and harmonics");
         if (kind === 6)
             return qsTr("Short impulse repair");
+        if (kind === 7)
+            return qsTr("Polarity · Routing · Balance · Mono");
         return qsTr("Limiter · Loudness");
     }
 
@@ -74,19 +80,21 @@ Item {
             return "qrc:/EchoDesktop/icons/high-pass.svg";
         if (kind === 6)
             return "qrc:/EchoDesktop/icons/waveform.svg";
+        if (kind === 7)
+            return "qrc:/EchoDesktop/icons/tune.svg";
         return "qrc:/EchoDesktop/icons/gain.svg";
     }
 
     function effectId(kind: int): string {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick"][kind];
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair"][kind];
     }
 
     function effectKind(effectId: string): int {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick"].indexOf(effectId);
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair"].indexOf(effectId);
     }
 
-    function buildChainModel(chain: var, restorationEnabled: bool, equalizerEnabled: bool, dynamicsEnabled: bool, spaceEnabled: bool, deHumEnabled: bool, deClickEnabled: bool): var {
-        const enabled = [restorationEnabled, equalizerEnabled, dynamicsEnabled, spaceEnabled, true, deHumEnabled, deClickEnabled];
+    function buildChainModel(chain: var, restorationEnabled: bool, equalizerEnabled: bool, dynamicsEnabled: bool, spaceEnabled: bool, deHumEnabled: bool, deClickEnabled: bool, channelRepairEnabled: bool): var {
+        const enabled = [restorationEnabled, equalizerEnabled, dynamicsEnabled, spaceEnabled, true, deHumEnabled, deClickEnabled, channelRepairEnabled];
         const result = [];
         for (let index = 0; index < chain.length; ++index) {
             const kind = Number(chain[index]);
@@ -158,6 +166,15 @@ Item {
                 categoryTitle: qsTr("Restoration"),
                 iconSource: nodeIcon(6),
                 available: chain.indexOf(6) < 0
+            },
+            {
+                effectId: "channelRepair",
+                title: nodeTitle(7),
+                summary: nodeSummary(7),
+                categoryId: "restore",
+                categoryTitle: qsTr("Restoration"),
+                iconSource: nodeIcon(7),
+                available: chain.indexOf(7) < 0
             }
         ];
     }
@@ -170,7 +187,7 @@ Item {
             selectedNodeId = "clip";
     }
 
-    readonly property var chainModel: buildChainModel(draft.effectChain, draft.restorationEnabled, draft.equalizerEnabled, draft.compressorEnabled, draft.reverbEnabled, draft.deHumEnabled, draft.deClickEnabled)
+    readonly property var chainModel: buildChainModel(draft.effectChain, draft.restorationEnabled, draft.equalizerEnabled, draft.compressorEnabled, draft.reverbEnabled, draft.deHumEnabled, draft.deClickEnabled, draft.channelRepairEnabled)
     readonly property var catalogModel: buildCatalogModel(draft.effectChain)
 
     onDraftChanged: ensureCurrentNode()
@@ -242,9 +259,9 @@ Item {
         SoundSignalChain {
             id: signalChain
 
-            SplitView.preferredWidth: 224
-            SplitView.minimumWidth: 188
-            SplitView.maximumWidth: 300
+            SplitView.preferredWidth: Theme.editorRailWidth
+            SplitView.minimumWidth: 184
+            SplitView.maximumWidth: 260
             SplitView.fillHeight: true
             effectModel: rack.chainModel
             selectedEffectId: rack.selectedNodeId
@@ -261,83 +278,81 @@ Item {
 
             SplitView.fillWidth: true
             SplitView.fillHeight: true
-            SplitView.minimumWidth: 480
-            radius: Theme.compactControlRadius
-            color: Theme.panelRaised
-            border.width: 1
-            border.color: Theme.borderStrong
+            SplitView.minimumWidth: 440
+            color: Theme.window
             clip: true
 
-            BasicAdjustmentPanel {
-                anchors.fill: parent
-                visible: rack.selectedNodeId === "clip"
-                radius: 0
-                border.width: 0
-                draft: rack.draft
-                hasTimeSelection: rack.hasTimeSelection
-                selectionStartMillis: rack.selectionStartMillis
-                selectionEndMillis: rack.selectionEndMillis
-            }
+            Item {
+                id: parameterCanvas
 
-            ToneEqualizerPanel {
-                anchors.fill: parent
-                visible: rack.currentKind === 1
-                radius: 0
-                border.width: 0
-                draft: rack.draft
-                responseProvider: rack.meterSource
-            }
+                x: 12
+                y: 12
+                width: Math.min(rack.preferredParameterWidth, Math.max(416, parameterSurface.width - 24))
+                height: Math.min(rack.preferredParameterHeight, Math.max(0, parameterSurface.height - 24))
 
-            DynamicsPanel {
-                anchors.fill: parent
-                visible: rack.currentKind === 2
-                radius: 0
-                border.width: 0
-                draft: rack.draft
-                meterSource: rack.meterSource
-            }
+                BasicAdjustmentPanel {
+                    anchors.fill: parent
+                    visible: rack.selectedNodeId === "clip"
+                    draft: rack.draft
+                    hasTimeSelection: rack.hasTimeSelection
+                    selectionStartMillis: rack.selectionStartMillis
+                    selectionEndMillis: rack.selectionEndMillis
+                }
 
-            SpaceReverbPanel {
-                anchors.fill: parent
-                visible: rack.currentKind === 3
-                radius: 0
-                border.width: 0
-                draft: rack.draft
-            }
+                ToneEqualizerPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind === 1
+                    draft: rack.draft
+                    responseProvider: rack.meterSource
+                }
 
-            MasterOutputPanel {
-                id: masterPanel
-                anchors.fill: parent
-                visible: rack.currentKind === 4
-                radius: 0
-                border.width: 0
-                draft: rack.draft
-                meterSource: rack.meterSource
-                analyzer: rack.analyzer
-                sourcePath: rack.sourcePath
-                analysisKey: rack.analysisKey
-            }
+                DynamicsPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind === 2
+                    draft: rack.draft
+                    meterSource: rack.meterSource
+                }
 
-            RestorationPanel {
-                anchors.fill: parent
-                visible: rack.currentKind === 0
-                draft: rack.draft
-            }
+                SpaceReverbPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind === 3
+                    draft: rack.draft
+                }
 
-            DeHumPanel {
-                anchors.fill: parent
-                visible: rack.currentKind === 5
-                radius: 0
-                border.width: 0
-                draft: rack.draft
-            }
+                MasterOutputPanel {
+                    id: masterPanel
+                    anchors.fill: parent
+                    visible: rack.currentKind === 4
+                    draft: rack.draft
+                    meterSource: rack.meterSource
+                    analyzer: rack.analyzer
+                    sourcePath: rack.sourcePath
+                    analysisKey: rack.analysisKey
+                }
 
-            DeClickPanel {
-                anchors.fill: parent
-                visible: rack.currentKind === 6
-                radius: 0
-                border.width: 0
-                draft: rack.draft
+                RestorationPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind === 0
+                    draft: rack.draft
+                }
+
+                DeHumPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind === 5
+                    draft: rack.draft
+                }
+
+                DeClickPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind === 6
+                    draft: rack.draft
+                }
+
+                ChannelRepairPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind === 7
+                    draft: rack.draft
+                }
             }
         }
     }

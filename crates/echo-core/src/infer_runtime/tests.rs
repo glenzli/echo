@@ -180,15 +180,22 @@ fn candidate3_requires_the_frozen_capability_scale() {
 }
 
 #[test]
-fn canonical_metadata_does_not_silently_collapse_new_advanced_for_candidate2() {
-    let mut metadata = default_background_constraints();
-    metadata.insert("infer.capability_floor".to_owned(), "advanced".to_owned());
+fn client_rejects_any_other_contract_version() {
+    let (base_url, server) = serve(vec![json_response(
+        r#"{"contract_version":"0.1.0-obsolete","capability_scale_version":"20260811.1"}"#,
+    )]);
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
 
-    let error = metadata_for_contract(&metadata, ConsumerProtocolVersion::Candidate2)
-        .expect_err("new advanced has no safe candidate2 spelling");
+    let error = client
+        .contract_version()
+        .expect_err("only the frozen contract is accepted");
 
     assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
-    assert_eq!(error.code, "capability_level_unrepresentable_in_candidate2");
+    assert_eq!(error.code, "contract_mismatch");
+    server.join().expect("server exits after one request");
 }
 
 pub(crate) fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<()>) {
