@@ -152,7 +152,7 @@ fn validate_evidence(evidence: &AudioEventsEvidence) -> Result<(), CoreError> {
             timeline_valid
                 && detection.model == crate::AUDIO_EVENT_DETECTION_INTENT
                 && detection.object == "audio.event_detection"
-                && runtime.contract_version == crate::EXPECTED_CONTRACT_VERSION
+                && crate::infer_runtime::supports_contract_version(&runtime.contract_version)
                 && runtime.job.app_id == "echo"
                 && runtime.job.intent == crate::AUDIO_EVENT_DETECTION_INTENT
                 && runtime.job.state == "succeeded"

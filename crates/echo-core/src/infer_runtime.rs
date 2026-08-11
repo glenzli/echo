@@ -34,15 +34,27 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use ureq::unversioned::multipart::Form;
 
-use crate::{TranscriptPayload, infer_runtime_discovery::EndpointResolver};
+use crate::{
+    TranscriptPayload,
+    infer_runtime_discovery::{ConsumerProtocolVersion, EndpointResolver, ResolvedEndpoint},
+};
 
 pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.3";
+const COMPATIBLE_CONTRACT_VERSION: &str = "0.1.0-candidate.2";
+const CAPABILITY_SCALE_VERSION: &str = "20260811.1";
 pub const TRANSCRIPTION_INTENT: &str = "audio.transcribe";
 pub const ALIGNMENT_INTENT: &str = "audio.align";
 pub const MAX_AUDIO_UPLOAD_BYTES: u64 = 25 * 1024 * 1024;
 
 const MAX_JSON_RESPONSE_BYTES: u64 = 4 * 1024 * 1024;
 const EXPECTED_APP_ID: &str = "echo";
+
+pub(crate) fn supports_contract_version(version: &str) -> bool {
+    matches!(
+        version,
+        COMPATIBLE_CONTRACT_VERSION | EXPECTED_CONTRACT_VERSION
+    )
+}
 
 /// Runtime endpoint and secret injected by the product host.
 #[derive(Clone, PartialEq, Eq)]
@@ -110,7 +122,10 @@ fn default_background_constraints() -> BTreeMap<String, String> {
         ("infer.placement".to_owned(), "local_only".to_owned()),
         ("infer.prefer".to_owned(), "local".to_owned()),
         ("infer.offline_required".to_owned(), "true".to_owned()),
-        ("infer.quality_floor".to_owned(), "basic".to_owned()),
+        (
+            "infer.capability_floor".to_owned(),
+            "foundational".to_owned(),
+        ),
         ("infer.latency".to_owned(), "throughput".to_owned()),
         ("infer.fallback".to_owned(), "none".to_owned()),
         ("infer.max_cost_usd".to_owned(), "0".to_owned()),
@@ -156,10 +171,10 @@ pub struct RuntimeJobSnapshot {
     pub model_build: String,
     pub physical_model: String,
     pub placement: String,
-    #[serde(default)]
-    pub quality_grade: String,
-    #[serde(default)]
-    pub rating_status: String,
+    #[serde(default, alias = "quality_grade")]
+    pub capability_level: String,
+    #[serde(default, alias = "rating_status")]
+    pub evaluation_status: String,
     #[serde(default)]
     pub resource_class: String,
     pub state: String,
@@ -186,8 +201,8 @@ pub struct RuntimeJobConstraints {
     pub prefer: Option<String>,
     #[serde(default)]
     pub offline_required: Option<bool>,
-    #[serde(default)]
-    pub quality_floor: Option<String>,
+    #[serde(default, alias = "quality_floor")]
+    pub capability_floor: Option<String>,
     #[serde(default)]
     pub latency: Option<String>,
     #[serde(default)]
@@ -201,8 +216,8 @@ pub struct RuntimeJobConstraints {
 /// Immutable admission-time routing evidence retained without provider errors.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RuntimeRoutingDecision {
-    #[serde(default)]
-    pub quality_floor: String,
+    #[serde(default, alias = "quality_floor")]
+    pub capability_floor: String,
     #[serde(default)]
     pub candidates: Vec<RuntimeCandidateDecision>,
 }
@@ -286,6 +301,22 @@ pub struct InferRuntimeClient {
     endpoint_resolver: Arc<Mutex<EndpointResolver>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RuntimeSession {
+    origin: String,
+    contract: ConsumerProtocolVersion,
+}
+
+impl RuntimeSession {
+    fn url(&self, path: &str) -> String {
+        format!("{}{path}", self.origin)
+    }
+
+    const fn contract_version(&self) -> &'static str {
+        self.contract.as_str()
+    }
+}
+
 impl InferRuntimeClient {
     #[must_use]
     pub fn new(config: InferRuntimeConfig) -> Self {
@@ -302,7 +333,13 @@ impl InferRuntimeClient {
     ///
     /// Returns a classified transport, protocol, or version mismatch.
     pub fn contract_version(&self) -> Result<String, InferRuntimeError> {
-        let url = self.url("/infer/v1/contract")?;
+        self.begin_session()
+            .map(|session| session.contract_version().to_owned())
+    }
+
+    fn begin_session(&self) -> Result<RuntimeSession, InferRuntimeError> {
+        let endpoint = self.resolve_endpoint()?;
+        let url = format!("{}/infer/v1/contract", endpoint.origin);
         let response = ureq::get(&url)
             .config()
             .timeout_global(Some(Duration::from_secs(3)))
@@ -320,14 +357,40 @@ impl InferRuntimeClient {
                 Some(200),
             )
         })?;
-        if manifest.contract_version != EXPECTED_CONTRACT_VERSION {
+        let contract = match manifest.contract_version.as_str() {
+            COMPATIBLE_CONTRACT_VERSION => ConsumerProtocolVersion::Candidate2,
+            EXPECTED_CONTRACT_VERSION => ConsumerProtocolVersion::Candidate3,
+            _ => {
+                return Err(InferRuntimeError::new(
+                    InferRuntimeErrorKind::ContractMismatch,
+                    "contract_mismatch",
+                    Some(200),
+                ));
+            }
+        };
+        if endpoint
+            .protocol_version
+            .is_some_and(|discovered| discovered != contract)
+        {
             return Err(InferRuntimeError::new(
                 InferRuntimeErrorKind::ContractMismatch,
-                "contract_mismatch",
+                "discovery_contract_mismatch",
                 Some(200),
             ));
         }
-        Ok(manifest.contract_version)
+        if contract == ConsumerProtocolVersion::Candidate3
+            && manifest.capability_scale_version.as_deref() != Some(CAPABILITY_SCALE_VERSION)
+        {
+            return Err(InferRuntimeError::new(
+                InferRuntimeErrorKind::ContractMismatch,
+                "capability_scale_mismatch",
+                Some(200),
+            ));
+        }
+        Ok(RuntimeSession {
+            origin: endpoint.origin,
+            contract,
+        })
     }
 
     /// Submits `audio.transcribe`, then requires its App-scoped Job snapshot.
@@ -342,8 +405,8 @@ impl InferRuntimeClient {
     ) -> Result<TranscriptPayload, InferRuntimeError> {
         Self::validate_source(source)?;
         self.validate_token()?;
-        let contract_version = self.contract_version()?;
-        let metadata = encode_metadata(&intent.metadata)?;
+        let session = self.begin_session()?;
+        let metadata = encode_metadata_for_contract(&intent.metadata, session.contract)?;
         let temperature = intent.temperature.map(|value| value.to_string());
         let mut form = Form::new()
             .text("model", &intent.model)
@@ -362,7 +425,7 @@ impl InferRuntimeClient {
         if let Some(temperature) = &temperature {
             form = form.text("temperature", temperature);
         }
-        let body = self.post_form("/v1/audio/transcriptions", form)?;
+        let body = self.post_form(&session, "/v1/audio/transcriptions", form)?;
         let response: AudioJsonResponse = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
                 InferRuntimeErrorKind::Protocol,
@@ -377,7 +440,7 @@ impl InferRuntimeClient {
                 Some(200),
             ));
         }
-        let job = self.job_snapshot(&response.id)?;
+        let job = self.job_snapshot(&session, &response.id)?;
         validate_succeeded_job(&job, TRANSCRIPTION_INTENT)?;
         Ok(TranscriptPayload {
             model: response.model,
@@ -385,7 +448,7 @@ impl InferRuntimeClient {
             text: extension_string(&response.extensions, "text").unwrap_or_default(),
             segments: extension_items(&response.extensions, "segments"),
             runtime: Some(RuntimeProvenance {
-                contract_version,
+                contract_version: session.contract_version().to_owned(),
                 job,
             }),
         })
@@ -411,8 +474,8 @@ impl InferRuntimeClient {
                 None,
             ));
         }
-        let contract_version = self.contract_version()?;
-        let metadata = encode_metadata(&intent.metadata)?;
+        let session = self.begin_session()?;
+        let metadata = encode_metadata_for_contract(&intent.metadata, session.contract)?;
         let mut form = Form::new()
             .text("model", &intent.model)
             .text("text", text)
@@ -424,7 +487,7 @@ impl InferRuntimeClient {
         if let Some(language) = &intent.language {
             form = form.text("language", language);
         }
-        let body = self.post_form("/v1/audio/alignments", form)?;
+        let body = self.post_form(&session, "/v1/audio/alignments", form)?;
         let response: AudioJsonResponse = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
                 InferRuntimeErrorKind::Protocol,
@@ -439,22 +502,26 @@ impl InferRuntimeClient {
                 Some(200),
             ));
         }
-        let job = self.job_snapshot(&response.id)?;
+        let job = self.job_snapshot(&session, &response.id)?;
         validate_succeeded_job(&job, ALIGNMENT_INTENT)?;
         Ok(AlignmentPayload {
             text: extension_string(&response.extensions, "text").unwrap_or_default(),
             language: extension_string(&response.extensions, "language"),
             items: extension_items(&response.extensions, "items"),
             runtime: RuntimeProvenance {
-                contract_version,
+                contract_version: session.contract_version().to_owned(),
                 job,
             },
         })
     }
 
-    fn job_snapshot(&self, response_id: &str) -> Result<RuntimeJobSnapshot, InferRuntimeError> {
+    fn job_snapshot(
+        &self,
+        session: &RuntimeSession,
+        response_id: &str,
+    ) -> Result<RuntimeJobSnapshot, InferRuntimeError> {
         let path = format!("/infer/v1/jobs/{response_id}");
-        let url = self.url(&path)?;
+        let url = session.url(&path);
         let response = ureq::get(&url)
             .header("Authorization", self.authorization())
             .config()
@@ -466,17 +533,24 @@ impl InferRuntimeClient {
             .call()
             .map_err(|error| self.transport_error(error))?;
         let (_, body) = checked_json_response(response)?;
-        serde_json::from_str(&body).map_err(|_| {
+        let mut job: RuntimeJobSnapshot = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
                 InferRuntimeErrorKind::Protocol,
                 "invalid_job_snapshot",
                 Some(200),
             )
-        })
+        })?;
+        normalize_job_snapshot(&mut job, session.contract)?;
+        Ok(job)
     }
 
-    fn post_form(&self, path: &str, form: Form<'_>) -> Result<String, InferRuntimeError> {
-        let url = self.url(path)?;
+    fn post_form(
+        &self,
+        session: &RuntimeSession,
+        path: &str,
+        form: Form<'_>,
+    ) -> Result<String, InferRuntimeError> {
+        let url = session.url(path);
         let response = ureq::post(&url)
             .header("Authorization", self.authorization())
             .config()
@@ -528,9 +602,8 @@ impl InferRuntimeClient {
         format!("Bearer {}", self.config.bearer_token)
     }
 
-    fn url(&self, path: &str) -> Result<String, InferRuntimeError> {
-        let endpoint = self
-            .endpoint_resolver
+    fn resolve_endpoint(&self) -> Result<ResolvedEndpoint, InferRuntimeError> {
+        self.endpoint_resolver
             .lock()
             .map_err(|_| {
                 InferRuntimeError::new(
@@ -546,8 +619,7 @@ impl InferRuntimeClient {
                     "invalid_runtime_endpoint",
                     None,
                 )
-            })?;
-        Ok(format!("{}{path}", endpoint.origin))
+            })
     }
 
     fn transport_error(&self, _: ureq::Error) -> InferRuntimeError {
@@ -562,14 +634,145 @@ impl InferRuntimeClient {
     }
 }
 
-fn encode_metadata(metadata: &BTreeMap<String, String>) -> Result<String, InferRuntimeError> {
-    serde_json::to_string(metadata).map_err(|_| {
+fn encode_metadata_for_contract(
+    metadata: &BTreeMap<String, String>,
+    contract: ConsumerProtocolVersion,
+) -> Result<String, InferRuntimeError> {
+    let metadata = metadata_for_contract(metadata, contract)?;
+    serde_json::to_string(&metadata).map_err(|_| {
         InferRuntimeError::new(
             InferRuntimeErrorKind::Protocol,
             "invalid_runtime_metadata",
             None,
         )
     })
+}
+
+fn metadata_for_contract(
+    metadata: &BTreeMap<String, String>,
+    contract: ConsumerProtocolVersion,
+) -> Result<BTreeMap<String, String>, InferRuntimeError> {
+    if metadata.contains_key("infer.quality_floor") {
+        return Err(InferRuntimeError::new(
+            InferRuntimeErrorKind::Protocol,
+            "legacy_quality_metadata_not_allowed",
+            None,
+        ));
+    }
+    let mut wire = metadata.clone();
+    if contract == ConsumerProtocolVersion::Candidate2 {
+        if let Some(level) = wire.remove("infer.capability_floor") {
+            wire.insert(
+                "infer.quality_floor".to_owned(),
+                candidate2_capability_level(&level)?.to_owned(),
+            );
+        }
+        if wire.get("infer.policy").map(String::as_str) == Some("capability-first") {
+            wire.insert("infer.policy".to_owned(), "quality-first".to_owned());
+        }
+        if wire.get("infer.fallback").map(String::as_str) == Some("allow_lower_capability") {
+            wire.insert(
+                "infer.fallback".to_owned(),
+                "allow_lower_quality".to_owned(),
+            );
+        }
+    }
+    Ok(wire)
+}
+
+fn wire_intent_for_contract(canonical_intent: &str, contract: ConsumerProtocolVersion) -> &str {
+    if contract == ConsumerProtocolVersion::Candidate2 && canonical_intent == "semantic.embed_text"
+    {
+        "vision.embed_text"
+    } else {
+        canonical_intent
+    }
+}
+
+fn normalize_job_snapshot(
+    job: &mut RuntimeJobSnapshot,
+    contract: ConsumerProtocolVersion,
+) -> Result<(), InferRuntimeError> {
+    if contract == ConsumerProtocolVersion::Candidate2 {
+        if job.intent == "vision.embed_text" {
+            "semantic.embed_text".clone_into(&mut job.intent);
+        }
+        normalize_candidate2_level(&mut job.capability_level)?;
+        if let Some(level) = &mut job.constraints.capability_floor {
+            normalize_candidate2_level(level)?;
+        }
+        normalize_candidate2_level(&mut job.routing.capability_floor)?;
+        for candidate in &mut job.routing.candidates {
+            for reason_code in &mut candidate.reason_codes {
+                if reason_code == "quality_below_floor" {
+                    "capability_below_floor".clone_into(reason_code);
+                }
+            }
+        }
+    } else {
+        validate_candidate3_level(&job.capability_level)?;
+        if let Some(level) = &job.constraints.capability_floor {
+            validate_candidate3_level(level)?;
+        }
+        validate_candidate3_level(&job.routing.capability_floor)?;
+    }
+    Ok(())
+}
+
+fn candidate2_capability_level(level: &str) -> Result<&'static str, InferRuntimeError> {
+    match level {
+        "foundational" => Ok("basic"),
+        "capable" => Ok("general"),
+        "expert" => Ok("advanced"),
+        "exceptional" => Ok("frontier"),
+        "advanced" => Err(InferRuntimeError::new(
+            InferRuntimeErrorKind::ContractMismatch,
+            "capability_level_unrepresentable_in_candidate2",
+            None,
+        )),
+        _ => Err(InferRuntimeError::new(
+            InferRuntimeErrorKind::Protocol,
+            "invalid_capability_level",
+            None,
+        )),
+    }
+}
+
+fn normalize_candidate2_level(level: &mut String) -> Result<(), InferRuntimeError> {
+    if level.is_empty() {
+        return Ok(());
+    }
+    match level.as_str() {
+        "basic" => "foundational",
+        "general" => "capable",
+        "advanced" => "expert",
+        "frontier" => "exceptional",
+        _ => {
+            return Err(InferRuntimeError::new(
+                InferRuntimeErrorKind::Protocol,
+                "invalid_candidate2_quality_grade",
+                Some(200),
+            ));
+        }
+    }
+    .clone_into(level);
+    Ok(())
+}
+
+fn validate_candidate3_level(level: &str) -> Result<(), InferRuntimeError> {
+    if level.is_empty()
+        || matches!(
+            level,
+            "foundational" | "capable" | "advanced" | "expert" | "exceptional"
+        )
+    {
+        return Ok(());
+    }
+    Err(InferRuntimeError::new(
+        InferRuntimeErrorKind::Protocol,
+        "invalid_capability_level",
+        Some(200),
+    ))
 }
 
 fn checked_json_response(
@@ -661,6 +864,8 @@ fn validate_succeeded_job(
 #[derive(Debug, Deserialize)]
 struct ContractManifest {
     contract_version: String,
+    #[serde(default)]
+    capability_scale_version: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

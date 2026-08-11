@@ -59,6 +59,10 @@ fn discovery_tracks_generation_and_lease() {
 
     let first = resolver.resolve().expect("first generation resolves");
     assert_eq!(first.source, EndpointSource::Discovery);
+    assert_eq!(
+        first.protocol_version,
+        Some(ConsumerProtocolVersion::Candidate3)
+    );
     assert_eq!(first.generation.as_deref(), Some("generation-a"));
     assert_eq!(first.origin, "http://127.0.0.1:9111");
 
@@ -127,6 +131,39 @@ fn requires_exact_consumer_protocol_version() {
     std::fs::remove_dir_all(root).expect("fixture removes");
 }
 
+#[test]
+fn accepts_candidate2_and_prefers_candidate3_when_both_are_offered() {
+    let root = fixture_root("dual-version");
+    let mut value = registration_value(
+        "generation-a",
+        "http://127.0.0.1:9111",
+        45,
+        CONSUMER_PROTOCOL_CANDIDATE_2,
+    );
+    value["offers"][0]["protocol_versions"] =
+        serde_json::json!([CONSUMER_PROTOCOL_CANDIDATE_2, CONSUMER_PROTOCOL_CANDIDATE_3]);
+    write_registration_value(&root, &value);
+    let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
+
+    let selection = resolver.resolve().expect("dual-version offer resolves");
+
+    assert_eq!(selection.source, EndpointSource::Discovery);
+    assert_eq!(
+        selection.protocol_version,
+        Some(ConsumerProtocolVersion::Candidate3)
+    );
+
+    value["offers"][0]["protocol_versions"] = serde_json::json!([CONSUMER_PROTOCOL_CANDIDATE_2]);
+    value["service"]["generation"] = serde_json::json!("generation-b");
+    write_registration_value(&root, &value);
+    let selection = resolver.resolve().expect("candidate2 offer resolves");
+    assert_eq!(
+        selection.protocol_version,
+        Some(ConsumerProtocolVersion::Candidate2)
+    );
+    std::fs::remove_dir_all(root).expect("fixture removes");
+}
+
 fn fixture_root(label: &str) -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "echo-discovery-{label}-{}-{:?}",
@@ -148,7 +185,7 @@ fn write_registration(root: &Path, generation: &str, endpoint: &str, lease_secon
             generation,
             endpoint,
             lease_seconds,
-            CONSUMER_PROTOCOL_VERSION,
+            CONSUMER_PROTOCOL_CANDIDATE_3,
         ),
     );
 }

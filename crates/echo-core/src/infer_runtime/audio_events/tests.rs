@@ -9,7 +9,9 @@ use crate::infer_runtime::tests::{
 fn event_detection_accepts_stable_ids_policy_and_local_job_evidence() {
     let response = audio_event_detection_response("unknown", 0.12);
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         json_response(&response),
         json_response(&audio_event_job_snapshot()),
     ]);
@@ -51,7 +53,9 @@ fn event_detection_rejects_speech_absence_without_full_coverage() {
     response["coverage"]["analyzed_seconds"] = json!(1.0);
     response["coverage"]["ratio"] = json!(0.5);
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         json_response(&response.to_string()),
     ]);
     let source = audio_fixture();

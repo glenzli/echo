@@ -11,7 +11,7 @@ use super::*;
 #[test]
 fn text_embedding_requires_local_constraints_and_matching_provenance() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        candidate3_contract(),
         json_response(&embedding_response("space-v1", 768)),
         json_response(&job_snapshot()),
     ]);
@@ -30,6 +30,8 @@ fn text_embedding_requires_local_constraints_and_matching_provenance() {
     assert_eq!(payload.provider.job_id, "embed_echo_1");
     assert_eq!(payload.runtime.job.app_id, "echo");
     assert_eq!(payload.runtime.job.intent, TEXT_EMBEDDING_INTENT);
+    assert_eq!(payload.runtime.job.capability_level, "foundational");
+    assert_eq!(payload.runtime.job.evaluation_status, "provisional");
 
     let requests = server.join().expect("server exits");
     let request: Value = serde_json::from_slice(&requests[1]).expect("request JSON decodes");
@@ -41,6 +43,11 @@ fn text_embedding_requires_local_constraints_and_matching_provenance() {
     assert_eq!(request["metadata"]["infer.placement"], "local_only");
     assert_eq!(request["metadata"]["infer.prefer"], "local");
     assert_eq!(request["metadata"]["infer.offline_required"], "true");
+    assert_eq!(
+        request["metadata"]["infer.capability_floor"],
+        "foundational"
+    );
+    assert!(request["metadata"].get("infer.quality_floor").is_none());
     assert_eq!(request["metadata"]["infer.fallback"], "none");
     assert_eq!(request["metadata"]["infer.max_cost_usd"], "0");
     assert_eq!(request["metadata"].as_object().unwrap().len(), 9);
@@ -49,7 +56,7 @@ fn text_embedding_requires_local_constraints_and_matching_provenance() {
 #[test]
 fn text_embedding_rejects_a_wrong_vector_contract() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        candidate3_contract(),
         json_response(&embedding_response("space-v1", 767)),
     ]);
     let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
@@ -67,6 +74,47 @@ fn text_embedding_rejects_a_wrong_vector_contract() {
     assert_eq!(error.kind, InferRuntimeErrorKind::Protocol);
     assert_eq!(error.code, "invalid_text_embedding_payload");
     server.join().expect("server exits");
+}
+
+#[test]
+fn text_embedding_translates_candidate2_vocabulary_and_normalizes_provenance() {
+    let (base_url, server) = serve(vec![
+        json_response(r#"{"contract_version":"0.1.0-candidate.2"}"#),
+        json_response(&embedding_response("space-v1", 768)),
+        json_response(&candidate2_job_snapshot()),
+    ]);
+    let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let payload = client
+        .embed_text(
+            "fixture semantic document",
+            &TextEmbeddingIntent::new("source-revision-1"),
+        )
+        .expect("candidate2 response is translated at the wire boundary");
+
+    assert_eq!(payload.runtime.contract_version, "0.1.0-candidate.2");
+    assert_eq!(payload.runtime.job.intent, TEXT_EMBEDDING_INTENT);
+    assert_eq!(payload.runtime.job.capability_level, "foundational");
+    assert_eq!(
+        payload.runtime.job.constraints.capability_floor.as_deref(),
+        Some("foundational")
+    );
+    assert_eq!(payload.runtime.job.routing.capability_floor, "foundational");
+
+    let requests = server.join().expect("server exits");
+    let request: Value = serde_json::from_slice(&requests[1]).expect("request JSON decodes");
+    assert_eq!(request["model"], "vision.embed_text");
+    assert_eq!(request["metadata"]["infer.quality_floor"], "basic");
+    assert!(request["metadata"].get("infer.capability_floor").is_none());
+}
+
+fn candidate3_contract() -> String {
+    json_response(
+        r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+    )
 }
 
 fn embedding_response(space: &str, dimensions: usize) -> String {
@@ -114,8 +162,8 @@ fn job_snapshot() -> String {
         "model_build": "siglip2-build",
         "physical_model": "siglip2-base-patch16-224",
         "placement": "local",
-        "quality_grade": "basic",
-        "rating_status": "provisional",
+        "capability_level": "foundational",
+        "evaluation_status": "provisional",
         "resource_class": "light",
         "state": "succeeded",
         "policy": "local-first",
@@ -126,14 +174,14 @@ fn job_snapshot() -> String {
             "placement": "local_only",
             "prefer": "local",
             "offline_required": true,
-            "quality_floor": "basic",
+            "capability_floor": "foundational",
             "latency": "throughput",
             "max_cost_usd": 0.0,
             "fallback": "none",
             "deadline_ms": null
         },
         "routing": {
-            "quality_floor": "basic",
+            "capability_floor": "foundational",
             "candidates": [{
                 "deployment": "siglip2-text",
                 "provider": "onnx-local",
@@ -152,6 +200,34 @@ fn job_snapshot() -> String {
         }]
     })
     .to_string()
+}
+
+fn candidate2_job_snapshot() -> String {
+    let mut job: Value = serde_json::from_str(&job_snapshot()).expect("job fixture decodes");
+    job["intent"] = json!("vision.embed_text");
+    job.as_object_mut()
+        .expect("job is object")
+        .insert("quality_grade".to_owned(), json!("basic"));
+    job.as_object_mut()
+        .expect("job is object")
+        .insert("rating_status".to_owned(), json!("provisional"));
+    job.as_object_mut()
+        .expect("job is object")
+        .remove("capability_level");
+    job.as_object_mut()
+        .expect("job is object")
+        .remove("evaluation_status");
+    job["constraints"]["quality_floor"] = json!("basic");
+    job["constraints"]
+        .as_object_mut()
+        .expect("constraints are object")
+        .remove("capability_floor");
+    job["routing"]["quality_floor"] = json!("basic");
+    job["routing"]
+        .as_object_mut()
+        .expect("routing is object")
+        .remove("capability_floor");
+    job.to_string()
 }
 
 fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<Vec<Vec<u8>>>) {

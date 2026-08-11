@@ -90,17 +90,18 @@ impl InferRuntimeClient {
             ));
         }
         self.validate_token()?;
-        let contract_version = self.contract_version()?;
+        let session = self.begin_session()?;
+        let metadata = super::metadata_for_contract(&intent.metadata, session.contract)?;
         let request = ResponsesRequest {
             model: &intent.model,
             input,
             instructions: &intent.instructions,
             stream: false,
             background: false,
-            metadata: &intent.metadata,
+            metadata: &metadata,
             max_output_tokens: intent.max_output_tokens,
         };
-        let url = self.url("/v1/responses")?;
+        let url = session.url("/v1/responses");
         let response = ureq::post(&url)
             .header("Authorization", self.authorization())
             .config()
@@ -148,13 +149,13 @@ impl InferRuntimeClient {
                 Some(200),
             ));
         }
-        let job = self.job_snapshot(response_id)?;
+        let job = self.job_snapshot(&session, response_id)?;
         validate_succeeded_job(&job, CONTEXTUAL_INTENT)?;
         validate_contextual_constraints(&job)?;
         Ok(ContextualResponse {
             output_text,
             runtime: RuntimeProvenance {
-                contract_version,
+                contract_version: session.contract_version().to_owned(),
                 job,
             },
         })
@@ -188,13 +189,13 @@ fn validate_contextual_constraints(
     let valid = job.policy == "local-first"
         && job.priority == "background"
         && job.placement == "local"
-        && job.quality_grade == "basic"
+        && job.capability_level == "foundational"
         && constraints.policy.as_deref() == Some("local-first")
         && constraints.priority.as_deref() == Some("background")
         && constraints.placement.as_deref() == Some("local_only")
         && constraints.prefer.as_deref() == Some("local")
         && constraints.offline_required == Some(true)
-        && constraints.quality_floor.as_deref() == Some("basic")
+        && constraints.capability_floor.as_deref() == Some("foundational")
         && constraints.latency.as_deref() == Some("throughput")
         && constraints.max_cost_usd == Some(0.0)
         && constraints.fallback.as_deref() == Some("none")

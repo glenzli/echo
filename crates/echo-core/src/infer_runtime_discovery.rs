@@ -21,9 +21,25 @@ const DISCOVERY_SCHEMA_VERSION: &str = "20260810.1";
 const SERVICE_KIND: &str = "infer-runtime";
 const DEFAULT_INSTANCE_ID: &str = "local";
 const CONSUMER_PROTOCOL: &str = "infer-runtime.consumer";
-const CONSUMER_PROTOCOL_VERSION: &str = "0.1.0-candidate.3";
+const CONSUMER_PROTOCOL_CANDIDATE_2: &str = "0.1.0-candidate.2";
+const CONSUMER_PROTOCOL_CANDIDATE_3: &str = "0.1.0-candidate.3";
 const CONSUMER_BINDING: &str = "infer-runtime.http-loopback";
 const MAX_REGISTRATION_BYTES: u64 = 64 * 1024;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ConsumerProtocolVersion {
+    Candidate2,
+    Candidate3,
+}
+
+impl ConsumerProtocolVersion {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Candidate2 => CONSUMER_PROTOCOL_CANDIDATE_2,
+            Self::Candidate3 => CONSUMER_PROTOCOL_CANDIDATE_3,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EndpointSource {
@@ -36,6 +52,7 @@ pub(crate) enum EndpointSource {
 pub(crate) struct ResolvedEndpoint {
     pub(crate) origin: String,
     pub(crate) source: EndpointSource,
+    pub(crate) protocol_version: Option<ConsumerProtocolVersion>,
     pub(crate) instance_id: Option<String>,
     pub(crate) generation: Option<String>,
     pub(crate) lease_expires_at: Option<OffsetDateTime>,
@@ -71,6 +88,7 @@ impl EndpointResolver {
             return Ok(ResolvedEndpoint {
                 origin: canonical_loopback_origin(origin)?,
                 source: EndpointSource::ExplicitOverride,
+                protocol_version: None,
                 instance_id: None,
                 generation: None,
                 lease_expires_at: None,
@@ -83,6 +101,7 @@ impl EndpointResolver {
                 && cached.instance_id == selection.instance_id
                 && cached.generation == selection.generation
                 && cached.origin == selection.origin
+                && cached.protocol_version == selection.protocol_version
                 && cached.lease_expires_at.is_some_and(|expires| expires > now)
             {
                 return Ok(cached.clone());
@@ -125,6 +144,7 @@ fn compatibility_fallback() -> ResolvedEndpoint {
     ResolvedEndpoint {
         origin: COMPATIBILITY_FALLBACK_ENDPOINT.to_owned(),
         source: EndpointSource::CompatibilityFallback,
+        protocol_version: None,
         instance_id: None,
         generation: None,
         lease_expires_at: None,
@@ -277,26 +297,40 @@ impl Registration {
             offer.validate()?;
             if offer.protocol == CONSUMER_PROTOCOL
                 && offer.binding == CONSUMER_BINDING
-                && offer
-                    .protocol_versions
-                    .iter()
-                    .any(|version| version == CONSUMER_PROTOCOL_VERSION)
+                && let Some(protocol_version) = preferred_consumer_version(&offer.protocol_versions)
             {
                 if selected.is_some() {
                     return Err(EndpointError);
                 }
-                selected = Some(canonical_loopback_origin(&offer.endpoint)?);
+                selected = Some((
+                    canonical_loopback_origin(&offer.endpoint)?,
+                    protocol_version,
+                ));
             }
         }
-        let origin = selected.ok_or(EndpointError)?;
+        let (origin, protocol_version) = selected.ok_or(EndpointError)?;
         Ok(ResolvedEndpoint {
             origin,
             source: EndpointSource::Discovery,
+            protocol_version: Some(protocol_version),
             instance_id: Some(self.service.instance_id.clone()),
             generation: Some(self.service.generation.clone()),
             lease_expires_at: Some(expires_at),
         })
     }
+}
+
+fn preferred_consumer_version(versions: &[String]) -> Option<ConsumerProtocolVersion> {
+    if versions
+        .iter()
+        .any(|version| version == CONSUMER_PROTOCOL_CANDIDATE_3)
+    {
+        return Some(ConsumerProtocolVersion::Candidate3);
+    }
+    versions
+        .iter()
+        .any(|version| version == CONSUMER_PROTOCOL_CANDIDATE_2)
+        .then_some(ConsumerProtocolVersion::Candidate2)
 }
 
 #[derive(Debug, Deserialize)]

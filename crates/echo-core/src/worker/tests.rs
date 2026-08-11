@@ -58,8 +58,8 @@ fn runtime_completion_links_the_local_job_to_sanitized_provenance() {
             model_build: "qwen3_asr_1_7b_8bit".to_owned(),
             physical_model: "Qwen3-ASR-1.7B".to_owned(),
             placement: "local".to_owned(),
-            quality_grade: "basic".to_owned(),
-            rating_status: "provisional".to_owned(),
+            capability_level: "foundational".to_owned(),
+            evaluation_status: "provisional".to_owned(),
             resource_class: "standard".to_owned(),
             state: "succeeded".to_owned(),
             policy: "local-first".to_owned(),
@@ -133,7 +133,7 @@ fn audio_event_job_runs_the_runtime_and_publishes_browse_evidence() {
         })
         .expect("fixture writes");
     let (base_url, server) = crate::infer_runtime::tests::serve(vec![
-        crate::infer_runtime::tests::json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        crate::infer_runtime::tests::candidate3_contract_response(),
         crate::infer_runtime::tests::json_response(
             &crate::infer_runtime::tests::audio_event_detection_response("absent", 0.02),
         ),

@@ -136,6 +136,14 @@ fn evidence_envelope_rejects_mixed_builds_and_overlapping_chunks() {
     assert!(validate_evidence(&evidence).is_err());
 }
 
+#[test]
+fn candidate2_evidence_remains_valid_during_the_coordinated_upgrade() {
+    let mut evidence = AudioEventsEvidence::from_detection(detection(), 0.0);
+    evidence.chunks[0].detection.runtime.contract_version = "0.1.0-candidate.2".to_owned();
+
+    validate_evidence(&evidence).expect("candidate2 evidence remains readable during migration");
+}
+
 fn detection() -> AudioEventDetection {
     AudioEventDetection {
         id: "audio_echo_1".to_owned(),
@@ -218,8 +226,8 @@ fn detection() -> AudioEventDetection {
                 model_build: "yamnet_tfhub_v1_tensorflow_2_20".to_owned(),
                 physical_model: "google/yamnet/1".to_owned(),
                 placement: "local".to_owned(),
-                quality_grade: "basic".to_owned(),
-                rating_status: "provisional".to_owned(),
+                capability_level: "foundational".to_owned(),
+                evaluation_status: "provisional".to_owned(),
                 resource_class: "standard".to_owned(),
                 state: "succeeded".to_owned(),
                 policy: "local-first".to_owned(),

@@ -12,7 +12,9 @@ use super::*;
 #[test]
 fn transcription_requires_contract_and_job_provenance() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         json_response(
             r#"{"id":"job-echo-1","model":"audio.transcribe","language":"zh","text":"你好","segments":[{"text":"你好","start_time":0.1,"end_time":0.8,"words":[{"text":"你好","start_time":0.1,"end_time":0.8}]}]}"#,
         ),
@@ -45,7 +47,9 @@ fn transcription_requires_contract_and_job_provenance() {
 #[test]
 fn transcription_accepts_null_segments_from_runtime() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         json_response(
             r#"{"id":"job-echo-null-segments","model":"audio.transcribe","language":"zh","text":"fixture text","segments":null,"usage":{"total_tokens":1}}"#,
         ),
@@ -77,7 +81,9 @@ fn transcription_accepts_null_segments_from_runtime() {
 #[test]
 fn transcription_keeps_recognized_items_from_openapi_extensions() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         json_response(
             r#"{"id":"job-echo-extension","model":"audio.transcribe","language":{"label":"Chinese"},"text":"fixture text","segments":[{"text":"provider-specific untimed item"},{"text":"timed fixture","start":0.2,"end":0.9}],"usage":{"total_tokens":1}}"#,
         ),
@@ -106,7 +112,9 @@ fn transcription_keeps_recognized_items_from_openapi_extensions() {
 #[test]
 fn stable_runtime_error_ignores_provider_message() {
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         response(
             "503 Service Unavailable",
             r#"{"error":{"code":"provider_unavailable","message":"sensitive provider detail"}}"#,
@@ -150,6 +158,37 @@ fn contract_redirect_is_not_followed() {
     assert_eq!(error.kind, InferRuntimeErrorKind::Rejected);
     assert_eq!(error.code, "moved");
     server.join().expect("server exits after one request");
+}
+
+#[test]
+fn candidate3_requires_the_frozen_capability_scale() {
+    let (base_url, server) = serve(vec![json_response(
+        r#"{"contract_version":"0.1.0-candidate.3"}"#,
+    )]);
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let error = client
+        .contract_version()
+        .expect_err("candidate3 without its capability scale is rejected");
+
+    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
+    assert_eq!(error.code, "capability_scale_mismatch");
+    server.join().expect("server exits after one request");
+}
+
+#[test]
+fn canonical_metadata_does_not_silently_collapse_new_advanced_for_candidate2() {
+    let mut metadata = default_background_constraints();
+    metadata.insert("infer.capability_floor".to_owned(), "advanced".to_owned());
+
+    let error = metadata_for_contract(&metadata, ConsumerProtocolVersion::Candidate2)
+        .expect_err("new advanced has no safe candidate2 spelling");
+
+    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
+    assert_eq!(error.code, "capability_level_unrepresentable_in_candidate2");
 }
 
 pub(crate) fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<()>) {
@@ -196,6 +235,12 @@ fn read_request(stream: &mut std::net::TcpStream) {
 
 pub(crate) fn json_response(body: &str) -> String {
     response("200 OK", body)
+}
+
+pub(crate) fn candidate3_contract_response() -> String {
+    json_response(
+        r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+    )
 }
 
 fn response(status: &str, body: &str) -> String {
@@ -292,8 +337,8 @@ pub(crate) fn audio_event_job_snapshot() -> String {
         "model_build": "yamnet_tfhub_v1_tensorflow_2_20",
         "physical_model": "google/yamnet/1",
         "placement": "local",
-        "quality_grade": "basic",
-        "rating_status": "provisional",
+        "capability_level": "foundational",
+        "evaluation_status": "provisional",
         "resource_class": "standard",
         "state": "succeeded",
         "policy": "local-first",
@@ -304,12 +349,12 @@ pub(crate) fn audio_event_job_snapshot() -> String {
             "placement": "local_only",
             "prefer": "local",
             "offline_required": true,
-            "quality_floor": "basic",
+            "capability_floor": "foundational",
             "latency": "throughput",
             "max_cost_usd": 0.0,
             "fallback": "none"
         },
-        "routing": {"quality_floor": "basic", "candidates": []},
+        "routing": {"capability_floor": "foundational", "candidates": []},
         "attempts": [{
             "number": 1,
             "provider": "yamnet-local",

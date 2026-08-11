@@ -11,7 +11,8 @@ use ureq::unversioned::multipart::Form;
 
 use super::{
     InferRuntimeClient, InferRuntimeError, InferRuntimeErrorKind, RuntimeJobSnapshot,
-    RuntimeProvenance, default_background_constraints, encode_metadata, validate_succeeded_job,
+    RuntimeProvenance, default_background_constraints, encode_metadata_for_contract,
+    validate_succeeded_job,
 };
 
 /// Stable Runtime Intent for bounded sound-event detection.
@@ -179,8 +180,8 @@ impl InferRuntimeClient {
     ) -> Result<AudioEventDetection, InferRuntimeError> {
         Self::validate_source(source)?;
         self.validate_token()?;
-        let contract_version = self.contract_version()?;
-        let metadata = encode_metadata(&intent.metadata)?;
+        let session = self.begin_session()?;
+        let metadata = encode_metadata_for_contract(&intent.metadata, session.contract)?;
         let form = Form::new()
             .text("model", &intent.model)
             .text("metadata", &metadata)
@@ -188,7 +189,7 @@ impl InferRuntimeClient {
             .map_err(|_| {
                 InferRuntimeError::new(InferRuntimeErrorKind::Protocol, "source_unavailable", None)
             })?;
-        let body = self.post_form("/v1/audio/event-detections", form)?;
+        let body = self.post_form(&session, "/v1/audio/event-detections", form)?;
         let response: WireAudioEventDetection = serde_json::from_str(&body).map_err(|_| {
             InferRuntimeError::new(
                 InferRuntimeErrorKind::Protocol,
@@ -197,7 +198,7 @@ impl InferRuntimeClient {
             )
         })?;
         validate_detection(&response)?;
-        let job = self.job_snapshot(&response.id)?;
+        let job = self.job_snapshot(&session, &response.id)?;
         validate_succeeded_job(&job, AUDIO_EVENT_DETECTION_INTENT)?;
         validate_local_only_job(&job)?;
         Ok(AudioEventDetection {
@@ -211,7 +212,7 @@ impl InferRuntimeClient {
             policy: response.policy,
             provenance: response.provenance,
             runtime: RuntimeProvenance {
-                contract_version,
+                contract_version: session.contract_version().to_owned(),
                 job,
             },
         })
@@ -361,12 +362,13 @@ fn validate_local_only_job(job: &RuntimeJobSnapshot) -> Result<(), InferRuntimeE
     let valid = job.policy == "local-first"
         && job.priority == "background"
         && job.placement == "local"
+        && job.capability_level == "foundational"
         && constraints.policy.as_deref() == Some("local-first")
         && constraints.priority.as_deref() == Some("background")
         && constraints.placement.as_deref() == Some("local_only")
         && constraints.prefer.as_deref() == Some("local")
         && constraints.offline_required == Some(true)
-        && constraints.quality_floor.as_deref() == Some("basic")
+        && constraints.capability_floor.as_deref() == Some("foundational")
         && constraints.latency.as_deref() == Some("throughput")
         && constraints.max_cost_usd == Some(0.0)
         && constraints.fallback.as_deref() == Some("none")

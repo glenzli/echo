@@ -33,7 +33,9 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
     })
     .to_string();
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         json_response(&response_body),
         json_response(&job_snapshot("initial")),
     ]);
@@ -52,7 +54,10 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
         response.runtime.job.constraints.placement.as_deref(),
         Some("local_only")
     );
-    assert_eq!(response.runtime.job.routing.quality_floor, "basic");
+    assert_eq!(
+        response.runtime.job.routing.capability_floor,
+        "foundational"
+    );
 
     let requests = server.join().expect("server exits");
     let request: Value = serde_json::from_slice(&requests[1]).expect("request JSON decodes");
@@ -64,7 +69,10 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
     assert_eq!(request["metadata"]["infer.placement"], "local_only");
     assert_eq!(request["metadata"]["infer.prefer"], "local");
     assert_eq!(request["metadata"]["infer.offline_required"], "true");
-    assert_eq!(request["metadata"]["infer.quality_floor"], "basic");
+    assert_eq!(
+        request["metadata"]["infer.capability_floor"],
+        "foundational"
+    );
     assert_eq!(request["metadata"]["infer.latency"], "throughput");
     assert_eq!(request["metadata"]["infer.fallback"], "none");
     assert_eq!(request["metadata"]["infer.max_cost_usd"], "0");
@@ -93,7 +101,9 @@ fn contextual_response_rejects_fallback_attempt_evidence() {
     })
     .to_string();
     let (base_url, server) = serve(vec![
-        json_response(r#"{"contract_version":"0.1.0-candidate.3"}"#),
+        json_response(
+            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        ),
         json_response(&response_body),
         json_response(&job_snapshot("fallback")),
     ]);
@@ -122,8 +132,8 @@ fn job_snapshot(trigger: &str) -> String {
         "model_build": "qwen3.5:2b-mlx",
         "physical_model": "qwen3.5:2b-mlx",
         "placement": "local",
-        "quality_grade": "basic",
-        "rating_status": "provisional",
+        "capability_level": "foundational",
+        "evaluation_status": "provisional",
         "resource_class": "light",
         "state": "succeeded",
         "policy": "local-first",
@@ -134,14 +144,14 @@ fn job_snapshot(trigger: &str) -> String {
             "placement": "local_only",
             "prefer": "local",
             "offline_required": true,
-            "quality_floor": "basic",
+            "capability_floor": "foundational",
             "latency": "throughput",
             "max_cost_usd": 0.0,
             "fallback": "none",
             "deadline_ms": null
         },
         "routing": {
-            "quality_floor": "basic",
+            "capability_floor": "foundational",
             "candidates": [{
                 "deployment": "qwen3-5-2b",
                 "provider": "ollama-local",

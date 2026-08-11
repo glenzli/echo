@@ -13,7 +13,7 @@ use super::{
     validate_succeeded_job,
 };
 
-pub const TEXT_EMBEDDING_INTENT: &str = "vision.embed_text";
+pub const TEXT_EMBEDDING_INTENT: &str = "semantic.embed_text";
 pub const TEXT_EMBEDDING_DIMENSIONS: usize = 768;
 const MAX_TEXT_BYTES: usize = 4_096;
 const MAX_REVISION_BYTES: usize = 256;
@@ -109,15 +109,17 @@ impl InferRuntimeClient {
         let text = text.trim();
         validate_request(text, intent)?;
         self.validate_token()?;
-        let contract_version = self.contract_version()?;
+        let session = self.begin_session()?;
+        let wire_model = super::wire_intent_for_contract(&intent.model, session.contract);
+        let metadata = super::metadata_for_contract(&intent.metadata, session.contract)?;
         let request = TextEmbeddingRequest {
-            model: &intent.model,
+            model: wire_model,
             text,
             query_revision: &intent.revision,
             language: intent.language.as_deref(),
-            metadata: &intent.metadata,
+            metadata: &metadata,
         };
-        let url = self.url("/infer/v1/vision/text-embeddings")?;
+        let url = session.url("/infer/v1/vision/text-embeddings");
         let response = ureq::post(&url)
             .header("Authorization", self.authorization())
             .config()
@@ -137,7 +139,7 @@ impl InferRuntimeClient {
             )
         })?;
         validate_response(&response, intent)?;
-        let job = self.job_snapshot(&response.id)?;
+        let job = self.job_snapshot(&session, &response.id)?;
         validate_succeeded_job(&job, TEXT_EMBEDDING_INTENT)?;
         validate_constraints(&job)?;
         if response.provenance.job_id != response.id
@@ -152,7 +154,7 @@ impl InferRuntimeClient {
             space: response.embedding.space,
             provider: response.provenance,
             runtime: RuntimeProvenance {
-                contract_version,
+                contract_version: session.contract_version().to_owned(),
                 job,
             },
         })
@@ -206,11 +208,20 @@ fn validate_constraints(job: &RuntimeJobSnapshot) -> Result<(), InferRuntimeErro
     let valid = job.policy == "local-first"
         && job.priority == "background"
         && job.placement == "local"
+        && job.capability_level == "foundational"
+        && constraints.policy.as_deref() == Some("local-first")
+        && constraints.priority.as_deref() == Some("background")
         && constraints.placement.as_deref() == Some("local_only")
         && constraints.prefer.as_deref() == Some("local")
         && constraints.offline_required == Some(true)
+        && constraints.capability_floor.as_deref() == Some("foundational")
+        && constraints.latency.as_deref() == Some("throughput")
         && constraints.fallback.as_deref() == Some("none")
-        && constraints.max_cost_usd == Some(0.0);
+        && constraints.max_cost_usd == Some(0.0)
+        && job
+            .attempts
+            .iter()
+            .all(|attempt| attempt.trigger != "fallback");
     if valid {
         Ok(())
     } else {
