@@ -8,13 +8,14 @@
 
 Echo 不是 DAW，不是 Audacity + AI，不是 TTS Playground。
 
-能力划分为四个域：
+能力划分为五个域：
 
 ```text
 Preserve   原始记录、provenance、非破坏性版本
 Understand ASR、人物、情绪、声音事件、语义索引
 Restore    降噪、响度、EQ、去混响、修复录制缺陷
 Revisit    声音空间 / 声音相册（最高层）
+Creative   对所选真实录音做显式、可旁路的确定性场景与角色化处理
 ```
 
 关键定位：**Library 是一等公民，Editor 是 Library 的能力，而不是反过来。**
@@ -28,7 +29,11 @@ Revisit    声音空间 / 声音相册（最高层）
 3. **Cache 可全部删除**：waveform、embedding、transcript cache、render proxy 全部可重建。
 4. **实时音频路径保持极度简单**：audio callback 里绝不出现 Rust→AI→Python→allocator→async 链。AI 只在后台工作，绝不侵入播放链路。
 5. **Audio Space 是首屏**：Listen first, Edit second。第一屏不是 Timeline Editor。
-6. **调整克制**：只做恢复性调整（Loudness/EQ/降噪/去混响/Dynamics/Trim/Fade/Channel）。不做语音生成/改词/换声/音乐生成/SFX——那些属于未来的 Audio Studio，Echo 的 identity 不能漂。
+6. **调整克制**：恢复性调整（Loudness/EQ/降噪/去混响/Dynamics/Trim/Fade/Channel）与
+   Creative VFX 必须在产品语言、持久化身份和执行 owner 上分域。Creative 只处理用户显式选择的
+   既有录音，默认关闭、可旁路、静音不生声、不改词、不克隆具体人物、不覆盖 Original，也不冒充
+   Restoration。语音生成、目标人物换声、改词、音乐生成、提示词 SFX 与其他生成式能力仍属于未来
+   Audio Studio；AI 降噪、源分离和神经修复继续等待独立 InferenceBackend 里程碑。
 
 ## 3. 技术架构
 
@@ -571,6 +576,18 @@ InferenceBackend
     Spring
     必须由色散／模态独立 owner 实现，卷积与 IR 资产许可、哈希和延迟合同也另立里程碑，二者都
     不伪装成 FDN preset 或 Restoration。
+  - 首个 Creative VFX 数据与执行切片（2026-08-12）：Catalog `20260812.2` 将场景滤镜、延迟、
+    调制与角色化变声保存为四个稳定、可独立旁路的 authored singleton 节点；旧 revision 迁移后
+    四者全部关闭，既有链顺序、听感与 Original 均不改变。场景覆盖 Telephone／Radio／Intercom／
+    Behind Wall／Underwater，延迟覆盖 Slapback／Echo，调制覆盖 Chorus／Flanger／Phaser／Tremolo，
+    角色化覆盖 Robot／Monster／Tiny／Giant／Ghost；最后一族明确是夸张听感而非身份克隆或自然
+    换声。每个家族都有独立 DSP owner、类型化参数与无点击更新；构造时完成有界缓冲分配，实时
+    process/update 不分配，静音不生声。Scene、Delay、Modulation 报告零基础设施延迟；Transform
+    固定 50 ms 并与 DeClick 一同由共享 effect-chain 做顺序无关的时间线补偿，固定延迟节点不接受
+    Original 时间遮罩。试听、整段分析、单次／批量离线导出和处理方案都消费同一执行合同；桌面
+    投影已提供完整 Creative map 与 live update 入口，专属参数面板、效果目录接线、草稿历史和简中
+    文案由 UI owner 在通用工作台中完成。本切片为 Echo clean-room 实现，不引入 JUCE／Dragonfly／
+    DaisySP ReverbSc／Soundpipe RevSC／Signalsmith Stretch，也不进入 Restoration、AI 或 Runtime。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，
@@ -586,11 +603,11 @@ InferenceBackend
     人物身份合并、地理邻近聚类、规则持续同步、共享相册或跨设备同步。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 
-### 当前状态校准（2026-08-11）
+### 当前状态校准（2026-08-12）
 
 Echo 处于 **M0 已收口、M1 Runtime 音频证据链与长录音分层理解完成、M2 声音墙已具备
 用户相册、可解释 AI 聚合和首个 provisional 自然语言检索、M3 已形成可试听、可测量、可保存版本并可离线导出的基础非破坏性处理
-闭环、M4 开始把 AI 相册候选提升为由用户确认的声音相册体验**。人物、地点、声音类型仍是模型
+闭环并建立独立 Creative VFX 数据与执行域、M4 开始把 AI 相册候选提升为由用户确认的声音相册体验**。人物、地点、声音类型仍是模型
 提示或展示维度，不应被描述为已经具备完整识别和关系系统；用户保存建议只确认当时的成员快照，
 不反向确认人物身份或地点关系。M4 的成熟仍需要音频信号语义索引、人物关系和更完整的 Revisit
 体验。

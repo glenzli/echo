@@ -86,6 +86,7 @@ pub fn list_audio_space(
          adj.channel_repair_json, adj.effect_chain_json, adj.edit_timeline_json, adj.effect_masks_json, \
          adj.limiter_enabled, adj.limiter_ceiling_centibels, \
          adj.limiter_release_millis, \
+         adj.creative_vfx_json, \
          adj.created_at_millis \
          FROM assets a LEFT JOIN asset_user_state u ON u.asset_id = a.id \
          LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
@@ -221,7 +222,11 @@ fn audio_space_adjustment_from_row(
             .expect("limiter ceiling fits centibels"),
         release_millis: u16::try_from(row.get::<_, i64>(45)?)
             .expect("limiter release fits milliseconds"),
-    });
+    })
+    .with_creative_vfx(
+        serde_json::from_str(&row.get::<_, String>(46)?)
+            .expect("stored creative VFX settings parse"),
+    );
     let graph = echo_domain::AdjustmentGraph::new(
         source_duration,
         trim_start_millis,
@@ -234,7 +239,7 @@ fn audio_space_adjustment_from_row(
     Ok(Some(crate::AssetAdjustmentRevision {
         revision_id,
         graph,
-        created_at_millis: row.get(46)?,
+        created_at_millis: row.get(47)?,
     }))
 }
 

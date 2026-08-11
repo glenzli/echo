@@ -25,6 +25,10 @@ echo::audio::PlaybackAdjustment master_only() {
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     adjustment.effect_chain_count = 1;
     return adjustment;
@@ -41,6 +45,10 @@ echo::audio::PlaybackAdjustment bypassed_de_click() {
         echo::audio::EffectNodeKind::Dynamics,
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     adjustment.effect_chain_count = 3;
     return adjustment;
@@ -57,6 +65,10 @@ echo::audio::PlaybackAdjustment reordered_bypassed_de_click() {
         echo::audio::EffectNodeKind::Dynamics,
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     return adjustment;
 }
@@ -78,6 +90,10 @@ echo::audio::PlaybackAdjustment channel_repair_only() {
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     adjustment.effect_chain_count = 2;
     return adjustment;
@@ -105,8 +121,79 @@ echo::audio::PlaybackAdjustment space_character(echo::audio::ReverbCharacter cha
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     adjustment.effect_chain_count = 2;
+    return adjustment;
+}
+
+echo::audio::PlaybackAdjustment creative_only(echo::audio::EffectNodeKind node) {
+    auto adjustment = master_only();
+    auto node_iterator =
+        std::find(adjustment.effect_chain.begin(), adjustment.effect_chain.end(), node);
+    assert(node_iterator != adjustment.effect_chain.end());
+    std::iter_swap(adjustment.effect_chain.begin(), node_iterator);
+    auto master_iterator = std::find(
+        adjustment.effect_chain.begin() + 1,
+        adjustment.effect_chain.end(),
+        echo::audio::EffectNodeKind::Master
+    );
+    assert(master_iterator != adjustment.effect_chain.end());
+    std::iter_swap(adjustment.effect_chain.begin() + 1, master_iterator);
+    adjustment.effect_chain_count = 2;
+    switch (node) {
+    case echo::audio::EffectNodeKind::SceneVfx:
+        adjustment.creative_vfx.scene.enabled = true;
+        adjustment.creative_vfx.scene.character = echo::audio::SceneVfxCharacter::Radio;
+        break;
+    case echo::audio::EffectNodeKind::DelayVfx:
+        adjustment.creative_vfx.delay.enabled = true;
+        adjustment.creative_vfx.delay.character = echo::audio::DelayVfxCharacter::Echo;
+        break;
+    case echo::audio::EffectNodeKind::ModulationVfx:
+        adjustment.creative_vfx.modulation.enabled = true;
+        adjustment.creative_vfx.modulation.character = echo::audio::ModulationVfxCharacter::Phaser;
+        break;
+    case echo::audio::EffectNodeKind::TransformVfx:
+        adjustment.creative_vfx.transform.enabled = true;
+        adjustment.creative_vfx.transform.character = echo::audio::TransformVfxCharacter::Robot;
+        break;
+    case echo::audio::EffectNodeKind::Restoration:
+    case echo::audio::EffectNodeKind::Equalizer:
+    case echo::audio::EffectNodeKind::Dynamics:
+    case echo::audio::EffectNodeKind::Space:
+    case echo::audio::EffectNodeKind::Master:
+    case echo::audio::EffectNodeKind::DeHum:
+    case echo::audio::EffectNodeKind::DeClick:
+    case echo::audio::EffectNodeKind::ChannelRepair:
+        assert(false);
+        break;
+    }
+    return adjustment;
+}
+
+echo::audio::PlaybackAdjustment two_latency_nodes(bool transform_first) {
+    auto adjustment = master_only();
+    adjustment.effect_chain = {
+        transform_first ? echo::audio::EffectNodeKind::TransformVfx
+                        : echo::audio::EffectNodeKind::DeClick,
+        transform_first ? echo::audio::EffectNodeKind::DeClick
+                        : echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+    };
+    adjustment.effect_chain_count = 3;
     return adjustment;
 }
 
@@ -207,6 +294,32 @@ int main() {
     }
 
     {
+        const auto input = fixture(8'192);
+        constexpr std::array creative_nodes{
+            echo::audio::EffectNodeKind::SceneVfx,
+            echo::audio::EffectNodeKind::DelayVfx,
+            echo::audio::EffectNodeKind::ModulationVfx,
+            echo::audio::EffectNodeKind::TransformVfx,
+        };
+        for (const auto node : creative_nodes) {
+            const echo::audio::PreparedAdjustment prepared(creative_only(node), 1000, kSampleRate);
+            echo::audio::EffectProcessingChain chain(prepared, kSampleRate, kChannels);
+            assert(
+                chain.latency_frames()
+                == (node == echo::audio::EffectNodeKind::TransformVfx ? 2'400 : 0)
+            );
+            const auto output = process_in_chunks(chain, input, 137);
+            assert(output.size() == input.size());
+            bool changed = false;
+            for (std::size_t index = 0; index < input.size(); ++index) {
+                assert(std::isfinite(output[index]));
+                changed = changed || std::abs(output[index] - input[index]) > 1.0E-6F;
+            }
+            assert(changed);
+        }
+    }
+
+    {
         constexpr std::array<std::size_t, 5> frame_counts = {31, 96, 97, 98, 151};
         constexpr std::array<std::size_t, 4> chunk_sizes = {1, 13, 64, 101};
         for (const std::size_t frame_count : frame_counts) {
@@ -246,6 +359,20 @@ int main() {
     }
 
     {
+        const auto input = fixture(5'123);
+        for (const bool transform_first : {false, true}) {
+            const echo::audio::PreparedAdjustment prepared(
+                two_latency_nodes(transform_first),
+                1000,
+                kSampleRate
+            );
+            echo::audio::EffectProcessingChain chain(prepared, kSampleRate, kChannels);
+            assert(chain.latency_frames() == 2'497);
+            assert_near(process_in_chunks(chain, input, 113), input);
+        }
+    }
+
+    {
         auto adjustment = master_only();
         adjustment.effect_chain = {
             echo::audio::EffectNodeKind::Equalizer,
@@ -256,6 +383,10 @@ int main() {
             echo::audio::EffectNodeKind::DeHum,
             echo::audio::EffectNodeKind::DeClick,
             echo::audio::EffectNodeKind::ChannelRepair,
+            echo::audio::EffectNodeKind::SceneVfx,
+            echo::audio::EffectNodeKind::DelayVfx,
+            echo::audio::EffectNodeKind::ModulationVfx,
+            echo::audio::EffectNodeKind::TransformVfx,
         };
         adjustment.effect_chain_count = 2;
         adjustment.equalizer.bands[0].gain_centibels = 1200;

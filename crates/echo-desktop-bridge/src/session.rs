@@ -119,6 +119,7 @@ struct AdjustmentWireFields {
     reverb_damping_percent: u8,
     reverb_low_cut_hertz: u16,
     reverb_high_cut_hertz: u16,
+    creative_vfx_json: String,
     limiter_enabled: bool,
     limiter_ceiling_centibels: i16,
     limiter_release_millis: u16,
@@ -451,6 +452,7 @@ fn adjustment_graph_from_wire(
             low_cut_hertz: adjustment.reverb_low_cut_hertz,
             high_cut_hertz: adjustment.reverb_high_cut_hertz,
         })
+        .with_creative_vfx(creative_vfx_from_wire(&adjustment.creative_vfx_json)?)
         .with_limiter(echo_domain::LimiterSettings {
             enabled: adjustment.limiter_enabled,
             ceiling_centibels: adjustment.limiter_ceiling_centibels,
@@ -466,6 +468,12 @@ fn adjustment_graph_from_wire(
     )
     .map_err(|error| SessionError {
         message: error.to_string(),
+    })
+}
+
+fn creative_vfx_from_wire(encoded: &str) -> Result<echo_domain::CreativeVfxSettings, SessionError> {
+    serde_json::from_str(encoded).map_err(|error| SessionError {
+        message: format!("creative VFX settings are invalid: {error}"),
     })
 }
 
@@ -531,6 +539,8 @@ fn adjustment_wire_fields(
             reverb_damping_percent: 45,
             reverb_low_cut_hertz: 120,
             reverb_high_cut_hertz: 10_000,
+            creative_vfx_json: serde_json::to_string(&echo_domain::CreativeVfxSettings::default())
+                .expect("default creative VFX settings encode"),
             limiter_enabled: false,
             limiter_ceiling_centibels: -100,
             limiter_release_millis: 100,
@@ -633,6 +643,8 @@ fn adjustment_wire_fields(
             reverb_damping_percent: revision.graph.reverb().damping_percent,
             reverb_low_cut_hertz: revision.graph.reverb().low_cut_hertz,
             reverb_high_cut_hertz: revision.graph.reverb().high_cut_hertz,
+            creative_vfx_json: serde_json::to_string(&revision.graph.creative_vfx())
+                .expect("validated creative VFX settings encode"),
             limiter_enabled: revision.graph.limiter().enabled,
             limiter_ceiling_centibels: revision.graph.limiter().ceiling_centibels,
             limiter_release_millis: revision.graph.limiter().release_millis,
@@ -805,6 +817,7 @@ fn asset_summary_wire(
         reverb_damping_percent: adjustment.reverb_damping_percent,
         reverb_low_cut_hertz: adjustment.reverb_low_cut_hertz,
         reverb_high_cut_hertz: adjustment.reverb_high_cut_hertz,
+        creative_vfx_json: adjustment.creative_vfx_json,
         limiter_enabled: adjustment.limiter_enabled,
         limiter_ceiling_centibels: adjustment.limiter_ceiling_centibels,
         limiter_release_millis: adjustment.limiter_release_millis,

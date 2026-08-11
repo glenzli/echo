@@ -19,6 +19,7 @@
 mod adjustment;
 mod analysis;
 mod audio_asset;
+mod creative_vfx;
 mod ids;
 mod original;
 mod processing_recipe;
@@ -54,6 +55,12 @@ pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,
 };
 pub use audio_asset::AudioAsset;
+pub use creative_vfx::{
+    ChorusSettings, CreativeVfxSettings, CreativeVfxSettingsError, CreativeVfxValueError,
+    DelayVfxCharacter, DelayVfxSettings, EchoSettings, FlangerSettings, ModulationVfxCharacter,
+    ModulationVfxSettings, PhaserSettings, SceneVfxCharacter, SceneVfxSettings, SlapbackSettings,
+    TransformVfxCharacter, TransformVfxSettings, TremoloSettings,
+};
 pub use ids::{AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId};
 pub use original::{AssetPathStatus, ContentHash, ContentHashParseError, OriginalRef};
 pub use processing_recipe::{

@@ -491,6 +491,35 @@ class PlaybackSession::Impl {
         control_cv_.notify_one();
     }
 
+    void update_creative_vfx(CreativeVfxAdjustment adjustment) {
+        EffectProcessingChain::validate_scene_vfx(
+            adjustment.scene,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        EffectProcessingChain::validate_delay_vfx(
+            adjustment.delay,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        EffectProcessingChain::validate_modulation_vfx(
+            adjustment.modulation,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        EffectProcessingChain::validate_transform_vfx(
+            adjustment.transform,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        {
+            std::lock_guard<std::mutex> lock(effect_mutex_);
+            pending_creative_vfx_ = adjustment;
+            creative_vfx_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
     bool is_paused() const {
         return paused_.load(std::memory_order_acquire);
     }
@@ -658,6 +687,13 @@ class PlaybackSession::Impl {
         if (reverb_update_pending_) {
             effect_chain_->update_reverb(pending_reverb_);
             reverb_update_pending_ = false;
+        }
+        if (creative_vfx_update_pending_) {
+            effect_chain_->update_scene_vfx(pending_creative_vfx_.scene);
+            effect_chain_->update_delay_vfx(pending_creative_vfx_.delay);
+            effect_chain_->update_modulation_vfx(pending_creative_vfx_.modulation);
+            effect_chain_->update_transform_vfx(pending_creative_vfx_.transform);
+            creative_vfx_update_pending_ = false;
         }
     }
 
@@ -1023,6 +1059,8 @@ class PlaybackSession::Impl {
     bool compressor_update_pending_ = false;
     ReverbAdjustment pending_reverb_;
     bool reverb_update_pending_ = false;
+    CreativeVfxAdjustment pending_creative_vfx_;
+    bool creative_vfx_update_pending_ = false;
     LimiterAdjustment pending_limiter_;
     bool limiter_update_pending_ = false;
     std::atomic<float> momentary_lufs_{-70.0F};
@@ -1092,6 +1130,9 @@ void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
 }
 void PlaybackSession::update_reverb(ReverbAdjustment adjustment) {
     impl_->update_reverb(adjustment);
+}
+void PlaybackSession::update_creative_vfx(CreativeVfxAdjustment adjustment) {
+    impl_->update_creative_vfx(adjustment);
 }
 void PlaybackSession::update_limiter(LimiterAdjustment adjustment) {
     impl_->update_limiter(adjustment);

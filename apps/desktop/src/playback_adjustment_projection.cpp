@@ -1,5 +1,6 @@
 #include "playback_adjustment_projection.hpp"
 
+#include "creative_vfx_projection.hpp"
 #include "parametric_equalizer_projection.hpp"
 #include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
@@ -27,6 +28,10 @@ std::optional<EffectChainProjection> effectChainFromQml(const QVariantList& valu
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result = standard;
     std::array<bool, echo::audio::kEffectNodeCount> seen{};
@@ -128,7 +133,8 @@ std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQmlImpl(
         const qint64 feather = value.value(QStringLiteral("featherMillis"), 10).toLongLong();
         const QVariantList nodes = value.value(QStringLiteral("effectNodes")).toList();
         if (start < trimStartMillis || end > trimEndMillis || end <= start || feather < 0
-            || feather > 100 || nodes.isEmpty() || nodes.size() > 6) {
+            || feather > 100 || nodes.isEmpty()
+            || nodes.size() > static_cast<qsizetype>(echo::audio::kEffectNodeCount - 3)) {
             return std::nullopt;
         }
         echo::audio::EffectMask mask{
@@ -140,7 +146,7 @@ std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQmlImpl(
         for (const QVariant& node_value : nodes) {
             const int node = node_value.toInt();
             if (node < 0 || node >= static_cast<int>(echo::audio::kEffectNodeCount) || node == 4
-                || node == 6 || !active[static_cast<std::size_t>(node)]
+                || node == 6 || node == 11 || !active[static_cast<std::size_t>(node)]
                 || seen[static_cast<std::size_t>(node)]) {
                 return std::nullopt;
             }
@@ -325,7 +331,8 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         asset.value(QStringLiteral("limiterReleaseMillis")).toInt(),
         asset.value(QStringLiteral("effectChain")).toList(),
         asset.value(QStringLiteral("editSegments")).toList(),
-        asset.value(QStringLiteral("effectMasks")).toList()
+        asset.value(QStringLiteral("effectMasks")).toList(),
+        asset.value(QStringLiteral("creativeVfx")).toMap()
     );
 }
 
@@ -356,7 +363,8 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     int limiterReleaseMillis,
     const QVariantList& effectChainValue,
     const QVariantList& editSegmentsValue,
-    const QVariantList& effectMasksValue
+    const QVariantList& effectMasksValue,
+    const QVariantMap& creativeVfxValue
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
@@ -377,11 +385,12 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const auto deHum = deHumFromQml(deHumValue);
     const auto deClick = deClickFromQml(deClickValue);
     const auto channelRepair = channelRepairFromQml(channelRepairValue);
+    const auto creativeVfx = CreativeVfxProjection::fromQml(creativeVfxValue);
     const auto effectChain = effectChainFromQml(effectChainValue);
     auto editSegments = editSegmentsFromQmlImpl(editSegmentsValue, trimStartMillis, trimEndMillis);
     if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()
         || !deHum.has_value() || !deClick.has_value() || !channelRepair.has_value()
-        || !effectChain.has_value() || !editSegments.has_value()) {
+        || !creativeVfx.has_value() || !effectChain.has_value() || !editSegments.has_value()) {
         return std::nullopt;
     }
     auto effectMasks =
@@ -414,6 +423,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
                 .makeup_centibels = static_cast<std::int16_t>(compressorMakeupCentibels),
             },
         .reverb = *reverb,
+        .creative_vfx = *creativeVfx,
         .limiter =
             {
                 .enabled = limiterEnabled,

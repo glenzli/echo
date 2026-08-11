@@ -25,6 +25,7 @@ class LoudnessAnalysisController : public QObject {
     explicit LoudnessAnalysisController(QObject* parent = nullptr);
     ~LoudnessAnalysisController() override;
 
+    // Preserves the existing QML call until the Creative draft is connected.
     Q_INVOKABLE void analyzeAdjusted(
         const QString& resultKey,
         const QString& path,
@@ -55,6 +56,38 @@ class LoudnessAnalysisController : public QObject {
         const QVariantList& effectChain,
         const QVariantList& editSegments,
         const QVariantList& effectMasks
+    );
+    Q_INVOKABLE void analyzeAdjusted(
+        const QString& resultKey,
+        const QString& path,
+        qint64 trimStartMillis,
+        qint64 trimEndMillis,
+        qint64 fadeInMillis,
+        qint64 fadeOutMillis,
+        int fadeInCurve,
+        int fadeOutCurve,
+        int gainCentibels,
+        int lowCutHertz,
+        const QVariantMap& restoration,
+        const QVariantMap& deHum,
+        const QVariantMap& deClick,
+        const QVariantMap& channelRepair,
+        bool equalizerEnabled,
+        const QVariantList& equalizerBands,
+        bool compressorEnabled,
+        int compressorThresholdCentibels,
+        int compressorRatioTenths,
+        int compressorAttackMillis,
+        int compressorReleaseMillis,
+        int compressorMakeupCentibels,
+        const QVariantMap& reverb,
+        bool limiterEnabled,
+        int limiterCeilingCentibels,
+        int limiterReleaseMillis,
+        const QVariantList& effectChain,
+        const QVariantList& editSegments,
+        const QVariantList& effectMasks,
+        const QVariantMap& creativeVfx
     );
     Q_INVOKABLE void cancel();
     Q_INVOKABLE QVariantMap

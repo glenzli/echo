@@ -97,7 +97,11 @@ int main() {
               echo::audio::EffectNodeKind::Space,
               echo::audio::EffectNodeKind::DeHum,
               echo::audio::EffectNodeKind::DeClick,
-              echo::audio::EffectNodeKind::ChannelRepair},
+              echo::audio::EffectNodeKind::ChannelRepair,
+              echo::audio::EffectNodeKind::SceneVfx,
+              echo::audio::EffectNodeKind::DelayVfx,
+              echo::audio::EffectNodeKind::ModulationVfx,
+              echo::audio::EffectNodeKind::TransformVfx},
          .effect_chain_count = 3},
         10'000,
         48'000
@@ -151,7 +155,11 @@ int main() {
                   echo::audio::EffectNodeKind::Restoration,
                   echo::audio::EffectNodeKind::DeHum,
                   echo::audio::EffectNodeKind::DeClick,
-                  echo::audio::EffectNodeKind::ChannelRepair}},
+                  echo::audio::EffectNodeKind::ChannelRepair,
+                  echo::audio::EffectNodeKind::SceneVfx,
+                  echo::audio::EffectNodeKind::DelayVfx,
+                  echo::audio::EffectNodeKind::ModulationVfx,
+                  echo::audio::EffectNodeKind::TransformVfx}},
             10'000,
             48'000
         );

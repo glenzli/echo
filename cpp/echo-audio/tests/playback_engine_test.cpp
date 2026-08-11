@@ -304,11 +304,15 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::Dynamics,
                     echo::audio::EffectNodeKind::Space,
                     echo::audio::EffectNodeKind::ChannelRepair,
+                    echo::audio::EffectNodeKind::SceneVfx,
+                    echo::audio::EffectNodeKind::DelayVfx,
+                    echo::audio::EffectNodeKind::ModulationVfx,
+                    echo::audio::EffectNodeKind::TransformVfx,
                     echo::audio::EffectNodeKind::Master,
                     echo::audio::EffectNodeKind::DeHum,
                     echo::audio::EffectNodeKind::DeClick,
                 },
-            .effect_chain_count = 6,
+            .effect_chain_count = 10,
         };
         echo::audio::PlaybackSession adjusted(path.string(), adjustment);
         std::vector<float> adjusted_buffer(48'000, 0.0F);
@@ -351,6 +355,63 @@ int main(int argc, char* argv[]) {
             ),
             "live equalizer output stays finite and device-bounded"
         );
+        echo::audio::CreativeVfxAdjustment first_creative_update;
+        first_creative_update.scene = {
+            .character = echo::audio::SceneVfxCharacter::Radio,
+            .enabled = true,
+            .mix_percent = 100,
+            .intensity_percent = 65,
+        };
+        first_creative_update.delay = {
+            .character = echo::audio::DelayVfxCharacter::Slapback,
+            .enabled = true,
+        };
+        first_creative_update.modulation = {
+            .character = echo::audio::ModulationVfxCharacter::Chorus,
+            .enabled = true,
+        };
+        first_creative_update.transform = {
+            .character = echo::audio::TransformVfxCharacter::Robot,
+            .enabled = true,
+            .mix_percent = 80,
+            .amount_percent = 55,
+        };
+        auto latest_creative_update = first_creative_update;
+        latest_creative_update.scene.character = echo::audio::SceneVfxCharacter::Underwater;
+        latest_creative_update.delay.character = echo::audio::DelayVfxCharacter::Echo;
+        latest_creative_update.modulation.character = echo::audio::ModulationVfxCharacter::Phaser;
+        latest_creative_update.transform.character = echo::audio::TransformVfxCharacter::Ghost;
+        const std::uint64_t position_before_creative_update = adjusted.position_millis();
+        adjusted.update_creative_vfx(first_creative_update);
+        adjusted.update_creative_vfx(latest_creative_update);
+        std::vector<float> creative_buffer(8'192, 0.0F);
+        const std::size_t creative_updated =
+            pull_until(adjusted, creative_buffer.data(), 4'096, 256);
+        expect(creative_updated > 0, "live Creative VFX update keeps returning audio");
+        expect(
+            adjusted.position_millis() > position_before_creative_update,
+            "latest-wins Creative VFX update does not restart the playback timeline"
+        );
+        expect(
+            std::all_of(
+                creative_buffer.begin(),
+                creative_buffer.begin()
+                    + static_cast<std::ptrdiff_t>(creative_updated * adjusted.channel_count()),
+                [](float sample) {
+                    return std::isfinite(sample) && sample >= -1.0F && sample <= 1.0F;
+                }
+            ),
+            "live Creative VFX output stays finite and device-bounded"
+        );
+        bool creative_rejected_update = false;
+        try {
+            auto invalid_creative_update = latest_creative_update;
+            invalid_creative_update.scene.mix_percent = 101;
+            adjusted.update_creative_vfx(invalid_creative_update);
+        } catch (const std::invalid_argument&) {
+            creative_rejected_update = true;
+        }
+        expect(creative_rejected_update, "live Creative VFX update preserves every family bound");
         bool rejected_update = false;
         try {
             adjusted.update_equalizer(legacyEqualizer(0, 0, 1'201));
@@ -454,7 +515,11 @@ int main(int argc, char* argv[]) {
                  echo::audio::EffectNodeKind::Master,
                  echo::audio::EffectNodeKind::DeHum,
                  echo::audio::EffectNodeKind::DeClick,
-                 echo::audio::EffectNodeKind::ChannelRepair},
+                 echo::audio::EffectNodeKind::ChannelRepair,
+                 echo::audio::EffectNodeKind::SceneVfx,
+                 echo::audio::EffectNodeKind::DelayVfx,
+                 echo::audio::EffectNodeKind::ModulationVfx,
+                 echo::audio::EffectNodeKind::TransformVfx},
             .effect_chain_count = 5,
         };
         auto space_then_dynamics = dynamics_then_space;
@@ -466,7 +531,11 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::Master,
             echo::audio::EffectNodeKind::DeHum,
             echo::audio::EffectNodeKind::DeClick,
-            echo::audio::EffectNodeKind::ChannelRepair
+            echo::audio::EffectNodeKind::ChannelRepair,
+            echo::audio::EffectNodeKind::SceneVfx,
+            echo::audio::EffectNodeKind::DelayVfx,
+            echo::audio::EffectNodeKind::ModulationVfx,
+            echo::audio::EffectNodeKind::TransformVfx,
         };
 
         echo::audio::PlaybackSession first_order(path.string(), dynamics_then_space);
@@ -515,6 +584,10 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::Space,
                     echo::audio::EffectNodeKind::DeHum,
                     echo::audio::EffectNodeKind::ChannelRepair,
+                    echo::audio::EffectNodeKind::SceneVfx,
+                    echo::audio::EffectNodeKind::DelayVfx,
+                    echo::audio::EffectNodeKind::ModulationVfx,
+                    echo::audio::EffectNodeKind::TransformVfx,
                 },
             .effect_chain_count = 3,
         };
@@ -550,6 +623,10 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::Space,
             echo::audio::EffectNodeKind::DeHum,
             echo::audio::EffectNodeKind::ChannelRepair,
+            echo::audio::EffectNodeKind::SceneVfx,
+            echo::audio::EffectNodeKind::DelayVfx,
+            echo::audio::EffectNodeKind::ModulationVfx,
+            echo::audio::EffectNodeKind::TransformVfx,
         };
         edited.effect_chain_count = 3;
         edited.effect_masks = {{
@@ -609,6 +686,10 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::DeHum,
             echo::audio::EffectNodeKind::DeClick,
             echo::audio::EffectNodeKind::ChannelRepair,
+            echo::audio::EffectNodeKind::SceneVfx,
+            echo::audio::EffectNodeKind::DelayVfx,
+            echo::audio::EffectNodeKind::ModulationVfx,
+            echo::audio::EffectNodeKind::TransformVfx,
         };
         hidden_gap.effect_chain_count = 1;
         hidden_gap.edit_segments = {{

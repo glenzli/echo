@@ -77,6 +77,76 @@ void RenderExportController::exportAdjusted(
     const QVariantList& editSegments,
     const QVariantList& effectMasks
 ) {
+    exportAdjusted(
+        assetId,
+        adjustmentRevisionId,
+        sourcePath,
+        destination,
+        trimStartMillis,
+        trimEndMillis,
+        fadeInMillis,
+        fadeOutMillis,
+        fadeInCurve,
+        fadeOutCurve,
+        gainCentibels,
+        lowCutHertz,
+        restoration,
+        deHum,
+        deClick,
+        channelRepair,
+        equalizerEnabled,
+        equalizerBands,
+        compressorEnabled,
+        compressorThresholdCentibels,
+        compressorRatioTenths,
+        compressorAttackMillis,
+        compressorReleaseMillis,
+        compressorMakeupCentibels,
+        reverb,
+        limiterEnabled,
+        limiterCeilingCentibels,
+        limiterReleaseMillis,
+        effectChain,
+        editSegments,
+        effectMasks,
+        {}
+    );
+}
+
+void RenderExportController::exportAdjusted(
+    const QString& assetId,
+    qint64 adjustmentRevisionId,
+    const QString& sourcePath,
+    const QUrl& destination,
+    qint64 trimStartMillis,
+    qint64 trimEndMillis,
+    qint64 fadeInMillis,
+    qint64 fadeOutMillis,
+    int fadeInCurve,
+    int fadeOutCurve,
+    int gainCentibels,
+    int lowCutHertz,
+    const QVariantMap& restoration,
+    const QVariantMap& deHum,
+    const QVariantMap& deClick,
+    const QVariantMap& channelRepair,
+    bool equalizerEnabled,
+    const QVariantList& equalizerBands,
+    bool compressorEnabled,
+    int compressorThresholdCentibels,
+    int compressorRatioTenths,
+    int compressorAttackMillis,
+    int compressorReleaseMillis,
+    int compressorMakeupCentibels,
+    const QVariantMap& reverb,
+    bool limiterEnabled,
+    int limiterCeilingCentibels,
+    int limiterReleaseMillis,
+    const QVariantList& effectChain,
+    const QVariantList& editSegments,
+    const QVariantList& effectMasks,
+    const QVariantMap& creativeVfx
+) {
     if (assetId.isEmpty() || adjustmentRevisionId < 0 || sourcePath.isEmpty()) {
         reject(QStringLiteral("render source identity is invalid"));
         return;
@@ -117,7 +187,8 @@ void RenderExportController::exportAdjusted(
         limiterReleaseMillis,
         effectChain,
         editSegments,
-        effectMasks
+        effectMasks,
+        creativeVfx
     );
     if (!adjustment.has_value()) {
         reject(QStringLiteral("render adjustment is outside the supported range"));

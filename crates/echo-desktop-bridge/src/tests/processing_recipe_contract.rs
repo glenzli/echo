@@ -33,6 +33,8 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
             &[
                 echo_domain::ProcessingComponent::LowCut.wire_value(),
                 echo_domain::ProcessingComponent::Dynamics.wire_value(),
+                echo_domain::ProcessingComponent::SceneVfx.wire_value(),
+                echo_domain::ProcessingComponent::TransformVfx.wire_value(),
             ],
         )
         .expect("recipe creates");
@@ -40,7 +42,7 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(recipes.len(), 1);
     assert_eq!(recipes[0].id, recipe_id);
     assert_eq!(recipes[0].name, "Dialogue cleanup");
-    assert_eq!(recipes[0].components, vec![0, 5]);
+    assert_eq!(recipes[0].components, vec![0, 5, 9, 12]);
 
     let receipt = session
         .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
@@ -60,6 +62,16 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(applied.low_cut_hertz(), 90);
     assert!(applied.compressor().enabled);
     assert_eq!(applied.compressor().threshold_centibels, -2_400);
+    assert_eq!(
+        applied.creative_vfx().scene.character,
+        echo_domain::SceneVfxCharacter::Underwater
+    );
+    assert!(applied.creative_vfx().scene.enabled);
+    assert_eq!(
+        applied.creative_vfx().transform.character,
+        echo_domain::TransformVfxCharacter::Ghost
+    );
+    assert!(applied.creative_vfx().transform.enabled);
 
     let repeated = session
         .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
@@ -91,6 +103,14 @@ fn recipe_source_adjustment() -> AssetAdjustmentWire {
     source.low_cut_hertz = 90;
     source.compressor_enabled = true;
     source.compressor_threshold_centibels = -2_400;
+    let mut creative_vfx = echo_domain::CreativeVfxSettings::default();
+    creative_vfx.scene.enabled = true;
+    creative_vfx.scene.character = echo_domain::SceneVfxCharacter::Underwater;
+    creative_vfx.transform.enabled = true;
+    creative_vfx.transform.character = echo_domain::TransformVfxCharacter::Ghost;
+    source.creative_vfx_json =
+        serde_json::to_string(&creative_vfx).expect("source creative VFX encodes");
+    source.effect_chain = vec![0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 4];
     source.edit_segments = vec![crate::ffi::EditSegmentWire {
         source_start_millis: 500,
         source_end_millis: 9_500,
@@ -375,6 +395,8 @@ fn adjustment(duration_millis: u64) -> AssetAdjustmentWire {
         reverb_damping_percent: 45,
         reverb_low_cut_hertz: 120,
         reverb_high_cut_hertz: 10_000,
+        creative_vfx_json: serde_json::to_string(&echo_domain::CreativeVfxSettings::default())
+            .expect("default creative VFX encodes"),
         limiter_enabled: false,
         limiter_ceiling_centibels: -100,
         limiter_release_millis: 100,

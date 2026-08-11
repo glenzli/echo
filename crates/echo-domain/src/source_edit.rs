@@ -430,7 +430,7 @@ impl EffectMask {
     /// # Errors
     ///
     /// Returns [`EffectMaskError`] for an empty range, invalid feather, empty
-    /// or duplicate node set, or unsupported Master/DeClick targeting.
+    /// or duplicate node set, or unsupported fixed-latency/Master targeting.
     pub fn new(
         start_millis: u64,
         end_millis: u64,
@@ -448,7 +448,10 @@ impl EffectMask {
         }
         let mut seen = [false; EFFECT_NODE_COUNT];
         for node in &effect_nodes {
-            if matches!(node, EffectNodeKind::Master | EffectNodeKind::DeClick) {
+            if matches!(
+                node,
+                EffectNodeKind::Master | EffectNodeKind::DeClick | EffectNodeKind::TransformVfx
+            ) {
                 return Err(EffectMaskError::UnsupportedEffectNode);
             }
             let index = *node as usize;

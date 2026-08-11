@@ -62,6 +62,96 @@ bool valid_effect_chain(
     return true;
 }
 
+bool valid_scene_character(SceneVfxCharacter character) {
+    switch (character) {
+    case SceneVfxCharacter::Telephone:
+    case SceneVfxCharacter::Radio:
+    case SceneVfxCharacter::Intercom:
+    case SceneVfxCharacter::BehindWall:
+    case SceneVfxCharacter::Underwater:
+        return true;
+    }
+    return false;
+}
+
+bool valid_delay_character(DelayVfxCharacter character) {
+    return character == DelayVfxCharacter::Slapback || character == DelayVfxCharacter::Echo;
+}
+
+bool valid_modulation_character(ModulationVfxCharacter character) {
+    switch (character) {
+    case ModulationVfxCharacter::Chorus:
+    case ModulationVfxCharacter::Flanger:
+    case ModulationVfxCharacter::Phaser:
+    case ModulationVfxCharacter::Tremolo:
+        return true;
+    }
+    return false;
+}
+
+bool valid_transform_character(TransformVfxCharacter character) {
+    switch (character) {
+    case TransformVfxCharacter::Robot:
+    case TransformVfxCharacter::Monster:
+    case TransformVfxCharacter::Tiny:
+    case TransformVfxCharacter::Giant:
+    case TransformVfxCharacter::Ghost:
+        return true;
+    }
+    return false;
+}
+
+bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
+    const SceneVfxAdjustment& scene = creative.scene;
+    if (!valid_scene_character(scene.character) || scene.mix_percent > 100
+        || scene.intensity_percent > 100) {
+        return false;
+    }
+
+    const DelayVfxAdjustment& delay = creative.delay;
+    if (!valid_delay_character(delay.character) || delay.slapback.delay_millis < 30
+        || delay.slapback.delay_millis > 180 || delay.slapback.mix_percent > 100
+        || delay.slapback.high_cut_hertz < 1000 || delay.slapback.high_cut_hertz > 20000
+        || delay.echo.delay_millis < 80 || delay.echo.delay_millis > 2000
+        || delay.echo.feedback_percent > 90 || delay.echo.mix_percent > 100
+        || delay.echo.high_cut_hertz < 1000 || delay.echo.high_cut_hertz > 20000
+        || delay.echo.stereo_crossfeed_percent > 100) {
+        return false;
+    }
+
+    const ModulationVfxAdjustment& modulation = creative.modulation;
+    const ChorusAdjustment& chorus = modulation.chorus;
+    const FlangerAdjustment& flanger = modulation.flanger;
+    const PhaserAdjustment& phaser = modulation.phaser;
+    const TremoloAdjustment& tremolo = modulation.tremolo;
+    if (!valid_modulation_character(modulation.character) || chorus.mix_percent > 100
+        || chorus.rate_millihertz < 50 || chorus.rate_millihertz > 5000
+        || chorus.minimum_delay_microseconds < 5000 || chorus.minimum_delay_microseconds > 25000
+        || chorus.sweep_microseconds < 500 || chorus.sweep_microseconds > 20000
+        || static_cast<std::uint32_t>(chorus.minimum_delay_microseconds) + chorus.sweep_microseconds
+               > 45000
+        || chorus.stereo_phase_degrees > 180 || flanger.mix_percent > 100
+        || flanger.rate_millihertz < 50 || flanger.rate_millihertz > 10000
+        || flanger.minimum_delay_microseconds < 100 || flanger.minimum_delay_microseconds > 5000
+        || flanger.sweep_microseconds < 100 || flanger.sweep_microseconds > 10000
+        || static_cast<std::uint32_t>(flanger.minimum_delay_microseconds)
+                   + flanger.sweep_microseconds
+               > 15000
+        || flanger.feedback_percent < -90 || flanger.feedback_percent > 90
+        || flanger.stereo_phase_degrees > 180 || phaser.mix_percent > 100
+        || phaser.rate_millihertz < 50 || phaser.rate_millihertz > 10000
+        || phaser.sweep_low_hertz < 20 || phaser.sweep_high_hertz > 20000
+        || phaser.sweep_low_hertz >= phaser.sweep_high_hertz || phaser.feedback_percent < -90
+        || phaser.feedback_percent > 90 || phaser.stereo_phase_degrees > 180
+        || tremolo.rate_millihertz < 100 || tremolo.rate_millihertz > 20000
+        || tremolo.depth_percent > 100 || tremolo.stereo_phase_degrees > 180) {
+        return false;
+    }
+
+    return valid_transform_character(creative.transform.character)
+           && creative.transform.mix_percent <= 100 && creative.transform.amount_percent <= 100;
+}
+
 float evaluate_curve(float progress, FadeCurve curve) {
     const float bounded = std::clamp(progress, 0.0F, 1.0F);
     switch (curve) {
@@ -193,6 +283,9 @@ PreparedAdjustment::PreparedAdjustment(
         || reverb.low_cut_hertz >= reverb.high_cut_hertz) {
         throw std::invalid_argument("adjustment reverb is outside the supported range");
     }
+    if (!valid_creative_vfx(authored.creative_vfx)) {
+        throw std::invalid_argument("adjustment creative VFX is outside the supported range");
+    }
 
     trim_start_millis_ = authored.trim_start_millis;
     trim_end_millis_ = authored.trim_end_millis;
@@ -211,6 +304,7 @@ PreparedAdjustment::PreparedAdjustment(
     equalizer_ = authored.equalizer;
     compressor_ = authored.compressor;
     reverb_ = authored.reverb;
+    creative_vfx_ = authored.creative_vfx;
     limiter_ = authored.limiter;
     effect_chain_ = authored.effect_chain;
     effect_chain_count_ = authored.effect_chain_count;
@@ -262,6 +356,10 @@ CompressorAdjustment PreparedAdjustment::compressor() const {
 
 ReverbAdjustment PreparedAdjustment::reverb() const {
     return reverb_;
+}
+
+CreativeVfxAdjustment PreparedAdjustment::creative_vfx() const {
+    return creative_vfx_;
 }
 
 LimiterAdjustment PreparedAdjustment::limiter() const {

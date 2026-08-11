@@ -7,8 +7,12 @@
 #include "echo/audio/de_esser.hpp"
 #include "echo/audio/de_hum_filter.hpp"
 #include "echo/audio/de_plosive_processor.hpp"
+#include "echo/audio/delay_vfx_processor.hpp"
 #include "echo/audio/dynamics_processor.hpp"
+#include "echo/audio/modulation_vfx_processor.hpp"
 #include "echo/audio/parametric_equalizer.hpp"
+#include "echo/audio/scene_vfx_processor.hpp"
+#include "echo/audio/transform_vfx_processor.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -61,20 +65,26 @@ class EffectProcessingChain::Impl {
         equalizer_(adjustment.equalizer(), sample_rate, channel_count),
         dynamics_(adjustment.compressor(), sample_rate),
         reverb_(adjustment.reverb(), sample_rate, channel_count),
+        scene_vfx_(adjustment.creative_vfx().scene, sample_rate, channel_count),
+        delay_vfx_(adjustment.creative_vfx().delay, sample_rate, channel_count),
+        modulation_vfx_(adjustment.creative_vfx().modulation, sample_rate, channel_count),
+        transform_vfx_(adjustment.creative_vfx().transform, sample_rate, channel_count),
         restoration_enabled_(adjustment.restoration().enabled), mask_plan_(mask_plan),
         dry_samples_(kMaximumProcessingFrames * channel_count, 0.0F) {
         if (sample_rate_ == 0 || channel_count_ == 0) {
             throw std::invalid_argument("effect chain requires a valid audio layout");
         }
         for (std::size_t index = 0; index + 1 < node_count_; ++index) {
-            if (nodes_[index] == EffectNodeKind::DeClick) {
-                latency_frames_ += de_click_.latency_frames();
-            }
+            const std::size_t node_latency = latency_frames_for(nodes_[index]);
+            latency_frames_ += node_latency;
+            source_delays_[static_cast<std::size_t>(nodes_[index])].assign(
+                node_latency,
+                kNoSourceFrame
+            );
             has_local_masks_ =
                 has_local_masks_
                 || (mask_plan_ != nullptr && mask_plan_->is_locally_masked(nodes_[index]));
         }
-        source_delay_.assign(latency_frames_, kNoSourceFrame);
         reset_compensation();
     }
 
@@ -150,6 +160,10 @@ class EffectProcessingChain::Impl {
         equalizer_.reset();
         dynamics_.reset();
         reverb_.reset();
+        scene_vfx_.reset();
+        delay_vfx_.reset();
+        modulation_vfx_.reset();
+        transform_vfx_.reset();
         reset_compensation();
     }
 
@@ -195,6 +209,22 @@ class EffectProcessingChain::Impl {
         reverb_.update(adjustment);
     }
 
+    void update_scene_vfx(SceneVfxAdjustment adjustment) {
+        scene_vfx_.update(adjustment);
+    }
+
+    void update_delay_vfx(DelayVfxAdjustment adjustment) {
+        delay_vfx_.update(adjustment);
+    }
+
+    void update_modulation_vfx(ModulationVfxAdjustment adjustment) {
+        modulation_vfx_.update(adjustment);
+    }
+
+    void update_transform_vfx(TransformVfxAdjustment adjustment) {
+        transform_vfx_.update(adjustment);
+    }
+
     [[nodiscard]] std::size_t latency_frames() const {
         return latency_frames_;
     }
@@ -208,6 +238,27 @@ class EffectProcessingChain::Impl {
     }
 
   private:
+    [[nodiscard]] std::size_t latency_frames_for(EffectNodeKind node) const {
+        switch (node) {
+        case EffectNodeKind::DeClick:
+            return de_click_.latency_frames();
+        case EffectNodeKind::TransformVfx:
+            return transform_vfx_.latency_frames();
+        case EffectNodeKind::Restoration:
+        case EffectNodeKind::Equalizer:
+        case EffectNodeKind::Dynamics:
+        case EffectNodeKind::Space:
+        case EffectNodeKind::Master:
+        case EffectNodeKind::DeHum:
+        case EffectNodeKind::ChannelRepair:
+        case EffectNodeKind::SceneVfx:
+        case EffectNodeKind::DelayVfx:
+        case EffectNodeKind::ModulationVfx:
+            return 0;
+        }
+        return 0;
+    }
+
     void validate_buffer(
         const float* samples,
         std::size_t frame_count,
@@ -241,7 +292,7 @@ class EffectProcessingChain::Impl {
                 break;
             case EffectNodeKind::DeClick:
                 de_click_.process_interleaved(samples, frame_count, channel_count_);
-                delay_source_anchors(source_frames, frame_count);
+                delay_source_anchors(node, source_frames, frame_count);
                 break;
             case EffectNodeKind::ChannelRepair:
                 channel_repair_.process_interleaved(samples, frame_count, channel_count_);
@@ -260,6 +311,19 @@ class EffectProcessingChain::Impl {
                 break;
             case EffectNodeKind::Space:
                 reverb_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::SceneVfx:
+                scene_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::DelayVfx:
+                delay_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::ModulationVfx:
+                modulation_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::TransformVfx:
+                transform_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                delay_source_anchors(node, source_frames, frame_count);
                 break;
             case EffectNodeKind::Master:
                 break;
@@ -280,15 +344,21 @@ class EffectProcessingChain::Impl {
         }
     }
 
-    void delay_source_anchors(std::uint64_t* source_frames, std::size_t frame_count) {
-        if (source_frames == nullptr || source_delay_.empty()) {
+    void delay_source_anchors(
+        EffectNodeKind node,
+        std::uint64_t* source_frames,
+        std::size_t frame_count
+    ) {
+        auto& delay = source_delays_[static_cast<std::size_t>(node)];
+        auto& cursor = source_delay_cursors_[static_cast<std::size_t>(node)];
+        if (source_frames == nullptr || delay.empty()) {
             return;
         }
         for (std::size_t frame = 0; frame < frame_count; ++frame) {
-            const std::uint64_t delayed = source_delay_[source_delay_cursor_];
-            source_delay_[source_delay_cursor_] = source_frames[frame];
+            const std::uint64_t delayed = delay[cursor];
+            delay[cursor] = source_frames[frame];
             source_frames[frame] = delayed;
-            source_delay_cursor_ = (source_delay_cursor_ + 1) % source_delay_.size();
+            cursor = (cursor + 1) % delay.size();
         }
     }
 
@@ -321,8 +391,10 @@ class EffectProcessingChain::Impl {
         pending_output_frames_ = 0;
         drain_input_frames_ = 0;
         finishing_ = false;
-        std::fill(source_delay_.begin(), source_delay_.end(), kNoSourceFrame);
-        source_delay_cursor_ = 0;
+        for (auto& delay : source_delays_) {
+            std::fill(delay.begin(), delay.end(), kNoSourceFrame);
+        }
+        source_delay_cursors_.fill(0);
     }
 
     std::uint32_t sample_rate_ = 0;
@@ -338,12 +410,16 @@ class EffectProcessingChain::Impl {
     ParametricEqualizer equalizer_;
     DynamicsProcessor dynamics_;
     AlgorithmicReverb reverb_;
+    SceneVfxProcessor scene_vfx_;
+    DelayVfxProcessor delay_vfx_;
+    ModulationVfxProcessor modulation_vfx_;
+    TransformVfxProcessor transform_vfx_;
     bool restoration_enabled_ = true;
     const EffectMaskPlan* mask_plan_ = nullptr;
     bool has_local_masks_ = false;
     std::vector<float> dry_samples_;
-    std::vector<std::uint64_t> source_delay_;
-    std::size_t source_delay_cursor_ = 0;
+    std::array<std::vector<std::uint64_t>, kEffectNodeCount> source_delays_;
+    std::array<std::size_t, kEffectNodeCount> source_delay_cursors_{};
     std::size_t latency_frames_ = 0;
     std::size_t front_discard_frames_ = 0;
     std::size_t pending_output_frames_ = 0;
@@ -426,6 +502,22 @@ void EffectProcessingChain::update_reverb(ReverbAdjustment adjustment) {
     impl_->update_reverb(adjustment);
 }
 
+void EffectProcessingChain::update_scene_vfx(SceneVfxAdjustment adjustment) {
+    impl_->update_scene_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_delay_vfx(DelayVfxAdjustment adjustment) {
+    impl_->update_delay_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_modulation_vfx(ModulationVfxAdjustment adjustment) {
+    impl_->update_modulation_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_transform_vfx(TransformVfxAdjustment adjustment) {
+    impl_->update_transform_vfx(adjustment);
+}
+
 void EffectProcessingChain::validate_restoration(
     RestorationAdjustment adjustment,
     std::uint32_t sample_rate,
@@ -504,6 +596,38 @@ void EffectProcessingChain::validate_reverb(
     std::size_t channel_count
 ) {
     [[maybe_unused]] const AlgorithmicReverb reverb(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_scene_vfx(
+    SceneVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    SceneVfxProcessor::validate(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_delay_vfx(
+    DelayVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const DelayVfxProcessor processor(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_modulation_vfx(
+    ModulationVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const ModulationVfxProcessor processor(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_transform_vfx(
+    TransformVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const TransformVfxProcessor processor(adjustment, sample_rate, channel_count);
 }
 
 std::size_t EffectProcessingChain::latency_frames() const {

@@ -7,6 +7,7 @@
 
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
+use crate::creative_vfx::CreativeVfxSettings;
 use crate::source_edit::{EditTimeline, EffectMask, MAX_EFFECT_MASKS};
 
 /// Lowest supported output gain in hundredths of one decibel.
@@ -80,7 +81,7 @@ pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
 pub const MIN_CHANNEL_BALANCE_PERCENT: i8 = -100;
 pub const MAX_CHANNEL_BALANCE_PERCENT: i8 = 100;
 /// Echo's authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 8;
+pub const EFFECT_NODE_COUNT: usize = 12;
 const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
@@ -100,6 +101,10 @@ pub enum EffectNodeKind {
     DeHum = 5,
     DeClick = 6,
     ChannelRepair = 7,
+    SceneVfx = 8,
+    DelayVfx = 9,
+    ModulationVfx = 10,
+    TransformVfx = 11,
 }
 
 impl EffectNodeKind {
@@ -123,6 +128,10 @@ impl EffectNodeKind {
             5 => Ok(Self::DeHum),
             6 => Ok(Self::DeClick),
             7 => Ok(Self::ChannelRepair),
+            8 => Ok(Self::SceneVfx),
+            9 => Ok(Self::DelayVfx),
+            10 => Ok(Self::ModulationVfx),
+            11 => Ok(Self::TransformVfx),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -163,12 +172,9 @@ impl<'de> Deserialize<'de> for EffectChain {
     {
         let stored = StoredEffectChain::deserialize(deserializer)?;
         let legacy_node_count = stored.nodes.len();
-        if legacy_node_count != usize::from(STANDARD_EFFECT_NODE_COUNT)
-            && legacy_node_count != EFFECT_NODE_COUNT - 1
-            && legacy_node_count != EFFECT_NODE_COUNT
-        {
+        if !matches!(legacy_node_count, 5 | 7 | 8 | EFFECT_NODE_COUNT) {
             return Err(D::Error::custom(
-                "effect chain must contain five, seven, or eight stable nodes",
+                "effect chain must contain five, seven, eight, or twelve stable nodes",
             ));
         }
         let active_count = stored.active_count.unwrap_or(STANDARD_EFFECT_NODE_COUNT);
@@ -204,6 +210,10 @@ impl EffectChain {
                 EffectNodeKind::DeHum,
                 EffectNodeKind::DeClick,
                 EffectNodeKind::ChannelRepair,
+                EffectNodeKind::SceneVfx,
+                EffectNodeKind::DelayVfx,
+                EffectNodeKind::ModulationVfx,
+                EffectNodeKind::TransformVfx,
             ],
             active_count: STANDARD_EFFECT_NODE_COUNT,
         }
@@ -887,6 +897,7 @@ pub struct AdjustmentEffects {
     pub equalizer: ParametricEqualizer,
     pub compressor: CompressorSettings,
     pub reverb: ReverbSettings,
+    pub creative_vfx: CreativeVfxSettings,
     pub limiter: LimiterSettings,
     pub effect_chain: EffectChain,
     pub edit_timeline: Option<EditTimeline>,
@@ -907,6 +918,7 @@ impl AdjustmentEffects {
             equalizer: ParametricEqualizer::flat(),
             compressor: CompressorSettings::standard(),
             reverb: ReverbSettings::studio_room(),
+            creative_vfx: CreativeVfxSettings::standard(),
             limiter: LimiterSettings::standard(),
             effect_chain: EffectChain::standard(),
             edit_timeline: None,
@@ -953,6 +965,12 @@ impl AdjustmentEffects {
     #[must_use]
     pub const fn with_reverb(mut self, reverb: ReverbSettings) -> Self {
         self.reverb = reverb;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_creative_vfx(mut self, creative_vfx: CreativeVfxSettings) -> Self {
+        self.creative_vfx = creative_vfx;
         self
     }
 
@@ -1010,6 +1028,8 @@ pub struct AdjustmentGraph {
     #[serde(default)]
     reverb: ReverbSettings,
     #[serde(default)]
+    creative_vfx: CreativeVfxSettings,
+    #[serde(default)]
     limiter: LimiterSettings,
     #[serde(default)]
     effect_chain: EffectChain,
@@ -1039,6 +1059,8 @@ struct StoredAdjustmentGraph {
     compressor: CompressorSettings,
     #[serde(default)]
     reverb: ReverbSettings,
+    #[serde(default)]
+    creative_vfx: CreativeVfxSettings,
     #[serde(default)]
     limiter: LimiterSettings,
     #[serde(default)]
@@ -1073,6 +1095,7 @@ impl<'de> Deserialize<'de> for AdjustmentGraph {
             .with_equalizer(stored.equalizer)
             .with_compressor(stored.compressor)
             .with_reverb(stored.reverb)
+            .with_creative_vfx(stored.creative_vfx)
             .with_limiter(stored.limiter)
             .with_effect_chain(stored.effect_chain)
             .with_optional_edit_timeline(stored.edit_timeline)
@@ -1162,6 +1185,10 @@ impl AdjustmentGraph {
         {
             return Err(AdjustmentGraphError::ReverbOutOfRange);
         }
+        effects
+            .creative_vfx
+            .validate()
+            .map_err(|_| AdjustmentGraphError::CreativeVfxOutOfRange)?;
         let edit_timeline = validated_asset_regions(trim_start_millis, trim_end_millis, &effects)?;
         Ok(Self {
             trim_start_millis,
@@ -1179,6 +1206,7 @@ impl AdjustmentGraph {
             equalizer: effects.equalizer,
             compressor,
             reverb,
+            creative_vfx: effects.creative_vfx,
             limiter,
             effect_chain: effects.effect_chain,
             edit_timeline,
@@ -1280,6 +1308,11 @@ impl AdjustmentGraph {
     }
 
     #[must_use]
+    pub const fn creative_vfx(&self) -> CreativeVfxSettings {
+        self.creative_vfx
+    }
+
+    #[must_use]
     pub const fn limiter(&self) -> LimiterSettings {
         self.limiter
     }
@@ -1320,7 +1353,12 @@ fn validated_asset_regions(
                 || mask.end_millis() > trim_end_millis
                 || mask.effect_nodes().iter().any(|node| {
                     !effects.effect_chain.nodes().contains(node)
-                        || matches!(node, EffectNodeKind::Master | EffectNodeKind::DeClick)
+                        || matches!(
+                            node,
+                            EffectNodeKind::Master
+                                | EffectNodeKind::DeClick
+                                | EffectNodeKind::TransformVfx
+                        )
                 })
         })
     {
@@ -1397,6 +1435,7 @@ pub enum AdjustmentGraphError {
     EqualizerBandOutOfRange,
     CompressorOutOfRange,
     ReverbOutOfRange,
+    CreativeVfxOutOfRange,
     LimiterOutOfRange,
     InvalidEffectChain,
     InvalidEditTimeline,
@@ -1425,6 +1464,9 @@ impl std::fmt::Display for AdjustmentGraphError {
             }
             Self::CompressorOutOfRange => "compressor parameters are outside the supported range",
             Self::ReverbOutOfRange => "reverb parameters are outside the supported range",
+            Self::CreativeVfxOutOfRange => {
+                "creative VFX parameters are outside the supported range"
+            }
             Self::LimiterOutOfRange => "limiter parameters are outside the supported range",
             Self::InvalidEffectChain => {
                 "effect chain must contain unique singleton nodes with master last"

@@ -79,6 +79,8 @@ class PlaybackSession {
     void update_compressor(CompressorAdjustment adjustment);
     /// Publishes a click-free algorithmic room target without restarting.
     void update_reverb(ReverbAdjustment adjustment);
+    /// Publishes all four deterministic Creative VFX targets atomically.
+    void update_creative_vfx(CreativeVfxAdjustment adjustment);
     /// Publishes a latest-wins limiter target without restarting playback.
     void update_limiter(LimiterAdjustment adjustment);
 

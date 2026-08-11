@@ -145,13 +145,17 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     assert_eq!(EffectNodeKind::DeHum.wire_value(), 5);
     assert_eq!(EffectNodeKind::DeClick.wire_value(), 6);
     assert_eq!(EffectNodeKind::ChannelRepair.wire_value(), 7);
-    assert_eq!(EFFECT_NODE_COUNT, 8);
+    assert_eq!(EffectNodeKind::SceneVfx.wire_value(), 8);
+    assert_eq!(EffectNodeKind::DelayVfx.wire_value(), 9);
+    assert_eq!(EffectNodeKind::ModulationVfx.wire_value(), 10);
+    assert_eq!(EffectNodeKind::TransformVfx.wire_value(), 11);
+    assert_eq!(EFFECT_NODE_COUNT, 12);
     assert_eq!(
         EffectNodeKind::from_wire_value(3),
         Ok(EffectNodeKind::Space)
     );
     assert_eq!(
-        EffectNodeKind::from_wire_value(8),
+        EffectNodeKind::from_wire_value(12),
         Err(EffectNodeKindValueError)
     );
 
@@ -193,7 +197,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
     let encoded_value: serde_json::Value =
         serde_json::from_str(&encoded).expect("encoded chain is JSON");
-    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(8));
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(12));
     assert_eq!(encoded_value["active_count"], 3);
     let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
     assert_eq!(decoded, reduced);
@@ -217,7 +221,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]
     );
     let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(8));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(12));
     assert_eq!(normalized["active_count"], 3);
 
     assert_eq!(
@@ -230,6 +234,18 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
             EffectNodeKind::Master,
         ]
     );
+}
+
+#[test]
+fn legacy_graphs_default_creative_vfx_to_disabled_identity() {
+    let graph = AdjustmentGraph::identity(4_000).expect("identity graph validates");
+    let mut legacy = serde_json::to_value(&graph).expect("graph encodes");
+    legacy
+        .as_object_mut()
+        .expect("graph is object")
+        .remove("creative_vfx");
+    let restored: AdjustmentGraph = serde_json::from_value(legacy).expect("legacy graph decodes");
+    assert_eq!(restored.creative_vfx(), CreativeVfxSettings::default());
 }
 
 #[test]

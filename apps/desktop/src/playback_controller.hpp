@@ -37,6 +37,8 @@ class PlaybackController : public QObject {
     ~PlaybackController() override;
 
     Q_INVOKABLE void play(const QString& path);
+    // Compatibility entry point for the pre-Creative QML workspace. The UI
+    // owner switches to the overload below when its authored draft is ready.
     Q_INVOKABLE void playAdjusted(
         const QString& path,
         qint64 trimStartMillis,
@@ -67,6 +69,37 @@ class PlaybackController : public QObject {
         const QVariantList& editSegments,
         const QVariantList& effectMasks
     );
+    Q_INVOKABLE void playAdjusted(
+        const QString& path,
+        qint64 trimStartMillis,
+        qint64 trimEndMillis,
+        qint64 fadeInMillis,
+        qint64 fadeOutMillis,
+        int fadeInCurve,
+        int fadeOutCurve,
+        int gainCentibels,
+        int lowCutHertz,
+        const QVariantMap& restoration,
+        const QVariantMap& deHum,
+        const QVariantMap& deClick,
+        const QVariantMap& channelRepair,
+        bool equalizerEnabled,
+        const QVariantList& equalizerBands,
+        bool compressorEnabled,
+        int compressorThresholdCentibels,
+        int compressorRatioTenths,
+        int compressorAttackMillis,
+        int compressorReleaseMillis,
+        int compressorMakeupCentibels,
+        const QVariantMap& reverb,
+        bool limiterEnabled,
+        int limiterCeilingCentibels,
+        int limiterReleaseMillis,
+        const QVariantList& effectChain,
+        const QVariantList& editSegments,
+        const QVariantList& effectMasks,
+        const QVariantMap& creativeVfx
+    );
     Q_INVOKABLE bool updateEqualizer(bool enabled, const QVariantList& equalizerBands);
     Q_INVOKABLE bool updateRestoration(const QVariantMap& restoration);
     Q_INVOKABLE bool updateDeHum(const QVariantMap& deHum);
@@ -84,6 +117,7 @@ class PlaybackController : public QObject {
     );
     Q_INVOKABLE bool updateLimiter(bool enabled, int ceilingCentibels, int releaseMillis);
     Q_INVOKABLE bool updateReverb(const QVariantMap& reverb);
+    Q_INVOKABLE bool updateCreativeVfx(const QVariantMap& creativeVfx);
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 millis);

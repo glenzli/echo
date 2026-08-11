@@ -66,6 +66,119 @@ fn target_channel_repair() -> ChannelRepairSettings {
     }
 }
 
+fn source_creative_vfx() -> CreativeVfxSettings {
+    let mut creative_vfx = CreativeVfxSettings::default();
+    creative_vfx.scene.enabled = true;
+    creative_vfx.scene.character = crate::SceneVfxCharacter::Underwater;
+    creative_vfx.scene.intensity_percent = 72;
+    creative_vfx.delay.enabled = true;
+    creative_vfx.delay.character = crate::DelayVfxCharacter::Echo;
+    creative_vfx.delay.echo.feedback_percent = 42;
+    creative_vfx.modulation.enabled = true;
+    creative_vfx.modulation.character = crate::ModulationVfxCharacter::Phaser;
+    creative_vfx.modulation.phaser.feedback_percent = -18;
+    creative_vfx.transform.enabled = true;
+    creative_vfx.transform.character = crate::TransformVfxCharacter::Ghost;
+    creative_vfx.transform.amount_percent = 68;
+    creative_vfx
+}
+
+fn source_processing_effects(gain_centibels: i16, low_cut_hertz: u16) -> AdjustmentEffects {
+    AdjustmentEffects::new(
+        FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
+        gain_centibels,
+        low_cut_hertz,
+    )
+    .with_restoration(RestorationSettings {
+        enabled: true,
+        de_plosive: DePlosiveSettings {
+            enabled: true,
+            frequency_hertz: 155,
+            sensitivity_percent: 66,
+            reduction_centibels: 1_350,
+            release_millis: 190,
+        },
+        noise_reduction: NoiseReductionSettings {
+            enabled: true,
+            reduction_centibels: 1_100,
+            sensitivity_percent: 64,
+            smoothing_millis: 300,
+        },
+        de_esser: crate::DeEsserSettings {
+            enabled: true,
+            frequency_hertz: 7_400,
+            threshold_centibels: -2_600,
+            reduction_centibels: 700,
+        },
+    })
+    .with_de_hum(DeHumSettings {
+        enabled: true,
+        fundamental_hertz: 60,
+        harmonic_count: 5,
+        quality_tenths: 360,
+        depth_centibels: 1_800,
+    })
+    .with_de_click(DeClickSettings {
+        enabled: true,
+        sensitivity_percent: 68,
+        maximum_click_microseconds: 700,
+        repair_percent: 84,
+    })
+    .with_channel_repair(target_channel_repair())
+    .with_equalizer(ParametricEqualizer::new([
+        ParametricEqualizerBand::new(true, crate::EqualizerFilterKind::LowShelf, 90, 80, 250),
+        ParametricEqualizerBand::new(false, crate::EqualizerFilterKind::Bell, 250, 100, 0),
+        ParametricEqualizerBand::new(true, crate::EqualizerFilterKind::Bell, 900, 120, -175),
+        ParametricEqualizerBand::new(false, crate::EqualizerFilterKind::Bell, 3_000, 100, 0),
+        ParametricEqualizerBand::new(false, crate::EqualizerFilterKind::Bell, 5_000, 100, 0),
+        ParametricEqualizerBand::new(true, crate::EqualizerFilterKind::HighShelf, 9_000, 75, 300),
+    ]))
+    .with_compressor(CompressorSettings {
+        enabled: true,
+        threshold_centibels: -2_100,
+        ratio_tenths: 40,
+        attack_millis: 15,
+        release_millis: 180,
+        makeup_centibels: 200,
+    })
+    .with_reverb(ReverbSettings {
+        character: ReverbCharacter::Plate,
+        enabled: true,
+        mix_percent: 21,
+        pre_delay_millis: 24,
+        decay_millis: 2_200,
+        size_percent: 62,
+        damping_percent: 48,
+        low_cut_hertz: 140,
+        high_cut_hertz: 9_400,
+    })
+    .with_creative_vfx(source_creative_vfx())
+    .with_limiter(LimiterSettings {
+        enabled: true,
+        ceiling_centibels: -125,
+        release_millis: 150,
+    })
+    .with_effect_chain(source_effect_chain())
+}
+
+fn source_effect_chain() -> EffectChain {
+    EffectChain::new([
+        EffectNodeKind::DeHum,
+        EffectNodeKind::Restoration,
+        EffectNodeKind::Equalizer,
+        EffectNodeKind::DeClick,
+        EffectNodeKind::Dynamics,
+        EffectNodeKind::Space,
+        EffectNodeKind::ChannelRepair,
+        EffectNodeKind::SceneVfx,
+        EffectNodeKind::DelayVfx,
+        EffectNodeKind::ModulationVfx,
+        EffectNodeKind::TransformVfx,
+        EffectNodeKind::Master,
+    ])
+    .expect("source chain is valid")
+}
+
 fn graph_with_processing(
     trim_start_millis: u64,
     trim_end_millis: u64,
@@ -80,105 +193,14 @@ fn graph_with_processing(
         trim_end_millis,
         fade_in_millis,
         fade_out_millis,
-        AdjustmentEffects::new(
-            FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
-            gain_centibels,
-            low_cut_hertz,
-        )
-        .with_restoration(RestorationSettings {
-            enabled: true,
-            de_plosive: DePlosiveSettings {
-                enabled: true,
-                frequency_hertz: 155,
-                sensitivity_percent: 66,
-                reduction_centibels: 1_350,
-                release_millis: 190,
-            },
-            noise_reduction: NoiseReductionSettings {
-                enabled: true,
-                reduction_centibels: 1_100,
-                sensitivity_percent: 64,
-                smoothing_millis: 300,
-            },
-            de_esser: crate::DeEsserSettings {
-                enabled: true,
-                frequency_hertz: 7_400,
-                threshold_centibels: -2_600,
-                reduction_centibels: 700,
-            },
-        })
-        .with_de_hum(DeHumSettings {
-            enabled: true,
-            fundamental_hertz: 60,
-            harmonic_count: 5,
-            quality_tenths: 360,
-            depth_centibels: 1_800,
-        })
-        .with_de_click(DeClickSettings {
-            enabled: true,
-            sensitivity_percent: 68,
-            maximum_click_microseconds: 700,
-            repair_percent: 84,
-        })
-        .with_channel_repair(target_channel_repair())
-        .with_equalizer(ParametricEqualizer::new([
-            ParametricEqualizerBand::new(true, crate::EqualizerFilterKind::LowShelf, 90, 80, 250),
-            ParametricEqualizerBand::new(false, crate::EqualizerFilterKind::Bell, 250, 100, 0),
-            ParametricEqualizerBand::new(true, crate::EqualizerFilterKind::Bell, 900, 120, -175),
-            ParametricEqualizerBand::new(false, crate::EqualizerFilterKind::Bell, 3_000, 100, 0),
-            ParametricEqualizerBand::new(false, crate::EqualizerFilterKind::Bell, 5_000, 100, 0),
-            ParametricEqualizerBand::new(
-                true,
-                crate::EqualizerFilterKind::HighShelf,
-                9_000,
-                75,
-                300,
-            ),
-        ]))
-        .with_compressor(CompressorSettings {
-            enabled: true,
-            threshold_centibels: -2_100,
-            ratio_tenths: 40,
-            attack_millis: 15,
-            release_millis: 180,
-            makeup_centibels: 200,
-        })
-        .with_reverb(ReverbSettings {
-            character: ReverbCharacter::Plate,
-            enabled: true,
-            mix_percent: 21,
-            pre_delay_millis: 24,
-            decay_millis: 2_200,
-            size_percent: 62,
-            damping_percent: 48,
-            low_cut_hertz: 140,
-            high_cut_hertz: 9_400,
-        })
-        .with_limiter(LimiterSettings {
-            enabled: true,
-            ceiling_centibels: -125,
-            release_millis: 150,
-        })
-        .with_effect_chain(
-            EffectChain::new([
-                EffectNodeKind::DeHum,
-                EffectNodeKind::Restoration,
-                EffectNodeKind::Equalizer,
-                EffectNodeKind::DeClick,
-                EffectNodeKind::Dynamics,
-                EffectNodeKind::Space,
-                EffectNodeKind::ChannelRepair,
-                EffectNodeKind::Master,
-            ])
-            .expect("source chain is valid"),
-        ),
+        source_processing_effects(gain_centibels, low_cut_hertz),
     )
     .expect("fixture graph is valid")
 }
 
 #[test]
 fn default_components_are_complete_and_clip_local_controls_are_absent() {
-    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 9);
+    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 13);
     for component in DEFAULT_PROCESSING_COMPONENTS.iter().copied() {
         assert_eq!(
             ProcessingComponent::from_wire_value(component.wire_value()),
@@ -186,7 +208,7 @@ fn default_components_are_complete_and_clip_local_controls_are_absent() {
         );
     }
     assert_eq!(
-        ProcessingComponent::from_wire_value(9),
+        ProcessingComponent::from_wire_value(13),
         Err(ProcessingComponentValueError)
     );
 }
@@ -291,6 +313,7 @@ fn replace_copies_processing_but_preserves_target_trim_fades_and_gain() {
     assert_eq!(replaced.equalizer(), source.equalizer());
     assert_eq!(replaced.compressor(), source.compressor());
     assert_eq!(replaced.reverb(), source.reverb());
+    assert_eq!(replaced.creative_vfx(), source.creative_vfx());
     assert_eq!(replaced.limiter(), source.limiter());
     assert_eq!(replaced.effect_chain(), source.effect_chain());
 }

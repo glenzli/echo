@@ -3,8 +3,8 @@
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, AssetId, ChannelRepairSettings, CompressorSettings,
-    DeClickSettings, DeHumSettings, EditTimeline, EffectChain, EffectMask, FadeCurve,
-    LimiterSettings, ParametricEqualizer, RestorationSettings, ReverbSettings,
+    CreativeVfxSettings, DeClickSettings, DeHumSettings, EditTimeline, EffectChain, EffectMask,
+    FadeCurve, LimiterSettings, ParametricEqualizer, RestorationSettings, ReverbSettings,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
@@ -46,6 +46,7 @@ struct StoredAdjustment {
     limiter_enabled: i64,
     limiter_ceiling: i64,
     limiter_release: i64,
+    creative_vfx_json: String,
     created_at: i64,
 }
 
@@ -71,7 +72,7 @@ pub fn latest_adjustment_graph(
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
              de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
-             limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
+             limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
             [asset_id.to_string()],
@@ -112,7 +113,7 @@ pub fn adjustment_graph_at_revision(
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
              de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
-             limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
+             limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 AND id = ?2",
             rusqlite::params![asset_id.to_string(), revision_id],
             stored_adjustment_from_row,
@@ -173,7 +174,8 @@ fn stored_adjustment_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Store
         limiter_enabled: row.get(24)?,
         limiter_ceiling: row.get(25)?,
         limiter_release: row.get(26)?,
-        created_at: row.get(27)?,
+        creative_vfx_json: row.get(27)?,
+        created_at: row.get(28)?,
     })
 }
 
@@ -219,6 +221,7 @@ fn restore_adjustment_graph(
             makeup_centibels: stored_centibels(stored.compressor_makeup, "compressor makeup")?,
         })
         .with_reverb(stored_reverb(&stored.reverb_json)?)
+        .with_creative_vfx(stored_creative_vfx(&stored.creative_vfx_json)?)
         .with_effect_chain(stored_effect_chain(&stored.effect_chain_json)?)
         .with_edit_timeline(stored_edit_timeline(
             &stored.edit_timeline_json,
@@ -267,8 +270,7 @@ pub fn record_adjustment_graph(
         ));
     };
     let duration = stored_millis(duration)?;
-    let validated = validated_adjustment_graph(duration, &graph)?;
-    drop(graph);
+    let validated = validated_adjustment_graph(duration, graph)?;
     if let Some(current) = latest_adjustment_graph(transaction, asset_id)?
         && current.graph == validated
     {
@@ -285,10 +287,10 @@ pub fn record_adjustment_graph(
          compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
          de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, \
          limiter_enabled, limiter_ceiling_centibels, \
-         limiter_release_millis, created_at_millis) \
+         limiter_release_millis, creative_vfx_json, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
                  ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, \
-                 ?27, ?28, ?29, ?30, ?31)",
+                 ?27, ?28, ?29, ?30, ?31, ?32)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -344,6 +346,7 @@ pub fn record_adjustment_graph(
             i64::from(validated.limiter().enabled),
             i64::from(validated.limiter().ceiling_centibels),
             i64::from(validated.limiter().release_millis),
+            encoded_creative_vfx(validated.creative_vfx())?,
             now_millis,
         ],
     )?;
@@ -365,9 +368,9 @@ fn encode_channel_repair(settings: ChannelRepairSettings) -> Result<String, Cata
 
 fn validated_adjustment_graph(
     duration: u64,
-    graph: &AdjustmentGraph,
+    graph: AdjustmentGraph,
 ) -> Result<AdjustmentGraph, CatalogError> {
-    AdjustmentGraph::new(
+    let validated = AdjustmentGraph::new(
         duration,
         graph.trim_start_millis(),
         graph.trim_end_millis(),
@@ -385,12 +388,14 @@ fn validated_adjustment_graph(
         .with_channel_repair(graph.channel_repair())
         .with_compressor(graph.compressor())
         .with_reverb(graph.reverb())
+        .with_creative_vfx(graph.creative_vfx())
         .with_limiter(graph.limiter())
         .with_effect_chain(graph.effect_chain())
         .with_edit_timeline(graph.edit_timeline().clone())
         .with_effect_masks(graph.effect_masks().to_vec()),
-    )
-    .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))
+    );
+    drop(graph);
+    validated.map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))
 }
 
 fn stored_curve(value: i64) -> Result<FadeCurve, CatalogError> {
@@ -412,6 +417,24 @@ fn stored_reverb(value: &str) -> Result<ReverbSettings, CatalogError> {
         CatalogError::new(
             CatalogErrorKind::Other,
             format!("stored reverb is invalid: {error}"),
+        )
+    })
+}
+
+fn stored_creative_vfx(value: &str) -> Result<CreativeVfxSettings, CatalogError> {
+    serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored creative VFX settings are invalid: {error}"),
+        )
+    })
+}
+
+fn encoded_creative_vfx(value: CreativeVfxSettings) -> Result<String, CatalogError> {
+    serde_json::to_string(&value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("cannot encode creative VFX settings: {error}"),
         )
     })
 }

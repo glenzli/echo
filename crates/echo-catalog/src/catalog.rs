@@ -11,19 +11,19 @@ use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION,
-        CHANNEL_REPAIR_MIGRATION_SQL, CHANNEL_REPAIR_SCHEMA_VERSION, CatalogSchemaRevision,
-        DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL, DE_PLOSIVE_SCHEMA_VERSION,
-        DELIVERY_FORMATS_MIGRATION_SQL, EARLIEST_COMPATIBLE_SCHEMA_VERSION,
-        EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION, EFFECT_CHAIN_MIGRATION_SQL,
-        FIXED_EFFECT_CHAIN_SCHEMA_VERSION, INITIAL_COMPATIBLE_SCHEMA_VERSION,
-        LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
-        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
+        CHANNEL_REPAIR_MIGRATION_SQL, CHANNEL_REPAIR_SCHEMA_VERSION, CREATIVE_VFX_MIGRATION_SQL,
+        CatalogSchemaRevision, DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL,
+        DE_PLOSIVE_SCHEMA_VERSION, DELIVERY_FORMATS_MIGRATION_SQL,
+        EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
+        EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
+        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
+        OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
         PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
         PROCESSING_RECIPES_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
         RESTORATION_CHAIN_MIGRATION_SQL, RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY,
         SCHEMA_SQL, SCHEMA_VERSION, SEMANTIC_SEARCH_MIGRATION_SQL, SOURCE_EDIT_MIGRATION_SQL,
-        SOURCE_EDIT_SCHEMA_VERSION, USER_ALBUMS_MIGRATION_SQL,
+        SOURCE_EDIT_SCHEMA_VERSION, SPACE_CHARACTERS_SCHEMA_VERSION, USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -99,6 +99,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         {
             connection.execute_batch(SCHEMA_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == SPACE_CHARACTERS_SCHEMA_VERSION) =>
+        {
+            migrate_creative_vfx_schema(connection)?;
         }
         Some(version)
             if version
@@ -223,6 +230,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_creative_vfx_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 
@@ -399,6 +413,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
 }
 
 fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), CatalogError> {
+    apply_creative_vfx_migration(transaction)?;
     apply_channel_repair_migration(transaction)?;
     apply_source_edit_migration(transaction)?;
     apply_processing_recipes_migration(transaction)?;
@@ -412,6 +427,21 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_creative_vfx_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'creative_vfx_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    if column_count == 0 {
+        transaction.execute_batch(CREATIVE_VFX_MIGRATION_SQL)?;
+    }
     Ok(())
 }
 

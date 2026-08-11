@@ -129,9 +129,17 @@ pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_812, 1);
+pub(crate) const SPACE_CHARACTERS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_812, 1);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_812, 2);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260812.1-space-characters";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260812.2-creative-vfx";
+
+pub(crate) const CREATIVE_VFX_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN creative_vfx_json TEXT NOT NULL DEFAULT
+    '{"scene":{"character":"telephone","enabled":false,"mix_percent":100,"intensity_percent":50},"delay":{"character":"slapback","enabled":false,"slapback":{"delay_millis":90,"mix_percent":22,"high_cut_hertz":7000},"echo":{"delay_millis":375,"feedback_percent":36,"mix_percent":28,"high_cut_hertz":6500,"stereo_crossfeed_percent":70}},"modulation":{"character":"chorus","enabled":false,"chorus":{"mix_percent":35,"rate_millihertz":800,"minimum_delay_microseconds":8000,"sweep_microseconds":10000,"stereo_phase_degrees":90},"flanger":{"mix_percent":50,"rate_millihertz":250,"minimum_delay_microseconds":200,"sweep_microseconds":3500,"feedback_percent":35,"stereo_phase_degrees":180},"phaser":{"mix_percent":50,"rate_millihertz":350,"sweep_low_hertz":300,"sweep_high_hertz":2500,"feedback_percent":25,"stereo_phase_degrees":90},"tremolo":{"rate_millihertz":4000,"depth_percent":60,"stereo_phase_degrees":0}},"transform":{"character":"robot","enabled":false,"mix_percent":100,"amount_percent":50}}';
+"#;
 
 pub(crate) const CHANNEL_REPAIR_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -613,6 +621,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            CHECK (compressor_makeup_centibels BETWEEN 0 AND 2400),
     reverb_json             TEXT NOT NULL DEFAULT
                            '{\"character\":\"room\",\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
+    creative_vfx_json       TEXT NOT NULL DEFAULT
+                           '{\"scene\":{\"character\":\"telephone\",\"enabled\":false,\"mix_percent\":100,\"intensity_percent\":50},\"delay\":{\"character\":\"slapback\",\"enabled\":false,\"slapback\":{\"delay_millis\":90,\"mix_percent\":22,\"high_cut_hertz\":7000},\"echo\":{\"delay_millis\":375,\"feedback_percent\":36,\"mix_percent\":28,\"high_cut_hertz\":6500,\"stereo_crossfeed_percent\":70}},\"modulation\":{\"character\":\"chorus\",\"enabled\":false,\"chorus\":{\"mix_percent\":35,\"rate_millihertz\":800,\"minimum_delay_microseconds\":8000,\"sweep_microseconds\":10000,\"stereo_phase_degrees\":90},\"flanger\":{\"mix_percent\":50,\"rate_millihertz\":250,\"minimum_delay_microseconds\":200,\"sweep_microseconds\":3500,\"feedback_percent\":35,\"stereo_phase_degrees\":180},\"phaser\":{\"mix_percent\":50,\"rate_millihertz\":350,\"sweep_low_hertz\":300,\"sweep_high_hertz\":2500,\"feedback_percent\":25,\"stereo_phase_degrees\":90},\"tremolo\":{\"rate_millihertz\":4000,\"depth_percent\":60,\"stereo_phase_degrees\":0}},\"transform\":{\"character\":\"robot\",\"enabled\":false,\"mix_percent\":100,\"amount_percent\":50}}',
     restoration_json        TEXT NOT NULL DEFAULT
                            '{\"enabled\":true,\"de_plosive\":{\"enabled\":false,\"frequency_hertz\":140,\"sensitivity_percent\":50,\"reduction_centibels\":1200,\"release_millis\":160},\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
     de_hum_json             TEXT NOT NULL DEFAULT
@@ -622,7 +632,7 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     channel_repair_json     TEXT NOT NULL DEFAULT
                            '{\"enabled\":false,\"invert_left\":false,\"invert_right\":false,\"swap_channels\":false,\"mono_fold_down\":false,\"balance_percent\":0}',
     effect_chain_json       TEXT NOT NULL DEFAULT
-                           '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\",\"de_hum\",\"de_click\",\"channel_repair\"],\"active_count\":5}',
+                           '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\",\"de_hum\",\"de_click\",\"channel_repair\",\"scene_vfx\",\"delay_vfx\",\"modulation_vfx\",\"transform_vfx\"],\"active_count\":5}',
     edit_timeline_json      TEXT NOT NULL DEFAULT '',
     effect_masks_json       TEXT NOT NULL DEFAULT '[]',
     limiter_enabled        INTEGER NOT NULL DEFAULT 0

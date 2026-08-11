@@ -111,6 +111,8 @@ qt_add_executable(
     src/batch_export_controller.hpp
     src/playback_controller.cpp
     src/playback_controller.hpp
+    src/creative_vfx_projection.cpp
+    src/creative_vfx_projection.hpp
     src/parametric_equalizer_projection.cpp
     src/parametric_equalizer_projection.hpp
     src/playback_adjustment_projection.cpp
@@ -310,6 +312,27 @@ qt_add_translations(
     LRELEASE_OPTIONS -nounfinished
     NO_GENERATE_PLURALS_TS_FILE
 )
+
+if(BUILD_TESTING)
+    add_executable(
+        echo-creative-vfx-projection-test
+        src/creative_vfx_projection.cpp
+        tests/creative_vfx_projection_test.cpp
+    )
+    target_compile_features(echo-creative-vfx-projection-test PRIVATE cxx_std_20)
+    target_include_directories(
+        echo-creative-vfx-projection-test
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+            "${PROJECT_SOURCE_DIR}/cpp/echo-audio/include"
+    )
+    target_link_libraries(echo-creative-vfx-projection-test PRIVATE Qt6::Core)
+    echo_audio_enable_warnings(echo-creative-vfx-projection-test)
+    add_test(
+        NAME echo-creative-vfx-projection-test
+        COMMAND echo-creative-vfx-projection-test
+    )
+endif()
 
 if(MSVC)
     target_compile_options(echo-desktop PRIVATE /W4 /permissive-)

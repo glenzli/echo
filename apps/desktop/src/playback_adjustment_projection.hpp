@@ -58,6 +58,7 @@ class PlaybackAdjustmentProjection {
         int limiterReleaseMillis,
         const QVariantList& effectChain,
         const QVariantList& editSegments,
-        const QVariantList& effectMasks
+        const QVariantList& effectMasks,
+        const QVariantMap& creativeVfx = QVariantMap{}
     );
 };

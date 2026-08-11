@@ -65,6 +65,10 @@ class EffectProcessingChain {
     void update_equalizer(ParametricEqualizerAdjustment adjustment);
     void update_compressor(CompressorAdjustment adjustment);
     void update_reverb(ReverbAdjustment adjustment);
+    void update_scene_vfx(SceneVfxAdjustment adjustment);
+    void update_delay_vfx(DelayVfxAdjustment adjustment);
+    void update_modulation_vfx(ModulationVfxAdjustment adjustment);
+    void update_transform_vfx(TransformVfxAdjustment adjustment);
 
     static void validate_restoration(
         RestorationAdjustment adjustment,
@@ -94,6 +98,26 @@ class EffectProcessingChain {
     static void validate_compressor(CompressorAdjustment adjustment, std::uint32_t sample_rate);
     static void validate_reverb(
         ReverbAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_scene_vfx(
+        SceneVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_delay_vfx(
+        DelayVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_modulation_vfx(
+        ModulationVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_transform_vfx(
+        TransformVfxAdjustment adjustment,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );

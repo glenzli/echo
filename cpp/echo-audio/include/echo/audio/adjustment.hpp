@@ -1,5 +1,7 @@
 #pragma once
 
+#include "echo/audio/creative_vfx.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -16,7 +18,7 @@ enum class FadeCurve : std::uint8_t {
 };
 
 inline constexpr std::size_t kParametricEqualizerBandCount = 6;
-inline constexpr std::size_t kEffectNodeCount = 8;
+inline constexpr std::size_t kEffectNodeCount = 12;
 
 enum class EffectNodeKind : std::uint8_t {
     Restoration = 0,
@@ -27,6 +29,10 @@ enum class EffectNodeKind : std::uint8_t {
     DeHum = 5,
     DeClick = 6,
     ChannelRepair = 7,
+    SceneVfx = 8,
+    DelayVfx = 9,
+    ModulationVfx = 10,
+    TransformVfx = 11,
 };
 
 enum class EditSegmentState : std::uint8_t {
@@ -200,6 +206,7 @@ struct PlaybackAdjustment {
     ParametricEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
     ReverbAdjustment reverb;
+    CreativeVfxAdjustment creative_vfx;
     LimiterAdjustment limiter;
     std::array<EffectNodeKind, kEffectNodeCount> effect_chain{{
         EffectNodeKind::Restoration,
@@ -210,6 +217,10 @@ struct PlaybackAdjustment {
         EffectNodeKind::DeHum,
         EffectNodeKind::DeClick,
         EffectNodeKind::ChannelRepair,
+        EffectNodeKind::SceneVfx,
+        EffectNodeKind::DelayVfx,
+        EffectNodeKind::ModulationVfx,
+        EffectNodeKind::TransformVfx,
     }};
     std::uint8_t effect_chain_count = 5;
     std::vector<EditSegment> edit_segments;
@@ -240,6 +251,7 @@ class PreparedAdjustment {
     [[nodiscard]] ParametricEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] ReverbAdjustment reverb() const;
+    [[nodiscard]] CreativeVfxAdjustment creative_vfx() const;
     [[nodiscard]] LimiterAdjustment limiter() const;
     [[nodiscard]] std::array<EffectNodeKind, kEffectNodeCount> effect_chain() const;
     [[nodiscard]] std::size_t effect_chain_count() const;
@@ -266,6 +278,7 @@ class PreparedAdjustment {
     ParametricEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
     ReverbAdjustment reverb_;
+    CreativeVfxAdjustment creative_vfx_;
     LimiterAdjustment limiter_;
     std::array<EffectNodeKind, kEffectNodeCount> effect_chain_;
     std::size_t effect_chain_count_ = 5;

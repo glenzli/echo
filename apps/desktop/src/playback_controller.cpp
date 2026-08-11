@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "creative_vfx_projection.hpp"
 #include "parametric_equalizer_projection.hpp"
 #include "playback_adjustment_projection.hpp"
 #include "restoration_projection.hpp"
@@ -68,6 +69,70 @@ void PlaybackController::playAdjusted(
     const QVariantList& editSegments,
     const QVariantList& effectMasks
 ) {
+    playAdjusted(
+        path,
+        trimStartMillis,
+        trimEndMillis,
+        fadeInMillis,
+        fadeOutMillis,
+        fadeInCurve,
+        fadeOutCurve,
+        gainCentibels,
+        lowCutHertz,
+        restorationValue,
+        deHumValue,
+        deClickValue,
+        channelRepairValue,
+        equalizerEnabled,
+        equalizerBands,
+        compressorEnabled,
+        compressorThresholdCentibels,
+        compressorRatioTenths,
+        compressorAttackMillis,
+        compressorReleaseMillis,
+        compressorMakeupCentibels,
+        reverbValue,
+        limiterEnabled,
+        limiterCeilingCentibels,
+        limiterReleaseMillis,
+        effectChain,
+        editSegments,
+        effectMasks,
+        {}
+    );
+}
+
+void PlaybackController::playAdjusted(
+    const QString& path,
+    qint64 trimStartMillis,
+    qint64 trimEndMillis,
+    qint64 fadeInMillis,
+    qint64 fadeOutMillis,
+    int fadeInCurve,
+    int fadeOutCurve,
+    int gainCentibels,
+    int lowCutHertz,
+    const QVariantMap& restorationValue,
+    const QVariantMap& deHumValue,
+    const QVariantMap& deClickValue,
+    const QVariantMap& channelRepairValue,
+    bool equalizerEnabled,
+    const QVariantList& equalizerBands,
+    bool compressorEnabled,
+    int compressorThresholdCentibels,
+    int compressorRatioTenths,
+    int compressorAttackMillis,
+    int compressorReleaseMillis,
+    int compressorMakeupCentibels,
+    const QVariantMap& reverbValue,
+    bool limiterEnabled,
+    int limiterCeilingCentibels,
+    int limiterReleaseMillis,
+    const QVariantList& effectChain,
+    const QVariantList& editSegments,
+    const QVariantList& effectMasks,
+    const QVariantMap& creativeVfxValue
+) {
     const auto adjustment = PlaybackAdjustmentProjection::fromQml(
         trimStartMillis,
         trimEndMillis,
@@ -95,7 +160,8 @@ void PlaybackController::playAdjusted(
         limiterReleaseMillis,
         effectChain,
         editSegments,
-        effectMasks
+        effectMasks,
+        creativeVfxValue
     );
     if (!adjustment.has_value()) {
         qWarning("invalid playback adjustment");
@@ -174,6 +240,21 @@ bool PlaybackController::updateReverb(const QVariantMap& reverbValue) {
         session->update_reverb(*reverb);
     } catch (const std::exception& error) {
         qWarning("cannot update playback reverb: %s", error.what());
+        return false;
+    }
+    return true;
+}
+
+bool PlaybackController::updateCreativeVfx(const QVariantMap& creativeVfxValue) {
+    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto creative_vfx = CreativeVfxProjection::fromQml(creativeVfxValue);
+    if (session == nullptr || !creative_vfx.has_value()) {
+        return false;
+    }
+    try {
+        session->update_creative_vfx(*creative_vfx);
+    } catch (const std::exception& error) {
+        qWarning("cannot update playback creative VFX: %s", error.what());
         return false;
     }
     return true;

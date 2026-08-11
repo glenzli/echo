@@ -208,6 +208,10 @@ int main() {
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     latency_compensated.effect_chain_count = 3;
     const auto compensated = echo::audio::OfflineWavRenderer::render(
@@ -262,6 +266,10 @@ int main() {
         echo::audio::EffectNodeKind::Dynamics,
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     channel_repaired.effect_chain_count = 4;
     const auto live_channel_repaired = render_playback(source, channel_repaired);
@@ -303,6 +311,10 @@ int main() {
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
     };
     plate_space.effect_chain_count = 3;
     const auto live_plate_space = render_playback(source, plate_space);
@@ -315,6 +327,45 @@ int main() {
     for (std::size_t index = 0; index < live_plate_space.size(); ++index) {
         assert(
             std::abs(live_plate_space[index] - pcm24(plate_space_sink.bytes(), index)) < 2.0E-6F
+        );
+    }
+
+    auto creative_vfx = full_source;
+    creative_vfx.creative_vfx.scene.enabled = true;
+    creative_vfx.creative_vfx.scene.character = echo::audio::SceneVfxCharacter::Radio;
+    creative_vfx.creative_vfx.delay.enabled = true;
+    creative_vfx.creative_vfx.delay.character = echo::audio::DelayVfxCharacter::Slapback;
+    creative_vfx.creative_vfx.modulation.enabled = true;
+    creative_vfx.creative_vfx.modulation.character = echo::audio::ModulationVfxCharacter::Chorus;
+    creative_vfx.creative_vfx.transform.enabled = true;
+    creative_vfx.creative_vfx.transform.character = echo::audio::TransformVfxCharacter::Robot;
+    creative_vfx.effect_chain = {
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::ChannelRepair,
+    };
+    creative_vfx.effect_chain_count = 5;
+    const auto live_creative_vfx = render_playback(source, creative_vfx);
+    MemorySink creative_vfx_sink;
+    const auto creative_vfx_result =
+        echo::audio::OfflineWavRenderer::render(source.string(), creative_vfx, creative_vfx_sink);
+    assert(creative_vfx_result.frame_count == 48'000);
+    assert(
+        creative_vfx_result.frame_count * creative_vfx_result.channel_count
+        == live_creative_vfx.size()
+    );
+    for (std::size_t index = 0; index < live_creative_vfx.size(); ++index) {
+        assert(
+            std::abs(live_creative_vfx[index] - pcm24(creative_vfx_sink.bytes(), index)) < 2.0E-6F
         );
     }
 

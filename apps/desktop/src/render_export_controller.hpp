@@ -27,6 +27,7 @@ class RenderExportController : public QObject {
     explicit RenderExportController(DesktopBackend& backend, QObject* parent = nullptr);
     ~RenderExportController() override;
 
+    // Preserves the existing QML call until the Creative draft is connected.
     Q_INVOKABLE void exportAdjusted(
         const QString& assetId,
         qint64 adjustmentRevisionId,
@@ -59,6 +60,40 @@ class RenderExportController : public QObject {
         const QVariantList& effectChain,
         const QVariantList& editSegments,
         const QVariantList& effectMasks
+    );
+    Q_INVOKABLE void exportAdjusted(
+        const QString& assetId,
+        qint64 adjustmentRevisionId,
+        const QString& sourcePath,
+        const QUrl& destination,
+        qint64 trimStartMillis,
+        qint64 trimEndMillis,
+        qint64 fadeInMillis,
+        qint64 fadeOutMillis,
+        int fadeInCurve,
+        int fadeOutCurve,
+        int gainCentibels,
+        int lowCutHertz,
+        const QVariantMap& restoration,
+        const QVariantMap& deHum,
+        const QVariantMap& deClick,
+        const QVariantMap& channelRepair,
+        bool equalizerEnabled,
+        const QVariantList& equalizerBands,
+        bool compressorEnabled,
+        int compressorThresholdCentibels,
+        int compressorRatioTenths,
+        int compressorAttackMillis,
+        int compressorReleaseMillis,
+        int compressorMakeupCentibels,
+        const QVariantMap& reverb,
+        bool limiterEnabled,
+        int limiterCeilingCentibels,
+        int limiterReleaseMillis,
+        const QVariantList& effectChain,
+        const QVariantList& editSegments,
+        const QVariantList& effectMasks,
+        const QVariantMap& creativeVfx
     );
     Q_INVOKABLE void cancel();
 

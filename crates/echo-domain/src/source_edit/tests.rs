@@ -155,4 +155,8 @@ fn effect_mask_wire_and_structural_bounds_are_stable() {
         EffectMask::new(2_000, 3_000, 10, vec![EffectNodeKind::DeClick]),
         Err(EffectMaskError::UnsupportedEffectNode)
     );
+    assert_eq!(
+        EffectMask::new(2_000, 3_000, 10, vec![EffectNodeKind::TransformVfx]),
+        Err(EffectMaskError::UnsupportedEffectNode)
+    );
 }

@@ -8,10 +8,18 @@
 #include <array>
 #include <utility>
 
+#include "creative_vfx_projection.hpp"
 #include "parametric_equalizer_projection.hpp"
 #include "playback_adjustment_projection.hpp"
 
 namespace {
+
+QVariantMap creativeVfxForQml(const rust::String& encoded) {
+    const auto adjustment = CreativeVfxProjection::fromJson(
+        QByteArray(encoded.data(), static_cast<qsizetype>(encoded.size()))
+    );
+    return adjustment.has_value() ? CreativeVfxProjection::toQml(*adjustment) : QVariantMap{};
+}
 
 bool appendEqualizerBands(
     const QVariantList& values,
@@ -48,10 +56,11 @@ QVariantList equalizerBandsForQml(const rust::Vec<echo::desktop::EqualizerBandWi
 }
 
 bool appendEffectChain(const QVariantList& values, rust::Vec<std::uint8_t>& destination) {
-    if (values.isEmpty() || values.size() > 7 || values.back().toInt() != 4) {
+    if (values.isEmpty() || values.size() > static_cast<qsizetype>(echo::audio::kEffectNodeCount)
+        || values.back().toInt() != 4) {
         return false;
     }
-    std::array<bool, 7> seen{};
+    std::array<bool, echo::audio::kEffectNodeCount> seen{};
     for (const QVariant& item : values) {
         const int value = item.toInt();
         if (value < 0 || value >= static_cast<int>(seen.size())
@@ -198,13 +207,21 @@ QString processingComponentId(std::uint8_t value) {
         return QStringLiteral("master");
     case 8:
         return QStringLiteral("channelRepair");
+    case 9:
+        return QStringLiteral("sceneVfx");
+    case 10:
+        return QStringLiteral("delayVfx");
+    case 11:
+        return QStringLiteral("modulationVfx");
+    case 12:
+        return QStringLiteral("transformVfx");
     default:
         return {};
     }
 }
 
 bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8_t>& destination) {
-    std::array<bool, 9> seen{};
+    std::array<bool, 13> seen{};
     for (const QVariant& item : values) {
         const QString componentId = item.toString();
         int value = -1;
@@ -226,6 +243,14 @@ bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8
             value = 7;
         } else if (componentId == QStringLiteral("channelRepair")) {
             value = 8;
+        } else if (componentId == QStringLiteral("sceneVfx")) {
+            value = 9;
+        } else if (componentId == QStringLiteral("delayVfx")) {
+            value = 10;
+        } else if (componentId == QStringLiteral("modulationVfx")) {
+            value = 11;
+        } else if (componentId == QStringLiteral("transformVfx")) {
+            value = 12;
         }
         if (value < 0 || seen[static_cast<std::size_t>(value)]) {
             return false;
@@ -515,6 +540,7 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("reverbHighCutHertz"),
             static_cast<int>(asset.reverb_high_cut_hertz)
         );
+        entry.insert(QStringLiteral("creativeVfx"), creativeVfxForQml(asset.creative_vfx_json));
         entry.insert(QStringLiteral("limiterEnabled"), asset.limiter_enabled);
         entry.insert(
             QStringLiteral("limiterCeilingCentibels"),
@@ -1113,6 +1139,136 @@ bool DesktopBackend::setAssetAdjustment(
     const QVariantList& editSegments,
     const QVariantList& effectMasks
 ) {
+    return setAssetAdjustment(
+        id,
+        trimStartMillis,
+        trimEndMillis,
+        fadeInMillis,
+        fadeOutMillis,
+        fadeInCurve,
+        fadeOutCurve,
+        gainCentibels,
+        lowCutHertz,
+        restorationEnabled,
+        dePlosiveEnabled,
+        dePlosiveFrequencyHertz,
+        dePlosiveSensitivityPercent,
+        dePlosiveReductionCentibels,
+        dePlosiveReleaseMillis,
+        noiseReductionEnabled,
+        noiseReductionCentibels,
+        noiseReductionSensitivityPercent,
+        noiseReductionSmoothingMillis,
+        deEsserEnabled,
+        deEsserFrequencyHertz,
+        deEsserThresholdCentibels,
+        deEsserReductionCentibels,
+        deHumEnabled,
+        deHumFundamentalHertz,
+        deHumHarmonicCount,
+        deHumQualityTenths,
+        deHumDepthCentibels,
+        deClickEnabled,
+        deClickSensitivityPercent,
+        deClickMaximumClickMicroseconds,
+        deClickRepairPercent,
+        channelRepairEnabled,
+        channelRepairInvertLeft,
+        channelRepairInvertRight,
+        channelRepairSwapChannels,
+        channelRepairMonoFoldDown,
+        channelRepairBalancePercent,
+        equalizerEnabled,
+        equalizerBands,
+        compressorEnabled,
+        compressorThresholdCentibels,
+        compressorRatioTenths,
+        compressorAttackMillis,
+        compressorReleaseMillis,
+        compressorMakeupCentibels,
+        reverbCharacter,
+        reverbEnabled,
+        reverbMixPercent,
+        reverbPreDelayMillis,
+        reverbDecayMillis,
+        reverbSizePercent,
+        reverbDampingPercent,
+        reverbLowCutHertz,
+        reverbHighCutHertz,
+        limiterEnabled,
+        limiterCeilingCentibels,
+        limiterReleaseMillis,
+        effectChain,
+        editSegments,
+        effectMasks,
+        {}
+    );
+}
+
+bool DesktopBackend::setAssetAdjustment(
+    const QString& id,
+    qlonglong trimStartMillis,
+    qlonglong trimEndMillis,
+    qlonglong fadeInMillis,
+    qlonglong fadeOutMillis,
+    int fadeInCurve,
+    int fadeOutCurve,
+    int gainCentibels,
+    int lowCutHertz,
+    bool restorationEnabled,
+    bool dePlosiveEnabled,
+    int dePlosiveFrequencyHertz,
+    int dePlosiveSensitivityPercent,
+    int dePlosiveReductionCentibels,
+    int dePlosiveReleaseMillis,
+    bool noiseReductionEnabled,
+    int noiseReductionCentibels,
+    int noiseReductionSensitivityPercent,
+    int noiseReductionSmoothingMillis,
+    bool deEsserEnabled,
+    int deEsserFrequencyHertz,
+    int deEsserThresholdCentibels,
+    int deEsserReductionCentibels,
+    bool deHumEnabled,
+    int deHumFundamentalHertz,
+    int deHumHarmonicCount,
+    int deHumQualityTenths,
+    int deHumDepthCentibels,
+    bool deClickEnabled,
+    int deClickSensitivityPercent,
+    int deClickMaximumClickMicroseconds,
+    int deClickRepairPercent,
+    bool channelRepairEnabled,
+    bool channelRepairInvertLeft,
+    bool channelRepairInvertRight,
+    bool channelRepairSwapChannels,
+    bool channelRepairMonoFoldDown,
+    int channelRepairBalancePercent,
+    bool equalizerEnabled,
+    const QVariantList& equalizerBands,
+    bool compressorEnabled,
+    int compressorThresholdCentibels,
+    int compressorRatioTenths,
+    int compressorAttackMillis,
+    int compressorReleaseMillis,
+    int compressorMakeupCentibels,
+    int reverbCharacter,
+    bool reverbEnabled,
+    int reverbMixPercent,
+    int reverbPreDelayMillis,
+    int reverbDecayMillis,
+    int reverbSizePercent,
+    int reverbDampingPercent,
+    int reverbLowCutHertz,
+    int reverbHighCutHertz,
+    bool limiterEnabled,
+    int limiterCeilingCentibels,
+    int limiterReleaseMillis,
+    const QVariantList& effectChain,
+    const QVariantList& editSegments,
+    const QVariantList& effectMasks,
+    const QVariantMap& creativeVfx
+) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200
@@ -1149,6 +1305,11 @@ bool DesktopBackend::setAssetAdjustment(
         return false;
     }
     try {
+        const auto creative_vfx = CreativeVfxProjection::fromQml(creativeVfx);
+        if (!creative_vfx.has_value()) {
+            qWarning("creative VFX settings are outside the supported contract");
+            return false;
+        }
         echo::desktop::AssetAdjustmentWire adjustment;
         adjustment.trim_start_millis = static_cast<std::uint64_t>(trimStartMillis);
         adjustment.trim_end_millis = static_cast<std::uint64_t>(trimEndMillis);
@@ -1218,6 +1379,7 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.reverb_damping_percent = static_cast<std::uint8_t>(reverbDampingPercent);
         adjustment.reverb_low_cut_hertz = static_cast<std::uint16_t>(reverbLowCutHertz);
         adjustment.reverb_high_cut_hertz = static_cast<std::uint16_t>(reverbHighCutHertz);
+        adjustment.creative_vfx_json = CreativeVfxProjection::toJson(*creative_vfx).toStdString();
         adjustment.limiter_enabled = limiterEnabled;
         adjustment.limiter_ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels);
         adjustment.limiter_release_millis = static_cast<std::uint16_t>(limiterReleaseMillis);

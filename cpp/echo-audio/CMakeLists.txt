@@ -14,6 +14,7 @@ add_library(
     src/de_esser.cpp
     src/de_hum_filter.cpp
     src/de_plosive_processor.cpp
+    src/delay_vfx_processor.cpp
     src/diffuse_space_reverb.cpp
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
@@ -22,6 +23,8 @@ add_library(
     src/low_cut_filter.cpp
     src/loudness_gain_advisor.cpp
     src/loudness_meter.cpp
+    src/modulated_delay_vfx.cpp
+    src/modulation_vfx_processor.cpp
     src/offline_loudness_analyzer.cpp
     src/offline_flac_renderer.cpp
     src/offline_render.cpp
@@ -29,8 +32,12 @@ add_library(
     src/output_guard.cpp
     src/output_limiter.cpp
     src/playback.cpp
-    src/source_edit_plan.cpp
     src/parametric_equalizer.cpp
+    src/phaser_vfx.cpp
+    src/scene_vfx_processor.cpp
+    src/source_edit_plan.cpp
+    src/transform_vfx_processor.cpp
+    src/tremolo_vfx.cpp
     src/waveform.cpp
 )
 add_library(Echo::Audio ALIAS echo-audio)
@@ -110,6 +117,11 @@ if(BUILD_TESTING)
     target_link_libraries(echo-de-plosive-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-de-plosive-processor-test)
     add_test(NAME echo-de-plosive-processor-test COMMAND echo-de-plosive-processor-test)
+
+    add_executable(echo-delay-vfx-processor-test tests/delay_vfx_processor_test.cpp)
+    target_link_libraries(echo-delay-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-delay-vfx-processor-test)
+    add_test(NAME echo-delay-vfx-processor-test COMMAND echo-delay-vfx-processor-test)
 
     add_executable(
         echo-analysis-proxy-test
@@ -202,6 +214,11 @@ if(BUILD_TESTING)
     echo_audio_enable_warnings(echo-loudness-meter-test)
     add_test(NAME echo-loudness-meter-test COMMAND echo-loudness-meter-test)
 
+    add_executable(echo-modulation-vfx-processor-test tests/modulation_vfx_processor_test.cpp)
+    target_link_libraries(echo-modulation-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-modulation-vfx-processor-test)
+    add_test(NAME echo-modulation-vfx-processor-test COMMAND echo-modulation-vfx-processor-test)
+
     add_executable(
         echo-offline-loudness-analyzer-test
         tests/offline_loudness_analyzer_test.cpp
@@ -260,4 +277,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-playback-engine-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-playback-engine-test)
     add_test(NAME echo-playback-engine-test COMMAND echo-playback-engine-test)
+
+    add_executable(echo-scene-vfx-processor-test tests/scene_vfx_processor_test.cpp)
+    target_link_libraries(echo-scene-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-scene-vfx-processor-test)
+    add_test(NAME echo-scene-vfx-processor-test COMMAND echo-scene-vfx-processor-test)
+
+    add_executable(echo-transform-vfx-processor-test tests/transform_vfx_processor_test.cpp)
+    target_link_libraries(echo-transform-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-transform-vfx-processor-test)
+    add_test(NAME echo-transform-vfx-processor-test COMMAND echo-transform-vfx-processor-test)
 endif()

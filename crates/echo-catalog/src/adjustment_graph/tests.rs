@@ -2,9 +2,11 @@ use std::path::Path;
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, ChannelRepairSettings, CompressorSettings, ContentHash,
-    DeClickSettings, DeEsserSettings, DeHumSettings, DePlosiveSettings, EditSegment,
-    EditSegmentState, EditTimeline, EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves,
-    LimiterSettings, NoiseReductionSettings, RestorationSettings, ReverbCharacter, ReverbSettings,
+    CreativeVfxSettings, DeClickSettings, DeEsserSettings, DeHumSettings, DePlosiveSettings,
+    DelayVfxCharacter, EditSegment, EditSegmentState, EditTimeline, EffectChain, EffectMask,
+    EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings, ModulationVfxCharacter,
+    NoiseReductionSettings, RestorationSettings, ReverbCharacter, ReverbSettings,
+    SceneVfxCharacter, TransformVfxCharacter,
 };
 
 use super::*;
@@ -61,6 +63,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
     assert_eq!(first.graph.de_click(), graph.de_click());
     assert_eq!(first.graph.channel_repair(), graph.channel_repair());
     assert_eq!(first.graph.reverb(), graph.reverb());
+    assert_eq!(first.graph.creative_vfx(), graph.creative_vfx());
     assert_eq!(first.graph.limiter(), graph.limiter());
     assert_eq!(first.graph.effect_chain(), graph.effect_chain());
     assert_eq!(first.graph.edit_timeline(), graph.edit_timeline());
@@ -276,6 +279,19 @@ fn register_fixture_asset(catalog: &crate::Catalog, byte: u8, path: &str) -> Ass
 
 #[allow(clippy::too_many_lines)] // One complete persistence fixture covers every authored field.
 fn fully_configured_graph() -> AdjustmentGraph {
+    let mut creative_vfx = CreativeVfxSettings::default();
+    creative_vfx.scene.enabled = true;
+    creative_vfx.scene.character = SceneVfxCharacter::Underwater;
+    creative_vfx.scene.intensity_percent = 72;
+    creative_vfx.delay.enabled = true;
+    creative_vfx.delay.character = DelayVfxCharacter::Echo;
+    creative_vfx.delay.echo.feedback_percent = 42;
+    creative_vfx.modulation.enabled = true;
+    creative_vfx.modulation.character = ModulationVfxCharacter::Phaser;
+    creative_vfx.modulation.phaser.feedback_percent = -18;
+    creative_vfx.transform.enabled = true;
+    creative_vfx.transform.character = TransformVfxCharacter::Ghost;
+    creative_vfx.transform.amount_percent = 68;
     AdjustmentGraph::new(
         10_000,
         1_000,
@@ -352,6 +368,7 @@ fn fully_configured_graph() -> AdjustmentGraph {
             low_cut_hertz: 150,
             high_cut_hertz: 9_000,
         })
+        .with_creative_vfx(creative_vfx)
         .with_limiter(LimiterSettings {
             enabled: true,
             ceiling_centibels: -125,

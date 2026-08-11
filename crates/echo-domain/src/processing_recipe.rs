@@ -1,4 +1,4 @@
-//! Reusable, non-destructive restoration intent.
+//! Reusable, non-destructive processing intent.
 //!
 //! A processing recipe is an immutable snapshot of selected processing
 //! components. Applying it always materializes a complete asset-local
@@ -11,9 +11,9 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
 use crate::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, ChannelRepairSettings,
-    CompressorSettings, DeClickSettings, DeHumSettings, EffectChain, EffectNodeKind, FadeCurves,
-    LimiterSettings, ParametricEqualizer, ProcessingRecipeId, ProcessingRecipeRevisionId,
-    RestorationSettings, ReverbSettings,
+    CompressorSettings, CreativeVfxSettings, DeClickSettings, DeHumSettings, EffectChain,
+    EffectNodeKind, FadeCurves, LimiterSettings, ParametricEqualizer, ProcessingRecipeId,
+    ProcessingRecipeRevisionId, RestorationSettings, ReverbSettings,
 };
 
 /// Stable selectable processing component identity.
@@ -30,12 +30,16 @@ pub enum ProcessingComponent {
     Space = 6,
     Master = 7,
     ChannelRepair = 8,
+    SceneVfx = 9,
+    DelayVfx = 10,
+    ModulationVfx = 11,
+    TransformVfx = 12,
 }
 
-/// Echo's complete reusable restoration-processing surface.
+/// Echo's complete reusable processing surface.
 ///
 /// Clip-local trim, fades, and gain are intentionally absent.
-pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 9] = [
+pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 13] = [
     ProcessingComponent::LowCut,
     ProcessingComponent::Restoration,
     ProcessingComponent::DeHum,
@@ -44,6 +48,10 @@ pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 9] = [
     ProcessingComponent::Dynamics,
     ProcessingComponent::Space,
     ProcessingComponent::ChannelRepair,
+    ProcessingComponent::SceneVfx,
+    ProcessingComponent::DelayVfx,
+    ProcessingComponent::ModulationVfx,
+    ProcessingComponent::TransformVfx,
     ProcessingComponent::Master,
 ];
 
@@ -69,6 +77,10 @@ impl ProcessingComponent {
             6 => Ok(Self::Space),
             7 => Ok(Self::Master),
             8 => Ok(Self::ChannelRepair),
+            9 => Ok(Self::SceneVfx),
+            10 => Ok(Self::DelayVfx),
+            11 => Ok(Self::ModulationVfx),
+            12 => Ok(Self::TransformVfx),
             _ => Err(ProcessingComponentValueError),
         }
     }
@@ -84,6 +96,10 @@ impl ProcessingComponent {
             Self::Space => Some(EffectNodeKind::Space),
             Self::Master => Some(EffectNodeKind::Master),
             Self::ChannelRepair => Some(EffectNodeKind::ChannelRepair),
+            Self::SceneVfx => Some(EffectNodeKind::SceneVfx),
+            Self::DelayVfx => Some(EffectNodeKind::DelayVfx),
+            Self::ModulationVfx => Some(EffectNodeKind::ModulationVfx),
+            Self::TransformVfx => Some(EffectNodeKind::TransformVfx),
         }
     }
 }
@@ -120,6 +136,7 @@ pub struct AdjustmentPatch {
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     reverb: ReverbSettings,
+    creative_vfx: CreativeVfxSettings,
     limiter: LimiterSettings,
     effect_chain: EffectChain,
 }
@@ -136,6 +153,8 @@ struct StoredAdjustmentPatch {
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     reverb: ReverbSettings,
+    #[serde(default)]
+    creative_vfx: CreativeVfxSettings,
     limiter: LimiterSettings,
     effect_chain: EffectChain,
 }
@@ -156,6 +175,7 @@ impl<'de> Deserialize<'de> for AdjustmentPatch {
             equalizer: stored.equalizer,
             compressor: stored.compressor,
             reverb: stored.reverb,
+            creative_vfx: stored.creative_vfx,
             limiter: stored.limiter,
             effect_chain: stored.effect_chain,
         };
@@ -186,6 +206,7 @@ impl AdjustmentPatch {
             equalizer: graph.equalizer(),
             compressor: graph.compressor(),
             reverb: graph.reverb(),
+            creative_vfx: graph.creative_vfx(),
             limiter: graph.limiter(),
             effect_chain: graph.effect_chain(),
         };
@@ -248,6 +269,18 @@ impl AdjustmentPatch {
         if self.contains(ProcessingComponent::Space) {
             effects.reverb = self.reverb;
         }
+        if self.contains(ProcessingComponent::SceneVfx) {
+            effects.creative_vfx.scene = self.creative_vfx.scene;
+        }
+        if self.contains(ProcessingComponent::DelayVfx) {
+            effects.creative_vfx.delay = self.creative_vfx.delay;
+        }
+        if self.contains(ProcessingComponent::ModulationVfx) {
+            effects.creative_vfx.modulation = self.creative_vfx.modulation;
+        }
+        if self.contains(ProcessingComponent::TransformVfx) {
+            effects.creative_vfx.transform = self.creative_vfx.transform;
+        }
         if self.contains(ProcessingComponent::Master) {
             effects.limiter = self.limiter;
         }
@@ -278,7 +311,7 @@ impl AdjustmentPatch {
         if self.components.is_empty() {
             return Err(ProcessingRecipeError::EmptyComponents);
         }
-        let mut seen = [false; 9];
+        let mut seen = [false; 13];
         for component in &self.components {
             let index = usize::from(component.wire_value());
             if seen[index] {
@@ -300,6 +333,7 @@ impl AdjustmentPatch {
                 .with_equalizer(self.equalizer)
                 .with_compressor(self.compressor)
                 .with_reverb(self.reverb)
+                .with_creative_vfx(self.creative_vfx)
                 .with_limiter(self.limiter)
                 .with_effect_chain(self.effect_chain),
         )
@@ -308,7 +342,7 @@ impl AdjustmentPatch {
     }
 
     fn replacement_chain(&self) -> Result<EffectChain, ProcessingRecipeError> {
-        let mut nodes = Vec::with_capacity(9);
+        let mut nodes = Vec::with_capacity(13);
         for &node in self.effect_chain.nodes() {
             if node != EffectNodeKind::Master && self.selects_node(node) {
                 nodes.push(node);
@@ -329,7 +363,7 @@ impl AdjustmentPatch {
             return Ok(target);
         }
 
-        let mut retained = Vec::with_capacity(9);
+        let mut retained = Vec::with_capacity(13);
         let mut insertion_index = None;
         for &node in target.nodes() {
             if node == EffectNodeKind::Master {
@@ -374,6 +408,7 @@ fn processing_from_graph(graph: &AdjustmentGraph) -> AdjustmentEffects {
     .with_equalizer(graph.equalizer())
     .with_compressor(graph.compressor())
     .with_reverb(graph.reverb())
+    .with_creative_vfx(graph.creative_vfx())
     .with_limiter(graph.limiter())
     .with_effect_chain(graph.effect_chain())
 }

@@ -68,14 +68,40 @@ int main() {
 
     {
         auto invalid = masked();
-        invalid.effect_masks[0].nodes = {echo::audio::EffectNodeKind::DeClick};
-        const echo::audio::PreparedAdjustment prepared(invalid, 1000, kSampleRate);
-        bool rejected = false;
-        try {
-            [[maybe_unused]] const echo::audio::EffectMaskPlan plan(invalid, prepared, kSampleRate);
-        } catch (const std::invalid_argument&) {
-            rejected = true;
+        for (const auto node : {
+                 echo::audio::EffectNodeKind::DeClick,
+                 echo::audio::EffectNodeKind::TransformVfx,
+             }) {
+            invalid.effect_masks[0].nodes = {node};
+            if (node == echo::audio::EffectNodeKind::TransformVfx) {
+                invalid.effect_chain = {
+                    echo::audio::EffectNodeKind::TransformVfx,
+                    echo::audio::EffectNodeKind::Master,
+                    echo::audio::EffectNodeKind::Restoration,
+                    echo::audio::EffectNodeKind::Equalizer,
+                    echo::audio::EffectNodeKind::Dynamics,
+                    echo::audio::EffectNodeKind::Space,
+                    echo::audio::EffectNodeKind::DeHum,
+                    echo::audio::EffectNodeKind::DeClick,
+                    echo::audio::EffectNodeKind::ChannelRepair,
+                    echo::audio::EffectNodeKind::SceneVfx,
+                    echo::audio::EffectNodeKind::DelayVfx,
+                    echo::audio::EffectNodeKind::ModulationVfx,
+                };
+                invalid.effect_chain_count = 2;
+            }
+            const echo::audio::PreparedAdjustment prepared(invalid, 1000, kSampleRate);
+            bool rejected = false;
+            try {
+                [[maybe_unused]] const echo::audio::EffectMaskPlan plan(
+                    invalid,
+                    prepared,
+                    kSampleRate
+                );
+            } catch (const std::invalid_argument&) {
+                rejected = true;
+            }
+            assert(rejected);
         }
-        assert(rejected);
     }
 }

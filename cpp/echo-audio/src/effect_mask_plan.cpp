@@ -47,7 +47,8 @@ EffectMaskPlan::EffectMaskPlan(
         for (const EffectNodeKind node : mask.nodes) {
             const std::size_t value = static_cast<std::size_t>(node);
             if (value >= kEffectNodeCount || seen[value] || !active[value]
-                || node == EffectNodeKind::Master || node == EffectNodeKind::DeClick) {
+                || node == EffectNodeKind::Master || node == EffectNodeKind::DeClick
+                || node == EffectNodeKind::TransformVfx) {
                 throw std::invalid_argument(
                     "effect mask nodes must be unique active maskable inserts"
                 );

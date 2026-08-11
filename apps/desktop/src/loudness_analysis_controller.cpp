@@ -51,6 +51,72 @@ void LoudnessAnalysisController::analyzeAdjusted(
     const QVariantList& editSegments,
     const QVariantList& effectMasks
 ) {
+    analyzeAdjusted(
+        resultKey,
+        path,
+        trimStartMillis,
+        trimEndMillis,
+        fadeInMillis,
+        fadeOutMillis,
+        fadeInCurve,
+        fadeOutCurve,
+        gainCentibels,
+        lowCutHertz,
+        restoration,
+        deHum,
+        deClick,
+        channelRepair,
+        equalizerEnabled,
+        equalizerBands,
+        compressorEnabled,
+        compressorThresholdCentibels,
+        compressorRatioTenths,
+        compressorAttackMillis,
+        compressorReleaseMillis,
+        compressorMakeupCentibels,
+        reverb,
+        limiterEnabled,
+        limiterCeilingCentibels,
+        limiterReleaseMillis,
+        effectChain,
+        editSegments,
+        effectMasks,
+        {}
+    );
+}
+
+void LoudnessAnalysisController::analyzeAdjusted(
+    const QString& resultKey,
+    const QString& path,
+    qint64 trimStartMillis,
+    qint64 trimEndMillis,
+    qint64 fadeInMillis,
+    qint64 fadeOutMillis,
+    int fadeInCurve,
+    int fadeOutCurve,
+    int gainCentibels,
+    int lowCutHertz,
+    const QVariantMap& restoration,
+    const QVariantMap& deHum,
+    const QVariantMap& deClick,
+    const QVariantMap& channelRepair,
+    bool equalizerEnabled,
+    const QVariantList& equalizerBands,
+    bool compressorEnabled,
+    int compressorThresholdCentibels,
+    int compressorRatioTenths,
+    int compressorAttackMillis,
+    int compressorReleaseMillis,
+    int compressorMakeupCentibels,
+    const QVariantMap& reverb,
+    bool limiterEnabled,
+    int limiterCeilingCentibels,
+    int limiterReleaseMillis,
+    const QVariantList& effectChain,
+    const QVariantList& editSegments,
+    const QVariantList& effectMasks,
+    const QVariantMap& creativeVfx
+) {
     const auto adjustment = PlaybackAdjustmentProjection::fromQml(
         trimStartMillis,
         trimEndMillis,
@@ -78,7 +144,8 @@ void LoudnessAnalysisController::analyzeAdjusted(
         limiterReleaseMillis,
         effectChain,
         editSegments,
-        effectMasks
+        effectMasks,
+        creativeVfx
     );
     if (!adjustment.has_value()) {
         error_text_ = QStringLiteral("adjustment is outside the supported range");

@@ -183,6 +183,19 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     let echo_catalog::RegisterAsset::Created(asset) = asset else {
         panic!("fixture must create")
     };
+    let mut creative_vfx = echo_domain::CreativeVfxSettings::default();
+    creative_vfx.scene.enabled = true;
+    creative_vfx.scene.character = echo_domain::SceneVfxCharacter::Underwater;
+    creative_vfx.scene.intensity_percent = 72;
+    creative_vfx.delay.enabled = true;
+    creative_vfx.delay.character = echo_domain::DelayVfxCharacter::Echo;
+    creative_vfx.delay.echo.feedback_percent = 42;
+    creative_vfx.modulation.enabled = true;
+    creative_vfx.modulation.character = echo_domain::ModulationVfxCharacter::Phaser;
+    creative_vfx.modulation.phaser.feedback_percent = -18;
+    creative_vfx.transform.enabled = true;
+    creative_vfx.transform.character = echo_domain::TransformVfxCharacter::Ghost;
+    creative_vfx.transform.amount_percent = 68;
     let mut adjustment = crate::ffi::AssetAdjustmentWire {
         trim_start_millis: 1_000,
         trim_end_millis: 9_000,
@@ -238,10 +251,11 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         reverb_damping_percent: 52,
         reverb_low_cut_hertz: 150,
         reverb_high_cut_hertz: 9_000,
+        creative_vfx_json: serde_json::to_string(&creative_vfx).expect("creative VFX encodes"),
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
-        effect_chain: vec![5, 7, 3, 0, 6, 1, 2, 4],
+        effect_chain: vec![5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 2, 4],
         edit_segments: vec![
             crate::ffi::EditSegmentWire {
                 source_start_millis: 1_000,
@@ -290,6 +304,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         stored.graph.reverb().character,
         echo_domain::ReverbCharacter::Hall
     );
+    assert_eq!(stored.graph.creative_vfx(), creative_vfx);
     let projected = session.list_assets().expect("assets project");
     assert_eq!(projected.len(), 1);
     assert!(projected[0].adjustment_revision > 0);
@@ -354,10 +369,18 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].reverb_damping_percent, 52);
     assert_eq!(projected[0].reverb_low_cut_hertz, 150);
     assert_eq!(projected[0].reverb_high_cut_hertz, 9_000);
+    assert_eq!(
+        serde_json::from_str::<echo_domain::CreativeVfxSettings>(&projected[0].creative_vfx_json)
+            .expect("projected creative VFX decodes"),
+        creative_vfx
+    );
     assert!(projected[0].limiter_enabled);
     assert_eq!(projected[0].limiter_ceiling_centibels, -125);
     assert_eq!(projected[0].limiter_release_millis, 160);
-    assert_eq!(projected[0].effect_chain, [5, 7, 3, 0, 6, 1, 2, 4]);
+    assert_eq!(
+        projected[0].effect_chain,
+        [5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 2, 4]
+    );
     assert_eq!(projected[0].edit_segments.len(), 2);
     assert_eq!(projected[0].edit_segments[0].source_start_millis, 1_000);
     assert_eq!(projected[0].edit_segments[0].gap_after_millis, 200);
@@ -371,6 +394,17 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(
         error.message,
         "reverb character must be room, hall, or plate"
+    );
+    adjustment.reverb_character = echo_domain::ReverbCharacter::Room.wire_value();
+    creative_vfx.transform.amount_percent = 101;
+    adjustment.creative_vfx_json =
+        serde_json::to_string(&creative_vfx).expect("invalid creative VFX still encodes");
+    let error = session
+        .set_asset_adjustment(&asset.id.to_string(), &adjustment)
+        .expect_err("invalid creative VFX range must fail closed");
+    assert_eq!(
+        error.message,
+        "creative VFX parameters are outside the supported range"
     );
     let _ = std::fs::remove_dir_all(root);
 }
