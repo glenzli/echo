@@ -19,10 +19,10 @@ Rectangle {
 
     implicitWidth: 286
     implicitHeight: 286
-    radius: Theme.compactControlRadius
-    color: Theme.panelRaised
+    radius: Theme.panelRadius
+    color: Theme.parameterPanel
     border.width: 1
-    border.color: Theme.borderStrong
+    border.color: Theme.border
 
     function decibels(centibels: int): string {
         return (centibels / 100).toFixed(1) + " dBTP";
@@ -42,7 +42,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 34
+            Layout.preferredHeight: 40
             Layout.leftMargin: 12
             Layout.rightMargin: 8
             spacing: 7

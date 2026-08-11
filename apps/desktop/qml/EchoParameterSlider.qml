@@ -16,20 +16,21 @@ Item {
     property alias to: slider.to
     property alias stepSize: slider.stepSize
     property string valueText: ""
-    property int labelWidth: label.length > 0 ? 34 : 0
-    property int valueWidth: 58
+    property int labelWidth: label.length > 0 ? 72 : 0
+    property int valueWidth: 64
+    property int maximumTrackWidth: Theme.editorControlTrackWidth
     property real neutralValue: from
     property bool showNeutralMarker: false
     property bool fillFromMinimum: false
     signal edited(real value)
-    signal gestureStarted()
-    signal gestureFinished()
+    signal gestureStarted
+    signal gestureFinished
 
-    implicitHeight: 26
+    implicitHeight: 30
 
     RowLayout {
         anchors.fill: parent
-        spacing: 6
+        spacing: 9
 
         Text {
             visible: field.label.length > 0
@@ -48,7 +49,9 @@ Item {
 
             Layout.fillWidth: true
             Layout.minimumWidth: 72
-            implicitHeight: 22
+            Layout.preferredWidth: field.maximumTrackWidth
+            Layout.maximumWidth: field.maximumTrackWidth
+            implicitHeight: 26
             enabled: field.enabled
             snapMode: Slider.SnapAlways
             Accessible.name: field.accessibleName
@@ -58,13 +61,13 @@ Item {
                 x: slider.leftPadding
                 y: Math.round((slider.height - height) / 2)
                 width: slider.availableWidth
-                height: 8
+                height: 10
 
                 Rectangle {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 3
+                    height: 4
                     radius: 2
                     color: slider.enabled ? Theme.track : Theme.border
                 }
@@ -74,17 +77,14 @@ Item {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     width: slider.visualPosition * parent.width
-                    height: 3
+                    height: 4
                     radius: 2
                     color: slider.enabled ? Theme.accent : Theme.textDisabled
                 }
 
                 Rectangle {
                     visible: field.showNeutralMarker
-                    x: Math.round(Math.max(0, Math.min(parent.width - width,
-                        (field.neutralValue - slider.from)
-                        / Math.max(0.0001, slider.to - slider.from)
-                        * parent.width - width / 2)))
+                    x: Math.round(Math.max(0, Math.min(parent.width - width, (field.neutralValue - slider.from) / Math.max(0.0001, slider.to - slider.from) * parent.width - width / 2)))
                     anchors.verticalCenter: parent.verticalCenter
                     width: 1
                     height: 8
@@ -93,23 +93,32 @@ Item {
             }
 
             handle: Rectangle {
-                x: slider.leftPadding + slider.visualPosition
-                    * (slider.availableWidth - width)
+                x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
                 y: Math.round((slider.height - height) / 2)
-                implicitWidth: slider.pressed ? 12 : 10
-                implicitHeight: slider.pressed ? 12 : 10
+                implicitWidth: slider.pressed ? 14 : 12
+                implicitHeight: slider.pressed ? 14 : 12
                 radius: width / 2
                 color: slider.enabled ? Theme.panelRaised : Theme.controlQuiet
-                border.width: 1
+                border.width: slider.pressed ? 2 : 1
                 border.color: slider.enabled ? Theme.accent : Theme.textDisabled
 
-                Behavior on implicitWidth { NumberAnimation { duration: 80 } }
-                Behavior on implicitHeight { NumberAnimation { duration: 80 } }
+                Behavior on implicitWidth {
+                    NumberAnimation {
+                        duration: 80
+                    }
+                }
+                Behavior on implicitHeight {
+                    NumberAnimation {
+                        duration: 80
+                    }
+                }
             }
 
             onPressedChanged: {
-                if (pressed) field.gestureStarted()
-                else field.gestureFinished()
+                if (pressed)
+                    field.gestureStarted();
+                else
+                    field.gestureFinished();
             }
             onMoved: field.edited(value)
         }

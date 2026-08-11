@@ -27,10 +27,10 @@ QtObject {
     // Density tokens
     readonly property int compactControlHeight: 30
     readonly property int controlHeight: 34
-    readonly property int compactControlRadius: 5
-    readonly property int controlRadius: 6
-    readonly property int panelRadius: 10
-    readonly property int cardRadius: 11
+    readonly property int compactControlRadius: 6
+    readonly property int controlRadius: 8
+    readonly property int panelRadius: 12
+    readonly property int cardRadius: 13
     readonly property int spaceXs: 4
     readonly property int spaceSm: 8
     readonly property int spaceMd: 12
@@ -46,23 +46,29 @@ QtObject {
     // The empty remainder is intentional workspace, matching Shadow's
     // bounded navigator / inspector convention.
     readonly property int editorRailWidth: 210
-    readonly property int editorParameterMaxWidth: 920
-    readonly property int editorControlTrackWidth: 280
+    readonly property int editorParameterMaxWidth: 820
+    readonly property int editorControlTrackWidth: 260
     readonly property int editorSectionColumnWidth: 320
     readonly property int editorPanelGap: 12
 
     // Base surfaces
-    readonly property color window: effectiveDark ? "#0f1214" : "#eef1f3"
-    readonly property color chrome: effectiveDark ? "#12171a" : "#fbfcfc"
-    readonly property color panel: effectiveDark ? "#171c20" : "#f7f9fa"
-    readonly property color panelRaised: effectiveDark ? "#1e2329" : "#ffffff"
-    readonly property color panelInset: effectiveDark ? "#13171b" : "#f3f5f7"
-    readonly property color surfaceSubtle: effectiveDark ? "#20252b" : "#f3f5f7"
-    readonly property color surfaceSelected: effectiveDark ? "#252b32" : "#e9eef3"
-    readonly property color waveformSurface: effectiveDark ? "#11181c" : "#eaf0f2"
-    readonly property color waveformFill: effectiveDark ? "#91afb8" : "#617982"
-    readonly property color waveformPlayed: effectiveDark ? "#b8d8d5" : "#397d80"
-    readonly property color waveformCenter: effectiveDark ? "#52636a" : "#c7d2d6"
+    readonly property color window: effectiveDark ? "#0c1114" : "#eef2f4"
+    readonly property color chrome: effectiveDark ? "#11171a" : "#fbfcfd"
+    readonly property color panel: effectiveDark ? "#151c20" : "#f5f8f9"
+    readonly property color panelRaised: effectiveDark ? "#1a2227" : "#ffffff"
+    readonly property color panelInset: effectiveDark ? "#10171b" : "#edf2f4"
+    readonly property color surfaceSubtle: effectiveDark ? "#202a30" : "#f1f5f6"
+    readonly property color surfaceSelected: effectiveDark ? "#26343a" : "#e7f0f2"
+    readonly property color parameterPanel: effectiveDark ? "#151c20" : "#f9fbfc"
+    readonly property color parameterSection: effectiveDark ? "#1b2429" : "#ffffff"
+    readonly property color parameterGraph: effectiveDark ? "#10171b" : "#f4f8f9"
+    readonly property color graphGrid: effectiveDark ? "#29363c" : "#dfe8eb"
+    readonly property color graphGridStrong: effectiveDark ? "#405158" : "#c5d4d9"
+    readonly property color graphFill: effectiveDark ? "#27454d" : "#dbeef1"
+    readonly property color waveformSurface: effectiveDark ? "#10191d" : "#e8f0f2"
+    readonly property color waveformFill: effectiveDark ? "#8eb3bc" : "#52717a"
+    readonly property color waveformPlayed: effectiveDark ? "#b9deda" : "#277d82"
+    readonly property color waveformCenter: effectiveDark ? "#435a62" : "#c6d4d8"
     readonly property color control: effectiveDark ? "#1d2228" : "#ffffff"
     readonly property color controlQuiet: effectiveDark ? "#20252b" : "#f3f5f7"
     readonly property color controlPressed: effectiveDark ? "#2b323a" : "#e9edf2"
@@ -77,22 +83,28 @@ QtObject {
     readonly property color focusRing: effectiveDark ? "#75acbd" : "#4d899e"
 
     // Structure and borders
-    readonly property color border: effectiveDark ? "#323b45" : "#d9dee5"
-    readonly property color borderStrong: effectiveDark ? "#485460" : "#c8d0d8"
-    readonly property color separatorStrong: effectiveDark ? "#404852" : "#bbc4cd"
-    readonly property color track: effectiveDark ? "#3b4652" : "#d0d6dd"
+    readonly property color border: effectiveDark ? "#2b373e" : "#dbe3e7"
+    readonly property color borderStrong: effectiveDark ? "#43545c" : "#c4d1d6"
+    readonly property color separatorStrong: effectiveDark ? "#3d4c53" : "#b8c8ce"
+    readonly property color track: effectiveDark ? "#3a4951" : "#ced9de"
 
     // Text and icons
     readonly property color textPrimary: effectiveDark ? "#f1f4f6" : "#20252a"
     readonly property color textSecondary: effectiveDark ? "#cbd3d9" : "#4f5964"
     readonly property color textMuted: effectiveDark ? "#9ea9b4" : "#626e79"
     readonly property color textDisabled: effectiveDark ? "#74818d" : "#a4acb5"
-    readonly property color accent: effectiveDark ? "#73aebe" : "#2f758d"
+    readonly property color accent: effectiveDark ? "#69b7c2" : "#147f98"
     readonly property color accentText: effectiveDark ? "#0d1117" : "#ffffff"
-    readonly property color accentSurfaceQuiet: effectiveDark ? "#1b2d33" : "#f2f7f8"
-    readonly property color accentSurface: effectiveDark ? "#23444d" : "#e5f0f2"
-    readonly property color accentBorder: effectiveDark ? "#6399a8" : "#8fb7c2"
-    readonly property color accentSelectionText: effectiveDark ? "#b8d9e0" : "#2b697d"
+    readonly property color accentSurfaceQuiet: effectiveDark ? "#192e34" : "#eef7f8"
+    readonly property color accentSurface: effectiveDark ? "#224650" : "#dceff2"
+    readonly property color accentBorder: effectiveDark ? "#579aa7" : "#87b7c1"
+    readonly property color accentSelectionText: effectiveDark ? "#bce3e8" : "#116f85"
+
+    // Editing surfaces use quiet depth, not desktop-style full-width boxes.
+    readonly property color switchOffSurface: effectiveDark ? "#34434a" : "#d3dde1"
+    readonly property color switchThumb: effectiveDark ? "#f2f7f8" : "#ffffff"
+    readonly property color shadowSoft: effectiveDark ? "#44000000" : "#160f2530"
+    readonly property color shadowStrong: effectiveDark ? "#66000000" : "#24132c38"
 
     // Semantic chips are evidence signals, not navigation controls. Keep them
     // quieter than the accent and stable between the wall and inspector.

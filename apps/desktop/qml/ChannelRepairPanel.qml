@@ -14,10 +14,10 @@ Rectangle {
 
     implicitWidth: 580
     implicitHeight: 302
-    radius: Theme.compactControlRadius
-    color: Theme.panelRaised
+    radius: Theme.panelRadius
+    color: Theme.parameterPanel
     border.width: 1
-    border.color: Theme.borderStrong
+    border.color: Theme.border
 
     function toggleEnabled(): void {
         draft.beginGesture();
@@ -37,7 +37,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
+            Layout.preferredHeight: 40
             Layout.leftMargin: 10
             Layout.rightMargin: 7
             spacing: 7
@@ -59,36 +59,10 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
-            Text {
-                text: qsTr("Enabled")
-                color: panel.draft.channelRepairEnabled ? Theme.textSecondary : Theme.textDisabled
-                font.pixelSize: Theme.fontMeta
-            }
-
-            Rectangle {
-                implicitWidth: 30
-                implicitHeight: 17
-                radius: height / 2
-                color: panel.draft.channelRepairEnabled ? Theme.accent : Theme.track
-
-                Rectangle {
-                    width: 13
-                    height: 13
-                    radius: 7
-                    y: 2
-                    x: panel.draft.channelRepairEnabled ? parent.width - width - 2 : 2
-                    color: panel.draft.channelRepairEnabled ? Theme.accentText : Theme.panelRaised
-
-                    Behavior on x {
-                        NumberAnimation {
-                            duration: 90
-                        }
-                    }
-                }
-
-                TapHandler {
-                    onTapped: panel.toggleEnabled()
-                }
+            EchoSwitch {
+                checked: panel.draft.channelRepairEnabled
+                accessibleName: qsTr("Channel repair")
+                onToggled: panel.toggleEnabled()
             }
 
             EchoIconButton {
@@ -208,31 +182,11 @@ Rectangle {
                 elide: Text.ElideRight
             }
 
-            Rectangle {
-                implicitWidth: 28
-                implicitHeight: 16
-                radius: height / 2
-                color: toggle.checked ? Theme.accent : Theme.track
-
-                Rectangle {
-                    width: 12
-                    height: 12
-                    radius: 6
-                    y: 2
-                    x: toggle.checked ? parent.width - width - 2 : 2
-                    color: toggle.checked ? Theme.accentText : Theme.panelRaised
-
-                    Behavior on x {
-                        NumberAnimation {
-                            duration: 90
-                        }
-                    }
-                }
+            EchoSwitch {
+                checked: toggle.checked
+                accessibleName: toggle.label
+                onToggled: checked => toggle.toggled(checked)
             }
-        }
-
-        TapHandler {
-            onTapped: toggle.toggled(!toggle.checked)
         }
     }
 }

@@ -11,6 +11,7 @@ Canvas {
     property color fillColor: Theme.waveformFill
     property color progressColor: Theme.waveformPlayed
     property color centerLineColor: Theme.waveformCenter
+    property color outlineColor: Theme.effectiveDark ? "#a6c0c7" : "#728b93"
     property real amplitudeExponent: 0.78
     property real verticalPadding: 4
     property real progress: 0.0
@@ -85,6 +86,11 @@ Canvas {
         context.lineJoin = "round";
         context.fillStyle = color;
         context.fill();
+        context.globalAlpha *= 0.34;
+        context.strokeStyle = outlineColor;
+        context.lineWidth = 0.75;
+        context.stroke();
+        context.globalAlpha /= 0.34;
     }
 
     onLevelsChanged: {
@@ -111,6 +117,7 @@ Canvas {
     onFillColorChanged: requestPaint()
     onProgressColorChanged: requestPaint()
     onCenterLineColorChanged: requestPaint()
+    onOutlineColorChanged: requestPaint()
     onAmplitudeExponentChanged: requestPaint()
     onVerticalPaddingChanged: requestPaint()
 
@@ -149,12 +156,12 @@ Canvas {
 
         context.strokeStyle = centerLineColor;
         context.lineWidth = 1;
-        context.globalAlpha = 0.8;
+        context.globalAlpha = 0.48;
         context.beginPath();
         context.moveTo(0, centerY + 0.5);
         context.lineTo(width, centerY + 0.5);
         context.stroke();
-        context.globalAlpha = 0.9;
+        context.globalAlpha = 0.88;
         drawEnvelope(context, mins, maxs, firstBucket, lastBucket, peak, centerY, scale, fillColor);
 
         const viewProgress = (progress - normalizedStart) / Math.max(0.000001, normalizedEnd - normalizedStart);

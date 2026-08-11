@@ -12,7 +12,7 @@ RowLayout {
     required property string title
     required property string iconSource
 
-    implicitHeight: 34
+    implicitHeight: 40
     Layout.leftMargin: 12
     Layout.rightMargin: 10
     spacing: 7

@@ -28,10 +28,10 @@ Rectangle {
 
     implicitWidth: Theme.editorRailWidth
     implicitHeight: 320
-    radius: Theme.compactControlRadius
-    color: Theme.panelRaised
+    radius: Theme.panelRadius
+    color: Theme.parameterPanel
     border.width: 1
-    border.color: Theme.borderStrong
+    border.color: Theme.border
     clip: true
 
     function modelCount(): int {
@@ -169,32 +169,12 @@ Rectangle {
                 }
             }
 
-            Rectangle {
+            EchoSwitch {
                 visible: pinned.toggleVisible
-                implicitWidth: 27
-                implicitHeight: 17
-                radius: height / 2
-                opacity: chain.editable ? 1.0 : 0.45
-                color: pinned.nodeEnabled ? Theme.accent : Theme.track
-
-                Rectangle {
-                    width: 11
-                    height: 11
-                    radius: 6
-                    y: 3
-                    x: pinned.nodeEnabled ? parent.width - width - 2 : 2
-                    color: pinned.nodeEnabled ? Theme.accentText : Theme.panelRaised
-                    Behavior on x {
-                        NumberAnimation {
-                            duration: 90
-                        }
-                    }
-                }
-
-                TapHandler {
-                    enabled: chain.editable
-                    onTapped: pinned.toggled()
-                }
+                enabled: chain.editable
+                checked: pinned.nodeEnabled
+                accessibleName: pinned.title
+                onToggled: pinned.toggled()
             }
         }
 
@@ -409,31 +389,11 @@ Rectangle {
                         }
                     }
 
-                    Rectangle {
-                        implicitWidth: 27
-                        implicitHeight: 17
-                        radius: height / 2
-                        opacity: chain.editable ? 1.0 : 0.45
-                        color: effectNode.nodeEnabled ? Theme.accent : Theme.track
-
-                        Rectangle {
-                            width: 11
-                            height: 11
-                            radius: 6
-                            y: 3
-                            x: effectNode.nodeEnabled ? parent.width - width - 2 : 2
-                            color: effectNode.nodeEnabled ? Theme.accentText : Theme.panelRaised
-                            Behavior on x {
-                                NumberAnimation {
-                                    duration: 90
-                                }
-                            }
-                        }
-
-                        TapHandler {
-                            enabled: chain.editable
-                            onTapped: chain.effectBypassRequested(effectNode.effectId, effectNode.nodeEnabled)
-                        }
+                    EchoSwitch {
+                        enabled: chain.editable
+                        checked: effectNode.nodeEnabled
+                        accessibleName: effectNode.title
+                        onToggled: chain.effectBypassRequested(effectNode.effectId, effectNode.nodeEnabled)
                     }
                 }
 

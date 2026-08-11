@@ -10,10 +10,10 @@ Rectangle {
     id: panel
     required property var draft
 
-    radius: Theme.compactControlRadius
-    color: Theme.panelRaised
+    radius: Theme.panelRadius
+    color: Theme.parameterPanel
     border.width: 1
-    border.color: Theme.borderStrong
+    border.color: Theme.border
 
     function toggle(enabled: bool, callback: var): void {
         panel.draft.beginGesture();
@@ -27,7 +27,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 34
+            Layout.preferredHeight: 40
             Layout.leftMargin: 12
             Layout.rightMargin: 8
             spacing: 7
@@ -98,27 +98,10 @@ Rectangle {
                     Item {
                         Layout.fillWidth: true
                     }
-                    Rectangle {
-                        implicitWidth: 30
-                        implicitHeight: 17
-                        radius: height / 2
-                        color: panel.draft.noiseReductionEnabled ? Theme.accent : Theme.track
-                        Rectangle {
-                            width: 13
-                            height: 13
-                            radius: 7
-                            y: 2
-                            x: panel.draft.noiseReductionEnabled ? parent.width - width - 2 : 2
-                            color: panel.draft.noiseReductionEnabled ? Theme.accentText : Theme.panelRaised
-                            Behavior on x {
-                                NumberAnimation {
-                                    duration: 90
-                                }
-                            }
-                        }
-                        TapHandler {
-                            onTapped: panel.toggle(panel.draft.noiseReductionEnabled, enabled => panel.draft.noiseReductionEnabled = enabled)
-                        }
+                    EchoSwitch {
+                        checked: panel.draft.noiseReductionEnabled
+                        accessibleName: qsTr("Adaptive noise reduction")
+                        onToggled: panel.toggle(panel.draft.noiseReductionEnabled, enabled => panel.draft.noiseReductionEnabled = enabled)
                     }
                 }
 
@@ -192,27 +175,10 @@ Rectangle {
                     Item {
                         Layout.fillWidth: true
                     }
-                    Rectangle {
-                        implicitWidth: 30
-                        implicitHeight: 17
-                        radius: height / 2
-                        color: panel.draft.deEsserEnabled ? Theme.accent : Theme.track
-                        Rectangle {
-                            width: 13
-                            height: 13
-                            radius: 7
-                            y: 2
-                            x: panel.draft.deEsserEnabled ? parent.width - width - 2 : 2
-                            color: panel.draft.deEsserEnabled ? Theme.accentText : Theme.panelRaised
-                            Behavior on x {
-                                NumberAnimation {
-                                    duration: 90
-                                }
-                            }
-                        }
-                        TapHandler {
-                            onTapped: panel.toggle(panel.draft.deEsserEnabled, enabled => panel.draft.deEsserEnabled = enabled)
-                        }
+                    EchoSwitch {
+                        checked: panel.draft.deEsserEnabled
+                        accessibleName: qsTr("De-esser")
+                        onToggled: panel.toggle(panel.draft.deEsserEnabled, enabled => panel.draft.deEsserEnabled = enabled)
                     }
                 }
 

@@ -17,7 +17,7 @@ Rectangle {
     required property string density
     required property var userAlbums
 
-    readonly property int cardHeight: density === "overview" ? 184 : density === "rich" ? 292 : 232
+    readonly property int cardHeight: density === "overview" ? 176 : density === "rich" ? 270 : 218
 
     signal assetSelectionRequested(var asset, int modifiers)
     signal assetOpened(var asset)
@@ -32,13 +32,13 @@ Rectangle {
     GridView {
         id: soundGrid
 
-        readonly property int spacing: 12
+        readonly property int spacing: 13
         readonly property int columns: Math.max(1, Math.round((width + spacing) / (wall.preferredCardWidth + spacing)))
 
         anchors.fill: parent
-        anchors.leftMargin: 16
-        anchors.rightMargin: 14
-        anchors.topMargin: 14
+        anchors.leftMargin: 18
+        anchors.rightMargin: 15
+        anchors.topMargin: 16
         anchors.bottomMargin: 12
         clip: true
         model: wall.assets

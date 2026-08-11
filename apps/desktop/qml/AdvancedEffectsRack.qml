@@ -22,8 +22,8 @@ Item {
 
     property string selectedNodeId: "clip"
     readonly property int currentKind: effectKind(selectedNodeId)
-    readonly property int preferredParameterWidth: selectedNodeId === "clip" ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 3 : currentKind === 0 ? Theme.editorControlTrackWidth * 3 - Theme.editorPanelGap * 2 : currentKind === 1 ? Theme.editorParameterMaxWidth : currentKind === 2 ? 760 : currentKind === 3 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 6 : currentKind === 4 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 2 : Theme.editorControlTrackWidth * 2 + Theme.editorPanelGap * 2
-    readonly property int preferredParameterHeight: currentKind === 1 ? 330 : currentKind === 4 ? 340 : 310
+    readonly property int preferredParameterWidth: selectedNodeId === "clip" ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 3 : currentKind === 0 ? Theme.editorControlTrackWidth * 3 - Theme.editorPanelGap * 2 : currentKind === 1 ? 800 : currentKind === 2 ? 740 : currentKind === 3 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 4 : currentKind === 4 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 2 : Theme.editorControlTrackWidth * 2 + Theme.editorPanelGap * 2
+    readonly property int preferredParameterHeight: currentKind === 1 ? 320 : currentKind === 4 ? 340 : 310
 
     implicitHeight: 320
 
@@ -285,10 +285,10 @@ Item {
             Item {
                 id: parameterCanvas
 
-                x: 12
-                y: 12
-                width: Math.min(rack.preferredParameterWidth, Math.max(416, parameterSurface.width - 24))
-                height: Math.min(rack.preferredParameterHeight, Math.max(0, parameterSurface.height - 24))
+                x: 16
+                y: 14
+                width: Math.min(rack.preferredParameterWidth, Math.max(416, parameterSurface.width - 32))
+                height: Math.min(rack.preferredParameterHeight, Math.max(0, parameterSurface.height - 28))
 
                 BasicAdjustmentPanel {
                     anchors.fill: parent

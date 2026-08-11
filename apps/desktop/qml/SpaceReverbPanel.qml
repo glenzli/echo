@@ -13,10 +13,10 @@ Rectangle {
 
     implicitWidth: 560
     implicitHeight: 286
-    radius: Theme.compactControlRadius
-    color: Theme.panelRaised
+    radius: Theme.panelRadius
+    color: Theme.parameterPanel
     border.width: 1
-    border.color: Theme.borderStrong
+    border.color: Theme.border
 
     function frequency(hertz: int): string {
         return hertz >= 1000 ? (hertz / 1000).toFixed(hertz % 1000 === 0 ? 0 : 1) + " kHz" : hertz + " Hz";
@@ -28,7 +28,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 34
+            Layout.preferredHeight: 40
             Layout.leftMargin: 12
             Layout.rightMargin: 8
             spacing: 7

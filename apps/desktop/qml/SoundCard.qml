@@ -25,12 +25,16 @@ Rectangle {
     readonly property color toneStart: tonePair.start
     readonly property color toneEnd: tonePair.end
     readonly property string displayTitle: titleFor(entry)
+    readonly property string displayPreview: String(entry.summary || "").trim().length > 0 ? entry.summary : entry.textPreview
     readonly property string keywordLine: keywordLineFor(entry)
     readonly property string sourceLine: sourceFor(entry)
     readonly property string evidenceLine: evidenceLineFor(entry)
     readonly property string displayEvent: SoundSemantics.eventLabel(entry.eventType)
     readonly property string displayLanguage: SoundSemantics.languageLabel(entry.language)
-    readonly property int waveformHeight: overview ? 54 : rich ? 72 : 58
+    readonly property bool hasSemanticLine: entry.mood.length > 0 || displayEvent.length > 0 || displayLanguage.length > 0 || keywordLine.length > 0
+    readonly property bool hasPreview: String(displayPreview || "").trim().length > 0
+    readonly property bool hasEvidence: evidenceLine.length > 0
+    readonly property int waveformHeight: overview ? 48 : rich ? 62 : 52
 
     implicitWidth: 264
     implicitHeight: displayHeight
@@ -306,14 +310,14 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.leftMargin: 12
         anchors.rightMargin: 12
-        anchors.topMargin: card.overview ? 8 : 10
-        anchors.bottomMargin: card.overview ? 7 : 9
-        spacing: card.rich ? 6 : 5
+        anchors.topMargin: card.overview ? 8 : 9
+        anchors.bottomMargin: 8
+        spacing: 4
         z: 10
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: card.overview ? 34 : 38
+            Layout.preferredHeight: card.overview ? 31 : 35
             Layout.maximumHeight: Layout.preferredHeight
             spacing: 6
 
@@ -323,7 +327,7 @@ Rectangle {
                 text: card.displayTitle
                 color: Theme.textPrimary
                 font.pixelSize: card.rich ? 13 : 12
-                font.weight: Font.Medium
+                font.weight: Font.Normal
                 lineHeight: 1.12
                 maximumLineCount: 2
                 wrapMode: Text.WordWrap
@@ -360,8 +364,9 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 20
-            Layout.maximumHeight: 20
+            visible: card.hasSemanticLine
+            Layout.preferredHeight: visible ? 20 : 0
+            Layout.maximumHeight: Layout.preferredHeight
             spacing: 5
 
             SoundSemanticTag {
@@ -394,10 +399,10 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: card.overview ? 0 : card.rich ? 51 : 34
+            Layout.preferredHeight: visible ? (card.rich ? 48 : 34) : 0
             Layout.maximumHeight: Layout.preferredHeight
-            visible: !card.overview
-            text: card.compactText(card.entry.textPreview, card.rich ? 150 : 90)
+            visible: !card.overview && card.hasPreview
+            text: card.compactText(card.displayPreview, card.rich ? 150 : 90)
             color: Theme.textSecondary
             font.pixelSize: 11
             lineHeight: 1.22
@@ -408,9 +413,9 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: card.overview ? 0 : 13
+            Layout.preferredHeight: visible ? 13 : 0
             Layout.maximumHeight: Layout.preferredHeight
-            visible: !card.overview
+            visible: !card.overview && card.hasEvidence
             text: card.evidenceLine
             color: Theme.textMuted
             font.pixelSize: 9
@@ -419,6 +424,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.alignment: Qt.AlignBottom
             Layout.topMargin: card.overview ? 0 : 1
             spacing: 5
 

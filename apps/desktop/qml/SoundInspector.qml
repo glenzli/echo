@@ -182,8 +182,8 @@ Rectangle {
                             Layout.fillWidth: true
                             text: inspector.hasAsset ? inspector.titleFor(inspector.asset) : ""
                             color: Theme.textPrimary
-                            font.pixelSize: 18
-                            font.bold: true
+                            font.pixelSize: 17
+                            font.weight: Font.Normal
                             wrapMode: Text.Wrap
                             maximumLineCount: 2
                             elide: Text.ElideRight

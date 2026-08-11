@@ -17,10 +17,10 @@ Rectangle {
 
     implicitWidth: 800
     implicitHeight: 310
-    radius: Theme.compactControlRadius
-    color: Theme.panelRaised
+    radius: Theme.panelRadius
+    color: Theme.parameterPanel
     border.width: 1
-    border.color: Theme.borderStrong
+    border.color: Theme.border
 
     function formatDuration(millis: int): string {
         const safe = Math.max(0, millis);
