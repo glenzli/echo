@@ -1,5 +1,7 @@
 #include "echo/audio/algorithmic_reverb.hpp"
 
+#include "echo/audio/diffuse_space_reverb.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -64,9 +66,14 @@ struct AlgorithmicReverb::Engine {
     std::array<float, 2> lowpass_state{};
     std::array<float, 2> highpass_state{};
     std::array<float, 2> highpass_input{};
+    std::unique_ptr<DiffuseSpaceReverb> diffuse;
 
     Engine(ReverbAdjustment authored, std::uint32_t rate) :
         adjustment(authored), sample_rate(rate) {
+        if (adjustment.character != ReverbCharacter::Room) {
+            diffuse = std::make_unique<DiffuseSpaceReverb>(adjustment, sample_rate);
+            return;
+        }
         pre_delay_frames = static_cast<std::size_t>(std::round(
             static_cast<double>(adjustment.pre_delay_millis) * static_cast<double>(sample_rate)
             / 1000.0
@@ -125,6 +132,9 @@ struct AlgorithmicReverb::Engine {
     }
 
     [[nodiscard]] std::array<float, 2> process(float left, float right) {
+        if (diffuse != nullptr) {
+            return diffuse->process_frame(left, right);
+        }
         left = finite(left);
         right = finite(right);
         pre_left[pre_cursor] = left;
@@ -173,6 +183,10 @@ struct AlgorithmicReverb::Engine {
     }
 
     void reset() {
+        if (diffuse != nullptr) {
+            diffuse->reset();
+            return;
+        }
         std::fill(pre_left.begin(), pre_left.end(), 0.0F);
         std::fill(pre_right.begin(), pre_right.end(), 0.0F);
         pre_cursor = 0;
@@ -202,7 +216,10 @@ void AlgorithmicReverb::validate(
     std::uint32_t sample_rate,
     std::size_t channel_count
 ) {
-    if (sample_rate < 8000 || channel_count == 0 || channel_count > 2
+    const bool character_valid = adjustment.character == ReverbCharacter::Room
+                                 || adjustment.character == ReverbCharacter::Hall
+                                 || adjustment.character == ReverbCharacter::Plate;
+    if (!character_valid || sample_rate < 8000 || channel_count == 0 || channel_count > 2
         || adjustment.mix_percent > 100 || adjustment.pre_delay_millis > 200
         || adjustment.decay_millis < 100 || adjustment.decay_millis > 12000
         || adjustment.size_percent < 10 || adjustment.size_percent > 100
@@ -215,7 +232,8 @@ void AlgorithmicReverb::validate(
 }
 
 bool AlgorithmicReverb::same(ReverbAdjustment left, ReverbAdjustment right) {
-    return left.enabled == right.enabled && left.mix_percent == right.mix_percent
+    return left.character == right.character && left.enabled == right.enabled
+           && left.mix_percent == right.mix_percent
            && left.pre_delay_millis == right.pre_delay_millis
            && left.decay_millis == right.decay_millis && left.size_percent == right.size_percent
            && left.damping_percent == right.damping_percent

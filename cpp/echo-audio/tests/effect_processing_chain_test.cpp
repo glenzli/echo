@@ -83,6 +83,33 @@ echo::audio::PlaybackAdjustment channel_repair_only() {
     return adjustment;
 }
 
+echo::audio::PlaybackAdjustment space_character(echo::audio::ReverbCharacter character) {
+    auto adjustment = master_only();
+    adjustment.reverb = {
+        .character = character,
+        .enabled = true,
+        .mix_percent = 65,
+        .pre_delay_millis = 8,
+        .decay_millis = 2'600,
+        .size_percent = 72,
+        .damping_percent = 38,
+        .low_cut_hertz = 120,
+        .high_cut_hertz = 10'000,
+    };
+    adjustment.effect_chain = {
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::ChannelRepair,
+    };
+    adjustment.effect_chain_count = 2;
+    return adjustment;
+}
+
 std::vector<float> fixture(std::size_t frame_count) {
     std::vector<float> samples(frame_count * kChannels);
     for (std::size_t frame = 0; frame < frame_count; ++frame) {
@@ -145,6 +172,38 @@ int main() {
         assert(output.size() == 2);
         assert(std::abs(output[0] - -0.1F) < 1.0E-6F);
         assert(std::abs(output[1] - -0.8F) < 1.0E-6F);
+    }
+
+    {
+        const auto input = fixture(8'192);
+        const echo::audio::PreparedAdjustment hall_prepared(
+            space_character(echo::audio::ReverbCharacter::Hall),
+            1000,
+            kSampleRate
+        );
+        const echo::audio::PreparedAdjustment plate_prepared(
+            space_character(echo::audio::ReverbCharacter::Plate),
+            1000,
+            kSampleRate
+        );
+        echo::audio::EffectProcessingChain hall_sampled(hall_prepared, kSampleRate, kChannels);
+        echo::audio::EffectProcessingChain hall_blocked(hall_prepared, kSampleRate, kChannels);
+        echo::audio::EffectProcessingChain plate(plate_prepared, kSampleRate, kChannels);
+        assert(hall_sampled.latency_frames() == 0);
+        assert(plate.latency_frames() == 0);
+        const auto hall_one = process_in_chunks(hall_sampled, input, 1);
+        const auto hall_257 = process_in_chunks(hall_blocked, input, 257);
+        const auto plate_64 = process_in_chunks(plate, input, 64);
+        assert_near(hall_one, hall_257);
+        bool hall_changed = false;
+        bool characters_differ = false;
+        for (std::size_t index = 0; index < input.size(); ++index) {
+            hall_changed = hall_changed || std::abs(hall_one[index] - input[index]) > 1.0E-6F;
+            characters_differ =
+                characters_differ || std::abs(hall_one[index] - plate_64[index]) > 1.0E-6F;
+        }
+        assert(hall_changed);
+        assert(characters_differ);
     }
 
     {

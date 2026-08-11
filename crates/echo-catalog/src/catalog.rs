@@ -11,12 +11,13 @@ use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION,
-        CHANNEL_REPAIR_MIGRATION_SQL, CatalogSchemaRevision, DE_CLICK_MIGRATION_SQL,
-        DE_HUM_MIGRATION_SQL, DE_PLOSIVE_SCHEMA_VERSION, DELIVERY_FORMATS_MIGRATION_SQL,
-        EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
-        EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
-        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
-        OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
+        CHANNEL_REPAIR_MIGRATION_SQL, CHANNEL_REPAIR_SCHEMA_VERSION, CatalogSchemaRevision,
+        DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL, DE_PLOSIVE_SCHEMA_VERSION,
+        DELIVERY_FORMATS_MIGRATION_SQL, EARLIEST_COMPATIBLE_SCHEMA_VERSION,
+        EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION, EFFECT_CHAIN_MIGRATION_SQL,
+        FIXED_EFFECT_CHAIN_SCHEMA_VERSION, INITIAL_COMPATIBLE_SCHEMA_VERSION,
+        LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
+        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
         PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
         PROCESSING_RECIPES_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
@@ -103,6 +104,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
+        {
+            migrate_space_characters_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == CHANNEL_REPAIR_SCHEMA_VERSION) =>
         {
             migrate_channel_repair_schema(connection)?;
         }
@@ -215,6 +223,15 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_space_characters_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    // Character is a backward-readable field in reverb_json. Missing values
+    // deterministically retain the existing Room algorithm.
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 

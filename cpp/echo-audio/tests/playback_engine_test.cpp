@@ -425,7 +425,7 @@ int main(int argc, char* argv[]) {
     }
 
     // The authored chain is executable order, not presentation metadata. A
-    // nonlinear compressor and time-domain room must produce different audio
+    // nonlinear compressor and time-domain space tank must produce different audio
     // when their order is exchanged while every parameter stays identical.
     {
         const echo::audio::PlaybackAdjustment dynamics_then_space{
@@ -437,7 +437,8 @@ int main(int argc, char* argv[]) {
                  .release_millis = 180,
                  .makeup_centibels = 300},
             .reverb =
-                {.enabled = true,
+                {.character = echo::audio::ReverbCharacter::Hall,
+                 .enabled = true,
                  .mix_percent = 70,
                  .pre_delay_millis = 0,
                  .decay_millis = 1800,

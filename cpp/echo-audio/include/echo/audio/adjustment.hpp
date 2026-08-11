@@ -160,8 +160,16 @@ struct LimiterAdjustment {
     std::uint16_t release_millis = 100;
 };
 
-/// Algorithmic room controls in stable integer units.
+/// Stable acoustic character for the bounded algorithmic space effect.
+enum class ReverbCharacter : std::uint8_t {
+    Room = 0,
+    Hall = 1,
+    Plate = 2,
+};
+
+/// Algorithmic space controls in stable integer units.
 struct ReverbAdjustment {
+    ReverbCharacter character = ReverbCharacter::Room;
     bool enabled = false;
     std::uint8_t mix_percent = 18;
     std::uint16_t pre_delay_millis = 20;

@@ -288,6 +288,7 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
          asset.value(QStringLiteral("channelRepairBalancePercent"), 0)},
     };
     const QVariantMap reverb{
+        {QStringLiteral("character"), asset.value(QStringLiteral("reverbCharacter"), 0)},
         {QStringLiteral("enabled"), asset.value(QStringLiteral("reverbEnabled"))},
         {QStringLiteral("mixPercent"), asset.value(QStringLiteral("reverbMixPercent"))},
         {QStringLiteral("preDelayMillis"), asset.value(QStringLiteral("reverbPreDelayMillis"))},

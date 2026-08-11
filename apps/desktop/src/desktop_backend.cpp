@@ -435,6 +435,7 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("compressorMakeupCentibels"),
             static_cast<int>(asset.compressor_makeup_centibels)
         );
+        entry.insert(QStringLiteral("reverbCharacter"), static_cast<int>(asset.reverb_character));
         entry.insert(QStringLiteral("reverbEnabled"), asset.reverb_enabled);
         entry.insert(
             QStringLiteral("reverbMixPercent"),

@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     DePlosiveSettings, EditSegment, EditSegmentState, EditTimeline, EffectMask, FadeCurve,
-    NoiseReductionSettings, ParametricEqualizerBand,
+    NoiseReductionSettings, ParametricEqualizerBand, ReverbCharacter,
 };
 use uuid::Uuid;
 
@@ -144,6 +144,7 @@ fn graph_with_processing(
             makeup_centibels: 200,
         })
         .with_reverb(ReverbSettings {
+            character: ReverbCharacter::Plate,
             enabled: true,
             mix_percent: 21,
             pre_delay_millis: 24,

@@ -542,6 +542,19 @@ InferenceBackend
     执行，并以 20 ms 逐样本过渡处理参数、启停与旁路，实时线程不分配。节点进入统一草稿历史、
     效果目录、遮罩、处理方案、实时播放、整段分析和离线导出；首版不把立体声宽度、空间化、
     相位旋转或创作型声像自动化混入恢复工具。
+  - 算法空间角色数据面切片（2026-08-12）：Catalog `20260812.1` 在既有单实例 Space 节点中
+    追加稳定的 Room／Hall／Plate authored character；旧 revision 缺字段时确定性恢复为 Room，
+    迁移只前移 schema identity，不重写历史 JSON 或 Original。Room 冻结既有四延迟算法与数值
+    行为，Hall／Plate 由独立 `DiffuseSpaceReverb` owner 以双声道输入扩散、八路 Householder FDN、
+    RT60 反馈和湿声带通形成两套真实拓扑调音；实现为 Echo clean-room 代码，不复制或链接
+    JUCE／Dragonfly／DaisySP ReverbSc／Soundpipe RevSC。构造阶段一次性分配，逐帧路径零分配，
+    character 或其他参数变化继续在完整引擎间做 50 ms 过渡；三者报告零处理延迟，Pre-delay 与
+    湿声首达只属于效果内容，不进入 DeClick 时间线补偿。Catalog、桌面只读投影、轻量播放、
+    实时试听、整段分析及单次／批量离线导出共用同一 character；旧桌面保存入口在发布其他参数时
+    保留当前 character。由于通用编辑工作区正由另一里程碑持有，本数据面里程碑不加入无法可靠
+    保存的空选择器；character 草稿保存参数接线与 Space 面板选择器作为明确后续集成点。Spring
+    必须由色散／模态独立 owner 实现，卷积与 IR 资产许可、哈希和延迟合同也另立里程碑，二者都
+    不伪装成 FDN preset 或 Restoration。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，

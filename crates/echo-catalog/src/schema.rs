@@ -98,6 +98,8 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 16);
+pub(crate) const CHANNEL_REPAIR_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 15);
 pub(crate) const DE_PLOSIVE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 14);
@@ -127,9 +129,9 @@ pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 16);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_812, 1);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.16-channel-repair";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260812.1-space-characters";
 
 pub(crate) const CHANNEL_REPAIR_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -352,7 +354,7 @@ CREATE INDEX long_audio_outline_asset_level
 pub(crate) const ADJUSTMENT_EFFECTS_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
     ADD COLUMN reverb_json TEXT NOT NULL DEFAULT
-    '{"enabled":false,"mix_percent":18,"pre_delay_millis":20,"decay_millis":1800,"size_percent":55,"damping_percent":45,"low_cut_hertz":120,"high_cut_hertz":10000}';
+    '{"character":"room","enabled":false,"mix_percent":18,"pre_delay_millis":20,"decay_millis":1800,"size_percent":55,"damping_percent":45,"low_cut_hertz":120,"high_cut_hertz":10000}';
 "#;
 
 pub(crate) const RENDER_EXPORTS_MIGRATION_SQL: &str = r"
@@ -610,7 +612,7 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     compressor_makeup_centibels INTEGER NOT NULL DEFAULT 0
                            CHECK (compressor_makeup_centibels BETWEEN 0 AND 2400),
     reverb_json             TEXT NOT NULL DEFAULT
-                           '{\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
+                           '{\"character\":\"room\",\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
     restoration_json        TEXT NOT NULL DEFAULT
                            '{\"enabled\":true,\"de_plosive\":{\"enabled\":false,\"frequency_hertz\":140,\"sensitivity_percent\":50,\"reduction_centibels\":1200,\"release_millis\":160},\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
     de_hum_json             TEXT NOT NULL DEFAULT

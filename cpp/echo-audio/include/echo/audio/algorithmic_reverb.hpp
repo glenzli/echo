@@ -9,11 +9,11 @@
 
 namespace echo::audio {
 
-/// Portable stereo algorithmic room with click-free authored updates.
+/// Portable stereo algorithmic space effect with click-free authored updates.
 ///
-/// Delay topology and filter state are execution details. Parameter changes
-/// crossfade complete engines so a Size or Pre-delay edit cannot expose a
-/// discontinuity from rebuilt delay lines.
+/// Room preserves Echo's original four-line engine. Hall and Plate dispatch to
+/// the separately owned diffuse FDN. Parameter changes crossfade complete
+/// engines so topology, Size, or Pre-delay edits cannot expose discontinuities.
 class AlgorithmicReverb {
   public:
     AlgorithmicReverb(

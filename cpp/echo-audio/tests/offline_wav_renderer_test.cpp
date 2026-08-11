@@ -282,6 +282,42 @@ int main() {
         );
     }
 
+    auto plate_space = full_source;
+    plate_space.reverb = {
+        .character = echo::audio::ReverbCharacter::Plate,
+        .enabled = true,
+        .mix_percent = 55,
+        .pre_delay_millis = 8,
+        .decay_millis = 2'600,
+        .size_percent = 70,
+        .damping_percent = 35,
+        .low_cut_hertz = 120,
+        .high_cut_hertz = 10'000,
+    };
+    plate_space.effect_chain = {
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::ChannelRepair,
+    };
+    plate_space.effect_chain_count = 3;
+    const auto live_plate_space = render_playback(source, plate_space);
+    MemorySink plate_space_sink;
+    const auto plate_space_result =
+        echo::audio::OfflineWavRenderer::render(source.string(), plate_space, plate_space_sink);
+    assert(
+        plate_space_result.frame_count * plate_space_result.channel_count == live_plate_space.size()
+    );
+    for (std::size_t index = 0; index < live_plate_space.size(); ++index) {
+        assert(
+            std::abs(live_plate_space[index] - pcm24(plate_space_sink.bytes(), index)) < 2.0E-6F
+        );
+    }
+
     auto source_edited = full_source;
     source_edited.edit_segments = {
         {

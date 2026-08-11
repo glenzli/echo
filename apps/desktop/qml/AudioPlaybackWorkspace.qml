@@ -87,6 +87,7 @@ Rectangle {
     readonly property int compressorReleaseMillis: hasAsset ? Number(asset.compressorReleaseMillis) : 120
     readonly property int compressorMakeupCentibels: hasAsset ? Number(asset.compressorMakeupCentibels) : 0
     readonly property var reverbValue: ({
+            character: hasAsset ? Number(asset.reverbCharacter) : 0,
             enabled: hasAsset ? Boolean(asset.reverbEnabled) : false,
             mixPercent: hasAsset ? Number(asset.reverbMixPercent) : 18,
             preDelayMillis: hasAsset ? Number(asset.reverbPreDelayMillis) : 20,

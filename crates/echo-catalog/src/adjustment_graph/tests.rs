@@ -4,7 +4,7 @@ use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, ChannelRepairSettings, CompressorSettings, ContentHash,
     DeClickSettings, DeEsserSettings, DeHumSettings, DePlosiveSettings, EditSegment,
     EditSegmentState, EditTimeline, EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves,
-    LimiterSettings, NoiseReductionSettings, RestorationSettings, ReverbSettings,
+    LimiterSettings, NoiseReductionSettings, RestorationSettings, ReverbCharacter, ReverbSettings,
 };
 
 use super::*;
@@ -342,6 +342,7 @@ fn fully_configured_graph() -> AdjustmentGraph {
             makeup_centibels: 250,
         })
         .with_reverb(ReverbSettings {
+            character: ReverbCharacter::Plate,
             enabled: true,
             mix_percent: 24,
             pre_delay_millis: 28,

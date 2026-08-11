@@ -47,7 +47,8 @@ pub use adjustment::{
     MIN_LIMITER_CEILING_CENTIBELS, MIN_LIMITER_RELEASE_MILLIS, MIN_LOW_CUT_HERTZ,
     MIN_NOISE_REDUCTION_SMOOTHING_MILLIS, MIN_REVERB_DECAY_MILLIS, MIN_REVERB_HIGH_CUT_HERTZ,
     MIN_REVERB_LOW_CUT_HERTZ, MIN_REVERB_SIZE_PERCENT, NoiseReductionSettings, ParametricEqualizer,
-    ParametricEqualizerBand, RestorationSettings, ReverbSettings,
+    ParametricEqualizerBand, RestorationSettings, ReverbCharacter, ReverbCharacterValueError,
+    ReverbSettings,
 };
 pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,

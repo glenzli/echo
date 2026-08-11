@@ -127,6 +127,7 @@ QVariantMap snapshot_asset(const QVariantMap& asset) {
         QStringLiteral("compressorAttackMillis"),
         QStringLiteral("compressorReleaseMillis"),
         QStringLiteral("compressorMakeupCentibels"),
+        QStringLiteral("reverbCharacter"),
         QStringLiteral("reverbEnabled"),
         QStringLiteral("reverbMixPercent"),
         QStringLiteral("reverbPreDelayMillis"),

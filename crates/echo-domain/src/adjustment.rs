@@ -565,10 +565,58 @@ impl LimiterSettings {
     }
 }
 
-/// Authored algorithmic room intent. The audio engine owns delay lines and
+/// Stable acoustic character for Echo's bounded algorithmic space effect.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReverbCharacter {
+    #[default]
+    Room,
+    Hall,
+    Plate,
+}
+
+impl ReverbCharacter {
+    #[must_use]
+    pub const fn wire_value(self) -> u8 {
+        match self {
+            Self::Room => 0,
+            Self::Hall => 1,
+            Self::Plate => 2,
+        }
+    }
+
+    /// Restores the stable desktop ABI representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ReverbCharacterValueError`] for unknown values.
+    pub const fn from_wire_value(value: u8) -> Result<Self, ReverbCharacterValueError> {
+        match value {
+            0 => Ok(Self::Room),
+            1 => Ok(Self::Hall),
+            2 => Ok(Self::Plate),
+            _ => Err(ReverbCharacterValueError),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReverbCharacterValueError;
+
+impl std::fmt::Display for ReverbCharacterValueError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("reverb character must be room, hall, or plate")
+    }
+}
+
+impl std::error::Error for ReverbCharacterValueError {}
+
+/// Authored algorithmic space intent. The audio engine owns delay lines and
 /// filter coefficients; the Catalog only persists these stable controls.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReverbSettings {
+    #[serde(default)]
+    pub character: ReverbCharacter,
     pub enabled: bool,
     pub mix_percent: u8,
     pub pre_delay_millis: u16,
@@ -589,6 +637,7 @@ impl ReverbSettings {
     #[must_use]
     pub const fn studio_room() -> Self {
         Self {
+            character: ReverbCharacter::Room,
             enabled: false,
             mix_percent: 18,
             pre_delay_millis: 20,

@@ -80,6 +80,7 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             makeup_centibels: 250,
         })
         .with_reverb(ReverbSettings {
+            character: ReverbCharacter::Hall,
             enabled: true,
             mix_percent: 24,
             pre_delay_millis: 28,
@@ -124,6 +125,7 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.compressor().ratio_tenths, 40);
     assert_eq!(graph.reverb().decay_millis, 2_400);
     assert_eq!(graph.reverb().mix_percent, 24);
+    assert_eq!(graph.reverb().character, ReverbCharacter::Hall);
     assert_eq!(graph.limiter().ceiling_centibels, -125);
     assert_eq!(graph.effect_chain().nodes()[0], EffectNodeKind::DeHum);
 }
@@ -227,6 +229,21 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
             EffectNodeKind::Space,
             EffectNodeKind::Master,
         ]
+    );
+}
+
+#[test]
+fn reverb_character_has_stable_wire_values() {
+    assert_eq!(ReverbCharacter::Room.wire_value(), 0);
+    assert_eq!(ReverbCharacter::Hall.wire_value(), 1);
+    assert_eq!(ReverbCharacter::Plate.wire_value(), 2);
+    assert_eq!(
+        ReverbCharacter::from_wire_value(1),
+        Ok(ReverbCharacter::Hall)
+    );
+    assert_eq!(
+        ReverbCharacter::from_wire_value(3),
+        Err(ReverbCharacterValueError)
     );
 }
 

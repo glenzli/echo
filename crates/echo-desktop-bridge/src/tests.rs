@@ -183,6 +183,26 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     let echo_catalog::RegisterAsset::Created(asset) = asset else {
         panic!("fixture must create")
     };
+    session
+        .catalog()
+        .with_transaction(|transaction| {
+            let hall = echo_domain::AdjustmentGraph::new(
+                10_000,
+                0,
+                10_000,
+                0,
+                0,
+                echo_domain::AdjustmentEffects::default().with_reverb(
+                    echo_domain::ReverbSettings {
+                        character: echo_domain::ReverbCharacter::Hall,
+                        ..echo_domain::ReverbSettings::default()
+                    },
+                ),
+            )
+            .expect("hall seed validates");
+            echo_catalog::record_adjustment_graph(transaction, asset.id, hall, 1)
+        })
+        .expect("hall seed records");
 
     let adjustment = crate::ffi::AssetAdjustmentWire {
         trim_start_millis: 1_000,
@@ -286,6 +306,10 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert!(stored.graph.de_hum().enabled);
     assert!(stored.graph.de_click().enabled);
     assert!(stored.graph.channel_repair().enabled);
+    assert_eq!(
+        stored.graph.reverb().character,
+        echo_domain::ReverbCharacter::Hall
+    );
     let projected = session.list_assets().expect("assets project");
     assert_eq!(projected.len(), 1);
     assert!(projected[0].adjustment_revision > 0);
@@ -338,6 +362,10 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].compressor_attack_millis, 12);
     assert_eq!(projected[0].compressor_release_millis, 160);
     assert_eq!(projected[0].compressor_makeup_centibels, 225);
+    assert_eq!(
+        projected[0].reverb_character,
+        echo_domain::ReverbCharacter::Hall.wire_value()
+    );
     assert!(projected[0].reverb_enabled);
     assert_eq!(projected[0].reverb_mix_percent, 24);
     assert_eq!(projected[0].reverb_pre_delay_millis, 28);

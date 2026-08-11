@@ -14,6 +14,7 @@ add_library(
     src/de_esser.cpp
     src/de_hum_filter.cpp
     src/de_plosive_processor.cpp
+    src/diffuse_space_reverb.cpp
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
     src/effect_mask_plan.cpp
@@ -125,6 +126,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-algorithmic-reverb-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-algorithmic-reverb-test)
     add_test(NAME echo-algorithmic-reverb-test COMMAND echo-algorithmic-reverb-test)
+
+    add_executable(
+        echo-diffuse-space-reverb-test
+        tests/diffuse_space_reverb_test.cpp
+    )
+    target_link_libraries(echo-diffuse-space-reverb-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-diffuse-space-reverb-test)
+    add_test(NAME echo-diffuse-space-reverb-test COMMAND echo-diffuse-space-reverb-test)
 
     add_executable(
         echo-adjustment-engine-test

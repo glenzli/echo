@@ -104,6 +104,7 @@ struct AdjustmentWireFields {
     compressor_attack_millis: u16,
     compressor_release_millis: u16,
     compressor_makeup_centibels: i16,
+    reverb_character: u8,
     reverb_enabled: bool,
     reverb_mix_percent: u8,
     reverb_pre_delay_millis: u16,
@@ -361,6 +362,7 @@ fn channel_repair_from_wire(
 fn adjustment_graph_from_wire(
     duration: u64,
     adjustment: &crate::ffi::AssetAdjustmentWire,
+    reverb_character: echo_domain::ReverbCharacter,
 ) -> Result<echo_domain::AdjustmentGraph, SessionError> {
     echo_domain::AdjustmentGraph::new(
         duration,
@@ -431,6 +433,7 @@ fn adjustment_graph_from_wire(
             makeup_centibels: adjustment.compressor_makeup_centibels,
         })
         .with_reverb(echo_domain::ReverbSettings {
+            character: reverb_character,
             enabled: adjustment.reverb_enabled,
             mix_percent: adjustment.reverb_mix_percent,
             pre_delay_millis: adjustment.reverb_pre_delay_millis,
@@ -511,6 +514,7 @@ fn adjustment_wire_fields(
             compressor_attack_millis: 10,
             compressor_release_millis: 120,
             compressor_makeup_centibels: 0,
+            reverb_character: echo_domain::ReverbCharacter::Room.wire_value(),
             reverb_enabled: false,
             reverb_mix_percent: 18,
             reverb_pre_delay_millis: 20,
@@ -612,6 +616,7 @@ fn adjustment_wire_fields(
             compressor_attack_millis: revision.graph.compressor().attack_millis,
             compressor_release_millis: revision.graph.compressor().release_millis,
             compressor_makeup_centibels: revision.graph.compressor().makeup_centibels,
+            reverb_character: revision.graph.reverb().character.wire_value(),
             reverb_enabled: revision.graph.reverb().enabled,
             reverb_mix_percent: revision.graph.reverb().mix_percent,
             reverb_pre_delay_millis: revision.graph.reverb().pre_delay_millis,
@@ -745,6 +750,7 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         compressor_attack_millis: adjustment.compressor_attack_millis,
         compressor_release_millis: adjustment.compressor_release_millis,
         compressor_makeup_centibels: adjustment.compressor_makeup_centibels,
+        reverb_character: adjustment.reverb_character,
         reverb_enabled: adjustment.reverb_enabled,
         reverb_mix_percent: adjustment.reverb_mix_percent,
         reverb_pre_delay_millis: adjustment.reverb_pre_delay_millis,
@@ -1045,12 +1051,17 @@ impl LibrarySession {
         let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
             message: format!("invalid asset id {asset_id}: {error}"),
         })?;
-        let duration = self.catalog.with_transaction(|transaction| {
+        let (duration, reverb_character) = self.catalog.with_transaction(|transaction| {
             match find_by_id(transaction, asset_id) {
                 Ok(AssetLookup::Found(asset)) => {
-                    asset.original.duration_millis.ok_or_else(|| SessionError {
+                    let duration = asset.original.duration_millis.ok_or_else(|| SessionError {
                         message: "asset duration is not available".to_owned(),
-                    })
+                    })?;
+                    let character = echo_catalog::latest_adjustment_graph(transaction, asset_id)?
+                        .map_or_else(echo_domain::ReverbCharacter::default, |revision| {
+                            revision.graph.reverb().character
+                        });
+                    Ok((duration, character))
                 }
                 Ok(AssetLookup::NotFound) => Err(SessionError {
                     message: format!("asset {asset_id} not found"),
@@ -1060,7 +1071,7 @@ impl LibrarySession {
                 }),
             }
         })?;
-        let graph = adjustment_graph_from_wire(duration, adjustment)?;
+        let graph = adjustment_graph_from_wire(duration, adjustment, reverb_character)?;
         self.catalog
             .with_transaction(|transaction| {
                 echo_catalog::record_adjustment_graph(transaction, asset_id, graph, now_millis())
