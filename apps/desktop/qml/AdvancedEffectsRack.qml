@@ -47,7 +47,7 @@ Item {
 
     function nodeSummary(kind: int): string {
         if (kind === 0)
-            return qsTr("Noise reduction · De-esser");
+            return qsTr("De-plosive · Noise reduction · De-esser");
         if (kind === 1)
             return qsTr("6-band parametric");
         if (kind === 2)

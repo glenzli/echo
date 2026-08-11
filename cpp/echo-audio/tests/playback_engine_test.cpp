@@ -441,7 +441,9 @@ int main(int argc, char* argv[]) {
             pull_until(first_order, first_samples.data(), 12'000, 1'000);
         const std::size_t second_frames =
             pull_until(second_order, second_samples.data(), 12'000, 1'000);
-        expect(first_frames == second_frames && first_frames >= 12'000, "both chain orders render");
+        // Producer scheduling may make either final read partial; order
+        // comparison below already uses their common rendered prefix.
+        expect(first_frames >= 12'000 && second_frames >= 12'000, "both chain orders render");
         double absolute_difference = 0.0;
         const std::size_t compared_samples =
             std::min(first_frames, second_frames) * first_order.channel_count();

@@ -32,7 +32,8 @@ DeEsser::DeEsser(
     std::size_t channel_count
 ) :
     sample_rate_(sample_rate), channel_count_(channel_count), target_(adjustment),
-    lowpass_state_(channel_count, 0.0F), frequency_hertz_(adjustment.frequency_hertz),
+    lowpass_state_(channel_count, 0.0F), high_components_(channel_count, 0.0F),
+    frequency_hertz_(adjustment.frequency_hertz),
     threshold_centibels_(adjustment.threshold_centibels),
     reduction_centibels_(adjustment.enabled ? adjustment.reduction_centibels : 0.0F) {
     if (sample_rate == 0 || channel_count == 0) {
@@ -66,7 +67,6 @@ void DeEsser::process_interleaved(
     const float gain_attack = time_coefficient(2.0F, sample_rate_);
     const float gain_release = time_coefficient(90.0F, sample_rate_);
 
-    std::vector<float> high_components(channel_count_, 0.0F);
     for (std::size_t frame = 0; frame < frame_count; ++frame) {
         frequency_hertz_ =
             parameter_coefficient * frequency_hertz_
@@ -87,8 +87,8 @@ void DeEsser::process_interleaved(
             const std::size_t index = frame * channel_count_ + channel;
             lowpass_state_[channel] = (1.0F - lowpass_coefficient) * samples[index]
                                       + lowpass_coefficient * lowpass_state_[channel];
-            high_components[channel] = samples[index] - lowpass_state_[channel];
-            linked_level = std::max(linked_level, std::abs(high_components[channel]));
+            high_components_[channel] = samples[index] - lowpass_state_[channel];
+            linked_level = std::max(linked_level, std::abs(high_components_[channel]));
         }
         const float detector_coefficient =
             linked_level > envelope_ ? detector_attack : detector_release;
@@ -106,7 +106,7 @@ void DeEsser::process_interleaved(
 
         for (std::size_t channel = 0; channel < channel_count_; ++channel) {
             const std::size_t index = frame * channel_count_ + channel;
-            samples[index] = lowpass_state_[channel] + high_components[channel] * gain_;
+            samples[index] = lowpass_state_[channel] + high_components_[channel] * gain_;
         }
     }
 }

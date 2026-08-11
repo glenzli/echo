@@ -108,8 +108,18 @@ struct DeEsserAdjustment {
     std::uint16_t reduction_centibels = 600;
 };
 
+/// Low-frequency speech-plosive suppression in stable authored units.
+struct DePlosiveAdjustment {
+    bool enabled = false;
+    std::uint16_t frequency_hertz = 140;
+    std::uint8_t sensitivity_percent = 50;
+    std::uint16_t reduction_centibels = 1200;
+    std::uint16_t release_millis = 160;
+};
+
 struct RestorationAdjustment {
     bool enabled = true;
+    DePlosiveAdjustment de_plosive;
     NoiseReductionAdjustment noise_reduction;
     DeEsserAdjustment de_esser;
 };

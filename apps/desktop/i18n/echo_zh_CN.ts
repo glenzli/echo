@@ -32,8 +32,8 @@
     </message>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="50"/>
-        <source>Noise reduction · De-esser</source>
-        <translation>降噪 · 去齿音</translation>
+        <source>De-plosive · Noise reduction · De-esser</source>
+        <translation>去爆破音 · 降噪 · 去齿音</translation>
     </message>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="52"/>
@@ -86,6 +86,44 @@
         <location filename="../qml/AdvancedEffectsRack.qml" line="60"/>
         <source>Short impulse repair</source>
         <translation>短脉冲修复</translation>
+    </message>
+</context>
+<context>
+    <name>DePlosivePanel</name>
+    <message>
+        <location filename="../qml/DePlosivePanel.qml" line="20"/>
+        <source>De-plosive</source>
+        <translation>去爆破音</translation>
+    </message>
+    <message>
+        <location filename="../qml/DePlosivePanel.qml" line="29"/>
+        <source>Reset de-plosive</source>
+        <translation>重置去爆破音</translation>
+    </message>
+    <message>
+        <location filename="../qml/DePlosivePanel.qml" line="61"/>
+        <source>Band edge</source>
+        <translation>频带边界</translation>
+    </message>
+    <message>
+        <location filename="../qml/DePlosivePanel.qml" line="74"/>
+        <source>Sensitivity</source>
+        <translation>灵敏度</translation>
+    </message>
+    <message>
+        <location filename="../qml/DePlosivePanel.qml" line="87"/>
+        <source>Reduction</source>
+        <translation>抑制度</translation>
+    </message>
+    <message>
+        <location filename="../qml/DePlosivePanel.qml" line="100"/>
+        <source>Release</source>
+        <translation>释放</translation>
+    </message>
+    <message>
+        <location filename="../qml/DePlosivePanel.qml" line="116"/>
+        <source>Reduces short microphone pops below the band edge while preserving the rest of the voice.</source>
+        <translation>降低频带边界以下的短促话筒爆破声，同时保留人声的其余部分。</translation>
     </message>
 </context>
 <context>
@@ -1918,8 +1956,8 @@
     </message>
     <message>
         <location filename="../qml/ProcessingRecipeSaveDialog.qml" line="45"/>
-        <source>Noise reduction and de-essing</source>
-        <translation>降噪与去齿音</translation>
+        <source>De-plosive, noise reduction, and de-essing</source>
+        <translation>去爆破音、降噪与去齿音</translation>
     </message>
     <message>
         <location filename="../qml/ProcessingRecipeSaveDialog.qml" line="209"/>

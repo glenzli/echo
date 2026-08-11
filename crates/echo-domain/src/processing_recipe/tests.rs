@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    EditSegment, EditSegmentState, EditTimeline, EffectMask, FadeCurve, NoiseReductionSettings,
-    ParametricEqualizerBand,
+    DePlosiveSettings, EditSegment, EditSegmentState, EditTimeline, EffectMask, FadeCurve,
+    NoiseReductionSettings, ParametricEqualizerBand,
 };
 use uuid::Uuid;
 
@@ -76,6 +76,13 @@ fn graph_with_processing(
         )
         .with_restoration(RestorationSettings {
             enabled: true,
+            de_plosive: DePlosiveSettings {
+                enabled: true,
+                frequency_hertz: 155,
+                sensitivity_percent: 66,
+                reduction_centibels: 1_350,
+                release_millis: 190,
+            },
             noise_reduction: NoiseReductionSettings {
                 enabled: true,
                 reduction_centibels: 1_100,

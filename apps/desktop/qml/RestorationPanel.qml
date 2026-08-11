@@ -53,10 +53,16 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 16
 
+            DePlosivePanel {
+                draft: panel.draft
+            }
+
+            Rectangle { Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.border }
+
             ColumnLayout {
-                Layout.preferredWidth: Math.min(330, (panel.width - 48) / 2)
-                Layout.minimumWidth: 230
-                Layout.maximumWidth: 350
+                Layout.preferredWidth: 230
+                Layout.minimumWidth: 175
+                Layout.maximumWidth: 300
                 Layout.fillHeight: true
                 spacing: 1
 
@@ -130,9 +136,9 @@ Rectangle {
             Rectangle { Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.border }
 
             ColumnLayout {
-                Layout.preferredWidth: Math.min(330, (panel.width - 48) / 2)
-                Layout.minimumWidth: 230
-                Layout.maximumWidth: 350
+                Layout.preferredWidth: 230
+                Layout.minimumWidth: 175
+                Layout.maximumWidth: 300
                 Layout.fillHeight: true
                 spacing: 1
 

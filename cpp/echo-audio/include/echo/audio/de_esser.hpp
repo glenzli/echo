@@ -24,6 +24,7 @@ class DeEsser {
     std::size_t channel_count_ = 0;
     DeEsserAdjustment target_;
     std::vector<float> lowpass_state_;
+    std::vector<float> high_components_;
     float frequency_hertz_ = 6500.0F;
     float threshold_centibels_ = -2400.0F;
     float reduction_centibels_ = 0.0F;

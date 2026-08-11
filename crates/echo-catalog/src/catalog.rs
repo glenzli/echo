@@ -21,7 +21,7 @@ use crate::{
         PROCESSING_RECIPES_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
         RESTORATION_CHAIN_MIGRATION_SQL, RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY,
         SCHEMA_SQL, SCHEMA_VERSION, SEMANTIC_SEARCH_MIGRATION_SQL, SOURCE_EDIT_MIGRATION_SQL,
-        USER_ALBUMS_MIGRATION_SQL,
+        SOURCE_EDIT_SCHEMA_VERSION, USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -102,6 +102,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
+        {
+            migrate_de_plosive_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == SOURCE_EDIT_SCHEMA_VERSION) =>
         {
             migrate_source_edit_schema(connection)?;
         }
@@ -200,6 +207,15 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_de_plosive_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    // De-plosive is a backward-readable field in restoration_json. The dated
+    // revision prevents older binaries from silently dropping authored intent.
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 

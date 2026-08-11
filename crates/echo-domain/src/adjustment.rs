@@ -61,6 +61,12 @@ pub const MAX_DE_ESSER_FREQUENCY_HERTZ: u16 = 12_000;
 pub const MIN_DE_ESSER_THRESHOLD_CENTIBELS: i16 = -6_000;
 pub const MAX_DE_ESSER_THRESHOLD_CENTIBELS: i16 = 0;
 pub const MAX_DE_ESSER_REDUCTION_CENTIBELS: u16 = 1_800;
+pub const MIN_DE_PLOSIVE_FREQUENCY_HERTZ: u16 = 80;
+pub const MAX_DE_PLOSIVE_FREQUENCY_HERTZ: u16 = 240;
+pub const MAX_DE_PLOSIVE_SENSITIVITY_PERCENT: u8 = 100;
+pub const MAX_DE_PLOSIVE_REDUCTION_CENTIBELS: u16 = 1_800;
+pub const MIN_DE_PLOSIVE_RELEASE_MILLIS: u16 = 40;
+pub const MAX_DE_PLOSIVE_RELEASE_MILLIS: u16 = 500;
 pub const MIN_DE_HUM_HARMONIC_COUNT: u8 = 1;
 pub const MAX_DE_HUM_HARMONIC_COUNT: u8 = 8;
 /// De-hum Q is stored in tenths.
@@ -347,6 +353,36 @@ impl DeEsserSettings {
     }
 }
 
+/// Authored low-frequency speech-plosive suppression intent. Detection and
+/// band splitting remain execution details owned by the audio engine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DePlosiveSettings {
+    pub enabled: bool,
+    pub frequency_hertz: u16,
+    pub sensitivity_percent: u8,
+    pub reduction_centibels: u16,
+    pub release_millis: u16,
+}
+
+impl Default for DePlosiveSettings {
+    fn default() -> Self {
+        Self::speech()
+    }
+}
+
+impl DePlosiveSettings {
+    #[must_use]
+    pub const fn speech() -> Self {
+        Self {
+            enabled: false,
+            frequency_hertz: 140,
+            sensitivity_percent: 50,
+            reduction_centibels: 1_200,
+            release_millis: 160,
+        }
+    }
+}
+
 /// Authored mains-hum removal intent. The audio engine derives the bounded
 /// harmonic notch bank and smooths changes between these stable controls.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -410,6 +446,8 @@ impl DeClickSettings {
 pub struct RestorationSettings {
     #[serde(default = "enabled_by_default")]
     pub enabled: bool,
+    #[serde(default)]
+    pub de_plosive: DePlosiveSettings,
     pub noise_reduction: NoiseReductionSettings,
     pub de_esser: DeEsserSettings,
 }
@@ -425,6 +463,7 @@ impl RestorationSettings {
     pub const fn standard() -> Self {
         Self {
             enabled: true,
+            de_plosive: DePlosiveSettings::speech(),
             noise_reduction: NoiseReductionSettings::gentle(),
             de_esser: DeEsserSettings::speech(),
         }
@@ -1183,6 +1222,16 @@ fn validated_asset_regions(
 }
 
 fn validate_restorative_effects(effects: &AdjustmentEffects) -> Result<(), AdjustmentGraphError> {
+    let de_plosive = effects.restoration.de_plosive;
+    if !(MIN_DE_PLOSIVE_FREQUENCY_HERTZ..=MAX_DE_PLOSIVE_FREQUENCY_HERTZ)
+        .contains(&de_plosive.frequency_hertz)
+        || de_plosive.sensitivity_percent > MAX_DE_PLOSIVE_SENSITIVITY_PERCENT
+        || de_plosive.reduction_centibels > MAX_DE_PLOSIVE_REDUCTION_CENTIBELS
+        || !(MIN_DE_PLOSIVE_RELEASE_MILLIS..=MAX_DE_PLOSIVE_RELEASE_MILLIS)
+            .contains(&de_plosive.release_millis)
+    {
+        return Err(AdjustmentGraphError::DePlosiveOutOfRange);
+    }
     let de_hum = effects.de_hum;
     if !matches!(de_hum.fundamental_hertz, 50 | 60)
         || !(MIN_DE_HUM_HARMONIC_COUNT..=MAX_DE_HUM_HARMONIC_COUNT).contains(&de_hum.harmonic_count)
@@ -1228,6 +1277,7 @@ pub enum AdjustmentGraphError {
     LowCutOutOfRange,
     NoiseReductionOutOfRange,
     DeEsserOutOfRange,
+    DePlosiveOutOfRange,
     DeHumOutOfRange,
     DeClickOutOfRange,
     EqualizerBandOutOfRange,
@@ -1250,6 +1300,7 @@ impl std::fmt::Display for AdjustmentGraphError {
                 "noise reduction parameters are outside the supported range"
             }
             Self::DeEsserOutOfRange => "de-esser parameters are outside the supported range",
+            Self::DePlosiveOutOfRange => "de-plosive parameters are outside the supported range",
             Self::DeHumOutOfRange => "de-hum parameters are outside the supported range",
             Self::DeClickOutOfRange => "de-click parameters are outside the supported range",
             Self::EqualizerBandOutOfRange => {

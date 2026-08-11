@@ -68,6 +68,11 @@ struct AdjustmentWireFields {
     gain_centibels: i16,
     low_cut_hertz: u16,
     restoration_enabled: bool,
+    de_plosive_enabled: bool,
+    de_plosive_frequency_hertz: u16,
+    de_plosive_sensitivity_percent: u8,
+    de_plosive_reduction_centibels: u16,
+    de_plosive_release_millis: u16,
     noise_reduction_enabled: bool,
     noise_reduction_centibels: u16,
     noise_reduction_sensitivity_percent: u8,
@@ -360,6 +365,13 @@ fn adjustment_graph_from_wire(
         )
         .with_restoration(echo_domain::RestorationSettings {
             enabled: adjustment.restoration_enabled,
+            de_plosive: echo_domain::DePlosiveSettings {
+                enabled: adjustment.de_plosive_enabled,
+                frequency_hertz: adjustment.de_plosive_frequency_hertz,
+                sensitivity_percent: adjustment.de_plosive_sensitivity_percent,
+                reduction_centibels: adjustment.de_plosive_reduction_centibels,
+                release_millis: adjustment.de_plosive_release_millis,
+            },
             noise_reduction: echo_domain::NoiseReductionSettings {
                 enabled: adjustment.noise_reduction_enabled,
                 reduction_centibels: adjustment.noise_reduction_centibels,
@@ -443,6 +455,11 @@ fn adjustment_wire_fields(
             gain_centibels: 0,
             low_cut_hertz: 0,
             restoration_enabled: true,
+            de_plosive_enabled: false,
+            de_plosive_frequency_hertz: 140,
+            de_plosive_sensitivity_percent: 50,
+            de_plosive_reduction_centibels: 1_200,
+            de_plosive_release_millis: 160,
             noise_reduction_enabled: false,
             noise_reduction_centibels: 900,
             noise_reduction_sensitivity_percent: 50,
@@ -510,6 +527,19 @@ fn adjustment_wire_fields(
             gain_centibels: revision.graph.gain_centibels(),
             low_cut_hertz: revision.graph.low_cut_hertz(),
             restoration_enabled: revision.graph.restoration().enabled,
+            de_plosive_enabled: revision.graph.restoration().de_plosive.enabled,
+            de_plosive_frequency_hertz: revision.graph.restoration().de_plosive.frequency_hertz,
+            de_plosive_sensitivity_percent: revision
+                .graph
+                .restoration()
+                .de_plosive
+                .sensitivity_percent,
+            de_plosive_reduction_centibels: revision
+                .graph
+                .restoration()
+                .de_plosive
+                .reduction_centibels,
+            de_plosive_release_millis: revision.graph.restoration().de_plosive.release_millis,
             noise_reduction_enabled: revision.graph.restoration().noise_reduction.enabled,
             noise_reduction_centibels: revision
                 .graph
@@ -579,11 +609,8 @@ fn adjustment_wire_fields(
     )
 }
 
-fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire {
-    let adjustment = adjustment_wire_fields(asset.adjustment, asset.duration_millis);
-    let (sound_caption, summary) = asset
-        .contextual
-        .as_ref()
+fn contextual_preview(value: Option<&serde_json::Value>) -> (String, String) {
+    value
         .and_then(|value| {
             serde_json::from_value::<echo_core::ContextualPayload>(value.clone()).ok()
         })
@@ -596,14 +623,21 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
                 },
                 payload.summary,
             )
-        });
-    let text_preview = asset
-        .transcript
-        .as_ref()
+        })
+}
+
+fn transcript_preview(value: Option<&serde_json::Value>) -> String {
+    value
         .and_then(|value| {
             serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
         })
-        .map_or_else(String::new, |payload| payload.text);
+        .map_or_else(String::new, |payload| payload.text)
+}
+
+fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire {
+    let adjustment = adjustment_wire_fields(asset.adjustment, asset.duration_millis);
+    let (sound_caption, summary) = contextual_preview(asset.contextual.as_ref());
+    let text_preview = transcript_preview(asset.transcript.as_ref());
     let source_metadata = source_metadata_wire_fields(asset.source_metadata.as_ref());
     AssetSummaryWire {
         id: asset.id,
@@ -632,6 +666,11 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         gain_centibels: adjustment.gain_centibels,
         low_cut_hertz: adjustment.low_cut_hertz,
         restoration_enabled: adjustment.restoration_enabled,
+        de_plosive_enabled: adjustment.de_plosive_enabled,
+        de_plosive_frequency_hertz: adjustment.de_plosive_frequency_hertz,
+        de_plosive_sensitivity_percent: adjustment.de_plosive_sensitivity_percent,
+        de_plosive_reduction_centibels: adjustment.de_plosive_reduction_centibels,
+        de_plosive_release_millis: adjustment.de_plosive_release_millis,
         noise_reduction_enabled: adjustment.noise_reduction_enabled,
         noise_reduction_centibels: adjustment.noise_reduction_centibels,
         noise_reduction_sensitivity_percent: adjustment.noise_reduction_sensitivity_percent,

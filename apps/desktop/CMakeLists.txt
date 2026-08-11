@@ -158,6 +158,7 @@ qt_add_qml_module(
         qml/AudioSpaceWorkspace.qml
         qml/BasicAdjustmentPanel.qml
         qml/DeClickPanel.qml
+        qml/DePlosivePanel.qml
         qml/DeHumPanel.qml
         qml/DynamicsPanel.qml
         qml/SoundSignalChain.qml

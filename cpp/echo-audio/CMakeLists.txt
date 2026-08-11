@@ -12,6 +12,7 @@ add_library(
     src/de_click_processor.cpp
     src/de_esser.cpp
     src/de_hum_filter.cpp
+    src/de_plosive_processor.cpp
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
     src/effect_mask_plan.cpp
@@ -88,6 +89,14 @@ if(BUILD_TESTING)
     target_link_libraries(echo-de-hum-filter-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-de-hum-filter-test)
     add_test(NAME echo-de-hum-filter-test COMMAND echo-de-hum-filter-test)
+
+    add_executable(
+        echo-de-plosive-processor-test
+        tests/de_plosive_processor_test.cpp
+    )
+    target_link_libraries(echo-de-plosive-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-de-plosive-processor-test)
+    add_test(NAME echo-de-plosive-processor-test COMMAND echo-de-plosive-processor-test)
 
     add_executable(
         echo-analysis-proxy-test

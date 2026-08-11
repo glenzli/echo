@@ -17,6 +17,13 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
         )
         .with_restoration(RestorationSettings {
             enabled: true,
+            de_plosive: DePlosiveSettings {
+                enabled: true,
+                frequency_hertz: 150,
+                sensitivity_percent: 65,
+                reduction_centibels: 1_300,
+                release_millis: 180,
+            },
             noise_reduction: NoiseReductionSettings {
                 enabled: true,
                 reduction_centibels: 1_200,
@@ -327,6 +334,18 @@ fn graph_rejects_out_of_source_and_overlapping_envelopes() {
 
 #[test]
 fn graph_rejects_restoration_parameters_outside_the_authored_contract() {
+    let invalid_de_plosive = AdjustmentEffects::default().with_restoration(RestorationSettings {
+        de_plosive: DePlosiveSettings {
+            frequency_hertz: MIN_DE_PLOSIVE_FREQUENCY_HERTZ - 1,
+            ..DePlosiveSettings::default()
+        },
+        ..RestorationSettings::default()
+    });
+    assert_eq!(
+        AdjustmentGraph::new(1_000, 0, 1_000, 0, 0, invalid_de_plosive),
+        Err(AdjustmentGraphError::DePlosiveOutOfRange)
+    );
+
     let invalid_noise = AdjustmentEffects::default().with_restoration(RestorationSettings {
         noise_reduction: NoiseReductionSettings {
             smoothing_millis: MIN_NOISE_REDUCTION_SMOOTHING_MILLIS - 1,

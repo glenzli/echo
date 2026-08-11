@@ -98,6 +98,8 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 14);
+pub(crate) const SOURCE_EDIT_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 13);
 pub(crate) const PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 12);
@@ -123,9 +125,9 @@ pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 14);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 15);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.14-source-edits";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.15-de-plosive";
 
 pub(crate) const SOURCE_EDIT_MIGRATION_SQL: &str = r"
 ALTER TABLE asset_adjustment_revisions
@@ -276,7 +278,7 @@ CREATE INDEX render_exports_asset_created
 pub(crate) const RESTORATION_CHAIN_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
     ADD COLUMN restoration_json TEXT NOT NULL DEFAULT
-    '{"noise_reduction":{"enabled":false,"reduction_centibels":900,"sensitivity_percent":50,"smoothing_millis":240},"de_esser":{"enabled":false,"frequency_hertz":6500,"threshold_centibels":-2400,"reduction_centibels":600}}';
+    '{"de_plosive":{"enabled":false,"frequency_hertz":140,"sensitivity_percent":50,"reduction_centibels":1200,"release_millis":160},"noise_reduction":{"enabled":false,"reduction_centibels":900,"sensitivity_percent":50,"smoothing_millis":240},"de_esser":{"enabled":false,"frequency_hertz":6500,"threshold_centibels":-2400,"reduction_centibels":600}}';
 "#;
 
 pub(crate) const SEMANTIC_SEARCH_MIGRATION_SQL: &str = r"
@@ -602,7 +604,7 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
     reverb_json             TEXT NOT NULL DEFAULT
                            '{\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
     restoration_json        TEXT NOT NULL DEFAULT
-                           '{\"enabled\":true,\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
+                           '{\"enabled\":true,\"de_plosive\":{\"enabled\":false,\"frequency_hertz\":140,\"sensitivity_percent\":50,\"reduction_centibels\":1200,\"release_millis\":160},\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
     de_hum_json             TEXT NOT NULL DEFAULT
                            '{\"enabled\":false,\"fundamental_hertz\":50,\"harmonic_count\":4,\"quality_tenths\":300,\"depth_centibels\":2400}',
     de_click_json           TEXT NOT NULL DEFAULT

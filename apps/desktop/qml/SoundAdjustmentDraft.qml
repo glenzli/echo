@@ -18,6 +18,11 @@ QtObject {
     property int gainCentibels: 0
     property int lowCutHertz: 0
     property bool restorationEnabled: true
+    property bool dePlosiveEnabled: false
+    property int dePlosiveFrequencyHertz: 140
+    property int dePlosiveSensitivityPercent: 50
+    property int dePlosiveReductionCentibels: 1200
+    property int dePlosiveReleaseMillis: 160
     property bool noiseReductionEnabled: false
     property int noiseReductionCentibels: 900
     property int noiseReductionSensitivityPercent: 50
@@ -68,10 +73,10 @@ QtObject {
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canUndo: _historyIndex > 0
     readonly property bool canRedo: _historyIndex >= 0 && _historyIndex < _history.length - 1
-    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
+    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
-    signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks)
+    signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks)
 
     function clamp(value: real, minimum: real, maximum: real): real {
         return Math.max(minimum, Math.min(maximum, value));
@@ -331,6 +336,11 @@ QtObject {
             gainCentibels: gainCentibels,
             lowCutHertz: lowCutHertz,
             restorationEnabled: restorationEnabled,
+            dePlosiveEnabled: dePlosiveEnabled,
+            dePlosiveFrequencyHertz: dePlosiveFrequencyHertz,
+            dePlosiveSensitivityPercent: dePlosiveSensitivityPercent,
+            dePlosiveReductionCentibels: dePlosiveReductionCentibels,
+            dePlosiveReleaseMillis: dePlosiveReleaseMillis,
             noiseReductionEnabled: noiseReductionEnabled,
             noiseReductionCentibels: noiseReductionCentibels,
             noiseReductionSensitivityPercent: noiseReductionSensitivityPercent,
@@ -384,6 +394,11 @@ QtObject {
             gainCentibels: Number(value.gainCentibels),
             lowCutHertz: Number(value.lowCutHertz),
             restorationEnabled: Boolean(value.restorationEnabled),
+            dePlosiveEnabled: Boolean(value.dePlosiveEnabled),
+            dePlosiveFrequencyHertz: Number(value.dePlosiveFrequencyHertz),
+            dePlosiveSensitivityPercent: Number(value.dePlosiveSensitivityPercent),
+            dePlosiveReductionCentibels: Number(value.dePlosiveReductionCentibels),
+            dePlosiveReleaseMillis: Number(value.dePlosiveReleaseMillis),
             noiseReductionEnabled: Boolean(value.noiseReductionEnabled),
             noiseReductionCentibels: Number(value.noiseReductionCentibels),
             noiseReductionSensitivityPercent: Number(value.noiseReductionSensitivityPercent),
@@ -429,7 +444,7 @@ QtObject {
     function sameSnapshot(left: var, right: var): bool {
         if (!left || !right)
             return false;
-        return Number(left.trimStartMillis) === Number(right.trimStartMillis) && Number(left.trimEndMillis) === Number(right.trimEndMillis) && Number(left.fadeInMillis) === Number(right.fadeInMillis) && Number(left.fadeOutMillis) === Number(right.fadeOutMillis) && Number(left.fadeInCurve) === Number(right.fadeInCurve) && Number(left.fadeOutCurve) === Number(right.fadeOutCurve) && Number(left.gainCentibels) === Number(right.gainCentibels) && Number(left.lowCutHertz) === Number(right.lowCutHertz) && Boolean(left.restorationEnabled) === Boolean(right.restorationEnabled) && Boolean(left.noiseReductionEnabled) === Boolean(right.noiseReductionEnabled) && Number(left.noiseReductionCentibels) === Number(right.noiseReductionCentibels) && Number(left.noiseReductionSensitivityPercent) === Number(right.noiseReductionSensitivityPercent) && Number(left.noiseReductionSmoothingMillis) === Number(right.noiseReductionSmoothingMillis) && Boolean(left.deEsserEnabled) === Boolean(right.deEsserEnabled) && Number(left.deEsserFrequencyHertz) === Number(right.deEsserFrequencyHertz) && Number(left.deEsserThresholdCentibels) === Number(right.deEsserThresholdCentibels) && Number(left.deEsserReductionCentibels) === Number(right.deEsserReductionCentibels) && Boolean(left.deHumEnabled) === Boolean(right.deHumEnabled) && Number(left.deHumFundamentalHertz) === Number(right.deHumFundamentalHertz) && Number(left.deHumHarmonicCount) === Number(right.deHumHarmonicCount) && Number(left.deHumQualityTenths) === Number(right.deHumQualityTenths) && Number(left.deHumDepthCentibels) === Number(right.deHumDepthCentibels) && Boolean(left.deClickEnabled) === Boolean(right.deClickEnabled) && Number(left.deClickSensitivityPercent) === Number(right.deClickSensitivityPercent) && Number(left.deClickMaximumClickMicroseconds) === Number(right.deClickMaximumClickMicroseconds) && Number(left.deClickRepairPercent) === Number(right.deClickRepairPercent) && Boolean(left.equalizerEnabled) === Boolean(right.equalizerEnabled) && sameEqualizer(left.equalizerBands, right.equalizerBands) && Boolean(left.compressorEnabled) === Boolean(right.compressorEnabled) && Number(left.compressorThresholdCentibels) === Number(right.compressorThresholdCentibels) && Number(left.compressorRatioTenths) === Number(right.compressorRatioTenths) && Number(left.compressorAttackMillis) === Number(right.compressorAttackMillis) && Number(left.compressorReleaseMillis) === Number(right.compressorReleaseMillis) && Number(left.compressorMakeupCentibels) === Number(right.compressorMakeupCentibels) && Boolean(left.reverbEnabled) === Boolean(right.reverbEnabled) && Number(left.reverbMixPercent) === Number(right.reverbMixPercent) && Number(left.reverbPreDelayMillis) === Number(right.reverbPreDelayMillis) && Number(left.reverbDecayMillis) === Number(right.reverbDecayMillis) && Number(left.reverbSizePercent) === Number(right.reverbSizePercent) && Number(left.reverbDampingPercent) === Number(right.reverbDampingPercent) && Number(left.reverbLowCutHertz) === Number(right.reverbLowCutHertz) && Number(left.reverbHighCutHertz) === Number(right.reverbHighCutHertz) && Boolean(left.limiterEnabled) === Boolean(right.limiterEnabled) && Number(left.limiterCeilingCentibels) === Number(right.limiterCeilingCentibels) && Number(left.limiterReleaseMillis) === Number(right.limiterReleaseMillis) && sameEffectChain(left.effectChain, right.effectChain) && sameEditSegments(left.editSegments, right.editSegments) && sameEffectMasks(left.effectMasks, right.effectMasks);
+        return Number(left.trimStartMillis) === Number(right.trimStartMillis) && Number(left.trimEndMillis) === Number(right.trimEndMillis) && Number(left.fadeInMillis) === Number(right.fadeInMillis) && Number(left.fadeOutMillis) === Number(right.fadeOutMillis) && Number(left.fadeInCurve) === Number(right.fadeInCurve) && Number(left.fadeOutCurve) === Number(right.fadeOutCurve) && Number(left.gainCentibels) === Number(right.gainCentibels) && Number(left.lowCutHertz) === Number(right.lowCutHertz) && Boolean(left.restorationEnabled) === Boolean(right.restorationEnabled) && Boolean(left.dePlosiveEnabled) === Boolean(right.dePlosiveEnabled) && Number(left.dePlosiveFrequencyHertz) === Number(right.dePlosiveFrequencyHertz) && Number(left.dePlosiveSensitivityPercent) === Number(right.dePlosiveSensitivityPercent) && Number(left.dePlosiveReductionCentibels) === Number(right.dePlosiveReductionCentibels) && Number(left.dePlosiveReleaseMillis) === Number(right.dePlosiveReleaseMillis) && Boolean(left.noiseReductionEnabled) === Boolean(right.noiseReductionEnabled) && Number(left.noiseReductionCentibels) === Number(right.noiseReductionCentibels) && Number(left.noiseReductionSensitivityPercent) === Number(right.noiseReductionSensitivityPercent) && Number(left.noiseReductionSmoothingMillis) === Number(right.noiseReductionSmoothingMillis) && Boolean(left.deEsserEnabled) === Boolean(right.deEsserEnabled) && Number(left.deEsserFrequencyHertz) === Number(right.deEsserFrequencyHertz) && Number(left.deEsserThresholdCentibels) === Number(right.deEsserThresholdCentibels) && Number(left.deEsserReductionCentibels) === Number(right.deEsserReductionCentibels) && Boolean(left.deHumEnabled) === Boolean(right.deHumEnabled) && Number(left.deHumFundamentalHertz) === Number(right.deHumFundamentalHertz) && Number(left.deHumHarmonicCount) === Number(right.deHumHarmonicCount) && Number(left.deHumQualityTenths) === Number(right.deHumQualityTenths) && Number(left.deHumDepthCentibels) === Number(right.deHumDepthCentibels) && Boolean(left.deClickEnabled) === Boolean(right.deClickEnabled) && Number(left.deClickSensitivityPercent) === Number(right.deClickSensitivityPercent) && Number(left.deClickMaximumClickMicroseconds) === Number(right.deClickMaximumClickMicroseconds) && Number(left.deClickRepairPercent) === Number(right.deClickRepairPercent) && Boolean(left.equalizerEnabled) === Boolean(right.equalizerEnabled) && sameEqualizer(left.equalizerBands, right.equalizerBands) && Boolean(left.compressorEnabled) === Boolean(right.compressorEnabled) && Number(left.compressorThresholdCentibels) === Number(right.compressorThresholdCentibels) && Number(left.compressorRatioTenths) === Number(right.compressorRatioTenths) && Number(left.compressorAttackMillis) === Number(right.compressorAttackMillis) && Number(left.compressorReleaseMillis) === Number(right.compressorReleaseMillis) && Number(left.compressorMakeupCentibels) === Number(right.compressorMakeupCentibels) && Boolean(left.reverbEnabled) === Boolean(right.reverbEnabled) && Number(left.reverbMixPercent) === Number(right.reverbMixPercent) && Number(left.reverbPreDelayMillis) === Number(right.reverbPreDelayMillis) && Number(left.reverbDecayMillis) === Number(right.reverbDecayMillis) && Number(left.reverbSizePercent) === Number(right.reverbSizePercent) && Number(left.reverbDampingPercent) === Number(right.reverbDampingPercent) && Number(left.reverbLowCutHertz) === Number(right.reverbLowCutHertz) && Number(left.reverbHighCutHertz) === Number(right.reverbHighCutHertz) && Boolean(left.limiterEnabled) === Boolean(right.limiterEnabled) && Number(left.limiterCeilingCentibels) === Number(right.limiterCeilingCentibels) && Number(left.limiterReleaseMillis) === Number(right.limiterReleaseMillis) && sameEffectChain(left.effectChain, right.effectChain) && sameEditSegments(left.editSegments, right.editSegments) && sameEffectMasks(left.effectMasks, right.effectMasks);
     }
 
     function assetSnapshot(): var {
@@ -444,6 +459,11 @@ QtObject {
                 gainCentibels: 0,
                 lowCutHertz: 0,
                 restorationEnabled: true,
+                dePlosiveEnabled: false,
+                dePlosiveFrequencyHertz: 140,
+                dePlosiveSensitivityPercent: 50,
+                dePlosiveReductionCentibels: 1200,
+                dePlosiveReleaseMillis: 160,
                 noiseReductionEnabled: false,
                 noiseReductionCentibels: 900,
                 noiseReductionSensitivityPercent: 50,
@@ -496,6 +516,11 @@ QtObject {
             gainCentibels: clamp(Number(asset.gainCentibels), -2400, 1200),
             lowCutHertz: Number(asset.lowCutHertz) === 0 ? 0 : clamp(Number(asset.lowCutHertz), 20, 240),
             restorationEnabled: asset.restorationEnabled === undefined ? true : Boolean(asset.restorationEnabled),
+            dePlosiveEnabled: Boolean(asset.dePlosiveEnabled),
+            dePlosiveFrequencyHertz: clamp(Number(asset.dePlosiveFrequencyHertz ?? 140), 80, 240),
+            dePlosiveSensitivityPercent: clamp(Number(asset.dePlosiveSensitivityPercent ?? 50), 0, 100),
+            dePlosiveReductionCentibels: clamp(Number(asset.dePlosiveReductionCentibels ?? 1200), 0, 1800),
+            dePlosiveReleaseMillis: clamp(Number(asset.dePlosiveReleaseMillis ?? 160), 40, 500),
             noiseReductionEnabled: Boolean(asset.noiseReductionEnabled),
             noiseReductionCentibels: clamp(Number(asset.noiseReductionCentibels ?? 900), 0, 2400),
             noiseReductionSensitivityPercent: clamp(Number(asset.noiseReductionSensitivityPercent ?? 50), 0, 100),
@@ -549,6 +574,11 @@ QtObject {
         gainCentibels = Number(value.gainCentibels);
         lowCutHertz = Number(value.lowCutHertz);
         restorationEnabled = Boolean(value.restorationEnabled);
+        dePlosiveEnabled = Boolean(value.dePlosiveEnabled);
+        dePlosiveFrequencyHertz = Number(value.dePlosiveFrequencyHertz);
+        dePlosiveSensitivityPercent = Number(value.dePlosiveSensitivityPercent);
+        dePlosiveReductionCentibels = Number(value.dePlosiveReductionCentibels);
+        dePlosiveReleaseMillis = Number(value.dePlosiveReleaseMillis);
         noiseReductionEnabled = Boolean(value.noiseReductionEnabled);
         noiseReductionCentibels = Number(value.noiseReductionCentibels);
         noiseReductionSensitivityPercent = Number(value.noiseReductionSensitivityPercent);
@@ -877,6 +907,11 @@ QtObject {
     function restorationValue(): var {
         return {
             enabled: restorationEnabled,
+            dePlosiveEnabled: dePlosiveEnabled,
+            dePlosiveFrequencyHertz: dePlosiveFrequencyHertz,
+            dePlosiveSensitivityPercent: dePlosiveSensitivityPercent,
+            dePlosiveReductionCentibels: dePlosiveReductionCentibels,
+            dePlosiveReleaseMillis: dePlosiveReleaseMillis,
             noiseEnabled: noiseReductionEnabled,
             noiseReductionCentibels: noiseReductionCentibels,
             noiseSensitivityPercent: noiseReductionSensitivityPercent,
@@ -1000,6 +1035,35 @@ QtObject {
         pushCurrent();
     }
 
+    function setDePlosiveEnabled(enabled: bool): void {
+        dePlosiveEnabled = enabled;
+        pushCurrent();
+    }
+
+    function setDePlosiveParameter(parameter: string, value: int): void {
+        if (parameter === "frequency") {
+            dePlosiveFrequencyHertz = Math.round(clamp(value, 80, 240));
+        } else if (parameter === "sensitivity") {
+            dePlosiveSensitivityPercent = Math.round(clamp(value, 0, 100));
+        } else if (parameter === "reduction") {
+            dePlosiveReductionCentibels = Math.round(clamp(value, 0, 1800));
+        } else if (parameter === "release") {
+            dePlosiveReleaseMillis = Math.round(clamp(value, 40, 500));
+        } else {
+            return;
+        }
+        pushCurrent();
+    }
+
+    function resetDePlosive(): void {
+        dePlosiveEnabled = false;
+        dePlosiveFrequencyHertz = 140;
+        dePlosiveSensitivityPercent = 50;
+        dePlosiveReductionCentibels = 1200;
+        dePlosiveReleaseMillis = 160;
+        pushCurrent();
+    }
+
     function setDeHumParameter(parameter: string, value: int): void {
         if (parameter === "fundamental") {
             deHumFundamentalHertz = Number(value) === 60 ? 60 : 50;
@@ -1070,6 +1134,11 @@ QtObject {
     }
 
     function resetRestoration(): void {
+        dePlosiveEnabled = false;
+        dePlosiveFrequencyHertz = 140;
+        dePlosiveSensitivityPercent = 50;
+        dePlosiveReductionCentibels = 1200;
+        dePlosiveReleaseMillis = 160;
         noiseReductionEnabled = false;
         noiseReductionCentibels = 900;
         noiseReductionSensitivityPercent = 50;
@@ -1218,6 +1287,11 @@ QtObject {
             gainCentibels: 0,
             lowCutHertz: 0,
             restorationEnabled: true,
+            dePlosiveEnabled: false,
+            dePlosiveFrequencyHertz: 140,
+            dePlosiveSensitivityPercent: 50,
+            dePlosiveReductionCentibels: 1200,
+            dePlosiveReleaseMillis: 160,
             noiseReductionEnabled: false,
             noiseReductionCentibels: 900,
             noiseReductionSensitivityPercent: 50,
@@ -1269,7 +1343,7 @@ QtObject {
     function save(): void {
         if (!asset || !dirty)
             return;
-        saveRequested(trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationEnabled, noiseReductionEnabled, noiseReductionCentibels, noiseReductionSensitivityPercent, noiseReductionSmoothingMillis, deEsserEnabled, deEsserFrequencyHertz, deEsserThresholdCentibels, deEsserReductionCentibels, deHumEnabled, deHumFundamentalHertz, deHumHarmonicCount, deHumQualityTenths, deHumDepthCentibels, deClickEnabled, deClickSensitivityPercent, deClickMaximumClickMicroseconds, deClickRepairPercent, equalizerEnabled, copyEqualizerBands(equalizerBands), compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbEnabled, reverbMixPercent, reverbPreDelayMillis, reverbDecayMillis, reverbSizePercent, reverbDampingPercent, reverbLowCutHertz, reverbHighCutHertz, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, copyEffectChain(effectChain), copyEditSegments(editSegments, trimStartMillis, trimEndMillis), copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis));
+        saveRequested(trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationEnabled, dePlosiveEnabled, dePlosiveFrequencyHertz, dePlosiveSensitivityPercent, dePlosiveReductionCentibels, dePlosiveReleaseMillis, noiseReductionEnabled, noiseReductionCentibels, noiseReductionSensitivityPercent, noiseReductionSmoothingMillis, deEsserEnabled, deEsserFrequencyHertz, deEsserThresholdCentibels, deEsserReductionCentibels, deHumEnabled, deHumFundamentalHertz, deHumHarmonicCount, deHumQualityTenths, deHumDepthCentibels, deClickEnabled, deClickSensitivityPercent, deClickMaximumClickMicroseconds, deClickRepairPercent, equalizerEnabled, copyEqualizerBands(equalizerBands), compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbEnabled, reverbMixPercent, reverbPreDelayMillis, reverbDecayMillis, reverbSizePercent, reverbDampingPercent, reverbLowCutHertz, reverbHighCutHertz, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, copyEffectChain(effectChain), copyEditSegments(editSegments, trimStartMillis, trimEndMillis), copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis));
     }
 
     function markSaved(): void {

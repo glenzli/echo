@@ -5,6 +5,7 @@
 #include "echo/audio/de_click_processor.hpp"
 #include "echo/audio/de_esser.hpp"
 #include "echo/audio/de_hum_filter.hpp"
+#include "echo/audio/de_plosive_processor.hpp"
 #include "echo/audio/dynamics_processor.hpp"
 #include "echo/audio/parametric_equalizer.hpp"
 
@@ -31,6 +32,7 @@ class EffectProcessingChain::Impl {
     ) :
         sample_rate_(sample_rate), channel_count_(channel_count), nodes_(adjustment.effect_chain()),
         node_count_(adjustment.effect_chain_count()),
+        de_plosive_(adjustment.restoration().de_plosive, sample_rate, channel_count),
         noise_reducer_(adjustment.restoration().noise_reduction, sample_rate),
         de_esser_(adjustment.restoration().de_esser, sample_rate, channel_count),
         de_hum_(
@@ -137,6 +139,7 @@ class EffectProcessingChain::Impl {
     }
 
     void reset() {
+        de_plosive_.reset();
         noise_reducer_.reset();
         de_esser_.reset();
         de_hum_.reset();
@@ -148,6 +151,7 @@ class EffectProcessingChain::Impl {
     }
 
     void update_restoration(RestorationAdjustment adjustment) {
+        de_plosive_.update(adjustment.de_plosive);
         noise_reducer_.update(adjustment.noise_reduction);
         de_esser_.update(adjustment.de_esser);
         restoration_enabled_ = adjustment.enabled;
@@ -220,6 +224,7 @@ class EffectProcessingChain::Impl {
             switch (node) {
             case EffectNodeKind::Restoration:
                 if (restoration_enabled_) {
+                    de_plosive_.process_interleaved(samples, frame_count, channel_count_);
                     noise_reducer_.process_interleaved(samples, frame_count, channel_count_);
                     de_esser_.process_interleaved(samples, frame_count, channel_count_);
                 }
@@ -314,6 +319,7 @@ class EffectProcessingChain::Impl {
     std::size_t channel_count_ = 0;
     std::array<EffectNodeKind, kEffectNodeCount> nodes_{};
     std::size_t node_count_ = 0;
+    DePlosiveProcessor de_plosive_;
     AdaptiveNoiseReducer noise_reducer_;
     DeEsser de_esser_;
     DeHumFilter de_hum_;
@@ -410,6 +416,11 @@ void EffectProcessingChain::validate_restoration(
     std::uint32_t sample_rate,
     std::size_t channel_count
 ) {
+    [[maybe_unused]] const DePlosiveProcessor de_plosive(
+        adjustment.de_plosive,
+        sample_rate,
+        channel_count
+    );
     [[maybe_unused]] const AdaptiveNoiseReducer noise(adjustment.noise_reduction, sample_rate);
     [[maybe_unused]] const DeEsser de_esser(adjustment.de_esser, sample_rate, channel_count);
 }

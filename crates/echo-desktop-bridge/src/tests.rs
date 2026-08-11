@@ -191,6 +191,11 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         gain_centibels: -350,
         low_cut_hertz: 80,
         restoration_enabled: true,
+        de_plosive_enabled: true,
+        de_plosive_frequency_hertz: 150,
+        de_plosive_sensitivity_percent: 67,
+        de_plosive_reduction_centibels: 1_350,
+        de_plosive_release_millis: 190,
         noise_reduction_enabled: true,
         noise_reduction_centibels: 1_200,
         noise_reduction_sensitivity_percent: 62,
@@ -283,6 +288,12 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].gain_centibels, -350);
     assert_eq!(projected[0].low_cut_hertz, 80);
     assert!(projected[0].restoration_enabled);
+    assert!(stored.graph.restoration().de_plosive.enabled);
+    assert!(projected[0].de_plosive_enabled);
+    assert_eq!(projected[0].de_plosive_frequency_hertz, 150);
+    assert_eq!(projected[0].de_plosive_sensitivity_percent, 67);
+    assert_eq!(projected[0].de_plosive_reduction_centibels, 1_350);
+    assert_eq!(projected[0].de_plosive_release_millis, 190);
     assert!(projected[0].noise_reduction_enabled);
     assert_eq!(projected[0].noise_reduction_centibels, 1_200);
     assert_eq!(projected[0].noise_reduction_sensitivity_percent, 62);

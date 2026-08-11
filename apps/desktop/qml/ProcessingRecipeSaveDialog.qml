@@ -42,7 +42,7 @@ Popup {
             {
                 componentId: "restoration",
                 title: qsTr("Restoration"),
-                summary: qsTr("Noise reduction and de-essing"),
+                summary: qsTr("De-plosive, noise reduction, and de-essing"),
                 included: true
             },
             {

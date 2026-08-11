@@ -3,6 +3,15 @@
 std::optional<echo::audio::RestorationAdjustment>
 RestorationProjection::fromQml(const QVariantMap& value) {
     const bool enabled = value.value(QStringLiteral("enabled"), true).toBool();
+    const bool de_plosive_enabled = value.value(QStringLiteral("dePlosiveEnabled"), false).toBool();
+    const int de_plosive_frequency =
+        value.value(QStringLiteral("dePlosiveFrequencyHertz"), 140).toInt();
+    const int de_plosive_sensitivity =
+        value.value(QStringLiteral("dePlosiveSensitivityPercent"), 50).toInt();
+    const int de_plosive_reduction =
+        value.value(QStringLiteral("dePlosiveReductionCentibels"), 1200).toInt();
+    const int de_plosive_release =
+        value.value(QStringLiteral("dePlosiveReleaseMillis"), 160).toInt();
     const bool noise_enabled = value.value(QStringLiteral("noiseEnabled"), false).toBool();
     const int noise_reduction = value.value(QStringLiteral("noiseReductionCentibels"), 900).toInt();
     const int noise_sensitivity =
@@ -15,14 +24,25 @@ RestorationProjection::fromQml(const QVariantMap& value) {
         value.value(QStringLiteral("deEsserThresholdCentibels"), -2400).toInt();
     const int de_esser_reduction =
         value.value(QStringLiteral("deEsserReductionCentibels"), 600).toInt();
-    if (noise_reduction < 0 || noise_reduction > 2400 || noise_sensitivity < 0
-        || noise_sensitivity > 100 || noise_smoothing < 20 || noise_smoothing > 1000
-        || de_esser_frequency < 3000 || de_esser_frequency > 12000 || de_esser_threshold < -6000
-        || de_esser_threshold > 0 || de_esser_reduction < 0 || de_esser_reduction > 1800) {
+    if (de_plosive_frequency < 80 || de_plosive_frequency > 240 || de_plosive_sensitivity < 0
+        || de_plosive_sensitivity > 100 || de_plosive_reduction < 0 || de_plosive_reduction > 1800
+        || de_plosive_release < 40 || de_plosive_release > 500 || noise_reduction < 0
+        || noise_reduction > 2400 || noise_sensitivity < 0 || noise_sensitivity > 100
+        || noise_smoothing < 20 || noise_smoothing > 1000 || de_esser_frequency < 3000
+        || de_esser_frequency > 12000 || de_esser_threshold < -6000 || de_esser_threshold > 0
+        || de_esser_reduction < 0 || de_esser_reduction > 1800) {
         return std::nullopt;
     }
     return echo::audio::RestorationAdjustment{
         .enabled = enabled,
+        .de_plosive =
+            {
+                .enabled = de_plosive_enabled,
+                .frequency_hertz = static_cast<std::uint16_t>(de_plosive_frequency),
+                .sensitivity_percent = static_cast<std::uint8_t>(de_plosive_sensitivity),
+                .reduction_centibels = static_cast<std::uint16_t>(de_plosive_reduction),
+                .release_millis = static_cast<std::uint16_t>(de_plosive_release),
+            },
         .noise_reduction =
             {
                 .enabled = noise_enabled,

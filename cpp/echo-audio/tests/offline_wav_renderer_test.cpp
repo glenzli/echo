@@ -1,5 +1,6 @@
 #include "echo/audio/offline_flac_renderer.hpp"
 #include "echo/audio/offline_wav_renderer.hpp"
+#include "echo/audio/playback.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <span>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -68,7 +70,16 @@ std::string sine_wav() {
     for (std::uint32_t frame = 0; frame < frames; ++frame) {
         const double phase =
             2.0 * 3.14159265358979323846 * 440.0 * static_cast<double>(frame) / sample_rate;
-        const auto sample = static_cast<std::int16_t>(std::sin(phase) * 8000.0);
+        double plosive = 0.0;
+        if (frame >= 8'000 && frame < 10'400) {
+            const double progress = static_cast<double>(frame - 8'000) / 2'400.0;
+            const double burst_phase =
+                2.0 * 3.14159265358979323846 * 85.0 * static_cast<double>(frame) / sample_rate;
+            plosive = std::exp(-3.2 * progress) * std::sin(burst_phase) * 20'000.0;
+        }
+        const auto sample = static_cast<std::int16_t>(
+            std::clamp(std::sin(phase) * 3'000.0 + plosive, -32'767.0, 32'767.0)
+        );
         append(wav, &sample, 2);
     }
     return wav;
@@ -79,6 +90,48 @@ std::uint32_t u32(const std::vector<std::byte>& bytes, std::size_t offset) {
            | (std::to_integer<std::uint32_t>(bytes[offset + 1]) << 8U)
            | (std::to_integer<std::uint32_t>(bytes[offset + 2]) << 16U)
            | (std::to_integer<std::uint32_t>(bytes[offset + 3]) << 24U);
+}
+
+float pcm24(const std::vector<std::byte>& bytes, std::size_t sample_index) {
+    const std::size_t offset = 44 + sample_index * 3;
+    std::uint32_t raw = std::to_integer<std::uint32_t>(bytes[offset])
+                        | (std::to_integer<std::uint32_t>(bytes[offset + 1]) << 8U)
+                        | (std::to_integer<std::uint32_t>(bytes[offset + 2]) << 16U);
+    if ((raw & 0x0080'0000U) != 0U) {
+        raw |= 0xff00'0000U;
+    }
+    return static_cast<float>(static_cast<std::int32_t>(raw)) / 8'388'607.0F;
+}
+
+std::vector<float> render_playback(
+    const std::filesystem::path& source,
+    const echo::audio::PlaybackAdjustment& adjustment
+) {
+    echo::audio::PlaybackSession session(
+        source.string(),
+        adjustment,
+        {.apply_output_guard = false, .collect_metering = false}
+    );
+    std::vector<float> chunk(4096 * session.channel_count());
+    std::vector<float> rendered;
+    rendered.reserve(session.output_frame_count() * session.channel_count());
+    while (true) {
+        const std::size_t frames = session.read(chunk.data(), 4096);
+        if (frames != 0) {
+            rendered.insert(
+                rendered.end(),
+                chunk.begin(),
+                chunk.begin() + static_cast<std::ptrdiff_t>(frames * session.channel_count())
+            );
+            continue;
+        }
+        if (session.is_ended() && session.buffered_frames() == 0) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    assert(rendered.size() == session.output_frame_count() * session.channel_count());
+    return rendered;
 }
 
 } // namespace
@@ -172,6 +225,25 @@ int main() {
         echo::audio::OfflineWavRenderer::render(source.string(), full_source, full_source_sink);
     assert(full_source_result.frame_count == 48'000);
     assert(full_source_result.size_bytes == full_source_sink.bytes().size());
+
+    auto de_plosive = full_source;
+    de_plosive.restoration.de_plosive = {
+        .enabled = true,
+        .frequency_hertz = 160,
+        .sensitivity_percent = 80,
+        .reduction_centibels = 1800,
+        .release_millis = 140,
+    };
+    const auto live_de_plosive = render_playback(source, de_plosive);
+    MemorySink de_plosive_sink;
+    const auto de_plosive_result =
+        echo::audio::OfflineWavRenderer::render(source.string(), de_plosive, de_plosive_sink);
+    assert(
+        de_plosive_result.frame_count * de_plosive_result.channel_count == live_de_plosive.size()
+    );
+    for (std::size_t index = 0; index < live_de_plosive.size(); ++index) {
+        assert(std::abs(live_de_plosive[index] - pcm24(de_plosive_sink.bytes(), index)) < 2.0E-6F);
+    }
 
     auto source_edited = full_source;
     source_edited.edit_segments = {

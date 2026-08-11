@@ -2,9 +2,9 @@ use std::path::Path;
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, DeClickSettings,
-    DeEsserSettings, DeHumSettings, EditSegment, EditSegmentState, EditTimeline, EffectChain,
-    EffectMask, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings, NoiseReductionSettings,
-    RestorationSettings, ReverbSettings,
+    DeEsserSettings, DeHumSettings, DePlosiveSettings, EditSegment, EditSegmentState, EditTimeline,
+    EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings,
+    NoiseReductionSettings, RestorationSettings, ReverbSettings,
 };
 
 use super::*;
@@ -288,6 +288,13 @@ fn fully_configured_graph() -> AdjustmentGraph {
         )
         .with_restoration(RestorationSettings {
             enabled: true,
+            de_plosive: DePlosiveSettings {
+                enabled: true,
+                frequency_hertz: 145,
+                sensitivity_percent: 61,
+                reduction_centibels: 1_250,
+                release_millis: 170,
+            },
             noise_reduction: NoiseReductionSettings {
                 enabled: true,
                 reduction_centibels: 1_100,

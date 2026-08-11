@@ -43,6 +43,11 @@ Rectangle {
     readonly property int lowCutHertz: hasAsset ? Number(asset.lowCutHertz) : 0
     readonly property var restorationValue: ({
             enabled: hasAsset ? Boolean(asset.restorationEnabled) : true,
+            dePlosiveEnabled: hasAsset ? Boolean(asset.dePlosiveEnabled) : false,
+            dePlosiveFrequencyHertz: hasAsset ? Number(asset.dePlosiveFrequencyHertz) : 140,
+            dePlosiveSensitivityPercent: hasAsset ? Number(asset.dePlosiveSensitivityPercent) : 50,
+            dePlosiveReductionCentibels: hasAsset ? Number(asset.dePlosiveReductionCentibels) : 1200,
+            dePlosiveReleaseMillis: hasAsset ? Number(asset.dePlosiveReleaseMillis) : 160,
             noiseEnabled: hasAsset ? Boolean(asset.noiseReductionEnabled) : false,
             noiseReductionCentibels: hasAsset ? Number(asset.noiseReductionCentibels) : 900,
             noiseSensitivityPercent: hasAsset ? Number(asset.noiseReductionSensitivityPercent) : 50,

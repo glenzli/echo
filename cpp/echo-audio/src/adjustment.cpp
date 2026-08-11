@@ -123,6 +123,12 @@ PreparedAdjustment::PreparedAdjustment(
             "adjustment effect chain must contain unique singleton nodes with master last"
         );
     }
+    const DePlosiveAdjustment de_plosive = authored.restoration.de_plosive;
+    if (de_plosive.frequency_hertz < 80 || de_plosive.frequency_hertz > 240
+        || de_plosive.sensitivity_percent > 100 || de_plosive.reduction_centibels > 1800
+        || de_plosive.release_millis < 40 || de_plosive.release_millis > 500) {
+        throw std::invalid_argument("adjustment de-plosive is outside the supported range");
+    }
     const NoiseReductionAdjustment noise_reduction = authored.restoration.noise_reduction;
     if (noise_reduction.reduction_centibels > 2400 || noise_reduction.sensitivity_percent > 100
         || noise_reduction.smoothing_millis < 20 || noise_reduction.smoothing_millis > 1000) {

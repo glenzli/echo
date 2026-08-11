@@ -316,6 +316,23 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("gainCentibels"), static_cast<int>(asset.gain_centibels));
         entry.insert(QStringLiteral("lowCutHertz"), static_cast<int>(asset.low_cut_hertz));
         entry.insert(QStringLiteral("restorationEnabled"), asset.restoration_enabled);
+        entry.insert(QStringLiteral("dePlosiveEnabled"), asset.de_plosive_enabled);
+        entry.insert(
+            QStringLiteral("dePlosiveFrequencyHertz"),
+            static_cast<int>(asset.de_plosive_frequency_hertz)
+        );
+        entry.insert(
+            QStringLiteral("dePlosiveSensitivityPercent"),
+            static_cast<int>(asset.de_plosive_sensitivity_percent)
+        );
+        entry.insert(
+            QStringLiteral("dePlosiveReductionCentibels"),
+            static_cast<int>(asset.de_plosive_reduction_centibels)
+        );
+        entry.insert(
+            QStringLiteral("dePlosiveReleaseMillis"),
+            static_cast<int>(asset.de_plosive_release_millis)
+        );
         entry.insert(QStringLiteral("noiseReductionEnabled"), asset.noise_reduction_enabled);
         entry.insert(
             QStringLiteral("noiseReductionCentibels"),
@@ -970,6 +987,11 @@ bool DesktopBackend::setAssetAdjustment(
     int gainCentibels,
     int lowCutHertz,
     bool restorationEnabled,
+    bool dePlosiveEnabled,
+    int dePlosiveFrequencyHertz,
+    int dePlosiveSensitivityPercent,
+    int dePlosiveReductionCentibels,
+    int dePlosiveReleaseMillis,
     bool noiseReductionEnabled,
     int noiseReductionCentibels,
     int noiseReductionSensitivityPercent,
@@ -1014,6 +1036,10 @@ bool DesktopBackend::setAssetAdjustment(
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200
         || (lowCutHertz != 0 && (lowCutHertz < 20 || lowCutHertz > 240))
+        || dePlosiveFrequencyHertz < 80 || dePlosiveFrequencyHertz > 240
+        || dePlosiveSensitivityPercent < 0 || dePlosiveSensitivityPercent > 100
+        || dePlosiveReductionCentibels < 0 || dePlosiveReductionCentibels > 1800
+        || dePlosiveReleaseMillis < 40 || dePlosiveReleaseMillis > 500
         || noiseReductionCentibels < 0 || noiseReductionCentibels > 2400
         || noiseReductionSensitivityPercent < 0 || noiseReductionSensitivityPercent > 100
         || noiseReductionSmoothingMillis < 20 || noiseReductionSmoothingMillis > 1000
@@ -1051,6 +1077,13 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.gain_centibels = static_cast<std::int16_t>(gainCentibels);
         adjustment.low_cut_hertz = static_cast<std::uint16_t>(lowCutHertz);
         adjustment.restoration_enabled = restorationEnabled;
+        adjustment.de_plosive_enabled = dePlosiveEnabled;
+        adjustment.de_plosive_frequency_hertz = static_cast<std::uint16_t>(dePlosiveFrequencyHertz);
+        adjustment.de_plosive_sensitivity_percent =
+            static_cast<std::uint8_t>(dePlosiveSensitivityPercent);
+        adjustment.de_plosive_reduction_centibels =
+            static_cast<std::uint16_t>(dePlosiveReductionCentibels);
+        adjustment.de_plosive_release_millis = static_cast<std::uint16_t>(dePlosiveReleaseMillis);
         adjustment.noise_reduction_enabled = noiseReductionEnabled;
         adjustment.noise_reduction_centibels = static_cast<std::uint16_t>(noiseReductionCentibels);
         adjustment.noise_reduction_sensitivity_percent =
