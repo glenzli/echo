@@ -105,6 +105,7 @@ class DesktopBackend : public QObject {
         int compressorAttackMillis,
         int compressorReleaseMillis,
         int compressorMakeupCentibels,
+        int reverbCharacter,
         bool reverbEnabled,
         int reverbMixPercent,
         int reverbPreDelayMillis,

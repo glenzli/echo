@@ -1047,6 +1047,7 @@ bool DesktopBackend::setAssetAdjustment(
     int compressorAttackMillis,
     int compressorReleaseMillis,
     int compressorMakeupCentibels,
+    int reverbCharacter,
     bool reverbEnabled,
     int reverbMixPercent,
     int reverbPreDelayMillis,
@@ -1086,8 +1087,8 @@ bool DesktopBackend::setAssetAdjustment(
         || compressorThresholdCentibels > 0 || compressorRatioTenths < 10
         || compressorRatioTenths > 200 || compressorAttackMillis < 1 || compressorAttackMillis > 200
         || compressorReleaseMillis < 20 || compressorReleaseMillis > 2000
-        || compressorMakeupCentibels < 0 || compressorMakeupCentibels > 2400
-        || limiterCeilingCentibels < -600 || limiterCeilingCentibels > 0
+        || compressorMakeupCentibels < 0 || compressorMakeupCentibels > 2400 || reverbCharacter < 0
+        || reverbCharacter > 2 || limiterCeilingCentibels < -600 || limiterCeilingCentibels > 0
         || limiterReleaseMillis < 20 || limiterReleaseMillis > 1000 || reverbMixPercent < 0
         || reverbMixPercent > 100 || reverbPreDelayMillis < 0 || reverbPreDelayMillis > 200
         || reverbDecayMillis < 100 || reverbDecayMillis > 12000 || reverbSizePercent < 10
@@ -1158,6 +1159,7 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.compressor_release_millis = static_cast<std::uint16_t>(compressorReleaseMillis);
         adjustment.compressor_makeup_centibels =
             static_cast<std::int16_t>(compressorMakeupCentibels);
+        adjustment.reverb_character = static_cast<std::uint8_t>(reverbCharacter);
         adjustment.reverb_enabled = reverbEnabled;
         adjustment.reverb_mix_percent = static_cast<std::uint8_t>(reverbMixPercent);
         adjustment.reverb_pre_delay_millis = static_cast<std::uint16_t>(reverbPreDelayMillis);

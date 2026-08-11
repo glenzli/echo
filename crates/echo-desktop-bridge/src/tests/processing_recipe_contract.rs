@@ -366,6 +366,7 @@ fn adjustment(duration_millis: u64) -> AssetAdjustmentWire {
         compressor_attack_millis: 10,
         compressor_release_millis: 120,
         compressor_makeup_centibels: 0,
+        reverb_character: echo_domain::ReverbCharacter::Room.wire_value(),
         reverb_enabled: false,
         reverb_mix_percent: 18,
         reverb_pre_delay_millis: 20,

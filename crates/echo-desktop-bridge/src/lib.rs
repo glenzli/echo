@@ -181,6 +181,7 @@ mod ffi {
         compressor_attack_millis: u16,
         compressor_release_millis: u16,
         compressor_makeup_centibels: i16,
+        reverb_character: u8,
         reverb_enabled: bool,
         reverb_mix_percent: u8,
         reverb_pre_delay_millis: u16,

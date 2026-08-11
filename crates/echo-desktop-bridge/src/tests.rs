@@ -183,28 +183,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     let echo_catalog::RegisterAsset::Created(asset) = asset else {
         panic!("fixture must create")
     };
-    session
-        .catalog()
-        .with_transaction(|transaction| {
-            let hall = echo_domain::AdjustmentGraph::new(
-                10_000,
-                0,
-                10_000,
-                0,
-                0,
-                echo_domain::AdjustmentEffects::default().with_reverb(
-                    echo_domain::ReverbSettings {
-                        character: echo_domain::ReverbCharacter::Hall,
-                        ..echo_domain::ReverbSettings::default()
-                    },
-                ),
-            )
-            .expect("hall seed validates");
-            echo_catalog::record_adjustment_graph(transaction, asset.id, hall, 1)
-        })
-        .expect("hall seed records");
-
-    let adjustment = crate::ffi::AssetAdjustmentWire {
+    let mut adjustment = crate::ffi::AssetAdjustmentWire {
         trim_start_millis: 1_000,
         trim_end_millis: 9_000,
         fade_in_millis: 250,
@@ -250,6 +229,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         compressor_attack_millis: 12,
         compressor_release_millis: 160,
         compressor_makeup_centibels: 225,
+        reverb_character: echo_domain::ReverbCharacter::Hall.wire_value(),
         reverb_enabled: true,
         reverb_mix_percent: 24,
         reverb_pre_delay_millis: 28,
@@ -384,6 +364,14 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].edit_segments[1].state, 1);
     assert_eq!(projected[0].effect_masks.len(), 1);
     assert_eq!(projected[0].effect_masks[0].effect_nodes, [1, 2]);
+    adjustment.reverb_character = u8::MAX;
+    let error = session
+        .set_asset_adjustment(&asset.id.to_string(), &adjustment)
+        .expect_err("unknown reverb character must fail closed");
+    assert_eq!(
+        error.message,
+        "reverb character must be room, hall, or plate"
+    );
     let _ = std::fs::remove_dir_all(root);
 }
 

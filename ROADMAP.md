@@ -550,9 +550,9 @@ InferenceBackend
     JUCE／Dragonfly／DaisySP ReverbSc／Soundpipe RevSC。构造阶段一次性分配，逐帧路径零分配，
     character 或其他参数变化继续在完整引擎间做 50 ms 过渡；三者报告零处理延迟，Pre-delay 与
     湿声首达只属于效果内容，不进入 DeClick 时间线补偿。Catalog、桌面只读投影、轻量播放、
-    实时试听、整段分析及单次／批量离线导出共用同一 character；旧桌面保存入口在发布其他参数时
-    保留当前 character。由于通用编辑工作区正由另一里程碑持有，本数据面里程碑不加入无法可靠
-    保存的空选择器；character 草稿保存参数接线与 Space 面板选择器作为明确后续集成点。Spring
+    实时试听、整段分析及单次／批量离线导出共用同一 character；桌面保存入口现已显式携带并验证
+    character，草稿变更可沿统一发布合同写入 Catalog。视觉选择器仍由 UI owner 集成，只需在
+    Space 面板调用既有 draft setter 并完成文案与翻译；本数据合同补丁不争抢其布局。Spring
     必须由色散／模态独立 owner 实现，卷积与 IR 资产许可、哈希和延迟合同也另立里程碑，二者都
     不伪装成 FDN preset 或 Restoration。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数

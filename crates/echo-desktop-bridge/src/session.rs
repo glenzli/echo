@@ -362,7 +362,6 @@ fn channel_repair_from_wire(
 fn adjustment_graph_from_wire(
     duration: u64,
     adjustment: &crate::ffi::AssetAdjustmentWire,
-    reverb_character: echo_domain::ReverbCharacter,
 ) -> Result<echo_domain::AdjustmentGraph, SessionError> {
     echo_domain::AdjustmentGraph::new(
         duration,
@@ -433,7 +432,10 @@ fn adjustment_graph_from_wire(
             makeup_centibels: adjustment.compressor_makeup_centibels,
         })
         .with_reverb(echo_domain::ReverbSettings {
-            character: reverb_character,
+            character: echo_domain::ReverbCharacter::from_wire_value(adjustment.reverb_character)
+                .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?,
             enabled: adjustment.reverb_enabled,
             mix_percent: adjustment.reverb_mix_percent,
             pre_delay_millis: adjustment.reverb_pre_delay_millis,
@@ -1051,17 +1053,12 @@ impl LibrarySession {
         let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
             message: format!("invalid asset id {asset_id}: {error}"),
         })?;
-        let (duration, reverb_character) = self.catalog.with_transaction(|transaction| {
+        let duration = self.catalog.with_transaction(|transaction| {
             match find_by_id(transaction, asset_id) {
                 Ok(AssetLookup::Found(asset)) => {
-                    let duration = asset.original.duration_millis.ok_or_else(|| SessionError {
+                    asset.original.duration_millis.ok_or_else(|| SessionError {
                         message: "asset duration is not available".to_owned(),
-                    })?;
-                    let character = echo_catalog::latest_adjustment_graph(transaction, asset_id)?
-                        .map_or_else(echo_domain::ReverbCharacter::default, |revision| {
-                            revision.graph.reverb().character
-                        });
-                    Ok((duration, character))
+                    })
                 }
                 Ok(AssetLookup::NotFound) => Err(SessionError {
                     message: format!("asset {asset_id} not found"),
@@ -1071,7 +1068,7 @@ impl LibrarySession {
                 }),
             }
         })?;
-        let graph = adjustment_graph_from_wire(duration, adjustment, reverb_character)?;
+        let graph = adjustment_graph_from_wire(duration, adjustment)?;
         self.catalog
             .with_transaction(|transaction| {
                 echo_catalog::record_adjustment_graph(transaction, asset_id, graph, now_millis())
