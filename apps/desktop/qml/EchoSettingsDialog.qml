@@ -348,7 +348,7 @@ Dialog {
 
                                 Repeater {
                                     model: [
-                                        { label: qsTr("Contract"), value: "0.1.0-candidate.3" },
+                                        { label: qsTr("Contract"), value: "0.1.0-candidate.4" },
                                         { label: qsTr("Intents"), value: "audio.transcribe · audio.align · audio.detect_events" },
                                         { label: qsTr("Placement"), value: qsTr("Local only") },
                                         { label: qsTr("Consumer credential"),

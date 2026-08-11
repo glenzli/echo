@@ -192,7 +192,7 @@ fn obsolete_runtime_vectors_are_removed_without_touching_current_documents() {
         .expect("assets register");
     catalog
         .with_transaction(|transaction| {
-            for (index, contract) in ["0.1.0-candidate.3", "0.1.0-obsolete"]
+            for (index, contract) in ["0.1.0-candidate.4", "0.1.0-obsolete"]
                 .into_iter()
                 .enumerate()
             {
@@ -220,7 +220,7 @@ fn obsolete_runtime_vectors_are_removed_without_touching_current_documents() {
 
     let removed = catalog
         .with_transaction(|transaction| {
-            remove_semantic_documents_outside_contract(transaction, "0.1.0-candidate.3")
+            remove_semantic_documents_outside_contract(transaction, "0.1.0-candidate.4")
         })
         .expect("obsolete vectors remove");
     assert_eq!(removed, 1);

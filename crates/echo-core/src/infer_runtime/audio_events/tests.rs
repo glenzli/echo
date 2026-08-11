@@ -2,16 +2,15 @@ use serde_json::json;
 
 use super::*;
 use crate::infer_runtime::tests::{
-    audio_event_detection_response, audio_event_job_snapshot, audio_fixture, json_response, serve,
+    audio_event_detection_response, audio_event_job_snapshot, audio_fixture,
+    candidate4_contract_response, json_response, serve,
 };
 
 #[test]
 fn event_detection_accepts_stable_ids_policy_and_local_job_evidence() {
     let response = audio_event_detection_response("unknown", 0.12);
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract_response(),
         json_response(&response),
         json_response(&audio_event_job_snapshot()),
     ]);
@@ -53,9 +52,7 @@ fn event_detection_rejects_speech_absence_without_full_coverage() {
     response["coverage"]["analyzed_seconds"] = json!(1.0);
     response["coverage"]["ratio"] = json!(0.5);
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract_response(),
         json_response(&response.to_string()),
     ]);
     let source = audio_fixture();
@@ -70,6 +67,33 @@ fn event_detection_rejects_speech_absence_without_full_coverage() {
 
     assert_eq!(error.kind, InferRuntimeErrorKind::Protocol);
     assert_eq!(error.code, "invalid_audio_event_contract");
+    std::fs::remove_file(source).expect("fixture removes");
+    server.join().expect("server exits");
+}
+
+#[test]
+fn event_detection_rejects_job_provenance_from_another_contract() {
+    let response = audio_event_detection_response("unknown", 0.12);
+    let mut job: serde_json::Value =
+        serde_json::from_str(&audio_event_job_snapshot()).expect("job fixture decodes");
+    job["consumer_contract_version"] = json!("0.1.0-obsolete");
+    let (base_url, server) = serve(vec![
+        candidate4_contract_response(),
+        json_response(&response),
+        json_response(&job.to_string()),
+    ]);
+    let source = audio_fixture();
+    let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let error = client
+        .detect_audio_events(&source, &AudioEventDetectionIntent::default())
+        .expect_err("Job provenance must use the negotiated contract");
+
+    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
+    assert_eq!(error.code, "job_contract_mismatch");
     std::fs::remove_file(source).expect("fixture removes");
     server.join().expect("server exits");
 }

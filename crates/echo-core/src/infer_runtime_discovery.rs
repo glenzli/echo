@@ -18,7 +18,7 @@ const DISCOVERY_SCHEMA_VERSION: &str = "20260812.1";
 const SERVICE_KIND: &str = "infer-runtime";
 const DEFAULT_INSTANCE_ID: &str = "local";
 const CONSUMER_PROTOCOL: &str = "infer-runtime.consumer";
-const CONSUMER_PROTOCOL_VERSION: &str = "0.1.0-candidate.3";
+const CONSUMER_PROTOCOL_VERSION: &str = "0.1.0-candidate.4";
 const CONSUMER_BINDING: &str = "infer-runtime.http-loopback";
 const MAX_REGISTRATION_BYTES: u64 = 64 * 1024;
 
@@ -262,7 +262,10 @@ impl Registration {
             offer.validate()?;
             if offer.protocol == CONSUMER_PROTOCOL
                 && offer.binding == CONSUMER_BINDING
-                && offer.protocol_versions.as_slice() == [CONSUMER_PROTOCOL_VERSION]
+                && offer
+                    .protocol_versions
+                    .iter()
+                    .any(|version| version == CONSUMER_PROTOCOL_VERSION)
             {
                 if selected.is_some() {
                     return Err(EndpointError::DiscoveryUnavailable);

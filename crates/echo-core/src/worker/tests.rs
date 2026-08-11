@@ -50,6 +50,7 @@ fn runtime_completion_links_the_local_job_to_sanitized_provenance() {
         contract_version: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
         job: crate::RuntimeJobSnapshot {
             id: "runtime-job-1".to_owned(),
+            consumer_contract_version: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
             app_id: "echo".to_owned(),
             intent: crate::TRANSCRIPTION_INTENT.to_owned(),
             provider: "mlx-audio-local".to_owned(),
@@ -133,7 +134,7 @@ fn audio_event_job_runs_the_runtime_and_publishes_browse_evidence() {
         })
         .expect("fixture writes");
     let (base_url, server) = crate::infer_runtime::tests::serve(vec![
-        crate::infer_runtime::tests::candidate3_contract_response(),
+        crate::infer_runtime::tests::candidate4_contract_response(),
         crate::infer_runtime::tests::json_response(
             &crate::infer_runtime::tests::audio_event_detection_response("absent", 0.02),
         ),

@@ -95,9 +95,13 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 物理模型路由、下载器或驻留进程管理。正式接入采用 Infer Build 已有的
 `audio.transcribe` / `audio.align` 任务接口，不预建没有消费方的第二套调度机制。
 
-正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.3` 合同，以独立、非资源管理员的 Echo
+正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.4` 合同，以独立、非资源管理员的 Echo
 App 身份调用。endpoint 选择顺序固定为显式 `ECHO_INFER_ENDPOINT`／产品设置 override、
 `infra.discovery.registration@20260812.1` 中精确匹配的 `infer-runtime.consumer` loopback offer。
+合同探测与每个 Consumer 请求都显式发送 `Infer-Consumer-Contract`；Runtime 返回精确 c4
+身份后才建立会话，HTTP 426 与 Job 中显式出现的其他协商版本都失败关闭。c4 新增的具名
+Deployment／Model Profile 路由不自动启用，Echo 继续只提交稳定 Intent 与既有本地约束，
+不借协议升级扩大 App ACL、fallback 或 Provider 可见性。
 没有合法 Discovery 且未显式 override 时必须失败，不猜测固定端口。稳定 manifest 不含心跳或
 存活时间戳；Echo 只把
 它视为连接候选，在 generation／offer 变化或连接失败后重新发现，且不修改或删除 Provider manifest。
@@ -118,7 +122,7 @@ local-first／local_only／background／no fallback 约束，再写入分析证�
 自然语言检索继续沿用同一 Echo Consumer 身份，但只增加 `semantic.embed_text` 最小 Intent 权限，
 不获得图片、人脸或资源管理能力。Echo 通过 typed
 `POST /infer/v1/vision/text-embeddings` 获取 768 维、L2 normalized 的文本向量，严格核验
-`0.1.0-candidate.3`、App-scoped Job、local-first／local_only／background／offline／
+`0.1.0-candidate.4`、App-scoped Job、local-first／local_only／background／offline／
 no fallback／零成本约束，以及 provider/deployment/model build 和精确 embedding-space 身份。
 当前能力来自 SigLIP2 的文本塔：它适合在同一跨模态空间内提供 provisional 的文本证据近邻，
 但不是专为通用 text-text 检索优化的 encoder，也不能冒充尚未接入的 CLAP 音频向量。
@@ -268,8 +272,9 @@ InferenceBackend
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
   - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
     导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
-  - 已完成（正式 Runtime 切片，2026-08-09；Discovery 与声音事件迁移 2026-08-11）：Echo 以独立
-    非管理员 App 身份消费 `0.1.0-candidate.3`，并通过 owner-only 稳定 registration 发现本机
+  - 已完成（正式 Runtime 切片，2026-08-09；Discovery 与声音事件迁移 2026-08-11；c4 合同迁移
+    2026-08-12）：Echo 以独立
+    非管理员 App 身份消费 `0.1.0-candidate.4`，并通过 owner-only 稳定 registration 发现本机
     Consumer endpoint；后台队列提交 `audio.transcribe`，非空文字继续 `audio.align`，有效空文字
     改走 `audio.detect_events`。每条路径都读取 App-scoped Job/Attempt，并把合同版本、
     provider/deployment、physical model/build 与稳定错误码写入 Catalog。桌面读取层以最新对齐

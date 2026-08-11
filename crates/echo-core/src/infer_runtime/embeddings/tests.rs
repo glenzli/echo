@@ -6,12 +6,13 @@ use std::{
 
 use serde_json::{Value, json};
 
+use super::super::{CONSUMER_CONTRACT_HEADER, EXPECTED_CONTRACT_VERSION};
 use super::*;
 
 #[test]
 fn text_embedding_requires_local_constraints_and_matching_provenance() {
     let (base_url, server) = serve(vec![
-        candidate3_contract(),
+        candidate4_contract(),
         json_response(&embedding_response("space-v1", 768)),
         json_response(&job_snapshot()),
     ]);
@@ -55,7 +56,7 @@ fn text_embedding_requires_local_constraints_and_matching_provenance() {
 #[test]
 fn text_embedding_rejects_a_wrong_vector_contract() {
     let (base_url, server) = serve(vec![
-        candidate3_contract(),
+        candidate4_contract(),
         json_response(&embedding_response("space-v1", 767)),
     ]);
     let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
@@ -75,9 +76,9 @@ fn text_embedding_rejects_a_wrong_vector_contract() {
     server.join().expect("server exits");
 }
 
-fn candidate3_contract() -> String {
+fn candidate4_contract() -> String {
     json_response(
-        r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-candidate.4"],"capability_scale_version":"20260811.1"}"#,
     )
 }
 
@@ -118,6 +119,7 @@ fn embedding_response(space: &str, dimensions: usize) -> String {
 fn job_snapshot() -> String {
     json!({
         "id": "embed_echo_1",
+        "consumer_contract_version": EXPECTED_CONTRACT_VERSION,
         "app_id": "echo",
         "intent": TEXT_EMBEDDING_INTENT,
         "provider": "onnx-local",
@@ -195,6 +197,12 @@ fn read_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
         }
     };
     let headers = String::from_utf8_lossy(&bytes[..header_end]);
+    assert!(headers.lines().any(|line| {
+        line.split_once(':').is_some_and(|(name, value)| {
+            name.eq_ignore_ascii_case(CONSUMER_CONTRACT_HEADER)
+                && value.trim() == EXPECTED_CONTRACT_VERSION
+        })
+    }));
     let content_length = headers
         .lines()
         .find_map(|line| {

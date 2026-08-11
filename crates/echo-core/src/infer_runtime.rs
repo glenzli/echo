@@ -39,8 +39,9 @@ use crate::{
     infer_runtime_discovery::{EndpointError, EndpointResolver, ResolvedEndpoint},
 };
 
-pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.3";
+pub const EXPECTED_CONTRACT_VERSION: &str = "0.1.0-candidate.4";
 const CAPABILITY_SCALE_VERSION: &str = "20260811.1";
+const CONSUMER_CONTRACT_HEADER: &str = "Infer-Consumer-Contract";
 pub const TRANSCRIPTION_INTENT: &str = "audio.transcribe";
 pub const ALIGNMENT_INTENT: &str = "audio.align";
 pub const MAX_AUDIO_UPLOAD_BYTES: u64 = 25 * 1024 * 1024;
@@ -159,6 +160,11 @@ pub struct RuntimeProvenance {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RuntimeJobSnapshot {
     pub id: String,
+    /// Negotiated revision when the Runtime exposes candidate.4 Job evidence.
+    /// Early candidate.4 deployments may omit it; the enclosing session still
+    /// remains pinned by the explicit request header and contract probe.
+    #[serde(default)]
+    pub consumer_contract_version: String,
     pub app_id: String,
     pub intent: String,
     pub provider: String,
@@ -336,6 +342,7 @@ impl InferRuntimeClient {
         let endpoint = self.resolve_endpoint()?;
         let url = format!("{}/infer/v1/contract", endpoint.origin);
         let response = ureq::get(&url)
+            .header(CONSUMER_CONTRACT_HEADER, EXPECTED_CONTRACT_VERSION)
             .config()
             .timeout_global(Some(Duration::from_secs(3)))
             .proxy(None)
@@ -356,6 +363,20 @@ impl InferRuntimeClient {
             return Err(InferRuntimeError::new(
                 InferRuntimeErrorKind::ContractMismatch,
                 "contract_mismatch",
+                Some(200),
+            ));
+        }
+        if !manifest.supported_contract_versions.is_empty()
+            && manifest
+                .supported_contract_versions
+                .iter()
+                .filter(|version| version.as_str() == EXPECTED_CONTRACT_VERSION)
+                .count()
+                != 1
+        {
+            return Err(InferRuntimeError::new(
+                InferRuntimeErrorKind::ContractMismatch,
+                "contract_support_mismatch",
                 Some(200),
             ));
         }
@@ -513,6 +534,7 @@ impl InferRuntimeClient {
         let url = session.url(&path);
         let response = ureq::get(&url)
             .header("Authorization", self.authorization())
+            .header(CONSUMER_CONTRACT_HEADER, RuntimeSession::contract_version())
             .config()
             .timeout_global(Some(Duration::from_secs(5)))
             .proxy(None)
@@ -542,6 +564,7 @@ impl InferRuntimeClient {
         let url = session.url(path);
         let response = ureq::post(&url)
             .header("Authorization", self.authorization())
+            .header(CONSUMER_CONTRACT_HEADER, RuntimeSession::contract_version())
             .config()
             .timeout_global(Some(Duration::from_mins(30)))
             .proxy(None)
@@ -639,6 +662,15 @@ fn encode_metadata(metadata: &BTreeMap<String, String>) -> Result<String, InferR
 }
 
 fn validate_job_snapshot(job: &RuntimeJobSnapshot) -> Result<(), InferRuntimeError> {
+    if !job.consumer_contract_version.is_empty()
+        && job.consumer_contract_version != EXPECTED_CONTRACT_VERSION
+    {
+        return Err(InferRuntimeError::new(
+            InferRuntimeErrorKind::ContractMismatch,
+            "job_contract_mismatch",
+            Some(200),
+        ));
+    }
     validate_capability_level(&job.capability_level)?;
     if let Some(level) = &job.constraints.capability_floor {
         validate_capability_level(level)?;
@@ -710,6 +742,7 @@ fn checked_json_response(
 
 fn classify_status_and_code(status: u16, code: &str) -> InferRuntimeErrorKind {
     match code {
+        "consumer_contract_unsupported" => InferRuntimeErrorKind::ContractMismatch,
         "invalid_api_key" | "missing_api_key" => InferRuntimeErrorKind::Authentication,
         "cancelled" => InferRuntimeErrorKind::Cancelled,
         "deadline_exceeded" => InferRuntimeErrorKind::Deadline,
@@ -728,6 +761,7 @@ fn status_fallback_code(status: u16) -> &'static str {
         401 => "invalid_api_key",
         404 => "not_found",
         409 => "conflict",
+        426 => "consumer_contract_unsupported",
         429 => "queue_full",
         503 => "provider_unavailable",
         504 => "deadline_exceeded",
@@ -752,6 +786,8 @@ fn validate_succeeded_job(
 #[derive(Debug, Deserialize)]
 struct ContractManifest {
     contract_version: String,
+    #[serde(default)]
+    supported_contract_versions: Vec<String>,
     #[serde(default)]
     capability_scale_version: Option<String>,
 }

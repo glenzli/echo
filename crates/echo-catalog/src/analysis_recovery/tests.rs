@@ -285,7 +285,7 @@ fn install_failed_transcription(
             asset_id,
             intent: "audio.transcribe",
             runtime_job_id: None,
-            contract_version: "0.1.0-candidate.3",
+            contract_version: "0.1.0-candidate.4",
             state: InferenceRunState::Failed,
             http_status: None,
             error_code: Some(error_code),

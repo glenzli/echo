@@ -140,8 +140,8 @@ fn requires_exact_consumer_protocol_version() {
 }
 
 #[test]
-fn requires_the_single_frozen_consumer_protocol_version() {
-    let root = fixture_root("single-version");
+fn selects_candidate4_from_an_exact_version_set() {
+    let root = fixture_root("version-intersection");
     let mut value = registration_value(
         "generation-a",
         "http://127.0.0.1:9111",
@@ -149,6 +149,29 @@ fn requires_the_single_frozen_consumer_protocol_version() {
     );
     value["offers"][0]["protocol_versions"] =
         serde_json::json!([CONSUMER_PROTOCOL_VERSION, "0.1.0-obsolete"]);
+    write_registration_value(&root, &value);
+    let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
+
+    let selection = resolver
+        .resolve()
+        .expect("candidate4 intersection resolves");
+    assert_eq!(
+        selection.protocol_version.as_deref(),
+        Some(CONSUMER_PROTOCOL_VERSION)
+    );
+    std::fs::remove_dir_all(root).expect("fixture removes");
+}
+
+#[test]
+fn rejects_duplicate_consumer_protocol_versions() {
+    let root = fixture_root("duplicate-version");
+    let mut value = registration_value(
+        "generation-a",
+        "http://127.0.0.1:9111",
+        CONSUMER_PROTOCOL_VERSION,
+    );
+    value["offers"][0]["protocol_versions"] =
+        serde_json::json!([CONSUMER_PROTOCOL_VERSION, CONSUMER_PROTOCOL_VERSION]);
     write_registration_value(&root, &value);
     let mut resolver = EndpointResolver::with_runtime_root("", root.clone());
 

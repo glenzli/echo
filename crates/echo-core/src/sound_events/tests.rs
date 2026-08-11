@@ -218,6 +218,7 @@ fn detection() -> AudioEventDetection {
             contract_version: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
             job: crate::RuntimeJobSnapshot {
                 id: "audio_echo_1".to_owned(),
+                consumer_contract_version: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
                 app_id: "echo".to_owned(),
                 intent: crate::AUDIO_EVENT_DETECTION_INTENT.to_owned(),
                 provider: "yamnet-local".to_owned(),

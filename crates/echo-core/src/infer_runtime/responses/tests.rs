@@ -6,6 +6,7 @@ use std::{
 
 use serde_json::{Value, json};
 
+use super::super::{CONSUMER_CONTRACT_HEADER, EXPECTED_CONTRACT_VERSION};
 use super::*;
 
 #[test]
@@ -33,9 +34,7 @@ fn contextual_response_requires_explicit_local_constraints_and_job_evidence() {
     })
     .to_string();
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract(),
         json_response(&response_body),
         json_response(&job_snapshot("initial")),
     ]);
@@ -101,9 +100,7 @@ fn contextual_response_rejects_fallback_attempt_evidence() {
     })
     .to_string();
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract(),
         json_response(&response_body),
         json_response(&job_snapshot("fallback")),
     ]);
@@ -124,6 +121,7 @@ fn contextual_response_rejects_fallback_attempt_evidence() {
 fn job_snapshot(trigger: &str) -> String {
     json!({
         "id": "resp_echo_context",
+        "consumer_contract_version": EXPECTED_CONTRACT_VERSION,
         "app_id": "echo",
         "intent": CONTEXTUAL_INTENT,
         "provider": "ollama-local",
@@ -173,6 +171,12 @@ fn job_snapshot(trigger: &str) -> String {
     .to_string()
 }
 
+fn candidate4_contract() -> String {
+    json_response(
+        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-candidate.4"],"capability_scale_version":"20260811.1"}"#,
+    )
+}
+
 fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<Vec<Vec<u8>>>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("test listener binds");
     let address = listener.local_addr().expect("address is known");
@@ -202,6 +206,12 @@ fn read_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
         }
     };
     let headers = String::from_utf8_lossy(&bytes[..header_end]);
+    assert!(headers.lines().any(|line| {
+        line.split_once(':').is_some_and(|(name, value)| {
+            name.eq_ignore_ascii_case(CONSUMER_CONTRACT_HEADER)
+                && value.trim() == EXPECTED_CONTRACT_VERSION
+        })
+    }));
     let content_length = headers
         .lines()
         .find_map(|line| {

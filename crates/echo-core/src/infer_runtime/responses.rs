@@ -103,6 +103,10 @@ impl InferRuntimeClient {
         let url = session.url("/v1/responses");
         let response = ureq::post(&url)
             .header("Authorization", self.authorization())
+            .header(
+                super::CONSUMER_CONTRACT_HEADER,
+                RuntimeSession::contract_version(),
+            )
             .config()
             .timeout_global(Some(Duration::from_mins(30)))
             .proxy(None)

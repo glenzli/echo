@@ -407,9 +407,10 @@ fn alignment_refines_matching_segment_boundaries_without_mutating_text() {
             { "text": "界", "start": 1.12, "end": 1.44 }
         ],
         "runtime": {
-            "contract_version": "0.1.0-candidate.3",
+            "contract_version": "0.1.0-candidate.4",
             "job": {
-                "id": "align-1", "app_id": "echo", "intent": "audio.align",
+                "id": "align-1", "consumer_contract_version": "0.1.0-candidate.4",
+                "app_id": "echo", "intent": "audio.align",
                 "provider": "mlx-audio-local", "deployment": "aligner",
                 "model_profile": "aligner", "model_build": "build",
                 "physical_model": "Qwen3-ForcedAligner", "placement": "local",

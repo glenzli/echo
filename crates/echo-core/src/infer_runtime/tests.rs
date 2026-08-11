@@ -12,14 +12,12 @@ use super::*;
 #[test]
 fn transcription_requires_contract_and_job_provenance() {
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract_response(),
         json_response(
             r#"{"id":"job-echo-1","model":"audio.transcribe","language":"zh","text":"你好","segments":[{"text":"你好","start_time":0.1,"end_time":0.8,"words":[{"text":"你好","start_time":0.1,"end_time":0.8}]}]}"#,
         ),
         json_response(
-            r#"{"id":"job-echo-1","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
+            r#"{"id":"job-echo-1","consumer_contract_version":"0.1.0-candidate.4","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
         ),
     ]);
     let source = audio_fixture();
@@ -45,11 +43,9 @@ fn transcription_requires_contract_and_job_provenance() {
 }
 
 #[test]
-fn transcription_accepts_null_segments_from_runtime() {
+fn transcription_accepts_null_segments_from_early_candidate4_runtime() {
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract_response(),
         json_response(
             r#"{"id":"job-echo-null-segments","model":"audio.transcribe","language":"zh","text":"fixture text","segments":null,"usage":{"total_tokens":1}}"#,
         ),
@@ -81,14 +77,12 @@ fn transcription_accepts_null_segments_from_runtime() {
 #[test]
 fn transcription_keeps_recognized_items_from_openapi_extensions() {
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract_response(),
         json_response(
             r#"{"id":"job-echo-extension","model":"audio.transcribe","language":{"label":"Chinese"},"text":"fixture text","segments":[{"text":"provider-specific untimed item"},{"text":"timed fixture","start":0.2,"end":0.9}],"usage":{"total_tokens":1}}"#,
         ),
         json_response(
-            r#"{"id":"job-echo-extension","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
+            r#"{"id":"job-echo-extension","consumer_contract_version":"0.1.0-candidate.4","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
         ),
     ]);
     let source = audio_fixture();
@@ -112,9 +106,7 @@ fn transcription_keeps_recognized_items_from_openapi_extensions() {
 #[test]
 fn stable_runtime_error_ignores_provider_message() {
     let (base_url, server) = serve(vec![
-        json_response(
-            r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
-        ),
+        candidate4_contract_response(),
         response(
             "503 Service Unavailable",
             r#"{"error":{"code":"provider_unavailable","message":"sensitive provider detail"}}"#,
@@ -161,9 +153,9 @@ fn contract_redirect_is_not_followed() {
 }
 
 #[test]
-fn candidate3_requires_the_frozen_capability_scale() {
+fn candidate4_requires_the_frozen_capability_scale() {
     let (base_url, server) = serve(vec![json_response(
-        r#"{"contract_version":"0.1.0-candidate.3"}"#,
+        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-candidate.4"]}"#,
     )]);
     let client = InferRuntimeClient::new(InferRuntimeConfig {
         base_url,
@@ -172,10 +164,66 @@ fn candidate3_requires_the_frozen_capability_scale() {
 
     let error = client
         .contract_version()
-        .expect_err("candidate3 without its capability scale is rejected");
+        .expect_err("candidate4 without its capability scale is rejected");
 
     assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
     assert_eq!(error.code, "capability_scale_mismatch");
+    server.join().expect("server exits after one request");
+}
+
+#[test]
+fn candidate4_accepts_an_exact_negotiation_without_the_optional_supported_set() {
+    let (base_url, server) = serve(vec![json_response(
+        r#"{"contract_version":"0.1.0-candidate.4","capability_scale_version":"20260811.1"}"#,
+    )]);
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    assert_eq!(
+        client.contract_version().as_deref(),
+        Ok(EXPECTED_CONTRACT_VERSION)
+    );
+    server.join().expect("server exits after one request");
+}
+
+#[test]
+fn candidate4_requires_the_negotiated_version_in_the_supported_set() {
+    let (base_url, server) = serve(vec![json_response(
+        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-obsolete"],"capability_scale_version":"20260811.1"}"#,
+    )]);
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let error = client
+        .contract_version()
+        .expect_err("the negotiated version must be advertised exactly once");
+
+    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
+    assert_eq!(error.code, "contract_support_mismatch");
+    server.join().expect("server exits after one request");
+}
+
+#[test]
+fn unsupported_consumer_contract_is_a_contract_mismatch() {
+    let (base_url, server) = serve(vec![response(
+        "426 Upgrade Required",
+        r#"{"error":{"code":"consumer_contract_unsupported","message":"unsupported"}}"#,
+    )]);
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url,
+        bearer_token: "test-consumer-token".to_owned(),
+    });
+
+    let error = client
+        .contract_version()
+        .expect_err("unsupported negotiation fails closed");
+
+    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
+    assert_eq!(error.code, "consumer_contract_unsupported");
     server.join().expect("server exits after one request");
 }
 
@@ -225,6 +273,12 @@ fn read_request(stream: &mut std::net::TcpStream) {
         }
     };
     let headers = String::from_utf8_lossy(&bytes[..header_end]);
+    assert!(headers.lines().any(|line| {
+        line.split_once(':').is_some_and(|(name, value)| {
+            name.eq_ignore_ascii_case(CONSUMER_CONTRACT_HEADER)
+                && value.trim() == EXPECTED_CONTRACT_VERSION
+        })
+    }));
     let content_length = headers
         .lines()
         .find_map(|line| {
@@ -244,9 +298,9 @@ pub(crate) fn json_response(body: &str) -> String {
     response("200 OK", body)
 }
 
-pub(crate) fn candidate3_contract_response() -> String {
+pub(crate) fn candidate4_contract_response() -> String {
     json_response(
-        r#"{"contract_version":"0.1.0-candidate.3","capability_scale_version":"20260811.1"}"#,
+        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-candidate.4"],"capability_scale_version":"20260811.1"}"#,
     )
 }
 
@@ -336,6 +390,7 @@ pub(crate) fn audio_event_detection_response(speech_status: &str, speech_score: 
 pub(crate) fn audio_event_job_snapshot() -> String {
     json!({
         "id": "audio_echo_1",
+        "consumer_contract_version": EXPECTED_CONTRACT_VERSION,
         "app_id": "echo",
         "intent": AUDIO_EVENT_DETECTION_INTENT,
         "provider": "yamnet-local",

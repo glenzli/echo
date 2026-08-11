@@ -120,6 +120,10 @@ impl InferRuntimeClient {
         let url = session.url("/infer/v1/vision/text-embeddings");
         let response = ureq::post(&url)
             .header("Authorization", self.authorization())
+            .header(
+                super::CONSUMER_CONTRACT_HEADER,
+                RuntimeSession::contract_version(),
+            )
             .config()
             .timeout_global(Some(Duration::from_mins(5)))
             .proxy(None)
