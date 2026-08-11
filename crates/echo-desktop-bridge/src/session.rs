@@ -4,11 +4,12 @@
 mod processing_recipe;
 
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use echo_catalog::{AssetLookup, Catalog, find_by_id, list_assets, open_catalog, query_analysis};
+use echo_catalog::{AssetLookup, Catalog, find_by_id, open_catalog, query_analysis};
 use echo_core::load_or_build_waveform;
 use echo_domain::AssetId;
 
@@ -44,13 +45,18 @@ fn metadata_entry_containing(
         .map_or_else(String::new, |entry| entry.value.clone())
 }
 
-const fn job_state_text(state: echo_catalog::JobState) -> &'static str {
-    match state {
-        echo_catalog::JobState::Pending => "pending",
-        echo_catalog::JobState::Running => "running",
-        echo_catalog::JobState::Done => "done",
-        echo_catalog::JobState::Failed => "failed",
-        echo_catalog::JobState::Cancelled => "cancelled",
+fn analysis_status_wire(status: echo_catalog::AssetAnalysisStatus) -> AnalysisStatusWire {
+    let state = status.state_str().to_owned();
+    AnalysisStatusWire {
+        asset_id: status.asset_id.to_string(),
+        stage: status.stage.as_str().to_owned(),
+        state,
+        recovery: status.recovery.as_str().to_owned(),
+        progress: status.progress,
+        attempts: status.attempts,
+        error_code: status.error_code.unwrap_or_default(),
+        runtime_job_id: status.runtime_job_id.unwrap_or_default(),
+        contract_version: status.contract_version,
     }
 }
 
@@ -682,12 +688,44 @@ fn transcript_language(value: Option<&serde_json::Value>) -> String {
         .unwrap_or_default()
 }
 
-fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire {
+struct AnalysisWireFields {
+    stage: String,
+    state: String,
+    recovery: String,
+    error_code: String,
+    progress: u8,
+    attempts: u32,
+}
+
+fn analysis_wire_fields(status: Option<&echo_catalog::AssetAnalysisStatus>) -> AnalysisWireFields {
+    AnalysisWireFields {
+        stage: status.map_or_else(String::new, |value| value.stage.as_str().to_owned()),
+        state: status.map_or_else(
+            || "missing".to_owned(),
+            |value| value.state_str().to_owned(),
+        ),
+        recovery: status.map_or_else(
+            || "none".to_owned(),
+            |value| value.recovery.as_str().to_owned(),
+        ),
+        error_code: status
+            .and_then(|value| value.error_code.clone())
+            .unwrap_or_default(),
+        progress: status.map_or(0, |value| value.progress),
+        attempts: status.map_or(0, |value| value.attempts),
+    }
+}
+
+fn asset_summary_wire(
+    asset: echo_catalog::AudioSpaceAsset,
+    analysis: Option<&echo_catalog::AssetAnalysisStatus>,
+) -> AssetSummaryWire {
     let adjustment = adjustment_wire_fields(asset.adjustment, asset.duration_millis);
     let (sound_caption, summary) = contextual_preview(asset.contextual.as_ref());
     let text_preview = transcript_preview(asset.transcript.as_ref());
     let language = transcript_language(asset.transcript.as_ref());
     let source_metadata = source_metadata_wire_fields(asset.source_metadata.as_ref());
+    let analysis = analysis_wire_fields(analysis);
     AssetSummaryWire {
         id: asset.id,
         path: asset.path.to_string_lossy().into_owned(),
@@ -704,6 +742,12 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         keywords: asset.contextual_keywords,
         text_preview,
         language,
+        analysis_stage: analysis.stage,
+        analysis_state: analysis.state,
+        analysis_recovery: analysis.recovery,
+        analysis_error_code: analysis.error_code,
+        analysis_progress: analysis.progress,
+        analysis_attempts: analysis.attempts,
         liked: asset.liked,
         rating: asset.rating,
         adjustment_revision: adjustment.revision,
@@ -835,19 +879,31 @@ impl LibrarySession {
     ///
     /// Returns [`SessionError`] when the catalog read fails.
     pub fn list_assets(&self) -> Result<Vec<AssetSummaryWire>, SessionError> {
-        let _ = self
+        let (projection, statuses) = self
             .catalog
-            .with_transaction(list_assets)
-            .map_err(|error| SessionError {
-                message: error.to_string(),
-            })?;
-        let projection = self
-            .catalog
-            .with_transaction(echo_catalog::list_audio_space)
-            .map_err(|error| SessionError {
-                message: error.to_string(),
-            })?;
-        Ok(projection.into_iter().map(asset_summary_wire).collect())
+            .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
+                Ok((
+                    echo_catalog::list_audio_space(transaction)?,
+                    echo_catalog::list_asset_analysis_statuses(
+                        transaction,
+                        echo_core::CONTEXTUAL_SCHEMA_VERSION,
+                        echo_core::CONTEXTUAL_JOB_REVISION,
+                        echo_core::LONG_AUDIO_PLAN_VERSION,
+                    )?,
+                ))
+            })
+            .map_err(SessionError::from)?;
+        let mut statuses = statuses
+            .into_iter()
+            .map(|status| (status.asset_id.to_string(), status))
+            .collect::<HashMap<_, _>>();
+        Ok(projection
+            .into_iter()
+            .map(|asset| {
+                let status = statuses.remove(&asset.id);
+                asset_summary_wire(asset, status.as_ref())
+            })
+            .collect())
     }
 
     /// Lists contextual keyword facets using the Catalog's latest-evidence
@@ -1258,87 +1314,28 @@ impl LibrarySession {
         let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
             message: format!("invalid asset id {asset_id}: {error}"),
         })?;
-        self.catalog.with_transaction(|transaction| {
-            let records = query_analysis(transaction, asset_id).map_err(|error| SessionError {
-                message: error.to_string(),
-            })?;
-            let has_transcript = records
-                .iter()
-                .any(|record| record.kind == echo_domain::AnalysisKind::Transcript);
-            let latest_transcript_is_empty = records
-                .iter()
-                .find(|record| record.kind == echo_domain::AnalysisKind::Transcript)
-                .and_then(|record| {
-                    serde_json::from_value::<echo_core::TranscriptPayload>(record.value.clone())
-                        .ok()
-                })
-                .is_some_and(|payload| payload.text.trim().is_empty());
-            let has_alignment = records
-                .iter()
-                .any(|record| record.kind == echo_domain::AnalysisKind::Alignment);
-            let has_current_contextual = records
-                .iter()
-                .find(|record| record.kind == echo_domain::AnalysisKind::Contextual)
-                .and_then(|record| {
-                    serde_json::from_value::<echo_core::ContextualPayload>(record.value.clone())
-                        .ok()
-                })
-                .is_some_and(|payload| payload.is_current());
-            let has_long_audio_plan = !echo_catalog::list_long_audio_segments(
-                transaction,
-                asset_id,
-                echo_core::LONG_AUDIO_PLAN_VERSION,
-            )?
-            .is_empty();
-            let contextual_job_id = echo_core::contextual_job_id(asset_id);
-            let (stage, job_id) = if has_long_audio_plan {
-                (
-                    if has_current_contextual || latest_transcript_is_empty {
-                        "complete"
-                    } else {
-                        "long_audio"
-                    },
-                    format!("transcribe-{asset_id}"),
-                )
-            } else if latest_transcript_is_empty {
-                ("complete", format!("align-{asset_id}"))
-            } else if has_current_contextual {
-                ("complete", contextual_job_id.clone())
-            } else if has_alignment {
-                ("contextual", contextual_job_id)
-            } else if has_transcript {
-                ("alignment", format!("align-{asset_id}"))
-            } else {
-                ("text", format!("transcribe-{asset_id}"))
-            };
-            let job = echo_catalog::job_by_id(transaction, &job_id)?;
-            let run = echo_catalog::inference_run(transaction, &job_id)?;
-            Ok(AnalysisStatusWire {
-                stage: stage.to_owned(),
-                state: job.as_ref().map_or_else(
-                    || {
-                        if has_current_contextual || latest_transcript_is_empty {
-                            "done"
-                        } else {
-                            "missing"
-                        }
-                        .to_owned()
-                    },
-                    |job| job_state_text(job.state).to_owned(),
-                ),
-                error_code: run
-                    .as_ref()
-                    .and_then(|run| run.error_code.clone())
-                    .unwrap_or_default(),
-                runtime_job_id: run
-                    .as_ref()
-                    .and_then(|run| run.runtime_job_id.clone())
-                    .unwrap_or_default(),
-                contract_version: run
-                    .as_ref()
-                    .map_or_else(String::new, |run| run.contract_version.clone()),
+        self.analysis_statuses()?
+            .into_iter()
+            .find(|status| status.asset_id == asset_id.to_string())
+            .ok_or_else(|| SessionError {
+                message: format!("analysis status is unavailable for {asset_id}"),
             })
-        })
+    }
+
+    /// Returns payload-free stage and recovery state for every asset.
+    pub fn analysis_statuses(&self) -> Result<Vec<AnalysisStatusWire>, SessionError> {
+        let statuses = self
+            .catalog
+            .with_transaction(|transaction| {
+                echo_catalog::list_asset_analysis_statuses(
+                    transaction,
+                    echo_core::CONTEXTUAL_SCHEMA_VERSION,
+                    echo_core::CONTEXTUAL_JOB_REVISION,
+                    echo_core::LONG_AUDIO_PLAN_VERSION,
+                )
+            })
+            .map_err(SessionError::from)?;
+        Ok(statuses.into_iter().map(analysis_status_wire).collect())
     }
 
     /// Requeues the failed product analysis stage for one asset.
@@ -1347,19 +1344,29 @@ impl LibrarySession {
     ///
     /// Returns [`SessionError`] when no failed stage can be retried.
     pub fn retry_analysis(&self, asset_id: &str) -> Result<(), SessionError> {
-        let status = self.analysis_status(asset_id)?;
         let id = AssetId::from_str(asset_id).map_err(|error| SessionError {
             message: format!("invalid asset id {asset_id}: {error}"),
         })?;
-        let job_id = match status.stage.as_str() {
-            "contextual" => echo_core::contextual_job_id(id),
-            "alignment" => format!("align-{id}"),
-            _ => format!("transcribe-{id}"),
-        };
+        let status = self
+            .catalog
+            .with_transaction(|transaction| {
+                echo_catalog::list_asset_analysis_statuses(
+                    transaction,
+                    echo_core::CONTEXTUAL_SCHEMA_VERSION,
+                    echo_core::CONTEXTUAL_JOB_REVISION,
+                    echo_core::LONG_AUDIO_PLAN_VERSION,
+                )
+            })
+            .map_err(SessionError::from)?
+            .into_iter()
+            .find(|status| status.asset_id == id)
+            .ok_or_else(|| SessionError {
+                message: format!("analysis status is unavailable for {id}"),
+            })?;
         let retried = self
             .catalog
             .with_transaction(|transaction| {
-                echo_catalog::retry_job(transaction, &job_id, now_millis())
+                echo_catalog::retry_job(transaction, &status.job_id, now_millis())
             })
             .map_err(SessionError::from)?;
         if retried {
@@ -1369,6 +1376,21 @@ impl LibrarySession {
                 message: "analysis stage is not failed or cancelled".to_owned(),
             })
         }
+    }
+
+    /// Requeues all current manually recoverable stages with present sources.
+    pub fn retry_failed_analysis(&self) -> Result<u64, SessionError> {
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::requeue_manual_analysis(
+                    transaction,
+                    echo_core::CONTEXTUAL_SCHEMA_VERSION,
+                    echo_core::CONTEXTUAL_JOB_REVISION,
+                    echo_core::LONG_AUDIO_PLAN_VERSION,
+                    now_millis(),
+                )
+            })
+            .map_err(SessionError::from)
     }
 
     /// Queues scans for every enabled root (incremental detection).

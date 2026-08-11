@@ -16,8 +16,13 @@ Rectangle {
     property string loadedPath: ""
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
+    readonly property string analysisStage: hasAsset ? String(asset.analysisStage || "text") : "text"
+    readonly property string analysisState: hasAsset ? String(asset.analysisState || "missing") : "missing"
+    readonly property string analysisRecovery: hasAsset ? String(asset.analysisRecovery || "none") : "none"
+    readonly property int analysisProgress: hasAsset ? Number(asset.analysisProgress || 0) : 0
 
     signal affinityRequested(var asset, bool liked, int rating)
+    signal retryAnalysisRequested(var asset)
 
     color: Theme.panelRaised
 
@@ -102,6 +107,40 @@ Rectangle {
             values.push(String(asset.keywords[index]));
         }
         return values;
+    }
+
+    function analysisStageLabel(): string {
+        if (!asset)
+            return "";
+        if (analysisStage === "text")
+            return qsTr("Text extraction");
+        if (analysisStage === "sound_events")
+            return qsTr("Sound event detection");
+        if (analysisStage === "alignment")
+            return qsTr("Speech alignment");
+        if (analysisStage === "contextual")
+            return qsTr("Context understanding");
+        if (analysisStage === "long_audio")
+            return qsTr("Long recording analysis");
+        return qsTr("Analysis complete");
+    }
+
+    function analysisMessage(): string {
+        if (!asset)
+            return "";
+        if (analysisRecovery === "source")
+            return qsTr("Reconnect the Original before retrying analysis.");
+        if (analysisRecovery === "automatic")
+            return qsTr("Echo will resume this automatically when Infer Runtime is available.");
+        if (analysisRecovery === "manual")
+            return qsTr("This stage requires a manual retry. Completed stages are preserved.");
+        if (analysisState === "running")
+            return qsTr("Echo is analyzing this sound in the background.");
+        if (analysisState === "pending" || analysisState === "missing")
+            return qsTr("This sound is waiting in the background analysis queue.");
+        if (analysisStage === "sound_events")
+            return qsTr("No speech was detected; Echo is identifying audible events.");
+        return qsTr("The current analysis pipeline is complete.");
     }
 
     onAssetChanged: Qt.callLater(refresh)
@@ -476,12 +515,64 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
-                    visible: inspector.hasAsset && (inspector.asset.textPreview.length > 0 || inspector.jobStats.pending > 0 || inspector.jobStats.running > 0)
+                    visible: inspector.hasAsset && inspector.analysisState !== "done"
+                    title: qsTr("ANALYSIS")
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 7
+
+                            EchoIcon {
+                                source: inspector.analysisRecovery === "source" ? "qrc:/EchoDesktop/icons/source-missing.svg" : inspector.analysisRecovery === "manual" ? "qrc:/EchoDesktop/icons/refresh.svg" : inspector.analysisState === "running" ? "qrc:/EchoDesktop/icons/sparkles.svg" : "qrc:/EchoDesktop/icons/clock.svg"
+                                color: inspector.analysisRecovery === "source" || inspector.analysisRecovery === "manual" ? Theme.warningText : inspector.analysisState === "running" || inspector.analysisRecovery === "automatic" ? Theme.accent : Theme.textMuted
+                                size: 15
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: inspector.analysisStageLabel()
+                                color: Theme.textPrimary
+                                font.pixelSize: Theme.fontBody
+                            }
+
+                            Text {
+                                visible: inspector.analysisState === "running" && inspector.analysisProgress > 0
+                                text: inspector.analysisProgress + "%"
+                                color: Theme.textSecondary
+                                font.pixelSize: Theme.fontMeta
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: inspector.analysisMessage()
+                            color: inspector.analysisRecovery === "manual" || inspector.analysisRecovery === "source" ? Theme.warningText : Theme.textSecondary
+                            font.pixelSize: Theme.fontMeta
+                            lineHeight: 1.3
+                            wrapMode: Text.WordWrap
+                        }
+
+                        EchoButton {
+                            visible: inspector.analysisRecovery === "manual"
+                            text: qsTr("Retry analysis")
+                            ghost: true
+                            onClicked: inspector.retryAnalysisRequested(inspector.asset)
+                        }
+                    }
+                }
+
+                InspectorSection {
+                    Layout.fillWidth: true
+                    visible: inspector.hasAsset && (inspector.asset.textPreview.length > 0 || inspector.analysisStage === "text" && inspector.analysisState !== "done")
                     title: qsTr("TEXT")
 
                     Text {
                         Layout.fillWidth: true
-                        text: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? inspector.asset.textPreview : inspector.jobStats.pending > 0 || inspector.jobStats.running > 0 ? qsTr("Echo is extracting text in the background…") : qsTr("No text has been extracted from this sound yet.")
+                        text: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? inspector.asset.textPreview : inspector.analysisState === "pending" || inspector.analysisState === "running" ? qsTr("Echo is extracting text in the background…") : qsTr("No text has been extracted from this sound yet.")
                         color: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? Theme.textPrimary : Theme.textDisabled
                         font.pixelSize: Theme.fontBody
                         lineHeight: 1.35

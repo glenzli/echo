@@ -103,35 +103,3 @@ fn runtime_projection_replaces_submission_with_auditable_completion() {
 
     let _ = std::fs::remove_dir_all(root);
 }
-
-#[test]
-fn recoverable_runtime_failure_requeues_on_process_start() {
-    let (root, catalog, asset_id) = fixture("echo-inference-recovery", 9, "transcribe-retry");
-    catalog
-        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
-            crate::fail_job(transaction, "transcribe-retry", "safe local failure", 5)?;
-            upsert_inference_run(
-                transaction,
-                &UpsertInferenceRun {
-                    local_job_id: "transcribe-retry",
-                    asset_id,
-                    intent: "audio.transcribe",
-                    runtime_job_id: None,
-                    contract_version: "0.1.0-candidate.1",
-                    state: InferenceRunState::Failed,
-                    http_status: None,
-                    error_code: Some("runtime_unavailable"),
-                    snapshot: None,
-                    updated_at_millis: 5,
-                },
-            )?;
-            requeue_recoverable_inference_runs(transaction, false, 6)
-        })
-        .expect("recoverable run requeues");
-    let job = catalog
-        .with_transaction(|transaction| crate::job_by_id(transaction, "transcribe-retry"))
-        .expect("job reads")
-        .expect("job exists");
-    assert_eq!(job.state, crate::JobState::Pending);
-    let _ = std::fs::remove_dir_all(root);
-}

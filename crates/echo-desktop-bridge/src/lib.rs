@@ -62,6 +62,12 @@ mod ffi {
         keywords: Vec<String>,
         text_preview: String,
         language: String,
+        analysis_stage: String,
+        analysis_state: String,
+        analysis_recovery: String,
+        analysis_error_code: String,
+        analysis_progress: u8,
+        analysis_attempts: u32,
         liked: bool,
         rating: u8,
         adjustment_revision: i64,
@@ -374,8 +380,12 @@ mod ffi {
     /// Per-asset projection of Echo's local stage and Runtime linkage.
     #[derive(Debug)]
     struct AnalysisStatusWire {
+        asset_id: String,
         stage: String,
         state: String,
+        recovery: String,
+        progress: u8,
+        attempts: u32,
         error_code: String,
         runtime_job_id: String,
         contract_version: String,
@@ -540,8 +550,12 @@ mod ffi {
             self: &LibrarySession,
             asset_id: &str,
         ) -> Result<AnalysisStatusWire>;
+        /// Returns lightweight analysis status for every Library asset.
+        fn session_analysis_statuses(self: &LibrarySession) -> Result<Vec<AnalysisStatusWire>>;
         /// Requeues the failed analysis stage for one asset.
         fn session_retry_analysis(self: &LibrarySession, asset_id: &str) -> Result<()>;
+        /// Requeues every current failed stage that requires manual recovery.
+        fn session_retry_failed_analysis(self: &LibrarySession) -> Result<u64>;
         /// Queues scans for every enabled root (incremental detection).
         fn session_queue_scans(self: &LibrarySession) -> Result<u64>;
         /// Reads aggregate job statistics.
@@ -852,9 +866,19 @@ impl LibrarySession {
             .map_err(|error| error.message)
     }
 
+    /// Returns lightweight analysis state for Library cards and filters.
+    fn session_analysis_statuses(&self) -> Result<Vec<ffi::AnalysisStatusWire>, String> {
+        self.analysis_statuses().map_err(|error| error.message)
+    }
+
     /// Requeues the failed analysis stage for one asset.
     fn session_retry_analysis(&self, asset_id: &str) -> Result<(), String> {
         self.retry_analysis(asset_id).map_err(|error| error.message)
+    }
+
+    /// Requeues current manually recoverable analysis stages.
+    fn session_retry_failed_analysis(&self) -> Result<u64, String> {
+        self.retry_failed_analysis().map_err(|error| error.message)
     }
 
     /// Queues scans for every enabled root (incremental detection).

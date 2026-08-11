@@ -236,6 +236,35 @@ bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8
     return !destination.empty();
 }
 
+QVariantMap analysisStatusForQml(const echo::desktop::AnalysisStatusWire& wire) {
+    QVariantMap status;
+    status.insert(
+        QStringLiteral("assetId"),
+        QString::fromUtf8(wire.asset_id.data(), wire.asset_id.size())
+    );
+    status.insert(QStringLiteral("stage"), QString::fromUtf8(wire.stage.data(), wire.stage.size()));
+    status.insert(QStringLiteral("state"), QString::fromUtf8(wire.state.data(), wire.state.size()));
+    status.insert(
+        QStringLiteral("recovery"),
+        QString::fromUtf8(wire.recovery.data(), wire.recovery.size())
+    );
+    status.insert(QStringLiteral("progress"), static_cast<int>(wire.progress));
+    status.insert(QStringLiteral("attempts"), static_cast<quint32>(wire.attempts));
+    status.insert(
+        QStringLiteral("errorCode"),
+        QString::fromUtf8(wire.error_code.data(), wire.error_code.size())
+    );
+    status.insert(
+        QStringLiteral("runtimeJobId"),
+        QString::fromUtf8(wire.runtime_job_id.data(), wire.runtime_job_id.size())
+    );
+    status.insert(
+        QStringLiteral("contractVersion"),
+        QString::fromUtf8(wire.contract_version.data(), wire.contract_version.size())
+    );
+    return status;
+}
+
 } // namespace
 
 DesktopBackend::DesktopBackend(rust::Box<echo::desktop::LibrarySession> session, QObject* parent) :
@@ -299,6 +328,27 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(
             QStringLiteral("language"),
             QString::fromUtf8(asset.language.data(), asset.language.size())
+        );
+        entry.insert(
+            QStringLiteral("analysisStage"),
+            QString::fromUtf8(asset.analysis_stage.data(), asset.analysis_stage.size())
+        );
+        entry.insert(
+            QStringLiteral("analysisState"),
+            QString::fromUtf8(asset.analysis_state.data(), asset.analysis_state.size())
+        );
+        entry.insert(
+            QStringLiteral("analysisRecovery"),
+            QString::fromUtf8(asset.analysis_recovery.data(), asset.analysis_recovery.size())
+        );
+        entry.insert(
+            QStringLiteral("analysisErrorCode"),
+            QString::fromUtf8(asset.analysis_error_code.data(), asset.analysis_error_code.size())
+        );
+        entry.insert(QStringLiteral("analysisProgress"), static_cast<int>(asset.analysis_progress));
+        entry.insert(
+            QStringLiteral("analysisAttempts"),
+            static_cast<quint32>(asset.analysis_attempts)
         );
         entry.insert(QStringLiteral("liked"), asset.liked);
         entry.insert(QStringLiteral("rating"), static_cast<int>(asset.rating));
@@ -1309,33 +1359,25 @@ void DesktopBackend::startWorkers(const QString& runtimeEndpoint) {
 }
 
 QVariantMap DesktopBackend::analysisStatusForAsset(const QString& id) const {
-    QVariantMap status;
     try {
-        const auto wire = session_->session_analysis_status(id.toStdString());
-        status.insert(
-            QStringLiteral("stage"),
-            QString::fromUtf8(wire.stage.data(), wire.stage.size())
-        );
-        status.insert(
-            QStringLiteral("state"),
-            QString::fromUtf8(wire.state.data(), wire.state.size())
-        );
-        status.insert(
-            QStringLiteral("errorCode"),
-            QString::fromUtf8(wire.error_code.data(), wire.error_code.size())
-        );
-        status.insert(
-            QStringLiteral("runtimeJobId"),
-            QString::fromUtf8(wire.runtime_job_id.data(), wire.runtime_job_id.size())
-        );
-        status.insert(
-            QStringLiteral("contractVersion"),
-            QString::fromUtf8(wire.contract_version.data(), wire.contract_version.size())
-        );
+        return analysisStatusForQml(session_->session_analysis_status(id.toStdString()));
     } catch (const rust::Error& error) {
         qWarning("cannot read analysis status for %s: %s", qPrintable(id), error.what());
     }
-    return status;
+    return {};
+}
+
+QVariantList DesktopBackend::analysisStatuses() const {
+    QVariantList statuses;
+    try {
+        const auto wires = session_->session_analysis_statuses();
+        for (const auto& wire : wires) {
+            statuses.append(analysisStatusForQml(wire));
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot read analysis statuses: %s", error.what());
+    }
+    return statuses;
 }
 
 bool DesktopBackend::retryAnalysis(const QString& id) {
@@ -1346,6 +1388,17 @@ bool DesktopBackend::retryAnalysis(const QString& id) {
     } catch (const rust::Error& error) {
         qWarning("cannot retry analysis for %s: %s", qPrintable(id), error.what());
         return false;
+    }
+}
+
+qulonglong DesktopBackend::retryFailedAnalysis() {
+    try {
+        const auto retried = session_->session_retry_failed_analysis();
+        emit jobsChanged();
+        return retried;
+    } catch (const rust::Error& error) {
+        qWarning("cannot retry failed analysis: %s", error.what());
+        return 0;
     }
 }
 

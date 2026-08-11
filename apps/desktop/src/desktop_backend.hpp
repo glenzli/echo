@@ -123,7 +123,9 @@ class DesktopBackend : public QObject {
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;
+    Q_INVOKABLE QVariantList analysisStatuses() const;
     Q_INVOKABLE bool retryAnalysis(const QString& id);
+    Q_INVOKABLE qulonglong retryFailedAnalysis();
     void startWorkers(const QString& runtimeEndpoint);
     Q_INVOKABLE void queueScans();
     Q_INVOKABLE QVariantMap jobStats() const;

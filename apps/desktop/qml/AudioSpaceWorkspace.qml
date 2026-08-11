@@ -19,6 +19,7 @@ Item {
     property bool likedOnly: false
     property int minimumRating: 0
     property bool speechOnly: false
+    property string analysisFilter: "all"
     property var allAssets: []
     property var filteredAssets: []
     property var processingRecipes: []
@@ -36,6 +37,9 @@ Item {
 
     readonly property int visibleAssetCount: filteredAssets.length
     readonly property string cardDensity: preferredCardWidth <= 205 ? "overview" : preferredCardWidth <= 330 ? "browse" : "rich"
+    readonly property int incompleteAnalysisCount: allAssets.filter(asset => asset.analysisState !== "done").length
+    readonly property int failedAnalysisCount: allAssets.filter(asset => asset.analysisState === "failed" || asset.analysisState === "cancelled").length
+    readonly property int manualAnalysisCount: allAssets.filter(asset => asset.analysisRecovery === "manual").length
 
     signal openLibraryRequested
 
@@ -83,6 +87,33 @@ Item {
             const reconciled = assetForId(selectedId);
             selectAssetOnly(reconciled !== null ? reconciled : filteredAssets.length > 0 ? filteredAssets[0] : null);
         }
+    }
+
+    function refreshAnalysisStatuses(): void {
+        const projected = backend.analysisStatuses();
+        if (projected.length === 0 || allAssets.length === 0)
+            return;
+        const byId = {};
+        for (const status of projected)
+            byId[status.assetId] = status;
+        const selectedId = selectedAsset !== null ? selectedAsset.id : "";
+        allAssets = allAssets.map(asset => {
+            const status = byId[asset.id];
+            if (status === undefined)
+                return asset;
+            return Object.assign({}, asset, {
+                analysisStage: status.stage,
+                analysisState: status.state,
+                analysisRecovery: status.recovery,
+                analysisErrorCode: status.errorCode,
+                analysisProgress: status.progress,
+                analysisAttempts: status.attempts
+            });
+        });
+        refilter();
+        const refreshed = assetForId(selectedId);
+        if (refreshed !== null)
+            selectedAsset = refreshed;
     }
 
     function assetForId(assetId: string): var {
@@ -299,7 +330,8 @@ Item {
     }
 
     function matchesFacets(asset: var): bool {
-        return (!likedOnly || asset.liked) && (minimumRating === 0 || asset.rating >= minimumRating) && (!speechOnly || asset.textPreview.length > 0) && advancedFilterState.matches(asset);
+        const analysisMatches = analysisFilter === "all" || analysisFilter === "incomplete" && asset.analysisState !== "done" || analysisFilter === "failed" && (asset.analysisState === "failed" || asset.analysisState === "cancelled");
+        return analysisMatches && (!likedOnly || asset.liked) && (minimumRating === 0 || asset.rating >= minimumRating) && (!speechOnly || asset.textPreview.length > 0) && advancedFilterState.matches(asset);
     }
 
     function refilter(): void {
@@ -372,11 +404,35 @@ Item {
         refilter();
     }
 
+    function setAnalysisFilter(filter: string): void {
+        analysisFilter = analysisFilter === filter ? "all" : filter;
+        refilter();
+    }
+
     function clearAllFilters(): void {
         likedOnly = false;
         minimumRating = 0;
         speechOnly = false;
+        analysisFilter = "all";
         advancedFilterState.clear();
+    }
+
+    function retryAnalysis(asset: var): void {
+        if (asset === null)
+            return;
+        const retried = backend.retryAnalysis(asset.id);
+        processingRecipeNotice = retried ? qsTr("Analysis restarted. Completed stages were kept.") : qsTr("This analysis stage could not be restarted.");
+        processingRecipeNoticePopup.open();
+        processingRecipeNoticeTimer.restart();
+        Qt.callLater(refreshAnalysisStatuses);
+    }
+
+    function retryFailedAnalysis(): void {
+        const retried = backend.retryFailedAnalysis();
+        processingRecipeNotice = retried > 0 ? qsTr("%1 analysis job(s) restarted. Completed stages were kept.").arg(retried) : qsTr("No manually recoverable analysis was found.");
+        processingRecipeNoticePopup.open();
+        processingRecipeNoticeTimer.restart();
+        Qt.callLater(refreshAnalysisStatuses);
     }
 
     function updateAffinity(asset: var, liked: bool, rating: int): void {
@@ -454,6 +510,9 @@ Item {
         target: backend
         function onAssetsChanged(): void {
             workspace.refreshAssets();
+        }
+        function onJobsChanged(): void {
+            workspace.refreshAnalysisStatuses();
         }
         function onProcessingRecipesChanged(): void {
             workspace.refreshProcessingRecipes();
@@ -614,6 +673,7 @@ Item {
                 onAffinityRequested: function (asset, liked, rating) {
                     workspace.updateAffinity(asset, liked, rating);
                 }
+                onRetryAnalysisRequested: asset => workspace.retryAnalysis(asset)
             }
         }
 
@@ -623,11 +683,17 @@ Item {
             likedOnly: workspace.likedOnly
             minimumRating: workspace.minimumRating
             speechOnly: workspace.speechOnly
+            analysisFilter: workspace.analysisFilter
+            incompleteAnalysisCount: workspace.incompleteAnalysisCount
+            failedAnalysisCount: workspace.failedAnalysisCount
+            manualAnalysisCount: workspace.manualAnalysisCount
             filterState: advancedFilterState
             onSortRequested: mode => workspace.setSortMode(mode)
             onLikedFilterRequested: enabled => workspace.setLikedOnly(enabled)
             onRatingFilterRequested: rating => workspace.setMinimumRating(rating)
             onSpeechFilterRequested: enabled => workspace.setSpeechOnly(enabled)
+            onAnalysisFilterRequested: filter => workspace.setAnalysisFilter(filter)
+            onRetryFailedAnalysisRequested: workspace.retryFailedAnalysis()
             onClearAllFiltersRequested: workspace.clearAllFilters()
         }
     }

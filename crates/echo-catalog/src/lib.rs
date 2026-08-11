@@ -13,6 +13,7 @@
 
 mod adjustment_graph;
 mod analysis;
+mod analysis_recovery;
 mod asset_affinity;
 mod asset_path;
 mod asset_registration;
@@ -46,6 +47,11 @@ pub use analysis::{
     list_assets_with_empty_transcript_missing_audio_events,
     list_assets_with_nonempty_transcript_missing_alignment, query_analysis, record_analysis,
 };
+pub use analysis_recovery::{
+    AnalysisRecoveryMode, AnalysisStage, AssetAnalysisStatus, analysis_recovery_mode,
+    automatic_analysis_recovery_count, list_asset_analysis_statuses, requeue_automatic_analysis,
+    requeue_manual_analysis,
+};
 pub use asset_affinity::{AssetAffinity, asset_affinity, set_asset_affinity};
 pub use asset_path::{mark_asset_missing, mark_asset_present, relink_asset_by_hash};
 pub use asset_registration::{
@@ -65,8 +71,7 @@ pub use derived_artifact::{
 pub use error::CatalogError;
 pub use error::CatalogErrorKind;
 pub use inference_run::{
-    InferenceRun, InferenceRunState, UpsertInferenceRun, inference_run,
-    requeue_recoverable_inference_runs, upsert_inference_run,
+    InferenceRun, InferenceRunState, UpsertInferenceRun, inference_run, upsert_inference_run,
 };
 pub use job_queue::{
     ClaimedJob, FileJobPayload, Job, JobKind, JobState, JobStats, ScanRootJobPayload,

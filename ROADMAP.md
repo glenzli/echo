@@ -173,6 +173,16 @@ Level 5  LLM contextual understanding / memory association
 用户需要渐进触发；正式接入后由 Infer Build 负责准入、空闲调度和资源仲裁，而不是让 Echo
 在导入事务里同步运行模型。
 
+后台分析的产品状态以 Catalog 中的 durable Job、Inference Run 和已接受证据共同投影，不能
+用“卡片上有没有文字”猜测。声音墙与检查器必须区分排队、运行、已完成、等待 Runtime、需要
+人工处理和 Original 缺失；已完成的阶段与长录音分段结果始终保留，续跑只从第一个缺失阶段
+继续。Runtime Discovery／连接、Provider 容量、队列满和 deadline 属于自动恢复错误：Echo 在
+Runtime 合同探测重新健康后以有界退避重新入队，不要求用户重导入，也不阻塞扫描、波形和播放。
+认证、权限、协议／合同不一致、模型输出结构校验和源文件错误不得后台无限循环；它们保留稳定
+错误码并提供单声音与批量人工重试，其中 Original 缺失必须先完成重连。取消也只允许用户显式
+恢复。所有恢复都复用同一个本地 Job 身份与 App-scoped provenance，不复制分析证据，也不把
+正文、token 或 Provider 诊断写入 UI 日志。
+
 ## 7. 推理能力与模型参考
 
 产品层只依赖能力与证据契约，不依赖某个物理模型。下表是当前验证用候选，不构成 Echo

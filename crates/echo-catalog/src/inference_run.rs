@@ -193,39 +193,6 @@ pub fn inference_run(
     }))
 }
 
-/// Requeues failed Echo inference jobs whose stable Runtime error can recover
-/// after a process restart. Authentication failures are admitted only after
-/// the host now reports that a credential is available.
-///
-/// # Errors
-///
-/// Returns a catalog failure when the update cannot be applied.
-pub fn requeue_recoverable_inference_runs(
-    transaction: &Transaction<'_>,
-    credential_available: bool,
-    now_millis: i64,
-) -> Result<u64, CatalogError> {
-    let affected = transaction.execute(
-        "UPDATE jobs SET state = 'pending', progress = 0, error = NULL, \
-         updated_at_millis = ?1 WHERE state = 'failed' AND id IN (\
-             SELECT local_job_id FROM inference_runs \
-             WHERE state IN ('failed', 'expired') AND (\
-                 error_code IN (\
-                     'runtime_unavailable', 'provider_unavailable', 'queue_full', \
-                     'app_queue_full', 'quota_exceeded', 'deadline_exceeded'\
-                 ) OR (?2 = 1 AND error_code IN ('missing_api_key', 'invalid_api_key'))\
-             )\
-         )",
-        rusqlite::params![now_millis, credential_available],
-    )?;
-    u64::try_from(affected).map_err(|error| {
-        CatalogError::new(
-            CatalogErrorKind::Other,
-            format!("requeued inference count does not fit u64: {error}"),
-        )
-    })
-}
-
 const fn state_text(state: InferenceRunState) -> &'static str {
     match state {
         InferenceRunState::Submitting => "submitting",

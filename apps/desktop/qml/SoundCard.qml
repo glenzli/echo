@@ -34,6 +34,7 @@ Rectangle {
     readonly property bool hasSemanticLine: entry.mood.length > 0 || displayEvent.length > 0 || displayLanguage.length > 0 || keywordLine.length > 0
     readonly property bool hasPreview: String(displayPreview || "").trim().length > 0
     readonly property bool hasEvidence: evidenceLine.length > 0
+    readonly property bool analysisIncomplete: String(entry.analysisState || "missing") !== "done"
     readonly property int waveformHeight: overview ? 48 : rich ? 62 : 52
 
     implicitWidth: 264
@@ -130,6 +131,20 @@ Rectangle {
             return qsTr("Unknown date");
         }
         return new Date(millis).toLocaleDateString(Qt.locale(), Locale.ShortFormat);
+    }
+
+    function analysisStatusText(): string {
+        if (entry.analysisRecovery === "source")
+            return qsTr("Original must be reconnected before analysis can continue");
+        if (entry.analysisRecovery === "automatic")
+            return qsTr("Waiting for Infer Runtime; Echo will resume automatically");
+        if (entry.analysisRecovery === "manual")
+            return qsTr("Analysis needs a manual retry");
+        if (entry.analysisState === "running")
+            return qsTr("Analyzing in the background");
+        if (entry.analysisState === "pending" || entry.analysisState === "missing")
+            return qsTr("Waiting to analyze");
+        return qsTr("Analysis is incomplete");
     }
 
     function toneFor(recordedAtMillis: double, dark: bool): var {
@@ -338,6 +353,28 @@ Rectangle {
                 maximumLineCount: 2
                 wrapMode: Text.WordWrap
                 elide: Text.ElideRight
+            }
+
+            Item {
+                Layout.alignment: Qt.AlignTop
+                Layout.preferredWidth: 17
+                Layout.preferredHeight: 17
+                visible: card.analysisIncomplete
+
+                EchoIcon {
+                    anchors.centerIn: parent
+                    source: card.entry.analysisRecovery === "source" ? "qrc:/EchoDesktop/icons/source-missing.svg" : card.entry.analysisRecovery === "manual" ? "qrc:/EchoDesktop/icons/refresh.svg" : card.entry.analysisState === "running" ? "qrc:/EchoDesktop/icons/sparkles.svg" : "qrc:/EchoDesktop/icons/clock.svg"
+                    color: card.entry.analysisRecovery === "source" || card.entry.analysisRecovery === "manual" ? Theme.warningText : card.entry.analysisState === "running" || card.entry.analysisRecovery === "automatic" ? Theme.accent : Theme.textMuted
+                    size: 14
+                }
+
+                HoverHandler {
+                    id: analysisStatusHover
+                }
+
+                ToolTip.visible: analysisStatusHover.hovered
+                ToolTip.text: card.analysisStatusText()
+                ToolTip.delay: 500
             }
 
             EchoIcon {

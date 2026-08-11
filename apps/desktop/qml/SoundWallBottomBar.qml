@@ -13,15 +13,21 @@ ToolBar {
     required property bool likedOnly
     required property int minimumRating
     required property bool speechOnly
+    required property string analysisFilter
+    required property int incompleteAnalysisCount
+    required property int failedAnalysisCount
+    required property int manualAnalysisCount
     required property var filterState
 
     signal sortRequested(string mode)
     signal likedFilterRequested(bool enabled)
     signal ratingFilterRequested(int minimumRating)
     signal speechFilterRequested(bool enabled)
+    signal analysisFilterRequested(string filter)
+    signal retryFailedAnalysisRequested
     signal clearAllFiltersRequested
 
-    readonly property bool anyFilterActive: likedOnly || minimumRating > 0 || speechOnly || filterState.activeCount > 0
+    readonly property bool anyFilterActive: likedOnly || minimumRating > 0 || speechOnly || analysisFilter !== "all" || filterState.activeCount > 0
 
     implicitHeight: 44
     topPadding: 5
@@ -229,6 +235,71 @@ ToolBar {
                     buttonSize: 26
                     iconSize: 14
                     onClicked: bar.speechFilterRequested(!bar.speechOnly)
+                }
+            }
+        }
+
+        Rectangle {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            width: analysisControls.implicitWidth + 10
+            height: 32
+            radius: 8
+            color: bar.analysisFilter !== "all" ? Theme.accentSurfaceQuiet : Theme.surfaceSubtle
+
+            RowLayout {
+                id: analysisControls
+
+                anchors.centerIn: parent
+                height: 28
+                spacing: 2
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/clock.svg"
+                    selected: bar.analysisFilter === "incomplete"
+                    toolTipText: qsTr("Show sounds that still need analysis")
+                    buttonSize: 26
+                    iconSize: 14
+                    onClicked: bar.analysisFilterRequested("incomplete")
+                }
+
+                Text {
+                    visible: bar.incompleteAnalysisCount > 0
+                    text: bar.incompleteAnalysisCount
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontMeta
+                }
+
+                EchoIconButton {
+                    source: "qrc:/EchoDesktop/icons/refresh.svg"
+                    selected: bar.analysisFilter === "failed"
+                    toolTipText: qsTr("Show analysis failures")
+                    buttonSize: 26
+                    iconSize: 14
+                    onClicked: bar.analysisFilterRequested("failed")
+                }
+
+                Text {
+                    visible: bar.failedAnalysisCount > 0
+                    text: bar.failedAnalysisCount
+                    color: bar.failedAnalysisCount > 0 ? Theme.warningText : Theme.textSecondary
+                    font.pixelSize: Theme.fontMeta
+                }
+
+                Rectangle {
+                    visible: bar.manualAnalysisCount > 0
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 16
+                    color: Theme.border
+                }
+
+                EchoIconButton {
+                    visible: bar.manualAnalysisCount > 0
+                    source: "qrc:/EchoDesktop/icons/redo.svg"
+                    toolTipText: qsTr("Retry all failed analysis")
+                    buttonSize: 26
+                    iconSize: 14
+                    onClicked: bar.retryFailedAnalysisRequested()
                 }
             }
         }

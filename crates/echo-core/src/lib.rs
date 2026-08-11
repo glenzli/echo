@@ -9,6 +9,7 @@
 
 mod analysis;
 mod analysis_queue;
+mod analysis_recovery;
 mod contextual;
 mod error;
 mod import;

@@ -17,8 +17,8 @@ use std::{
 use echo_catalog::{
     AssetLookup, Catalog, ClaimedJob, FileJobPayload, InferenceRunState, JobKind,
     ScanRootJobPayload, UpsertInferenceRun, claim_next_job, complete_job, enqueue_job, fail_job,
-    find_by_content_hash, find_by_id, recover_interrupted_jobs, requeue_recoverable_inference_runs,
-    upsert_inference_run, upsert_journal,
+    find_by_content_hash, find_by_id, recover_interrupted_jobs, upsert_inference_run,
+    upsert_journal,
 };
 
 use crate::{
@@ -57,15 +57,6 @@ impl WorkerPool {
         catalog
             .with_transaction(|transaction| recover_interrupted_jobs(transaction, now))
             .map_err(CoreError::from)?;
-        catalog
-            .with_transaction(|transaction| {
-                requeue_recoverable_inference_runs(
-                    transaction,
-                    !config.infer_runtime.bearer_token.trim().is_empty(),
-                    now,
-                )
-            })
-            .map_err(CoreError::from)?;
         metadata_queue::enqueue_missing_source_metadata(catalog, now)?;
         analysis_queue::enqueue_missing_transcriptions(catalog, now)?;
         analysis_queue::settle_empty_transcript_alignments(catalog, now)?;
@@ -84,6 +75,11 @@ impl WorkerPool {
                 worker_loop(&catalog, &config, &stop);
             }));
         }
+        handles.push(crate::analysis_recovery::spawn(
+            Arc::clone(catalog),
+            config.infer_runtime.clone(),
+            Arc::clone(&stop),
+        ));
         Ok(Self { stop, handles })
     }
 

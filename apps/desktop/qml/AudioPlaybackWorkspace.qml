@@ -24,6 +24,9 @@ Rectangle {
     property var analysisStatus: ({
             stage: "text",
             state: "missing",
+            recovery: "none",
+            progress: 0,
+            attempts: 0,
             errorCode: "",
             runtimeJobId: "",
             contractVersion: ""
@@ -128,6 +131,24 @@ Rectangle {
         return minutes + ":" + (rest < 10 ? "0" : "") + rest.toFixed(1);
     }
 
+    function analysisHint(): string {
+        if (analysisStatus.recovery === "automatic")
+            return qsTr("Waiting for Infer Runtime; analysis will resume automatically");
+        if (analysisStatus.recovery === "source")
+            return qsTr("Reconnect the Original to continue analysis");
+        if (analysisStatus.recovery === "manual")
+            return qsTr("Background analysis needs attention");
+        if (analysisStatus.stage === "sound_events" && analysisActive)
+            return qsTr("Identifying audible events in the background…");
+        if (analysisStatus.stage === "contextual" && analysisActive)
+            return qsTr("Understanding this sound in the background…");
+        if (transcriptModel.count > 0)
+            return analysisStatus.stage === "alignment" && analysisActive ? qsTr("Refining word timing in the background…") : qsTr("Click a segment to seek");
+        if (analysisActive)
+            return qsTr("Extracting text in the background…");
+        return analysisStatus.stage === "complete" ? qsTr("No speech was detected in this sound") : qsTr("Text is extracted automatically");
+    }
+
     function refreshAsset(): void {
         transcriptModel.clear();
         waveformLevels = [];
@@ -138,6 +159,9 @@ Rectangle {
             analysisStatus = ({
                     stage: "text",
                     state: "missing",
+                    recovery: "none",
+                    progress: 0,
+                    attempts: 0,
                     errorCode: "",
                     runtimeJobId: "",
                     contractVersion: ""
@@ -389,7 +413,7 @@ Rectangle {
             EchoSectionLabel {
                 Layout.fillWidth: true
                 text: qsTr("Text")
-                hint: preview.analysisStatus.stage === "contextual" && preview.analysisActive ? qsTr("Understanding this sound in the background…") : transcriptModel.count > 0 ? preview.analysisStatus.stage === "alignment" && preview.analysisActive ? qsTr("Refining word timing in the background…") : qsTr("Click a segment to seek") : preview.analysisActive ? qsTr("Extracting text in the background…") : preview.analysisFailed ? qsTr("Background analysis needs attention") : qsTr("Text is extracted automatically")
+                hint: preview.analysisHint()
             }
 
             BusyIndicator {
@@ -400,8 +424,8 @@ Rectangle {
             }
 
             EchoButton {
-                visible: preview.analysisFailed
-                text: preview.analysisStatus.stage === "contextual" ? qsTr("Retry sound understanding") : preview.analysisStatus.stage === "alignment" ? qsTr("Retry timing analysis") : qsTr("Retry text extraction")
+                visible: preview.analysisFailed && preview.analysisStatus.recovery === "manual"
+                text: preview.analysisStatus.stage === "contextual" ? qsTr("Retry sound understanding") : preview.analysisStatus.stage === "alignment" ? qsTr("Retry timing analysis") : preview.analysisStatus.stage === "text" ? qsTr("Retry text extraction") : qsTr("Retry analysis")
                 enabled: preview.hasAsset && preview.asset.pathStatus !== "missing"
                 ghost: true
                 onClicked: {
@@ -424,7 +448,7 @@ Rectangle {
                 anchors.centerIn: parent
                 width: parent.width - 48
                 visible: transcriptModel.count === 0
-                text: preview.analysisActive ? qsTr("Echo is extracting text from this sound through Infer Runtime.") : preview.analysisFailed ? qsTr("Background text extraction did not complete. You can retry this sound.") : qsTr("Text is extracted automatically after import.")
+                text: preview.analysisStatus.recovery === "automatic" ? qsTr("Echo will resume when Infer Runtime is available.") : preview.analysisStatus.recovery === "source" ? qsTr("Reconnect the Original before analysis can continue.") : preview.analysisFailed ? qsTr("Background text extraction did not complete. You can retry this sound.") : preview.analysisStatus.stage === "sound_events" ? qsTr("No speech was detected. Echo is identifying audible events.") : preview.analysisStatus.stage === "complete" ? qsTr("No speech was detected in this sound.") : preview.analysisActive ? qsTr("Echo is extracting text from this sound through Infer Runtime.") : qsTr("Text is extracted automatically after import.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap
