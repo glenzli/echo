@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     thread,
     time::{Duration, UNIX_EPOCH},
@@ -38,6 +38,7 @@ pub struct WorkerConfig {
 #[derive(Debug)]
 pub struct WorkerPool {
     stop: Arc<AtomicBool>,
+    state_revision: Arc<AtomicU64>,
     handles: Vec<thread::JoinHandle<()>>,
 }
 
@@ -66,13 +67,15 @@ impl WorkerPool {
         semantic_search::enqueue_missing_documents(catalog, now)?;
 
         let stop = Arc::new(AtomicBool::new(false));
+        let state_revision = Arc::new(AtomicU64::new(1));
         let mut handles = Vec::new();
         for _ in 0..worker_count {
             let catalog = Arc::clone(catalog);
             let config = config.clone();
             let stop = stop.clone();
+            let state_revision = Arc::clone(&state_revision);
             handles.push(thread::spawn(move || {
-                worker_loop(&catalog, &config, &stop);
+                worker_loop(&catalog, &config, &stop, &state_revision);
             }));
         }
         handles.push(crate::analysis_recovery::spawn(
@@ -80,7 +83,21 @@ impl WorkerPool {
             config.infer_runtime.clone(),
             Arc::clone(&stop),
         ));
-        Ok(Self { stop, handles })
+        Ok(Self {
+            stop,
+            state_revision,
+            handles,
+        })
+    }
+
+    /// Monotonic process-local identity for durable worker state transitions.
+    ///
+    /// Presentation layers may poll this scalar and reload their authoritative
+    /// Catalog projection only after it changes. It is intentionally not a
+    /// persisted job identity and resets when the worker pool restarts.
+    #[must_use]
+    pub fn state_revision(&self) -> u64 {
+        self.state_revision.load(Ordering::Acquire)
     }
 
     /// Stops the pool, waiting for in-flight jobs.
@@ -92,7 +109,12 @@ impl WorkerPool {
     }
 }
 
-fn worker_loop(catalog: &Catalog, config: &WorkerConfig, stop: &AtomicBool) {
+fn worker_loop(
+    catalog: &Catalog,
+    config: &WorkerConfig,
+    stop: &AtomicBool,
+    state_revision: &AtomicU64,
+) {
     while !stop.load(Ordering::Acquire) {
         let claimed = catalog
             .with_transaction(|transaction| claim_next_job(transaction, crate::util::now_millis()))
@@ -102,6 +124,7 @@ fn worker_loop(catalog: &Catalog, config: &WorkerConfig, stop: &AtomicBool) {
             thread::sleep(Duration::from_millis(200));
             continue;
         };
+        state_revision.fetch_add(1, Ordering::AcqRel);
         let result = dispatch(catalog, config, &job);
         let now = crate::util::now_millis();
         match result {
@@ -115,6 +138,7 @@ fn worker_loop(catalog: &Catalog, config: &WorkerConfig, stop: &AtomicBool) {
                 });
             }
         }
+        state_revision.fetch_add(1, Ordering::AcqRel);
     }
 }
 

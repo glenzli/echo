@@ -1,12 +1,58 @@
 use std::path::Path;
 
 use echo_catalog::{
-    AssetLookup, AssetRegistrationInput, ClaimedJob, JobKind, find_by_content_hash, inference_run,
-    open_catalog, query_analysis, record_analysis, register_asset,
+    AssetLookup, AssetRegistrationInput, ClaimedJob, JobKind, JobState, enqueue_job,
+    find_by_content_hash, inference_run, job_by_id, open_catalog, query_analysis, record_analysis,
+    register_asset,
 };
 use echo_domain::{AnalysisKind, AnalysisRecord, ContentHash, ModelIdentity};
 
 use super::*;
+
+#[test]
+fn worker_state_revision_advances_when_a_job_reaches_terminal_state() {
+    let root =
+        std::env::temp_dir().join(format!("echo-worker-state-revision-{}", std::process::id()));
+    let catalog = Arc::new(open_catalog(&root.join("catalog.sqlite")).expect("catalog opens"));
+    let pool = WorkerPool::start(
+        &catalog,
+        &WorkerConfig {
+            cache_root: root.join("cache"),
+            infer_runtime: crate::InferRuntimeConfig {
+                base_url: "http://127.0.0.1:1".to_owned(),
+                bearer_token: String::new(),
+            },
+        },
+        1,
+    )
+    .expect("workers start");
+    let initial_revision = pool.state_revision();
+    catalog
+        .with_transaction(|transaction| {
+            enqueue_job(
+                transaction,
+                "invalid-worker-fixture",
+                JobKind::Transcribe,
+                &serde_json::json!({ "asset_id": "not-an-asset-id" }),
+                10,
+            )
+        })
+        .expect("job enqueues");
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(3);
+    while pool.state_revision() < initial_revision + 2 && std::time::Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(10));
+    }
+    assert!(pool.state_revision() >= initial_revision + 2);
+    pool.stop();
+
+    let job = catalog
+        .with_transaction(|transaction| job_by_id(transaction, "invalid-worker-fixture"))
+        .expect("job reads")
+        .expect("job exists");
+    assert_eq!(job.state, JobState::Failed);
+    let _ = std::fs::remove_dir_all(root);
+}
 
 #[test]
 fn runtime_completion_links_the_local_job_to_sanitized_provenance() {

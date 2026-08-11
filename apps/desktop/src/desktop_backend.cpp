@@ -293,7 +293,18 @@ QVariantMap analysisStatusForQml(const echo::desktop::AnalysisStatusWire& wire) 
 } // namespace
 
 DesktopBackend::DesktopBackend(rust::Box<echo::desktop::LibrarySession> session, QObject* parent) :
-    QObject(parent), session_(std::move(session)) {}
+    QObject(parent), session_(std::move(session)) {
+    analysisRefreshTimer_.setInterval(250);
+    analysisRefreshTimer_.setTimerType(Qt::CoarseTimer);
+    connect(&analysisRefreshTimer_, &QTimer::timeout, this, [this]() {
+        const quint64 revision = session_->session_worker_state_revision();
+        if (revision == 0 || revision == workerStateRevision_) {
+            return;
+        }
+        workerStateRevision_ = revision;
+        emit jobsChanged();
+    });
+}
 
 void DesktopBackend::refresh() {
     emit assetsChanged();
@@ -1515,6 +1526,9 @@ QVariantList DesktopBackend::longAudioChaptersForAsset(const QString& id) const 
 void DesktopBackend::startWorkers(const QString& runtimeEndpoint) {
     try {
         session_->session_start_workers(runtimeEndpoint.toStdString());
+        workerStateRevision_ = session_->session_worker_state_revision();
+        emit jobsChanged();
+        analysisRefreshTimer_.start();
     } catch (const rust::Error& error) {
         qWarning("cannot start background workers: %s", error.what());
     }

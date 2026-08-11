@@ -1317,6 +1317,16 @@ impl LibrarySession {
         Ok(())
     }
 
+    /// Returns the current process-local worker transition revision.
+    #[must_use]
+    pub fn worker_state_revision(&self) -> u64 {
+        self.workers
+            .lock()
+            .expect("worker mutex poisoned")
+            .as_ref()
+            .map_or(0, echo_core::WorkerPool::state_revision)
+    }
+
     /// Returns the product stage and sanitized Runtime linkage for one asset.
     ///
     /// # Errors

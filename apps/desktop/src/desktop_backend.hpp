@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QObject>
+#include <QTimer>
 #include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
@@ -225,4 +226,6 @@ class DesktopBackend : public QObject {
 
   private:
     rust::Box<echo::desktop::LibrarySession> session_;
+    QTimer analysisRefreshTimer_;
+    quint64 workerStateRevision_ = 0;
 };

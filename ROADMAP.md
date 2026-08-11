@@ -187,6 +187,8 @@ Level 5  LLM contextual understanding / memory association
 人工处理和 Original 缺失；已完成的阶段与长录音分段结果始终保留，续跑只从第一个缺失阶段
 继续。Runtime Discovery／连接、Provider 容量、队列满和 deadline 属于自动恢复错误：Echo 在
 Runtime 合同探测重新健康后以有界退避重新入队，不要求用户重导入，也不阻塞扫描、波形和播放。
+后台 Worker 的领取与终态转换以进程内递增 revision 通知桌面刷新权威 Catalog 投影；桌面只轮询
+这个常量开销的 revision，不周期扫描整份声音库，也不得让已失败任务停留在“正在分析”的旧快照。
 认证、权限、协议／合同不一致、模型输出结构校验和源文件错误不得后台无限循环；它们保留稳定
 错误码并提供单声音与批量人工重试，其中 Original 缺失必须先完成重连。取消也只允许用户显式
 恢复。所有恢复都复用同一个本地 Job 身份与 App-scoped provenance，不复制分析证据，也不把

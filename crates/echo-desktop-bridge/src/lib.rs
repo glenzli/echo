@@ -547,6 +547,8 @@ mod ffi {
         ) -> Result<i64>;
         /// Starts the background worker pool (idempotent).
         fn session_start_workers(self: &LibrarySession, runtime_endpoint: &str) -> Result<()>;
+        /// Reads the process-local worker transition revision.
+        fn session_worker_state_revision(self: &LibrarySession) -> u64;
         /// Returns the current analysis stage for one asset.
         fn session_analysis_status(
             self: &LibrarySession,
@@ -860,6 +862,11 @@ impl LibrarySession {
     fn session_start_workers(&self, runtime_endpoint: &str) -> Result<(), String> {
         self.start_workers(runtime_endpoint)
             .map_err(|error| error.message)
+    }
+
+    /// Returns a cheap invalidation identity for desktop status projection.
+    fn session_worker_state_revision(&self) -> u64 {
+        self.worker_state_revision()
     }
 
     /// Returns the current analysis stage for one asset.

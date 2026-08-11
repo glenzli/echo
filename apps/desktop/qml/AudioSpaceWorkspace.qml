@@ -90,6 +90,7 @@ Item {
     }
 
     function refreshAnalysisStatuses(): void {
+        jobStats = backend.jobStats();
         const projected = backend.analysisStatuses();
         if (projected.length === 0 || allAssets.length === 0)
             return;
