@@ -16,27 +16,12 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     let source = register(&session, [71; 32], &root.join("source.wav"), 10_000);
     let target = register(&session, [72; 32], &root.join("target.wav"), 8_000);
 
-    let mut source_adjustment = adjustment(10_000);
-    source_adjustment.trim_start_millis = 500;
-    source_adjustment.trim_end_millis = 9_500;
-    source_adjustment.fade_in_millis = 150;
-    source_adjustment.fade_out_millis = 220;
-    source_adjustment.gain_centibels = -200;
-    source_adjustment.low_cut_hertz = 90;
-    source_adjustment.compressor_enabled = true;
-    source_adjustment.compressor_threshold_centibels = -2_400;
+    let source_adjustment = recipe_source_adjustment();
     session
         .set_asset_adjustment(&source.to_string(), &source_adjustment)
         .expect("source adjustment saves");
 
-    let mut target_adjustment = adjustment(8_000);
-    target_adjustment.trim_start_millis = 1_000;
-    target_adjustment.trim_end_millis = 7_000;
-    target_adjustment.fade_in_millis = 320;
-    target_adjustment.fade_out_millis = 480;
-    target_adjustment.fade_in_curve = 1;
-    target_adjustment.fade_out_curve = 2;
-    target_adjustment.gain_centibels = -475;
+    let target_adjustment = recipe_target_adjustment();
     session
         .set_asset_adjustment(&target.to_string(), &target_adjustment)
         .expect("target adjustment saves");
@@ -71,13 +56,7 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
         .expect("target adjustment reads")
         .expect("target adjustment exists")
         .graph;
-    assert_eq!(applied.trim_start_millis(), 1_000);
-    assert_eq!(applied.trim_end_millis(), 7_000);
-    assert_eq!(applied.fade_in_millis(), 320);
-    assert_eq!(applied.fade_out_millis(), 480);
-    assert_eq!(applied.fade_in_curve(), echo_domain::FadeCurve::Smooth);
-    assert_eq!(applied.fade_out_curve(), echo_domain::FadeCurve::EqualPower);
-    assert_eq!(applied.gain_centibels(), -475);
+    assert_target_clip_edits(&applied);
     assert_eq!(applied.low_cut_hertz(), 90);
     assert!(applied.compressor().enabled);
     assert_eq!(applied.compressor().threshold_centibels, -2_400);
@@ -100,6 +79,96 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(history[0].unchanged_count, 1);
     assert!(!history[0].reverted);
     let _ = std::fs::remove_dir_all(root);
+}
+
+fn recipe_source_adjustment() -> AssetAdjustmentWire {
+    let mut source = adjustment(10_000);
+    source.trim_start_millis = 500;
+    source.trim_end_millis = 9_500;
+    source.fade_in_millis = 150;
+    source.fade_out_millis = 220;
+    source.gain_centibels = -200;
+    source.low_cut_hertz = 90;
+    source.compressor_enabled = true;
+    source.compressor_threshold_centibels = -2_400;
+    source.edit_segments = vec![crate::ffi::EditSegmentWire {
+        source_start_millis: 500,
+        source_end_millis: 9_500,
+        state: 0,
+        gain_centibels: 0,
+        fade_in_millis: 0,
+        fade_out_millis: 0,
+        fade_in_curve: 0,
+        fade_out_curve: 0,
+        gap_after_millis: 0,
+    }];
+    source
+}
+
+fn recipe_target_adjustment() -> AssetAdjustmentWire {
+    let mut target = adjustment(8_000);
+    target.trim_start_millis = 1_000;
+    target.trim_end_millis = 7_000;
+    target.fade_in_millis = 320;
+    target.fade_out_millis = 480;
+    target.fade_in_curve = 1;
+    target.fade_out_curve = 2;
+    target.gain_centibels = -475;
+    target.edit_segments = vec![
+        crate::ffi::EditSegmentWire {
+            source_start_millis: 1_000,
+            source_end_millis: 3_500,
+            state: 0,
+            gain_centibels: 175,
+            fade_in_millis: 25,
+            fade_out_millis: 50,
+            fade_in_curve: 1,
+            fade_out_curve: 2,
+            gap_after_millis: 120,
+        },
+        crate::ffi::EditSegmentWire {
+            source_start_millis: 3_500,
+            source_end_millis: 7_000,
+            state: 2,
+            gain_centibels: 0,
+            fade_in_millis: 0,
+            fade_out_millis: 0,
+            fade_in_curve: 0,
+            fade_out_curve: 0,
+            gap_after_millis: 0,
+        },
+    ];
+    target.effect_masks = vec![crate::ffi::EffectMaskWire {
+        start_millis: 1_500,
+        end_millis: 2_500,
+        feather_millis: 10,
+        effect_nodes: vec![1],
+    }];
+    target
+}
+
+fn assert_target_clip_edits(applied: &echo_domain::AdjustmentGraph) {
+    assert_eq!(applied.trim_start_millis(), 1_000);
+    assert_eq!(applied.trim_end_millis(), 7_000);
+    assert_eq!(applied.fade_in_millis(), 320);
+    assert_eq!(applied.fade_out_millis(), 480);
+    assert_eq!(applied.fade_in_curve(), echo_domain::FadeCurve::Smooth);
+    assert_eq!(applied.fade_out_curve(), echo_domain::FadeCurve::EqualPower);
+    assert_eq!(applied.gain_centibels(), -475);
+    assert_eq!(applied.edit_timeline().segments().len(), 2);
+    assert_eq!(
+        applied.edit_timeline().segments()[0].gap_after_millis(),
+        120
+    );
+    assert_eq!(
+        applied.edit_timeline().segments()[1].state(),
+        echo_domain::EditSegmentState::Hidden
+    );
+    assert_eq!(applied.effect_masks().len(), 1);
+    assert_eq!(
+        applied.effect_masks()[0].effect_nodes(),
+        [echo_domain::EffectNodeKind::Equalizer]
+    );
 }
 
 #[test]
@@ -298,5 +367,17 @@ fn adjustment(duration_millis: u64) -> AssetAdjustmentWire {
         limiter_ceiling_centibels: -100,
         limiter_release_millis: 100,
         effect_chain: vec![0, 1, 2, 3, 4],
+        edit_segments: vec![crate::ffi::EditSegmentWire {
+            source_start_millis: 0,
+            source_end_millis: duration_millis,
+            state: 0,
+            gain_centibels: 0,
+            fade_in_millis: 0,
+            fade_out_millis: 0,
+            fade_in_curve: 0,
+            fade_out_curve: 0,
+            gap_after_millis: 0,
+        }],
+        effect_masks: Vec::new(),
     }
 }

@@ -105,7 +105,9 @@ class DesktopBackend : public QObject {
         bool limiterEnabled,
         int limiterCeilingCentibels,
         int limiterReleaseMillis,
-        const QVariantList& effectChain
+        const QVariantList& effectChain,
+        const QVariantList& editSegments,
+        const QVariantList& effectMasks
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;

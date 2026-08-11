@@ -6,8 +6,10 @@
 #include <QString>
 
 #include <array>
+#include <utility>
 
 #include "parametric_equalizer_projection.hpp"
+#include "playback_adjustment_projection.hpp"
 
 namespace {
 
@@ -66,6 +68,112 @@ QVariantList effectChainForQml(const rust::Vec<std::uint8_t>& chain) {
     QVariantList result;
     for (const std::uint8_t node : chain) {
         result.append(static_cast<int>(node));
+    }
+    return result;
+}
+
+bool appendEditSegments(
+    const QVariantList& values,
+    qlonglong trimStartMillis,
+    qlonglong trimEndMillis,
+    rust::Vec<echo::desktop::EditSegmentWire>& destination
+) {
+    const auto segments =
+        PlaybackAdjustmentProjection::editSegmentsFromQml(values, trimStartMillis, trimEndMillis);
+    if (!segments.has_value()) {
+        return false;
+    }
+    for (const auto& segment : *segments) {
+        echo::desktop::EditSegmentWire wire;
+        wire.source_start_millis = segment.source_start_millis;
+        wire.source_end_millis = segment.source_end_millis;
+        wire.state = static_cast<std::uint8_t>(segment.state);
+        wire.gain_centibels = segment.gain_centibels;
+        wire.fade_in_millis = segment.fade_in_millis;
+        wire.fade_out_millis = segment.fade_out_millis;
+        wire.fade_in_curve = static_cast<std::uint8_t>(segment.fade_in_curve);
+        wire.fade_out_curve = static_cast<std::uint8_t>(segment.fade_out_curve);
+        wire.gap_after_millis = segment.gap_after_millis;
+        destination.push_back(wire);
+    }
+    return true;
+}
+
+QVariantList editSegmentsForQml(const rust::Vec<echo::desktop::EditSegmentWire>& segments) {
+    QVariantList result;
+    for (const auto& segment : segments) {
+        QVariantMap value;
+        value.insert(
+            QStringLiteral("sourceStartMillis"),
+            static_cast<qlonglong>(segment.source_start_millis)
+        );
+        value.insert(
+            QStringLiteral("sourceEndMillis"),
+            static_cast<qlonglong>(segment.source_end_millis)
+        );
+        value.insert(QStringLiteral("state"), static_cast<int>(segment.state));
+        value.insert(QStringLiteral("gainCentibels"), static_cast<int>(segment.gain_centibels));
+        value.insert(
+            QStringLiteral("fadeInMillis"),
+            static_cast<qlonglong>(segment.fade_in_millis)
+        );
+        value.insert(
+            QStringLiteral("fadeOutMillis"),
+            static_cast<qlonglong>(segment.fade_out_millis)
+        );
+        value.insert(QStringLiteral("fadeInCurve"), static_cast<int>(segment.fade_in_curve));
+        value.insert(QStringLiteral("fadeOutCurve"), static_cast<int>(segment.fade_out_curve));
+        value.insert(
+            QStringLiteral("gapAfterMillis"),
+            static_cast<qlonglong>(segment.gap_after_millis)
+        );
+        result.append(value);
+    }
+    return result;
+}
+
+bool appendEffectMasks(
+    const QVariantList& values,
+    const QVariantList& effectChain,
+    qlonglong trimStartMillis,
+    qlonglong trimEndMillis,
+    rust::Vec<echo::desktop::EffectMaskWire>& destination
+) {
+    const auto masks = PlaybackAdjustmentProjection::effectMasksFromQml(
+        values,
+        trimStartMillis,
+        trimEndMillis,
+        effectChain
+    );
+    if (!masks.has_value()) {
+        return false;
+    }
+    for (const auto& mask : *masks) {
+        echo::desktop::EffectMaskWire wire;
+        wire.start_millis = mask.start_millis;
+        wire.end_millis = mask.end_millis;
+        wire.feather_millis = static_cast<std::uint16_t>(mask.feather_millis);
+        for (const auto node : mask.nodes) {
+            wire.effect_nodes.push_back(static_cast<std::uint8_t>(node));
+        }
+        destination.push_back(std::move(wire));
+    }
+    return true;
+}
+
+QVariantList effectMasksForQml(const rust::Vec<echo::desktop::EffectMaskWire>& masks) {
+    QVariantList result;
+    for (const auto& mask : masks) {
+        QVariantMap value;
+        value.insert(QStringLiteral("startMillis"), static_cast<qlonglong>(mask.start_millis));
+        value.insert(QStringLiteral("endMillis"), static_cast<qlonglong>(mask.end_millis));
+        value.insert(QStringLiteral("featherMillis"), static_cast<int>(mask.feather_millis));
+        QVariantList nodes;
+        for (const std::uint8_t node : mask.effect_nodes) {
+            nodes.append(static_cast<int>(node));
+        }
+        value.insert(QStringLiteral("effectNodes"), nodes);
+        result.append(value);
     }
     return result;
 }
@@ -326,6 +434,8 @@ QVariantList DesktopBackend::listAssets() const {
             static_cast<int>(asset.limiter_release_millis)
         );
         entry.insert(QStringLiteral("effectChain"), effectChainForQml(asset.effect_chain));
+        entry.insert(QStringLiteral("editSegments"), editSegmentsForQml(asset.edit_segments));
+        entry.insert(QStringLiteral("effectMasks"), effectMasksForQml(asset.effect_masks));
         entry.insert(
             QStringLiteral("containerFormat"),
             QString::fromUtf8(asset.container_format.data(), asset.container_format.size())
@@ -896,7 +1006,9 @@ bool DesktopBackend::setAssetAdjustment(
     bool limiterEnabled,
     int limiterCeilingCentibels,
     int limiterReleaseMillis,
-    const QVariantList& effectChain
+    const QVariantList& effectChain,
+    const QVariantList& editSegments,
+    const QVariantList& effectMasks
 ) {
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
@@ -988,6 +1100,25 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.limiter_release_millis = static_cast<std::uint16_t>(limiterReleaseMillis);
         if (!appendEffectChain(effectChain, adjustment.effect_chain)) {
             qWarning("effect chain is outside the supported contract");
+            return false;
+        }
+        if (!appendEditSegments(
+                editSegments,
+                trimStartMillis,
+                trimEndMillis,
+                adjustment.edit_segments
+            )) {
+            qWarning("source edit timeline is outside the supported contract");
+            return false;
+        }
+        if (!appendEffectMasks(
+                effectMasks,
+                effectChain,
+                trimStartMillis,
+                trimEndMillis,
+                adjustment.effect_masks
+            )) {
+            qWarning("effect masks are outside the supported contract");
             return false;
         }
         session_->session_set_asset_adjustment(id.toStdString(), adjustment);

@@ -72,7 +72,9 @@ void RenderExportController::exportAdjusted(
     bool limiterEnabled,
     int limiterCeilingCentibels,
     int limiterReleaseMillis,
-    const QVariantList& effectChain
+    const QVariantList& effectChain,
+    const QVariantList& editSegments,
+    const QVariantList& effectMasks
 ) {
     if (assetId.isEmpty() || adjustmentRevisionId < 0 || sourcePath.isEmpty()) {
         reject(QStringLiteral("render source identity is invalid"));
@@ -111,7 +113,9 @@ void RenderExportController::exportAdjusted(
         limiterEnabled,
         limiterCeilingCentibels,
         limiterReleaseMillis,
-        effectChain
+        effectChain,
+        editSegments,
+        effectMasks
     );
     if (!adjustment.has_value()) {
         reject(QStringLiteral("render adjustment is outside the supported range"));

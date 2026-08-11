@@ -10,6 +10,7 @@ use crate::{
 };
 
 #[test]
+#[allow(clippy::too_many_lines)] // One sound-wall row fixture exercises the full adjustment projection.
 fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
     let root = std::env::temp_dir().join(format!("echo-sound-wall-{}", std::process::id()));
     let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
@@ -81,7 +82,47 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
                         sensitivity_percent: 66,
                         maximum_click_microseconds: 800,
                         repair_percent: 90,
-                    }),
+                    })
+                    .with_edit_timeline(
+                        echo_domain::EditTimeline::new(
+                            100,
+                            900,
+                            vec![
+                                echo_domain::EditSegment::new(
+                                    100,
+                                    400,
+                                    echo_domain::EditSegmentState::Audible,
+                                    0,
+                                    0,
+                                    0,
+                                    echo_domain::FadeCurves::linear(),
+                                    0,
+                                )
+                                .expect("audible edit segment validates"),
+                                echo_domain::EditSegment::new(
+                                    400,
+                                    900,
+                                    echo_domain::EditSegmentState::Hidden,
+                                    0,
+                                    0,
+                                    0,
+                                    echo_domain::FadeCurves::linear(),
+                                    120,
+                                )
+                                .expect("hidden edit segment validates"),
+                            ],
+                        )
+                        .expect("edit timeline validates"),
+                    )
+                    .with_effect_masks(vec![
+                        echo_domain::EffectMask::new(
+                            200,
+                            600,
+                            10,
+                            vec![echo_domain::EffectNodeKind::Restoration],
+                        )
+                        .expect("effect mask validates"),
+                    ]),
                 )
                 .expect("adjustment validates"),
                 31,
@@ -106,6 +147,16 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
     assert_eq!(adjustment.graph.de_hum().harmonic_count, 5);
     assert_eq!(adjustment.graph.de_click().sensitivity_percent, 66);
     assert_eq!(adjustment.graph.de_click().maximum_click_microseconds, 800);
+    assert_eq!(adjustment.graph.edit_timeline().segments().len(), 2);
+    assert_eq!(
+        adjustment.graph.edit_timeline().segments()[1].state(),
+        echo_domain::EditSegmentState::Hidden
+    );
+    assert_eq!(adjustment.graph.effect_masks().len(), 1);
+    assert_eq!(
+        adjustment.graph.effect_masks()[0].effect_nodes(),
+        &[echo_domain::EffectNodeKind::Restoration]
+    );
     assert_eq!(
         projected.transcript.expect("text evidence")["text"],
         "旧房子的窗户朝南"

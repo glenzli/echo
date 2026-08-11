@@ -206,7 +206,7 @@ fn validate_revision(
     revision_id: i64,
 ) -> Result<(), CatalogError> {
     let latest = latest_adjustment_graph(transaction, asset_id)?;
-    if matches!((revision_id, latest), (0, None))
+    if matches!((revision_id, latest.as_ref()), (0, None))
         || latest.is_some_and(|revision| revision.revision_id == revision_id)
     {
         return Ok(());

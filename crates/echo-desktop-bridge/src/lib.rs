@@ -21,6 +21,29 @@ mod ffi {
         gain_centibels: i16,
     }
 
+    /// One source-anchored segment in the non-destructive edit timeline.
+    #[derive(Debug)]
+    struct EditSegmentWire {
+        source_start_millis: u64,
+        source_end_millis: u64,
+        state: u8,
+        gain_centibels: i16,
+        fade_in_millis: u64,
+        fade_out_millis: u64,
+        fade_in_curve: u8,
+        fade_out_curve: u8,
+        gap_after_millis: u64,
+    }
+
+    /// One original-time range that scopes a bounded set of insert effects.
+    #[derive(Debug)]
+    struct EffectMaskWire {
+        start_millis: u64,
+        end_millis: u64,
+        feather_millis: u16,
+        effect_nodes: Vec<u8>,
+    }
+
     /// Bounded presentation projection of one asset for the desktop shell.
     #[derive(Debug)]
     struct AssetSummaryWire {
@@ -87,6 +110,8 @@ mod ffi {
         limiter_ceiling_centibels: i16,
         limiter_release_millis: u16,
         effect_chain: Vec<u8>,
+        edit_segments: Vec<EditSegmentWire>,
+        effect_masks: Vec<EffectMaskWire>,
         container_format: String,
         sample_rate: u32,
         channel_count: u32,
@@ -144,6 +169,8 @@ mod ffi {
         limiter_ceiling_centibels: i16,
         limiter_release_millis: u16,
         effect_chain: Vec<u8>,
+        edit_segments: Vec<EditSegmentWire>,
+        effect_masks: Vec<EffectMaskWire>,
     }
 
     /// Completed offline-render evidence crossing the desktop ABI atomically.

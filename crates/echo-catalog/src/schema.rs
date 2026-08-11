@@ -98,6 +98,8 @@ fn valid_calendar_date(date: u32) -> bool {
 }
 
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_811, 13);
+pub(crate) const PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 12);
 pub(crate) const PROCESSING_RECIPES_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 11);
@@ -121,9 +123,16 @@ pub(crate) const EARLIEST_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 2);
 pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 13);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_811, 14);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.13-recipe-management";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260811.14-source-edits";
+
+pub(crate) const SOURCE_EDIT_MIGRATION_SQL: &str = r"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN edit_timeline_json TEXT NOT NULL DEFAULT '';
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN effect_masks_json TEXT NOT NULL DEFAULT '[]';
+";
 
 pub(crate) const PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL: &str = r"
 ALTER TABLE processing_recipes
@@ -600,6 +609,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            '{\"enabled\":false,\"sensitivity_percent\":50,\"maximum_click_microseconds\":1000,\"repair_percent\":100}',
     effect_chain_json       TEXT NOT NULL DEFAULT
                            '{\"nodes\":[\"restoration\",\"equalizer\",\"dynamics\",\"space\",\"master\",\"de_hum\",\"de_click\"],\"active_count\":5}',
+    edit_timeline_json      TEXT NOT NULL DEFAULT '',
+    effect_masks_json       TEXT NOT NULL DEFAULT '[]',
     limiter_enabled        INTEGER NOT NULL DEFAULT 0
                            CHECK (limiter_enabled IN (0, 1)),
     limiter_ceiling_centibels INTEGER NOT NULL DEFAULT -100

@@ -173,6 +173,41 @@ int main() {
     assert(full_source_result.frame_count == 48'000);
     assert(full_source_result.size_bytes == full_source_sink.bytes().size());
 
+    auto source_edited = full_source;
+    source_edited.edit_segments = {
+        {
+            .source_start_millis = 0,
+            .source_end_millis = 250,
+            .state = echo::audio::EditSegmentState::Audible,
+        },
+        {
+            .source_start_millis = 250,
+            .source_end_millis = 500,
+            .state = echo::audio::EditSegmentState::Hidden,
+            .gap_after_millis = 100,
+        },
+        {
+            .source_start_millis = 500,
+            .source_end_millis = 750,
+            .state = echo::audio::EditSegmentState::Muted,
+        },
+        {
+            .source_start_millis = 750,
+            .source_end_millis = 1000,
+            .state = echo::audio::EditSegmentState::Audible,
+        },
+    };
+    MemorySink edited_wav_sink;
+    const auto edited_wav =
+        echo::audio::OfflineWavRenderer::render(source.string(), source_edited, edited_wav_sink);
+    assert(edited_wav.frame_count == 40'800);
+    assert(edited_wav.size_bytes == edited_wav_sink.bytes().size());
+    MemorySink edited_flac_sink;
+    const auto edited_flac =
+        echo::audio::OfflineFlacRenderer::render(source.string(), source_edited, edited_flac_sink);
+    assert(edited_flac.frame_count == edited_wav.frame_count);
+    assert(edited_flac.size_bytes == edited_flac_sink.bytes().size());
+
     MemorySink cancelled_sink;
     bool did_cancel = false;
     try {

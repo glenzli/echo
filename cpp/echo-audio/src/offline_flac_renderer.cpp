@@ -242,8 +242,7 @@ OfflineRenderResult OfflineFlacRenderer::render(
     std::vector<float> measured;
     Dither dither;
     std::uint64_t frame_count = 0;
-    const std::uint64_t expected_frames =
-        (adjustment.trim_end_millis - adjustment.trim_start_millis) * kSampleRate / 1000U;
+    const std::uint64_t expected_frames = session.output_frame_count();
 
     const auto drain_packets = [&] {
         while (true) {

@@ -5,6 +5,7 @@
 //! - `ids` owns strongly typed persistent identifiers;
 //! - `original` owns the immutable original reference and content identity;
 //! - `adjustment` owns validated non-destructive restoration intent;
+//! - `source_edit` owns original-time edit segments and effect masks;
 //! - `processing_recipe` owns reusable processing snapshots and their
 //!   deterministic asset-local materialization;
 //! - `analysis` owns progressive analysis levels and evidence contracts
@@ -21,6 +22,7 @@ mod audio_asset;
 mod ids;
 mod original;
 mod processing_recipe;
+mod source_edit;
 
 pub use adjustment::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, CompressorSettings, DeClickSettings,
@@ -53,6 +55,11 @@ pub use processing_recipe::{
     AdjustmentPatch, DEFAULT_PROCESSING_COMPONENTS, ProcessingComponent,
     ProcessingComponentValueError, ProcessingMergeMode, ProcessingRecipeError,
     ProcessingRecipeRevision,
+};
+pub use source_edit::{
+    DEFAULT_EFFECT_MASK_FEATHER_MILLIS, EditSegment, EditSegmentState, EditSegmentStateValueError,
+    EditTimeline, EditTimelineError, EffectMask, EffectMaskError, MAX_EDIT_GAP_MILLIS,
+    MAX_EDIT_SEGMENTS, MAX_EFFECT_MASK_FEATHER_MILLIS, MAX_EFFECT_MASKS,
 };
 
 #[cfg(test)]

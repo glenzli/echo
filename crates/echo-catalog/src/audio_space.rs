@@ -83,7 +83,7 @@ pub fn list_audio_space(
          adj.compressor_ratio_tenths, adj.compressor_attack_millis, \
          adj.compressor_release_millis, adj.compressor_makeup_centibels, \
          adj.reverb_json, adj.restoration_json, adj.de_hum_json, adj.de_click_json, \
-         adj.effect_chain_json, \
+         adj.effect_chain_json, adj.edit_timeline_json, adj.effect_masks_json, \
          adj.limiter_enabled, adj.limiter_ceiling_centibels, \
          adj.limiter_release_millis, \
          adj.created_at_millis \
@@ -154,6 +154,9 @@ fn audio_space_adjustment_from_row(
         return Ok(None);
     };
     let source_duration = duration_millis.expect("adjusted asset has a known duration");
+    let trim_start_millis =
+        u64::try_from(row.get::<_, i64>(20)?).expect("trim start is non-negative");
+    let trim_end_millis = u64::try_from(row.get::<_, i64>(21)?).expect("trim end is non-negative");
     let curves = echo_domain::FadeCurves::new(
         echo_domain::FadeCurve::from_catalog_value(row.get(24)?).expect("fade in curve is valid"),
         echo_domain::FadeCurve::from_catalog_value(row.get(25)?).expect("fade out curve is valid"),
@@ -191,17 +194,34 @@ fn audio_space_adjustment_from_row(
     .with_effect_chain(
         serde_json::from_str(&row.get::<_, String>(39)?).expect("stored effect chain parses"),
     )
+    .with_edit_timeline({
+        let encoded = row.get::<_, String>(40)?;
+        if encoded.trim().is_empty() || encoded.trim() == "[]" {
+            echo_domain::EditTimeline::identity(trim_start_millis, trim_end_millis)
+                .expect("legacy edit timeline restores")
+        } else {
+            serde_json::from_str(&encoded).expect("stored edit timeline parses")
+        }
+    })
+    .with_effect_masks({
+        let encoded = row.get::<_, String>(41)?;
+        if encoded.trim().is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&encoded).expect("stored effect masks parse")
+        }
+    })
     .with_limiter(echo_domain::LimiterSettings {
-        enabled: row.get::<_, i64>(40)? != 0,
-        ceiling_centibels: i16::try_from(row.get::<_, i64>(41)?)
+        enabled: row.get::<_, i64>(42)? != 0,
+        ceiling_centibels: i16::try_from(row.get::<_, i64>(43)?)
             .expect("limiter ceiling fits centibels"),
-        release_millis: u16::try_from(row.get::<_, i64>(42)?)
+        release_millis: u16::try_from(row.get::<_, i64>(44)?)
             .expect("limiter release fits milliseconds"),
     });
     let graph = echo_domain::AdjustmentGraph::new(
         source_duration,
-        u64::try_from(row.get::<_, i64>(20)?).expect("trim start is non-negative"),
-        u64::try_from(row.get::<_, i64>(21)?).expect("trim end is non-negative"),
+        trim_start_millis,
+        trim_end_millis,
         u64::try_from(row.get::<_, i64>(22)?).expect("fade in is non-negative"),
         u64::try_from(row.get::<_, i64>(23)?).expect("fade out is non-negative"),
         effects,
@@ -210,7 +230,7 @@ fn audio_space_adjustment_from_row(
     Ok(Some(crate::AssetAdjustmentRevision {
         revision_id,
         graph,
-        created_at_millis: row.get(43)?,
+        created_at_millis: row.get(45)?,
     }))
 }
 

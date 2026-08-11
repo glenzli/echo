@@ -457,7 +457,7 @@ fn batch_revert_restores_safe_targets_once_and_preserves_later_edits() {
     let previous_graph = configured_graph(10_000, 1_000, 9_000, -250, 0, -1_800);
     let previous_revision = catalog
         .with_transaction(|transaction| {
-            record_adjustment_graph(transaction, restore_previous, previous_graph, 5)
+            record_adjustment_graph(transaction, restore_previous, previous_graph.clone(), 5)
         })
         .expect("previous adjustment writes");
     let matching_graph = configured_graph(9_000, 500, 8_500, 100, 100, -2_100);

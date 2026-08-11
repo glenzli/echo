@@ -51,7 +51,9 @@ class LoudnessAnalysisController : public QObject {
         bool limiterEnabled,
         int limiterCeilingCentibels,
         int limiterReleaseMillis,
-        const QVariantList& effectChain
+        const QVariantList& effectChain,
+        const QVariantList& editSegments,
+        const QVariantList& effectMasks
     );
     Q_INVOKABLE void cancel();
     Q_INVOKABLE QVariantMap

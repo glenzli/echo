@@ -15,8 +15,7 @@ Rectangle {
     required property string sourcePath
     required property string analysisKey
 
-    readonly property bool analysisCurrent: analyzer.hasResult
-        && analyzer.resultKey === analysisKey
+    readonly property bool analysisCurrent: analyzer.hasResult && analyzer.resultKey === analysisKey
 
     implicitWidth: 286
     implicitHeight: 286
@@ -25,29 +24,16 @@ Rectangle {
     border.width: 1
     border.color: Theme.borderStrong
 
-    function decibels(centibels: int) : string {
-        return (centibels / 100).toFixed(1) + " dBTP"
+    function decibels(centibels: int): string {
+        return (centibels / 100).toFixed(1) + " dBTP";
     }
 
-    function runAnalysis() : void {
+    function runAnalysis(): void {
         if (analyzer.running) {
-            analyzer.cancel()
-            return
+            analyzer.cancel();
+            return;
         }
-        analyzer.analyzeAdjusted(
-            analysisKey, sourcePath,
-            draft.trimStartMillis, draft.trimEndMillis,
-            draft.fadeInMillis, draft.fadeOutMillis,
-            draft.fadeInCurve, draft.fadeOutCurve,
-            draft.gainCentibels, draft.lowCutHertz,
-            draft.restorationValue(), draft.deHumValue(), draft.deClickValue(),
-            draft.equalizerEnabled,
-            draft.equalizerBands, draft.compressorEnabled,
-            draft.compressorThresholdCentibels, draft.compressorRatioTenths,
-            draft.compressorAttackMillis, draft.compressorReleaseMillis,
-            draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled,
-            draft.limiterCeilingCentibels, draft.limiterReleaseMillis,
-            draft.effectChain)
+        analyzer.analyzeAdjusted(analysisKey, sourcePath, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks);
     }
 
     ColumnLayout {
@@ -74,14 +60,14 @@ Rectangle {
                 font.weight: Font.DemiBold
             }
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset limiter")
-                enabled: panel.draft.limiterEnabled
-                    || panel.draft.limiterCeilingCentibels !== -100
-                    || panel.draft.limiterReleaseMillis !== 100
+                enabled: panel.draft.limiterEnabled || panel.draft.limiterCeilingCentibels !== -100 || panel.draft.limiterReleaseMillis !== 100
                 buttonSize: 25
                 iconSize: 14
                 onClicked: panel.draft.resetLimiter()
@@ -141,10 +127,11 @@ Rectangle {
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
                 }
-                Item { Layout.fillWidth: true }
+                Item {
+                    Layout.fillWidth: true
+                }
                 Text {
-                    text: panel.meterSource.active
-                        ? panel.meterSource.limiterReductionDb.toFixed(1) + " dB" : "—"
+                    text: panel.meterSource.active ? panel.meterSource.limiterReductionDb.toFixed(1) + " dB" : "—"
                     color: Theme.textPrimary
                     font.family: "Menlo"
                     font.pixelSize: Theme.fontMeta
@@ -170,7 +157,9 @@ Rectangle {
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
             }
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
             EchoButton {
                 text: panel.analyzer.running ? qsTr("Cancel") : qsTr("Analyze")
                 ghost: true
@@ -186,11 +175,14 @@ Rectangle {
             color: Theme.track
 
             Rectangle {
-                width: parent.width * (panel.analyzer.running ? panel.analyzer.progress
-                    : panel.analysisCurrent ? 1 : 0)
+                width: parent.width * (panel.analyzer.running ? panel.analyzer.progress : panel.analysisCurrent ? 1 : 0)
                 height: parent.height
                 color: Theme.accent
-                Behavior on width { NumberAnimation { duration: 100 } }
+                Behavior on width {
+                    NumberAnimation {
+                        duration: 100
+                    }
+                }
             }
         }
 
@@ -215,15 +207,13 @@ Rectangle {
             AnalysisValue {
                 visible: panel.analyzer.errorText.length === 0
                 label: qsTr("Integrated")
-                value: panel.analysisCurrent
-                    ? panel.analyzer.integratedLufs.toFixed(1) : "—"
+                value: panel.analysisCurrent ? panel.analyzer.integratedLufs.toFixed(1) : "—"
                 unit: "LUFS"
             }
             AnalysisValue {
                 visible: panel.analyzer.errorText.length === 0
                 label: qsTr("True peak estimate")
-                value: panel.analysisCurrent
-                    ? panel.analyzer.truePeakDbtp.toFixed(1) : "—"
+                value: panel.analysisCurrent ? panel.analyzer.truePeakDbtp.toFixed(1) : "—"
                 unit: "dBTP"
             }
         }

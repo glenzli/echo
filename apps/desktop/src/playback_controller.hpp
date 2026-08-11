@@ -62,7 +62,9 @@ class PlaybackController : public QObject {
         bool limiterEnabled,
         int limiterCeilingCentibels,
         int limiterReleaseMillis,
-        const QVariantList& effectChain
+        const QVariantList& effectChain,
+        const QVariantList& editSegments,
+        const QVariantList& effectMasks
     );
     Q_INVOKABLE bool updateEqualizer(bool enabled, const QVariantList& equalizerBands);
     Q_INVOKABLE bool updateRestoration(const QVariantMap& restoration);

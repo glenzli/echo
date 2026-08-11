@@ -151,5 +151,47 @@ int main() {
         assert_near(process_in_chunks(second_chain, input, 23), input);
     }
 
+    {
+        auto adjustment = master_only();
+        adjustment.effect_chain = {
+            echo::audio::EffectNodeKind::Equalizer,
+            echo::audio::EffectNodeKind::Master,
+            echo::audio::EffectNodeKind::Restoration,
+            echo::audio::EffectNodeKind::Dynamics,
+            echo::audio::EffectNodeKind::Space,
+            echo::audio::EffectNodeKind::DeHum,
+            echo::audio::EffectNodeKind::DeClick,
+        };
+        adjustment.effect_chain_count = 2;
+        adjustment.equalizer.bands[0].gain_centibels = 1200;
+        adjustment.effect_masks = {{
+            .start_millis = 0,
+            .end_millis = 1,
+            .nodes = {echo::audio::EffectNodeKind::Equalizer},
+        }};
+        const echo::audio::PreparedAdjustment prepared(adjustment, 1000, kSampleRate);
+        const echo::audio::EffectMaskPlan mask_plan(adjustment, prepared, kSampleRate);
+        echo::audio::EffectProcessingChain chain(prepared, kSampleRate, kChannels, &mask_plan);
+        const auto input = fixture(96);
+        auto output = input;
+        std::array<std::uint64_t, 96> anchors{};
+        for (std::size_t frame = 0; frame < anchors.size(); ++frame) {
+            anchors[frame] = frame;
+        }
+        const std::size_t produced =
+            chain.process_interleaved(output.data(), anchors.data(), anchors.size(), kChannels);
+        assert(produced == anchors.size());
+        bool wet_changed = false;
+        for (std::size_t frame = 0; frame < 48; ++frame) {
+            wet_changed =
+                wet_changed
+                || std::abs(output[frame * kChannels] - input[frame * kChannels]) > 1.0E-6F;
+        }
+        assert(wet_changed);
+        for (std::size_t frame = 48; frame < anchors.size(); ++frame) {
+            assert(std::abs(output[frame * kChannels] - input[frame * kChannels]) < 1.0E-6F);
+        }
+    }
+
     return 0;
 }

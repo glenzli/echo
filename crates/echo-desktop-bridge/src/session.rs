@@ -13,9 +13,10 @@ use echo_core::load_or_build_waveform;
 use echo_domain::AssetId;
 
 use crate::ffi::{
-    AnalysisStatusWire, AssetSummaryWire, EqualizerBandWire, JobStatsWire, KeywordFacetWire,
-    LongAudioChapterWire, ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire,
-    TranscriptWire, UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
+    AnalysisStatusWire, AssetSummaryWire, EditSegmentWire, EffectMaskWire, EqualizerBandWire,
+    JobStatsWire, KeywordFacetWire, LongAudioChapterWire, ScanRootWire, SearchHitWire,
+    SmartAlbumWire, TranscriptSegmentWire, TranscriptWire, UserAlbumWire, WaveformArtifactWire,
+    WaveformLevelWire,
 };
 
 pub(crate) fn now_millis() -> i64 {
@@ -104,6 +105,8 @@ struct AdjustmentWireFields {
     limiter_ceiling_centibels: i16,
     limiter_release_millis: u16,
     effect_chain: Vec<u8>,
+    edit_segments: Vec<EditSegmentWire>,
+    effect_masks: Vec<EffectMaskWire>,
 }
 
 struct SourceMetadataWireFields {
@@ -205,6 +208,132 @@ fn effect_chain_from_wire(values: &[u8]) -> Result<echo_domain::EffectChain, Ses
     })
 }
 
+fn edit_segment_wire(segment: &echo_domain::EditSegment) -> EditSegmentWire {
+    EditSegmentWire {
+        source_start_millis: segment.source_start_millis(),
+        source_end_millis: segment.source_end_millis(),
+        state: segment.state().wire_value(),
+        gain_centibels: segment.gain_centibels(),
+        fade_in_millis: segment.fade_in_millis(),
+        fade_out_millis: segment.fade_out_millis(),
+        fade_in_curve: u8::try_from(segment.fade_in_curve().catalog_value())
+            .expect("fade curve catalog values fit u8"),
+        fade_out_curve: u8::try_from(segment.fade_out_curve().catalog_value())
+            .expect("fade curve catalog values fit u8"),
+        gap_after_millis: segment.gap_after_millis(),
+    }
+}
+
+fn edit_timeline_from_wire(
+    trim_start_millis: u64,
+    trim_end_millis: u64,
+    values: &[EditSegmentWire],
+) -> Result<echo_domain::EditTimeline, SessionError> {
+    if values.is_empty() {
+        let segment = echo_domain::EditSegment::new(
+            trim_start_millis,
+            trim_end_millis,
+            echo_domain::EditSegmentState::Audible,
+            0,
+            0,
+            0,
+            echo_domain::FadeCurves::new(
+                echo_domain::FadeCurve::Linear,
+                echo_domain::FadeCurve::Linear,
+            ),
+            0,
+        )
+        .map_err(|error| SessionError {
+            message: error.to_string(),
+        })?;
+        return echo_domain::EditTimeline::new(trim_start_millis, trim_end_millis, vec![segment])
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            });
+    }
+    let segments = values
+        .iter()
+        .map(|segment| {
+            echo_domain::EditSegment::new(
+                segment.source_start_millis,
+                segment.source_end_millis,
+                echo_domain::EditSegmentState::from_wire_value(segment.state).map_err(|error| {
+                    SessionError {
+                        message: error.to_string(),
+                    }
+                })?,
+                segment.gain_centibels,
+                segment.fade_in_millis,
+                segment.fade_out_millis,
+                echo_domain::FadeCurves::new(
+                    echo_domain::FadeCurve::from_catalog_value(i64::from(segment.fade_in_curve))
+                        .map_err(|error| SessionError {
+                            message: error.to_string(),
+                        })?,
+                    echo_domain::FadeCurve::from_catalog_value(i64::from(segment.fade_out_curve))
+                        .map_err(|error| SessionError {
+                        message: error.to_string(),
+                    })?,
+                ),
+                segment.gap_after_millis,
+            )
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    echo_domain::EditTimeline::new(trim_start_millis, trim_end_millis, segments).map_err(|error| {
+        SessionError {
+            message: error.to_string(),
+        }
+    })
+}
+
+fn effect_mask_wire(mask: &echo_domain::EffectMask) -> EffectMaskWire {
+    EffectMaskWire {
+        start_millis: mask.start_millis(),
+        end_millis: mask.end_millis(),
+        feather_millis: mask.feather_millis(),
+        effect_nodes: mask
+            .effect_nodes()
+            .iter()
+            .copied()
+            .map(echo_domain::EffectNodeKind::wire_value)
+            .collect(),
+    }
+}
+
+fn effect_masks_from_wire(
+    values: &[EffectMaskWire],
+) -> Result<Vec<echo_domain::EffectMask>, SessionError> {
+    values
+        .iter()
+        .map(|mask| {
+            let nodes = mask
+                .effect_nodes
+                .iter()
+                .copied()
+                .map(|value| {
+                    echo_domain::EffectNodeKind::from_wire_value(value).map_err(|error| {
+                        SessionError {
+                            message: error.to_string(),
+                        }
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            echo_domain::EffectMask::new(
+                mask.start_millis,
+                mask.end_millis,
+                mask.feather_millis,
+                nodes,
+            )
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })
+        })
+        .collect()
+}
+
 fn adjustment_graph_from_wire(
     duration: u64,
     adjustment: &crate::ffi::AssetAdjustmentWire,
@@ -284,7 +413,13 @@ fn adjustment_graph_from_wire(
             ceiling_centibels: adjustment.limiter_ceiling_centibels,
             release_millis: adjustment.limiter_release_millis,
         })
-        .with_effect_chain(effect_chain_from_wire(&adjustment.effect_chain)?),
+        .with_effect_chain(effect_chain_from_wire(&adjustment.effect_chain)?)
+        .with_edit_timeline(edit_timeline_from_wire(
+            adjustment.trim_start_millis,
+            adjustment.trim_end_millis,
+            &adjustment.edit_segments,
+        )?)
+        .with_effect_masks(effect_masks_from_wire(&adjustment.effect_masks)?),
     )
     .map_err(|error| SessionError {
         message: error.to_string(),
@@ -345,6 +480,22 @@ fn adjustment_wire_fields(
             limiter_ceiling_centibels: -100,
             limiter_release_millis: 100,
             effect_chain: effect_chain_wire(echo_domain::EffectChain::standard()),
+            edit_segments: source_duration_millis
+                .filter(|duration| *duration > 0)
+                .map(|duration| EditSegmentWire {
+                    source_start_millis: 0,
+                    source_end_millis: duration,
+                    state: echo_domain::EditSegmentState::Audible.wire_value(),
+                    gain_centibels: 0,
+                    fade_in_millis: 0,
+                    fade_out_millis: 0,
+                    fade_in_curve: 0,
+                    fade_out_curve: 0,
+                    gap_after_millis: 0,
+                })
+                .into_iter()
+                .collect(),
+            effect_masks: Vec::new(),
         },
         |revision| AdjustmentWireFields {
             revision: revision.revision_id,
@@ -411,6 +562,19 @@ fn adjustment_wire_fields(
             limiter_ceiling_centibels: revision.graph.limiter().ceiling_centibels,
             limiter_release_millis: revision.graph.limiter().release_millis,
             effect_chain: effect_chain_wire(revision.graph.effect_chain()),
+            edit_segments: revision
+                .graph
+                .edit_timeline()
+                .segments()
+                .iter()
+                .map(edit_segment_wire)
+                .collect(),
+            effect_masks: revision
+                .graph
+                .effect_masks()
+                .iter()
+                .map(effect_mask_wire)
+                .collect(),
         },
     )
 }
@@ -505,6 +669,8 @@ fn asset_summary_wire(asset: echo_catalog::AudioSpaceAsset) -> AssetSummaryWire 
         limiter_ceiling_centibels: adjustment.limiter_ceiling_centibels,
         limiter_release_millis: adjustment.limiter_release_millis,
         effect_chain: adjustment.effect_chain,
+        edit_segments: adjustment.edit_segments,
+        effect_masks: adjustment.effect_masks,
         container_format: source_metadata.container_format,
         sample_rate: source_metadata.sample_rate,
         channel_count: source_metadata.channel_count,

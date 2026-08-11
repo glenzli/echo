@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace echo::audio {
 
@@ -25,6 +26,33 @@ enum class EffectNodeKind : std::uint8_t {
     Master = 4,
     DeHum = 5,
     DeClick = 6,
+};
+
+enum class EditSegmentState : std::uint8_t {
+    Audible = 0,
+    Muted = 1,
+    Hidden = 2,
+};
+
+/// One original-time interval in the non-destructive source edit list.
+struct EditSegment {
+    std::uint64_t source_start_millis = 0;
+    std::uint64_t source_end_millis = 0;
+    EditSegmentState state = EditSegmentState::Audible;
+    std::int16_t gain_centibels = 0;
+    std::uint64_t fade_in_millis = 0;
+    std::uint64_t fade_out_millis = 0;
+    FadeCurve fade_in_curve = FadeCurve::Linear;
+    FadeCurve fade_out_curve = FadeCurve::Linear;
+    std::uint64_t gap_after_millis = 0;
+};
+
+/// Original-time activation region for one or more insert effects.
+struct EffectMask {
+    std::uint64_t start_millis = 0;
+    std::uint64_t end_millis = 0;
+    std::uint64_t feather_millis = 0;
+    std::vector<EffectNodeKind> nodes;
 };
 
 enum class EqualizerFilterKind : std::uint8_t {
@@ -152,6 +180,8 @@ struct PlaybackAdjustment {
         EffectNodeKind::DeClick,
     }};
     std::uint8_t effect_chain_count = 5;
+    std::vector<EditSegment> edit_segments;
+    std::vector<EffectMask> effect_masks;
 };
 
 /// Playback-ready adjustment compiled once before decoding begins.

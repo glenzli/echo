@@ -1,4 +1,5 @@
 use super::*;
+use crate::{EditSegment, EditSegmentState};
 
 #[test]
 #[allow(clippy::too_many_lines)] // One complete authored graph contract fixture.
@@ -410,4 +411,127 @@ fn graph_rejects_de_hum_and_de_click_parameters_outside_the_authored_contract() 
             Err(AdjustmentGraphError::DeClickOutOfRange)
         );
     }
+}
+
+#[test]
+fn graph_bounds_effect_masks_to_trim_and_active_supported_inserts() {
+    let timeline = EditTimeline::new(
+        1_000,
+        9_000,
+        vec![
+            EditSegment::new(
+                1_000,
+                4_000,
+                EditSegmentState::Audible,
+                0,
+                0,
+                0,
+                FadeCurves::linear(),
+                0,
+            )
+            .expect("first segment validates"),
+            EditSegment::new(
+                4_000,
+                9_000,
+                EditSegmentState::Hidden,
+                0,
+                0,
+                0,
+                FadeCurves::linear(),
+                250,
+            )
+            .expect("second segment validates"),
+        ],
+    )
+    .expect("timeline validates");
+    let mask = EffectMask::new(
+        2_000,
+        6_000,
+        10,
+        vec![EffectNodeKind::Equalizer, EffectNodeKind::Dynamics],
+    )
+    .expect("mask validates");
+    let graph = AdjustmentGraph::new(
+        10_000,
+        1_000,
+        9_000,
+        0,
+        0,
+        AdjustmentEffects::default()
+            .with_edit_timeline(timeline.clone())
+            .with_effect_masks(vec![mask.clone()]),
+    )
+    .expect("mask targets active inserts");
+    assert_eq!(graph.edit_timeline(), &timeline);
+    assert_eq!(graph.effect_masks(), std::slice::from_ref(&mask));
+
+    let outside_trim =
+        EffectMask::new(500, 2_000, 10, vec![EffectNodeKind::Equalizer]).expect("valid mask");
+    assert_eq!(
+        AdjustmentGraph::new(
+            10_000,
+            1_000,
+            9_000,
+            0,
+            0,
+            AdjustmentEffects::default()
+                .with_edit_timeline(timeline.clone())
+                .with_effect_masks(vec![outside_trim]),
+        ),
+        Err(AdjustmentGraphError::InvalidEffectMasks)
+    );
+    assert_eq!(
+        AdjustmentGraph::new(
+            10_000,
+            1_000,
+            9_000,
+            0,
+            0,
+            AdjustmentEffects::default()
+                .with_edit_timeline(timeline.clone())
+                .with_effect_masks(vec![mask.clone(); MAX_EFFECT_MASKS + 1]),
+        ),
+        Err(AdjustmentGraphError::InvalidEffectMasks)
+    );
+
+    let inactive = EffectMask::new(2_000, 3_000, 10, vec![EffectNodeKind::Space])
+        .expect("mask is structurally valid");
+    assert_eq!(
+        AdjustmentGraph::new(
+            10_000,
+            1_000,
+            9_000,
+            0,
+            0,
+            AdjustmentEffects::default()
+                .with_effect_chain(
+                    EffectChain::new([EffectNodeKind::Equalizer, EffectNodeKind::Master])
+                        .expect("chain validates"),
+                )
+                .with_edit_timeline(timeline)
+                .with_effect_masks(vec![inactive]),
+        ),
+        Err(AdjustmentGraphError::InvalidEffectMasks)
+    );
+}
+
+#[test]
+fn legacy_graph_json_restores_one_audible_identity_segment() {
+    let graph = AdjustmentGraph::identity(4_000).expect("identity graph validates");
+    let mut legacy = serde_json::to_value(&graph).expect("graph encodes");
+    legacy
+        .as_object_mut()
+        .expect("graph is object")
+        .remove("edit_timeline");
+    legacy
+        .as_object_mut()
+        .expect("graph is object")
+        .remove("effect_masks");
+    let restored: AdjustmentGraph = serde_json::from_value(legacy).expect("legacy graph decodes");
+    assert_eq!(restored.effect_masks(), &[]);
+    assert_eq!(restored.edit_timeline().segments().len(), 1);
+    assert_eq!(
+        restored.edit_timeline().segments()[0].state(),
+        EditSegmentState::Audible
+    );
 }

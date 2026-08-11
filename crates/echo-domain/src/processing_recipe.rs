@@ -4,7 +4,8 @@
 //! components. Applying it always materializes a complete asset-local
 //! [`AdjustmentGraph`]; playback and rendering never depend on this shared
 //! definition. Clip-local trim, fades, and gain therefore remain owned by the
-//! target asset and are never copied by a recipe.
+//! target asset and are never copied by a recipe. Source edit timelines and
+//! effect masks are likewise asset-specific and always survive recipe apply.
 
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
@@ -161,6 +162,7 @@ impl AdjustmentPatch {
     ///
     /// Returns [`ProcessingRecipeError`] when no component is selected or a
     /// component identity is repeated.
+    #[allow(clippy::needless_pass_by_value)] // Stable API consumes one authored snapshot.
     pub fn from_graph(
         graph: AdjustmentGraph,
         components: &[ProcessingComponent],
@@ -195,6 +197,7 @@ impl AdjustmentPatch {
     ///
     /// Returns [`ProcessingRecipeError`] when the patch or resulting graph is
     /// outside Echo's bounded adjustment contract.
+    #[allow(clippy::needless_pass_by_value)] // Materialization consumes the target snapshot.
     pub fn apply_to(
         &self,
         target: AdjustmentGraph,
@@ -202,7 +205,7 @@ impl AdjustmentPatch {
     ) -> Result<AdjustmentGraph, ProcessingRecipeError> {
         self.validate()?;
         let mut effects = match mode {
-            ProcessingMergeMode::Merge => processing_from_graph(target),
+            ProcessingMergeMode::Merge => processing_from_graph(&target),
             ProcessingMergeMode::Replace => AdjustmentEffects::new(
                 FadeCurves::new(target.fade_in_curve(), target.fade_out_curve()),
                 target.gain_centibels(),
@@ -239,6 +242,9 @@ impl AdjustmentPatch {
             ProcessingMergeMode::Merge => self.merged_chain(target.effect_chain())?,
             ProcessingMergeMode::Replace => self.replacement_chain()?,
         };
+        effects = effects
+            .with_edit_timeline(target.edit_timeline().clone())
+            .with_effect_masks(target.effect_masks().to_vec());
 
         AdjustmentGraph::new(
             target.trim_end_millis(),
@@ -341,7 +347,7 @@ impl AdjustmentPatch {
     }
 }
 
-fn processing_from_graph(graph: AdjustmentGraph) -> AdjustmentEffects {
+fn processing_from_graph(graph: &AdjustmentGraph) -> AdjustmentEffects {
     AdjustmentEffects::new(
         FadeCurves::new(graph.fade_in_curve(), graph.fade_out_curve()),
         graph.gain_centibels(),

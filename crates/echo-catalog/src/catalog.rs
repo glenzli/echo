@@ -17,10 +17,11 @@ use crate::{
         INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
         OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
-        PROCESSING_RECIPES_MIGRATION_SQL, PROCESSING_RECIPES_SCHEMA_VERSION,
-        RENDER_EXPORTS_MIGRATION_SQL, RESTORATION_CHAIN_MIGRATION_SQL,
-        RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
-        SEMANTIC_SEARCH_MIGRATION_SQL, USER_ALBUMS_MIGRATION_SQL,
+        PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
+        PROCESSING_RECIPES_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
+        RESTORATION_CHAIN_MIGRATION_SQL, RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY,
+        SCHEMA_SQL, SCHEMA_VERSION, SEMANTIC_SEARCH_MIGRATION_SQL, SOURCE_EDIT_MIGRATION_SQL,
+        USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -101,6 +102,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             if version
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == PREVIOUS_SCHEMA_VERSION) =>
+        {
+            migrate_source_edit_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION) =>
         {
             migrate_processing_recipe_management_schema(connection)?;
         }
@@ -192,6 +200,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_source_edit_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_source_edit_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 
@@ -334,6 +350,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
 }
 
 fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), CatalogError> {
+    apply_source_edit_migration(transaction)?;
     apply_processing_recipes_migration(transaction)?;
     apply_processing_recipe_management_migration(transaction)?;
     transaction.execute(
@@ -345,6 +362,34 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_source_edit_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let edit_timeline_column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'edit_timeline_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    let effect_masks_column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'effect_masks_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    match (edit_timeline_column_count, effect_masks_column_count) {
+        (0, 0) => transaction.execute_batch(SOURCE_EDIT_MIGRATION_SQL)?,
+        (1, 1) => {}
+        _ => {
+            return Err(CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                "catalog has an incomplete source edit schema",
+            ));
+        }
+    }
     Ok(())
 }
 

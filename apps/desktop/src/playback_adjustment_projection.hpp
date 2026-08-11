@@ -4,6 +4,7 @@
 #include <QVariantMap>
 
 #include <optional>
+#include <vector>
 
 #include "echo/audio/adjustment.hpp"
 
@@ -19,6 +20,14 @@ class PlaybackAdjustmentProjection {
     deHumFromQml(const QVariantMap& value);
     [[nodiscard]] static std::optional<echo::audio::DeClickAdjustment>
     deClickFromQml(const QVariantMap& value);
+    [[nodiscard]] static std::optional<std::vector<echo::audio::EditSegment>>
+    editSegmentsFromQml(const QVariantList& values, qint64 trimStartMillis, qint64 trimEndMillis);
+    [[nodiscard]] static std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQml(
+        const QVariantList& values,
+        qint64 trimStartMillis,
+        qint64 trimEndMillis,
+        const QVariantList& effectChain
+    );
 
     [[nodiscard]] static std::optional<echo::audio::PlaybackAdjustment> fromQml(
         qint64 trimStartMillis,
@@ -44,6 +53,8 @@ class PlaybackAdjustmentProjection {
         bool limiterEnabled,
         int limiterCeilingCentibels,
         int limiterReleaseMillis,
-        const QVariantList& effectChain
+        const QVariantList& effectChain,
+        const QVariantList& editSegments,
+        const QVariantList& effectMasks
     );
 };

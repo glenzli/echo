@@ -63,7 +63,9 @@ void PlaybackController::playAdjusted(
     bool limiterEnabled,
     int limiterCeilingCentibels,
     int limiterReleaseMillis,
-    const QVariantList& effectChain
+    const QVariantList& effectChain,
+    const QVariantList& editSegments,
+    const QVariantList& effectMasks
 ) {
     const auto adjustment = PlaybackAdjustmentProjection::fromQml(
         trimStartMillis,
@@ -89,7 +91,9 @@ void PlaybackController::playAdjusted(
         limiterEnabled,
         limiterCeilingCentibels,
         limiterReleaseMillis,
-        effectChain
+        effectChain,
+        editSegments,
+        effectMasks
     );
     if (!adjustment.has_value()) {
         qWarning("invalid playback adjustment");

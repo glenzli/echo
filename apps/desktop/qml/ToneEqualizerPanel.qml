@@ -77,7 +77,9 @@ Rectangle {
         ParametricEqGraph {
             id: graph
             Layout.fillWidth: true
-            Layout.preferredHeight: 118
+            Layout.fillHeight: true
+            Layout.minimumHeight: 118
+            Layout.preferredHeight: 170
             Layout.leftMargin: 10
             Layout.rightMargin: 10
             Layout.topMargin: 7
@@ -120,7 +122,7 @@ Rectangle {
 
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredHeight: 96
             Layout.leftMargin: 10
             Layout.rightMargin: 10
             Layout.topMargin: 5

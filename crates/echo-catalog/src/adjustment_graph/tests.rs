@@ -2,8 +2,9 @@ use std::path::Path;
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, CompressorSettings, ContentHash, DeClickSettings,
-    DeEsserSettings, DeHumSettings, EffectChain, EffectNodeKind, FadeCurve, FadeCurves,
-    LimiterSettings, NoiseReductionSettings, RestorationSettings, ReverbSettings,
+    DeEsserSettings, DeHumSettings, EditSegment, EditSegmentState, EditTimeline, EffectChain,
+    EffectMask, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings, NoiseReductionSettings,
+    RestorationSettings, ReverbSettings,
 };
 
 use super::*;
@@ -41,10 +42,14 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
 
     let graph = fully_configured_graph();
     let first = catalog
-        .with_transaction(|transaction| record_adjustment_graph(transaction, asset_id, graph, 20))
+        .with_transaction(|transaction| {
+            record_adjustment_graph(transaction, asset_id, graph.clone(), 20)
+        })
         .expect("first revision writes");
     let duplicate = catalog
-        .with_transaction(|transaction| record_adjustment_graph(transaction, asset_id, graph, 30))
+        .with_transaction(|transaction| {
+            record_adjustment_graph(transaction, asset_id, graph.clone(), 30)
+        })
         .expect("duplicate save reads current");
     assert_eq!(duplicate, first);
     assert_eq!(
@@ -57,6 +62,8 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
     assert_eq!(first.graph.reverb(), graph.reverb());
     assert_eq!(first.graph.limiter(), graph.limiter());
     assert_eq!(first.graph.effect_chain(), graph.effect_chain());
+    assert_eq!(first.graph.edit_timeline(), graph.edit_timeline());
+    assert_eq!(first.graph.effect_masks(), graph.effect_masks());
 
     let second_graph = AdjustmentGraph::new(
         10_000,
@@ -77,7 +84,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
     .expect("second graph validates");
     let second = catalog
         .with_transaction(|transaction| {
-            record_adjustment_graph(transaction, asset_id, second_graph, 40)
+            record_adjustment_graph(transaction, asset_id, second_graph.clone(), 40)
         })
         .expect("second revision writes");
     assert!(second.revision_id > first.revision_id);
@@ -117,7 +124,7 @@ fn historical_revisions_are_exact_and_asset_scoped() {
         })
         .expect("second revision writes");
 
-    for expected in [first, second] {
+    for expected in [first.clone(), second] {
         assert_eq!(
             catalog
                 .with_transaction(|transaction| {
@@ -266,6 +273,7 @@ fn register_fixture_asset(catalog: &crate::Catalog, byte: u8, path: &str) -> Ass
         .expect("fixture asset writes")
 }
 
+#[allow(clippy::too_many_lines)] // One complete persistence fixture covers every authored field.
 fn fully_configured_graph() -> AdjustmentGraph {
     AdjustmentGraph::new(
         10_000,
@@ -343,7 +351,58 @@ fn fully_configured_graph() -> AdjustmentGraph {
                 EffectNodeKind::Master,
             ])
             .expect("valid reordered chain"),
-        ),
+        )
+        .with_edit_timeline(
+            EditTimeline::new(
+                1_000,
+                9_000,
+                vec![
+                    EditSegment::new(
+                        1_000,
+                        4_000,
+                        EditSegmentState::Audible,
+                        0,
+                        0,
+                        0,
+                        FadeCurves::linear(),
+                        0,
+                    )
+                    .expect("first source segment validates"),
+                    EditSegment::new(
+                        4_000,
+                        5_000,
+                        EditSegmentState::Hidden,
+                        0,
+                        0,
+                        0,
+                        FadeCurves::linear(),
+                        125,
+                    )
+                    .expect("hidden source segment validates"),
+                    EditSegment::new(
+                        5_000,
+                        9_000,
+                        EditSegmentState::Muted,
+                        -100,
+                        50,
+                        75,
+                        FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
+                        0,
+                    )
+                    .expect("muted source segment validates"),
+                ],
+            )
+            .expect("edit timeline validates"),
+        )
+        .with_effect_masks(vec![
+            EffectMask::new(
+                2_000,
+                6_000,
+                10,
+                vec![EffectNodeKind::Restoration, EffectNodeKind::Equalizer],
+            )
+            .expect("effect mask validates"),
+        ]),
     )
     .expect("graph validates")
 }

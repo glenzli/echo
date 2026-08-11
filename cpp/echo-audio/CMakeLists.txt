@@ -14,6 +14,7 @@ add_library(
     src/de_hum_filter.cpp
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
+    src/effect_mask_plan.cpp
     src/k_weighting_filter.cpp
     src/low_cut_filter.cpp
     src/loudness_gain_advisor.cpp
@@ -25,6 +26,7 @@ add_library(
     src/output_guard.cpp
     src/output_limiter.cpp
     src/playback.cpp
+    src/source_edit_plan.cpp
     src/parametric_equalizer.cpp
     src/waveform.cpp
 )
@@ -126,6 +128,22 @@ if(BUILD_TESTING)
     target_link_libraries(echo-effect-processing-chain-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-effect-processing-chain-test)
     add_test(NAME echo-effect-processing-chain-test COMMAND echo-effect-processing-chain-test)
+
+    add_executable(
+        echo-effect-mask-plan-test
+        tests/effect_mask_plan_test.cpp
+    )
+    target_link_libraries(echo-effect-mask-plan-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-effect-mask-plan-test)
+    add_test(NAME echo-effect-mask-plan-test COMMAND echo-effect-mask-plan-test)
+
+    add_executable(
+        echo-source-edit-plan-test
+        tests/source_edit_plan_test.cpp
+    )
+    target_link_libraries(echo-source-edit-plan-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-source-edit-plan-test)
+    add_test(NAME echo-source-edit-plan-test COMMAND echo-source-edit-plan-test)
 
     add_executable(
         echo-low-cut-filter-test

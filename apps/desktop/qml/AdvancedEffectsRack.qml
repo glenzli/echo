@@ -1,14 +1,14 @@
-//! Authored linear effect chain with direct node selection and a focused
-//! parameter surface. The draft owns order, bypass, history, and persistence.
+//! Unified adjustment console with a resizable signal-flow navigator and a
+//! focused parameter surface. The draft owns order, bypass, history, and
+//! persistence; this owner controls only selection and presentation.
 
 pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import EchoDesktop
 
-Rectangle {
+Item {
     id: rack
 
     required property var draft
@@ -16,119 +16,170 @@ Rectangle {
     required property var analyzer
     required property string sourcePath
     required property string analysisKey
+    property bool hasTimeSelection: false
+    property int selectionStartMillis: 0
+    property int selectionEndMillis: 0
 
-    property int currentKind: 0
+    property string selectedNodeId: "clip"
+    readonly property int currentKind: effectKind(selectedNodeId)
 
-    implicitHeight: 286
-    radius: Theme.compactControlRadius
-    color: Theme.panelRaised
-    clip: true
-    border.width: 1
-    border.color: Theme.borderStrong
+    implicitHeight: 320
 
-    function runAnalysis() : void { masterPanel.runAnalysis() }
-
-    function nodeTitle(kind: int) : string {
-        if (kind === 0) return qsTr("Restore")
-        if (kind === 1) return qsTr("Equalizer")
-        if (kind === 2) return qsTr("Dynamics")
-        if (kind === 3) return qsTr("Space")
-        if (kind === 5) return qsTr("De-hum")
-        if (kind === 6) return qsTr("De-click")
-        return qsTr("Master")
+    function runAnalysis(): void {
+        masterPanel.runAnalysis();
     }
 
-    function nodeSummary(kind: int) : string {
-        if (kind === 0) return qsTr("Noise reduction · De-esser")
-        if (kind === 1) return qsTr("6-band parametric")
-        if (kind === 2) return qsTr("Stereo compressor")
-        if (kind === 3) return qsTr("Algorithmic room")
-        if (kind === 5) return qsTr("Mains hum and harmonics")
-        if (kind === 6) return qsTr("Short impulse repair")
-        return qsTr("Limiter · Loudness")
+    function nodeTitle(kind: int): string {
+        if (kind === 0)
+            return qsTr("Restore");
+        if (kind === 1)
+            return qsTr("Equalizer");
+        if (kind === 2)
+            return qsTr("Dynamics");
+        if (kind === 3)
+            return qsTr("Space");
+        if (kind === 5)
+            return qsTr("De-hum");
+        if (kind === 6)
+            return qsTr("De-click");
+        return qsTr("Master");
     }
 
-    function nodeIcon(kind: int) : string {
-        if (kind === 0) return "qrc:/EchoDesktop/icons/high-pass.svg"
-        if (kind === 1) return "qrc:/EchoDesktop/icons/equalizer.svg"
-        if (kind === 2) return "qrc:/EchoDesktop/icons/dynamics.svg"
-        if (kind === 3) return "qrc:/EchoDesktop/icons/waveform.svg"
-        if (kind === 5) return "qrc:/EchoDesktop/icons/high-pass.svg"
-        if (kind === 6) return "qrc:/EchoDesktop/icons/waveform.svg"
-        return "qrc:/EchoDesktop/icons/gain.svg"
+    function nodeSummary(kind: int): string {
+        if (kind === 0)
+            return qsTr("Noise reduction · De-esser");
+        if (kind === 1)
+            return qsTr("6-band parametric");
+        if (kind === 2)
+            return qsTr("Stereo compressor");
+        if (kind === 3)
+            return qsTr("Algorithmic room");
+        if (kind === 5)
+            return qsTr("Mains hum and harmonics");
+        if (kind === 6)
+            return qsTr("Short impulse repair");
+        return qsTr("Limiter · Loudness");
     }
 
-    function effectId(kind: int) : string {
-        return ["restoration", "equalizer", "dynamics", "space", "master",
-                "dehum", "declick"][kind]
+    function nodeIcon(kind: int): string {
+        if (kind === 0)
+            return "qrc:/EchoDesktop/icons/high-pass.svg";
+        if (kind === 1)
+            return "qrc:/EchoDesktop/icons/equalizer.svg";
+        if (kind === 2)
+            return "qrc:/EchoDesktop/icons/dynamics.svg";
+        if (kind === 3)
+            return "qrc:/EchoDesktop/icons/waveform.svg";
+        if (kind === 5)
+            return "qrc:/EchoDesktop/icons/high-pass.svg";
+        if (kind === 6)
+            return "qrc:/EchoDesktop/icons/waveform.svg";
+        return "qrc:/EchoDesktop/icons/gain.svg";
     }
 
-    function effectKind(effectId: string) : int {
-        return ["restoration", "equalizer", "dynamics", "space", "master",
-                "dehum", "declick"]
-            .indexOf(effectId)
+    function effectId(kind: int): string {
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick"][kind];
     }
 
-    function buildChainModel(chain: var, restorationEnabled: bool,
-                             equalizerEnabled: bool, dynamicsEnabled: bool,
-                             spaceEnabled: bool, masterEnabled: bool,
-                             deHumEnabled: bool, deClickEnabled: bool) : var {
-        const enabled = [restorationEnabled, equalizerEnabled, dynamicsEnabled,
-                         spaceEnabled, masterEnabled, deHumEnabled, deClickEnabled]
-        const result = []
+    function effectKind(effectId: string): int {
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick"].indexOf(effectId);
+    }
+
+    function buildChainModel(chain: var, restorationEnabled: bool, equalizerEnabled: bool, dynamicsEnabled: bool, spaceEnabled: bool, deHumEnabled: bool, deClickEnabled: bool): var {
+        const enabled = [restorationEnabled, equalizerEnabled, dynamicsEnabled, spaceEnabled, true, deHumEnabled, deClickEnabled];
+        const result = [];
         for (let index = 0; index < chain.length; ++index) {
-            const kind = Number(chain[index])
+            const kind = Number(chain[index]);
+            if (kind === 4)
+                continue;
             result.push({
                 effectId: effectId(kind),
                 title: nodeTitle(kind),
                 summary: nodeSummary(kind),
                 iconSource: nodeIcon(kind),
-                enabled: enabled[kind],
-                terminal: kind === 4
-            })
+                enabled: enabled[kind]
+            });
         }
-        return result
+        return result;
     }
 
-    function buildCatalogModel(chain: var) : var {
+    function buildCatalogModel(chain: var): var {
         return [
-            { effectId: "restoration", title: nodeTitle(0), summary: nodeSummary(0),
-              categoryId: "restore", categoryTitle: qsTr("Restoration"),
-              iconSource: nodeIcon(0), available: chain.indexOf(0) < 0 },
-            { effectId: "equalizer", title: nodeTitle(1), summary: nodeSummary(1),
-              categoryId: "tone", categoryTitle: qsTr("Tone"),
-              iconSource: nodeIcon(1), available: chain.indexOf(1) < 0 },
-            { effectId: "dynamics", title: nodeTitle(2), summary: nodeSummary(2),
-              categoryId: "dynamics", categoryTitle: qsTr("Dynamics"),
-              iconSource: nodeIcon(2), available: chain.indexOf(2) < 0 },
-            { effectId: "space", title: nodeTitle(3), summary: nodeSummary(3),
-              categoryId: "space", categoryTitle: qsTr("Space"),
-              iconSource: nodeIcon(3), available: chain.indexOf(3) < 0 },
-            { effectId: "dehum", title: nodeTitle(5), summary: nodeSummary(5),
-              categoryId: "restore", categoryTitle: qsTr("Restoration"),
-              iconSource: nodeIcon(5), available: chain.indexOf(5) < 0 },
-            { effectId: "declick", title: nodeTitle(6), summary: nodeSummary(6),
-              categoryId: "restore", categoryTitle: qsTr("Restoration"),
-              iconSource: nodeIcon(6), available: chain.indexOf(6) < 0 }
-        ]
+            {
+                effectId: "restoration",
+                title: nodeTitle(0),
+                summary: nodeSummary(0),
+                categoryId: "restore",
+                categoryTitle: qsTr("Restoration"),
+                iconSource: nodeIcon(0),
+                available: chain.indexOf(0) < 0
+            },
+            {
+                effectId: "equalizer",
+                title: nodeTitle(1),
+                summary: nodeSummary(1),
+                categoryId: "tone",
+                categoryTitle: qsTr("Tone"),
+                iconSource: nodeIcon(1),
+                available: chain.indexOf(1) < 0
+            },
+            {
+                effectId: "dynamics",
+                title: nodeTitle(2),
+                summary: nodeSummary(2),
+                categoryId: "dynamics",
+                categoryTitle: qsTr("Dynamics"),
+                iconSource: nodeIcon(2),
+                available: chain.indexOf(2) < 0
+            },
+            {
+                effectId: "space",
+                title: nodeTitle(3),
+                summary: nodeSummary(3),
+                categoryId: "space",
+                categoryTitle: qsTr("Space"),
+                iconSource: nodeIcon(3),
+                available: chain.indexOf(3) < 0
+            },
+            {
+                effectId: "dehum",
+                title: nodeTitle(5),
+                summary: nodeSummary(5),
+                categoryId: "restore",
+                categoryTitle: qsTr("Restoration"),
+                iconSource: nodeIcon(5),
+                available: chain.indexOf(5) < 0
+            },
+            {
+                effectId: "declick",
+                title: nodeTitle(6),
+                summary: nodeSummary(6),
+                categoryId: "restore",
+                categoryTitle: qsTr("Restoration"),
+                iconSource: nodeIcon(6),
+                available: chain.indexOf(6) < 0
+            }
+        ];
     }
 
-    function ensureCurrentNode() : void {
-        if (draft.effectChain.indexOf(currentKind) < 0)
-            currentKind = Number(draft.effectChain[0])
+    function ensureCurrentNode(): void {
+        if (selectedNodeId === "clip")
+            return;
+        const kind = effectKind(selectedNodeId);
+        if (kind < 0 || draft.effectChain.indexOf(kind) < 0)
+            selectedNodeId = "clip";
     }
 
-    readonly property var chainModel: buildChainModel(
-        draft.effectChain, draft.restorationEnabled, draft.equalizerEnabled,
-        draft.compressorEnabled, draft.reverbEnabled, draft.limiterEnabled,
-        draft.deHumEnabled, draft.deClickEnabled)
+    readonly property var chainModel: buildChainModel(draft.effectChain, draft.restorationEnabled, draft.equalizerEnabled, draft.compressorEnabled, draft.reverbEnabled, draft.deHumEnabled, draft.deClickEnabled)
     readonly property var catalogModel: buildCatalogModel(draft.effectChain)
 
     onDraftChanged: ensureCurrentNode()
 
     Connections {
         target: rack.draft
-        function onEffectChainChanged() : void { rack.ensureCurrentNode() }
+        function onEffectChainChanged(): void {
+            rack.ensureCurrentNode();
+        }
     }
 
     Popup {
@@ -142,59 +193,91 @@ Rectangle {
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-        function presentFrom(item: var) : void {
-            const point = item.mapToItem(Overlay.overlay, 0, 0)
-            x = Math.max(12, Math.min(parent.width - width - 12,
-                                     point.x + item.width + 8))
-            y = Math.max(12, Math.min(parent.height - height - 12,
-                                     point.y))
-            open()
+        function presentFrom(item: var): void {
+            const point = item.mapToItem(Overlay.overlay, 0, 0);
+            x = Math.max(12, Math.min(parent.width - width - 12, point.x + item.width + 8));
+            y = Math.max(12, Math.min(parent.height - height - 12, point.y));
+            open();
         }
 
         background: null
         contentItem: EffectCatalog {
             effectModel: rack.catalogModel
             onEffectAddRequested: effectId => {
-                const kind = rack.effectKind(effectId)
-                rack.draft.addEffectNode(kind)
-                rack.currentKind = kind
-                catalogPopup.close()
+                const kind = rack.effectKind(effectId);
+                rack.draft.addEffectNode(kind);
+                rack.selectedNodeId = effectId;
+                catalogPopup.close();
             }
         }
     }
 
-    RowLayout {
+    SplitView {
         anchors.fill: parent
-        spacing: 0
+        orientation: Qt.Horizontal
 
-        EditableEffectChain {
-            id: chainEditor
+        handle: Rectangle {
+            implicitWidth: 9
+            color: SplitHandle.pressed ? Theme.surfaceSelected : SplitHandle.hovered ? Theme.surfaceSubtle : Theme.window
 
-            Layout.preferredWidth: 204
-            Layout.fillHeight: true
-            radius: 0
-            border.width: 0
+            Rectangle {
+                anchors.centerIn: parent
+                width: SplitHandle.hovered || SplitHandle.pressed ? 2 : 1
+                height: SplitHandle.hovered || SplitHandle.pressed ? 64 : 44
+                radius: 1
+                color: SplitHandle.pressed ? Theme.accent : Theme.borderStrong
+
+                Behavior on height {
+                    NumberAnimation {
+                        duration: 90
+                    }
+                }
+            }
+
+            HoverHandler {
+                cursorShape: Qt.SplitHCursor
+            }
+        }
+
+        SoundSignalChain {
+            id: signalChain
+
+            SplitView.preferredWidth: 224
+            SplitView.minimumWidth: 188
+            SplitView.maximumWidth: 300
+            SplitView.fillHeight: true
             effectModel: rack.chainModel
-            selectedEffectId: rack.effectId(rack.currentKind)
-            onEffectSelected: effectId => rack.currentKind = rack.effectKind(effectId)
-            onEffectBypassRequested: (effectId, bypassed) =>
-                rack.draft.setEffectNodeEnabled(rack.effectKind(effectId), !bypassed)
-            onEffectDeleteRequested: effectId =>
-                rack.draft.removeEffectNode(rack.effectKind(effectId))
-            onEffectMoveRequested: (effectId, direction) =>
-                rack.draft.moveEffectNode(rack.effectKind(effectId), direction)
-            onAddEffectRequested: catalogPopup.presentFrom(chainEditor)
+            selectedEffectId: rack.selectedNodeId
+            masterEnabled: rack.draft.limiterEnabled
+            onEffectSelected: effectId => rack.selectedNodeId = effectId
+            onEffectBypassRequested: (effectId, bypassed) => rack.draft.setEffectNodeEnabled(rack.effectKind(effectId), !bypassed)
+            onEffectDeleteRequested: effectId => rack.draft.removeEffectNode(rack.effectKind(effectId))
+            onEffectMoveRequested: (effectId, direction) => rack.draft.moveEffectNode(rack.effectKind(effectId), direction)
+            onAddEffectRequested: catalogPopup.presentFrom(signalChain)
         }
 
         Rectangle {
-            Layout.preferredWidth: 1
-            Layout.fillHeight: true
-            color: Theme.border
-        }
+            id: parameterSurface
 
-        Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            SplitView.fillWidth: true
+            SplitView.fillHeight: true
+            SplitView.minimumWidth: 480
+            radius: Theme.compactControlRadius
+            color: Theme.panelRaised
+            border.width: 1
+            border.color: Theme.borderStrong
+            clip: true
+
+            BasicAdjustmentPanel {
+                anchors.fill: parent
+                visible: rack.selectedNodeId === "clip"
+                radius: 0
+                border.width: 0
+                draft: rack.draft
+                hasTimeSelection: rack.hasTimeSelection
+                selectionStartMillis: rack.selectionStartMillis
+                selectionEndMillis: rack.selectionEndMillis
+            }
 
             ToneEqualizerPanel {
                 anchors.fill: parent

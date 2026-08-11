@@ -12,15 +12,22 @@
 #include <cstring>
 #include <limits>
 #include <stdexcept>
+#include <vector>
 
 namespace echo::audio {
+namespace {
+
+constexpr std::size_t kMaximumProcessingFrames = 4096;
+
+} // namespace
 
 class EffectProcessingChain::Impl {
   public:
     Impl(
         const PreparedAdjustment& adjustment,
         std::uint32_t sample_rate,
-        std::size_t channel_count
+        std::size_t channel_count,
+        const EffectMaskPlan* mask_plan
     ) :
         sample_rate_(sample_rate), channel_count_(channel_count), nodes_(adjustment.effect_chain()),
         node_count_(adjustment.effect_chain_count()),
@@ -50,7 +57,8 @@ class EffectProcessingChain::Impl {
         equalizer_(adjustment.equalizer(), sample_rate, channel_count),
         dynamics_(adjustment.compressor(), sample_rate),
         reverb_(adjustment.reverb(), sample_rate, channel_count),
-        restoration_enabled_(adjustment.restoration().enabled) {
+        restoration_enabled_(adjustment.restoration().enabled), mask_plan_(mask_plan),
+        dry_samples_(kMaximumProcessingFrames * channel_count, 0.0F) {
         if (sample_rate_ == 0 || channel_count_ == 0) {
             throw std::invalid_argument("effect chain requires a valid audio layout");
         }
@@ -58,12 +66,25 @@ class EffectProcessingChain::Impl {
             if (nodes_[index] == EffectNodeKind::DeClick) {
                 latency_frames_ += de_click_.latency_frames();
             }
+            has_local_masks_ =
+                has_local_masks_
+                || (mask_plan_ != nullptr && mask_plan_->is_locally_masked(nodes_[index]));
         }
+        source_delay_.assign(latency_frames_, kNoSourceFrame);
         reset_compensation();
     }
 
     std::size_t
     process_interleaved(float* samples, std::size_t frame_count, std::size_t channel_count) {
+        return process_interleaved(samples, nullptr, frame_count, channel_count);
+    }
+
+    std::size_t process_interleaved(
+        float* samples,
+        std::uint64_t* source_frames,
+        std::size_t frame_count,
+        std::size_t channel_count
+    ) {
         validate_buffer(samples, frame_count, channel_count);
         if (finishing_) {
             throw std::logic_error("effect chain cannot accept input after finishing begins");
@@ -73,12 +94,21 @@ class EffectProcessingChain::Impl {
             throw std::overflow_error("effect chain pending frame count overflowed");
         }
         pending_output_frames_ += frame_count;
-        process_raw(samples, frame_count);
-        return compact_output(samples, frame_count);
+        process_raw(samples, source_frames, frame_count);
+        return compact_output(samples, source_frames, frame_count);
     }
 
     std::size_t
     finish_interleaved(float* samples, std::size_t capacity_frames, std::size_t channel_count) {
+        return finish_interleaved(samples, nullptr, capacity_frames, channel_count);
+    }
+
+    std::size_t finish_interleaved(
+        float* samples,
+        std::uint64_t* source_frames,
+        std::size_t capacity_frames,
+        std::size_t channel_count
+    ) {
         validate_buffer(samples, capacity_frames, channel_count);
         if (!finishing_) {
             finishing_ = true;
@@ -93,9 +123,12 @@ class EffectProcessingChain::Impl {
                 throw std::logic_error("effect chain latency drain ended with pending output");
             }
             std::fill_n(samples, input_frames * channel_count_, 0.0F);
-            process_raw(samples, input_frames);
+            if (source_frames != nullptr) {
+                std::fill_n(source_frames, input_frames, kNoSourceFrame);
+            }
+            process_raw(samples, source_frames, input_frames);
             drain_input_frames_ -= input_frames;
-            const std::size_t produced = compact_output(samples, input_frames);
+            const std::size_t produced = compact_output(samples, source_frames, input_frames);
             if (produced > 0) {
                 return produced;
             }
@@ -174,9 +207,17 @@ class EffectProcessingChain::Impl {
         }
     }
 
-    void process_raw(float* samples, std::size_t frame_count) {
+    void process_raw(float* samples, std::uint64_t* source_frames, std::size_t frame_count) {
+        if (has_local_masks_ && frame_count > kMaximumProcessingFrames) {
+            throw std::invalid_argument("effect chain block exceeds prepared scratch capacity");
+        }
         for (std::size_t node_index = 0; node_index + 1 < node_count_; ++node_index) {
-            switch (nodes_[node_index]) {
+            const EffectNodeKind node = nodes_[node_index];
+            const bool local = mask_plan_ != nullptr && mask_plan_->is_locally_masked(node);
+            if (local) {
+                std::copy_n(samples, frame_count * channel_count_, dry_samples_.data());
+            }
+            switch (node) {
             case EffectNodeKind::Restoration:
                 if (restoration_enabled_) {
                     noise_reducer_.process_interleaved(samples, frame_count, channel_count_);
@@ -188,6 +229,7 @@ class EffectProcessingChain::Impl {
                 break;
             case EffectNodeKind::DeClick:
                 de_click_.process_interleaved(samples, frame_count, channel_count_);
+                delay_source_anchors(source_frames, frame_count);
                 break;
             case EffectNodeKind::Equalizer:
                 for (std::size_t frame = 0; frame < frame_count; ++frame) {
@@ -207,10 +249,36 @@ class EffectProcessingChain::Impl {
             case EffectNodeKind::Master:
                 break;
             }
+            if (local) {
+                for (std::size_t frame = 0; frame < frame_count; ++frame) {
+                    const float mix = mask_plan_->mix_at(
+                        node,
+                        source_frames == nullptr ? kNoSourceFrame : source_frames[frame]
+                    );
+                    for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                        const std::size_t index = frame * channel_count_ + channel;
+                        const float dry = dry_samples_[index];
+                        samples[index] = dry + mix * (samples[index] - dry);
+                    }
+                }
+            }
         }
     }
 
-    std::size_t compact_output(float* samples, std::size_t processed_frames) {
+    void delay_source_anchors(std::uint64_t* source_frames, std::size_t frame_count) {
+        if (source_frames == nullptr || source_delay_.empty()) {
+            return;
+        }
+        for (std::size_t frame = 0; frame < frame_count; ++frame) {
+            const std::uint64_t delayed = source_delay_[source_delay_cursor_];
+            source_delay_[source_delay_cursor_] = source_frames[frame];
+            source_frames[frame] = delayed;
+            source_delay_cursor_ = (source_delay_cursor_ + 1) % source_delay_.size();
+        }
+    }
+
+    std::size_t
+    compact_output(float* samples, std::uint64_t* source_frames, std::size_t processed_frames) {
         const std::size_t discarded = std::min(front_discard_frames_, processed_frames);
         front_discard_frames_ -= discarded;
         const std::size_t available = processed_frames - discarded;
@@ -221,6 +289,13 @@ class EffectProcessingChain::Impl {
                 samples + discarded * channel_count_,
                 produced * channel_count_ * sizeof(float)
             );
+            if (source_frames != nullptr) {
+                std::memmove(
+                    source_frames,
+                    source_frames + discarded,
+                    produced * sizeof(std::uint64_t)
+                );
+            }
         }
         pending_output_frames_ -= produced;
         return produced;
@@ -231,6 +306,8 @@ class EffectProcessingChain::Impl {
         pending_output_frames_ = 0;
         drain_input_frames_ = 0;
         finishing_ = false;
+        std::fill(source_delay_.begin(), source_delay_.end(), kNoSourceFrame);
+        source_delay_cursor_ = 0;
     }
 
     std::uint32_t sample_rate_ = 0;
@@ -245,6 +322,11 @@ class EffectProcessingChain::Impl {
     DynamicsProcessor dynamics_;
     AlgorithmicReverb reverb_;
     bool restoration_enabled_ = true;
+    const EffectMaskPlan* mask_plan_ = nullptr;
+    bool has_local_masks_ = false;
+    std::vector<float> dry_samples_;
+    std::vector<std::uint64_t> source_delay_;
+    std::size_t source_delay_cursor_ = 0;
     std::size_t latency_frames_ = 0;
     std::size_t front_discard_frames_ = 0;
     std::size_t pending_output_frames_ = 0;
@@ -255,8 +337,9 @@ class EffectProcessingChain::Impl {
 EffectProcessingChain::EffectProcessingChain(
     const PreparedAdjustment& adjustment,
     std::uint32_t sample_rate,
-    std::size_t channel_count
-) : impl_(std::make_unique<Impl>(adjustment, sample_rate, channel_count)) {}
+    std::size_t channel_count,
+    const EffectMaskPlan* mask_plan
+) : impl_(std::make_unique<Impl>(adjustment, sample_rate, channel_count, mask_plan)) {}
 
 EffectProcessingChain::~EffectProcessingChain() = default;
 
@@ -268,12 +351,30 @@ std::size_t EffectProcessingChain::process_interleaved(
     return impl_->process_interleaved(samples, frame_count, channel_count);
 }
 
+std::size_t EffectProcessingChain::process_interleaved(
+    float* samples,
+    std::uint64_t* source_frames,
+    std::size_t frame_count,
+    std::size_t channel_count
+) {
+    return impl_->process_interleaved(samples, source_frames, frame_count, channel_count);
+}
+
 std::size_t EffectProcessingChain::finish_interleaved(
     float* samples,
     std::size_t capacity_frames,
     std::size_t channel_count
 ) {
     return impl_->finish_interleaved(samples, capacity_frames, channel_count);
+}
+
+std::size_t EffectProcessingChain::finish_interleaved(
+    float* samples,
+    std::uint64_t* source_frames,
+    std::size_t capacity_frames,
+    std::size_t channel_count
+) {
+    return impl_->finish_interleaved(samples, source_frames, capacity_frames, channel_count);
 }
 
 void EffectProcessingChain::reset() {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "echo/audio/adjustment.hpp"
+#include "echo/audio/effect_mask_plan.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -21,7 +22,8 @@ class EffectProcessingChain {
     EffectProcessingChain(
         const PreparedAdjustment& adjustment,
         std::uint32_t sample_rate,
-        std::size_t channel_count
+        std::size_t channel_count,
+        const EffectMaskPlan* mask_plan = nullptr
     );
     ~EffectProcessingChain();
 
@@ -33,11 +35,26 @@ class EffectProcessingChain {
     std::size_t
     process_interleaved(float* samples, std::size_t frame_count, std::size_t channel_count);
 
+    /// Source-aware form used by the prepared edit pipeline. `source_frames`
+    /// is compacted and latency-aligned with the returned samples in place.
+    std::size_t process_interleaved(
+        float* samples,
+        std::uint64_t* source_frames,
+        std::size_t frame_count,
+        std::size_t channel_count
+    );
+
     /// After all authored input has been submitted, advances the chain with a
     /// bounded zero tail. Repeated calls return every delayed authored frame,
     /// then zero. No output beyond the authored input duration is produced.
     std::size_t
     finish_interleaved(float* samples, std::size_t capacity_frames, std::size_t channel_count);
+    std::size_t finish_interleaved(
+        float* samples,
+        std::uint64_t* source_frames,
+        std::size_t capacity_frames,
+        std::size_t channel_count
+    );
 
     void reset();
 

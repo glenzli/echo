@@ -160,7 +160,7 @@ qt_add_qml_module(
         qml/DeClickPanel.qml
         qml/DeHumPanel.qml
         qml/DynamicsPanel.qml
-        qml/EditableEffectChain.qml
+        qml/SoundSignalChain.qml
         qml/EffectCatalog.qml
         qml/EchoButton.qml
         qml/EchoIcon.qml
@@ -189,6 +189,8 @@ qt_add_qml_module(
         qml/SoundAdjustmentEditor.qml
         qml/SpaceReverbPanel.qml
         qml/SoundEditorTimeline.qml
+        qml/SourceEditTimeline.qml
+        qml/EffectMaskEditor.qml
         qml/SoundEditingWorkspace.qml
         qml/SoundExportDialog.qml
         qml/SoundCard.qml

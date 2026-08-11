@@ -22,6 +22,7 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/de_hum_filter.cpp",
     "src/dynamics_processor.cpp",
     "src/effect_processing_chain.cpp",
+    "src/effect_mask_plan.cpp",
     "src/k_weighting_filter.cpp",
     "src/low_cut_filter.cpp",
     "src/loudness_gain_advisor.cpp",
@@ -34,6 +35,7 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/output_limiter.cpp",
     "src/playback.cpp",
     "src/parametric_equalizer.cpp",
+    "src/source_edit_plan.cpp",
     "src/waveform.cpp",
 ];
 
@@ -48,6 +50,7 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/de_hum_filter.hpp",
     "include/echo/audio/dynamics_processor.hpp",
     "include/echo/audio/effect_processing_chain.hpp",
+    "include/echo/audio/effect_mask_plan.hpp",
     "include/echo/audio/k_weighting_filter.hpp",
     "include/echo/audio/low_cut_filter.hpp",
     "include/echo/audio/loudness_gain_advisor.hpp",
@@ -60,6 +63,7 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/output_limiter.hpp",
     "include/echo/audio/playback.hpp",
     "include/echo/audio/parametric_equalizer.hpp",
+    "include/echo/audio/source_edit_plan.hpp",
     "include/echo/audio/waveform.hpp",
     "src/bridge/cxx_bridge.hpp",
 ];

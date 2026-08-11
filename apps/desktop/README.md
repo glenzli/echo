@@ -29,11 +29,18 @@ never mutates adjustment parameters.
 `SoundEditorTimeline.qml` owns the editor's high-frequency interaction state:
 time projection, logarithmic zoom, horizontal navigation, direct trim and fade
 handles, time selection, the clip-gain dB line, playhead, and transient gesture
-readouts. `SoundAdjustmentDraft.qml` owns validation, gesture-coalesced
+readouts. Its `SourceEditTimeline.qml` overlay owns source-anchored segment
+discovery and the contextual split, hide, mute, restore, gap, and mask actions;
+`EffectMaskEditor.qml` keeps multi-effect selection and soft mask edges with the
+authored serial chain rather than presenting a branch graph.
+`SoundAdjustmentDraft.qml` owns validation, gesture-coalesced
 undo/redo history, saved-state comparison, and explicit publication.
-`SoundAdjustmentEditor.qml` is the horizontally composed bottom precision
-console; the workspace owns its vertical split with the timeline, so the
-waveform and exact controls can be resized without changing draft semantics.
+`SoundAdjustmentEditor.qml` composes the bottom precision console. Its
+`SoundSignalChain.qml` keeps clip/preamp and master output pinned around an
+independently scrolling insert list, while `AdvancedEffectsRack.qml` owns the
+resizable horizontal split between that navigation and the selected node's
+parameter surface. The workspace owns the outer vertical split with the
+timeline, so both ratios can be resized without changing draft semantics.
 Meanwhile,
 `SoundEditingWorkspace.qml` owns source, transport, selection looping,
 adjusted/original audition, backend lifecycle, and the small command projection

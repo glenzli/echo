@@ -85,6 +85,8 @@ class PlaybackSession {
     [[nodiscard]] bool is_ended() const;
     [[nodiscard]] std::uint64_t position_millis() const;
     [[nodiscard]] std::uint64_t duration_millis() const;
+    /// Exact arranged output frame count after hidden intervals and gaps.
+    [[nodiscard]] std::uint64_t output_frame_count() const;
     [[nodiscard]] std::uint32_t sample_rate() const;
     [[nodiscard]] std::uint32_t channel_count() const;
     /// Frames currently buffered and ready for the audio callback.

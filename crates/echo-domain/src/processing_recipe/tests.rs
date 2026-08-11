@@ -1,6 +1,59 @@
 use super::*;
-use crate::{FadeCurve, NoiseReductionSettings, ParametricEqualizerBand};
+use crate::{
+    EditSegment, EditSegmentState, EditTimeline, EffectMask, FadeCurve, NoiseReductionSettings,
+    ParametricEqualizerBand,
+};
 use uuid::Uuid;
+
+fn target_edit_timeline() -> EditTimeline {
+    EditTimeline::new(
+        700,
+        10_500,
+        vec![
+            EditSegment::new(
+                700,
+                4_000,
+                EditSegmentState::Audible,
+                0,
+                0,
+                0,
+                FadeCurves::linear(),
+                0,
+            )
+            .expect("first target segment validates"),
+            EditSegment::new(
+                4_000,
+                5_000,
+                EditSegmentState::Hidden,
+                0,
+                0,
+                0,
+                FadeCurves::linear(),
+                120,
+            )
+            .expect("hidden target segment validates"),
+            EditSegment::new(
+                5_000,
+                10_500,
+                EditSegmentState::Audible,
+                -100,
+                50,
+                80,
+                FadeCurves::new(FadeCurve::Smooth, FadeCurve::EqualPower),
+                0,
+            )
+            .expect("last target segment validates"),
+        ],
+    )
+    .expect("target timeline validates")
+}
+
+fn target_effect_masks() -> Vec<EffectMask> {
+    vec![
+        EffectMask::new(2_000, 3_500, 10, vec![EffectNodeKind::Equalizer])
+            .expect("target mask validates"),
+    ]
+}
 
 fn graph_with_processing(
     trim_start_millis: u64,
@@ -141,17 +194,19 @@ fn merge_changes_only_selected_processing_and_preserves_target_clip_state() {
                     EffectNodeKind::Master,
                 ])
                 .expect("target chain is valid"),
-            ),
+            )
+            .with_edit_timeline(target_edit_timeline())
+            .with_effect_masks(target_effect_masks()),
     )
     .expect("target graph is valid");
     let patch = AdjustmentPatch::from_graph(
-        source,
+        source.clone(),
         &[ProcessingComponent::LowCut, ProcessingComponent::Equalizer],
     )
     .expect("selected patch is valid");
 
     let merged = patch
-        .apply_to(target, ProcessingMergeMode::Merge)
+        .apply_to(target.clone(), ProcessingMergeMode::Merge)
         .expect("merge is valid");
 
     assert_eq!(merged.trim_start_millis(), target.trim_start_millis());
@@ -161,6 +216,8 @@ fn merge_changes_only_selected_processing_and_preserves_target_clip_state() {
     assert_eq!(merged.fade_in_curve(), target.fade_in_curve());
     assert_eq!(merged.fade_out_curve(), target.fade_out_curve());
     assert_eq!(merged.gain_centibels(), target.gain_centibels());
+    assert_eq!(merged.edit_timeline(), target.edit_timeline());
+    assert_eq!(merged.effect_masks(), target.effect_masks());
     assert_eq!(merged.low_cut_hertz(), source.low_cut_hertz());
     assert_eq!(merged.equalizer(), source.equalizer());
     assert_eq!(merged.restoration(), target.restoration());
@@ -189,14 +246,16 @@ fn replace_copies_processing_but_preserves_target_trim_fades_and_gain() {
             FadeCurves::new(FadeCurve::Linear, FadeCurve::Smooth),
             -425,
             40,
-        ),
+        )
+        .with_edit_timeline(target_edit_timeline())
+        .with_effect_masks(target_effect_masks()),
     )
     .expect("target graph is valid");
-    let patch = AdjustmentPatch::from_graph(source, &DEFAULT_PROCESSING_COMPONENTS)
+    let patch = AdjustmentPatch::from_graph(source.clone(), &DEFAULT_PROCESSING_COMPONENTS)
         .expect("complete patch is valid");
 
     let replaced = patch
-        .apply_to(target, ProcessingMergeMode::Replace)
+        .apply_to(target.clone(), ProcessingMergeMode::Replace)
         .expect("replacement is valid");
 
     assert_eq!(replaced.trim_start_millis(), target.trim_start_millis());
@@ -206,6 +265,8 @@ fn replace_copies_processing_but_preserves_target_trim_fades_and_gain() {
     assert_eq!(replaced.fade_in_curve(), target.fade_in_curve());
     assert_eq!(replaced.fade_out_curve(), target.fade_out_curve());
     assert_eq!(replaced.gain_centibels(), target.gain_centibels());
+    assert_eq!(replaced.edit_timeline(), target.edit_timeline());
+    assert_eq!(replaced.effect_masks(), target.effect_masks());
     assert_eq!(replaced.low_cut_hertz(), source.low_cut_hertz());
     assert_eq!(replaced.restoration(), source.restoration());
     assert_eq!(replaced.de_hum(), source.de_hum());
@@ -227,7 +288,7 @@ fn applying_the_same_patch_twice_is_idempotent() {
         .apply_to(target, ProcessingMergeMode::Merge)
         .expect("first apply succeeds");
     let twice = patch
-        .apply_to(once, ProcessingMergeMode::Merge)
+        .apply_to(once.clone(), ProcessingMergeMode::Merge)
         .expect("second apply succeeds");
     assert_eq!(twice, once);
 }
@@ -277,12 +338,12 @@ fn serde_identity_is_stable_and_invalid_input_fails_closed() {
 fn constructors_reject_empty_duplicate_and_invalid_revision_boundaries() {
     let source = graph_with_processing(1_000, 18_000, 300, 450, 350, 90);
     assert_eq!(
-        AdjustmentPatch::from_graph(source, &[]),
+        AdjustmentPatch::from_graph(source.clone(), &[]),
         Err(ProcessingRecipeError::EmptyComponents)
     );
     assert_eq!(
         AdjustmentPatch::from_graph(
-            source,
+            source.clone(),
             &[ProcessingComponent::Space, ProcessingComponent::Space],
         ),
         Err(ProcessingRecipeError::DuplicateComponent(

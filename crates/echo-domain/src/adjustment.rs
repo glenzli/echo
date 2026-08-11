@@ -7,6 +7,8 @@
 
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
+use crate::source_edit::{EditTimeline, EffectMask, MAX_EFFECT_MASKS};
+
 /// Lowest supported output gain in hundredths of one decibel.
 pub const MIN_GAIN_CENTIBELS: i16 = -2_400;
 /// Highest supported output gain in hundredths of one decibel.
@@ -745,7 +747,7 @@ impl FadeCurves {
 ///
 /// This value keeps effect intent distinct from time-domain trim bounds and
 /// avoids an order-sensitive sequence of scalar effect parameters.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AdjustmentEffects {
     pub fade_curves: FadeCurves,
     pub gain_centibels: i16,
@@ -758,6 +760,8 @@ pub struct AdjustmentEffects {
     pub reverb: ReverbSettings,
     pub limiter: LimiterSettings,
     pub effect_chain: EffectChain,
+    pub edit_timeline: Option<EditTimeline>,
+    pub effect_masks: Vec<EffectMask>,
 }
 
 impl AdjustmentEffects {
@@ -775,6 +779,8 @@ impl AdjustmentEffects {
             reverb: ReverbSettings::studio_room(),
             limiter: LimiterSettings::standard(),
             effect_chain: EffectChain::standard(),
+            edit_timeline: None,
+            effect_masks: Vec::new(),
         }
     }
 
@@ -825,10 +831,27 @@ impl AdjustmentEffects {
         self.effect_chain = effect_chain;
         self
     }
+
+    #[must_use]
+    pub fn with_edit_timeline(mut self, edit_timeline: EditTimeline) -> Self {
+        self.edit_timeline = Some(edit_timeline);
+        self
+    }
+
+    fn with_optional_edit_timeline(mut self, edit_timeline: Option<EditTimeline>) -> Self {
+        self.edit_timeline = edit_timeline;
+        self
+    }
+
+    #[must_use]
+    pub fn with_effect_masks(mut self, effect_masks: Vec<EffectMask>) -> Self {
+        self.effect_masks = effect_masks;
+        self
+    }
 }
 
 /// One validated, non-destructive adjustment graph.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AdjustmentGraph {
     trim_start_millis: u64,
     trim_end_millis: u64,
@@ -852,6 +875,70 @@ pub struct AdjustmentGraph {
     limiter: LimiterSettings,
     #[serde(default)]
     effect_chain: EffectChain,
+    edit_timeline: EditTimeline,
+    effect_masks: Vec<EffectMask>,
+}
+
+#[derive(Deserialize)]
+struct StoredAdjustmentGraph {
+    trim_start_millis: u64,
+    trim_end_millis: u64,
+    fade_in_millis: u64,
+    fade_out_millis: u64,
+    fade_in_curve: FadeCurve,
+    fade_out_curve: FadeCurve,
+    gain_centibels: i16,
+    low_cut_hertz: u16,
+    #[serde(default)]
+    restoration: RestorationSettings,
+    #[serde(default)]
+    de_hum: DeHumSettings,
+    #[serde(default)]
+    de_click: DeClickSettings,
+    equalizer: ParametricEqualizer,
+    compressor: CompressorSettings,
+    #[serde(default)]
+    reverb: ReverbSettings,
+    #[serde(default)]
+    limiter: LimiterSettings,
+    #[serde(default)]
+    effect_chain: EffectChain,
+    #[serde(default)]
+    edit_timeline: Option<EditTimeline>,
+    #[serde(default)]
+    effect_masks: Vec<EffectMask>,
+}
+
+impl<'de> Deserialize<'de> for AdjustmentGraph {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let stored = StoredAdjustmentGraph::deserialize(deserializer)?;
+        Self::new(
+            stored.trim_end_millis,
+            stored.trim_start_millis,
+            stored.trim_end_millis,
+            stored.fade_in_millis,
+            stored.fade_out_millis,
+            AdjustmentEffects::new(
+                FadeCurves::new(stored.fade_in_curve, stored.fade_out_curve),
+                stored.gain_centibels,
+                stored.low_cut_hertz,
+            )
+            .with_restoration(stored.restoration)
+            .with_de_hum(stored.de_hum)
+            .with_de_click(stored.de_click)
+            .with_equalizer(stored.equalizer)
+            .with_compressor(stored.compressor)
+            .with_reverb(stored.reverb)
+            .with_limiter(stored.limiter)
+            .with_effect_chain(stored.effect_chain)
+            .with_optional_edit_timeline(stored.edit_timeline)
+            .with_effect_masks(stored.effect_masks),
+        )
+        .map_err(D::Error::custom)
+    }
 }
 
 impl AdjustmentGraph {
@@ -889,7 +976,7 @@ impl AdjustmentGraph {
         if !effects.effect_chain.is_valid() {
             return Err(AdjustmentGraphError::InvalidEffectChain);
         }
-        validate_restorative_effects(effects)?;
+        validate_restorative_effects(&effects)?;
         for band in effects.equalizer.bands {
             if !(MIN_EQ_GAIN_CENTIBELS..=MAX_EQ_GAIN_CENTIBELS).contains(&band.gain_centibels)
                 || !(MIN_EQ_FREQUENCY_HERTZ..=MAX_EQ_FREQUENCY_HERTZ)
@@ -934,6 +1021,7 @@ impl AdjustmentGraph {
         {
             return Err(AdjustmentGraphError::ReverbOutOfRange);
         }
+        let edit_timeline = validated_asset_regions(trim_start_millis, trim_end_millis, &effects)?;
         Ok(Self {
             trim_start_millis,
             trim_end_millis,
@@ -951,6 +1039,8 @@ impl AdjustmentGraph {
             reverb,
             limiter,
             effect_chain: effects.effect_chain,
+            edit_timeline,
+            effect_masks: effects.effect_masks,
         })
     }
 
@@ -972,88 +1062,127 @@ impl AdjustmentGraph {
     }
 
     #[must_use]
-    pub const fn trim_start_millis(self) -> u64 {
+    pub const fn trim_start_millis(&self) -> u64 {
         self.trim_start_millis
     }
 
     #[must_use]
-    pub const fn trim_end_millis(self) -> u64 {
+    pub const fn trim_end_millis(&self) -> u64 {
         self.trim_end_millis
     }
 
     #[must_use]
-    pub const fn fade_in_millis(self) -> u64 {
+    pub const fn fade_in_millis(&self) -> u64 {
         self.fade_in_millis
     }
 
     #[must_use]
-    pub const fn fade_out_millis(self) -> u64 {
+    pub const fn fade_out_millis(&self) -> u64 {
         self.fade_out_millis
     }
 
     #[must_use]
-    pub const fn fade_in_curve(self) -> FadeCurve {
+    pub const fn fade_in_curve(&self) -> FadeCurve {
         self.fade_in_curve
     }
 
     #[must_use]
-    pub const fn fade_out_curve(self) -> FadeCurve {
+    pub const fn fade_out_curve(&self) -> FadeCurve {
         self.fade_out_curve
     }
 
     #[must_use]
-    pub const fn gain_centibels(self) -> i16 {
+    pub const fn gain_centibels(&self) -> i16 {
         self.gain_centibels
     }
 
     /// High-pass cutoff in hertz, or zero when low-cut is disabled.
     #[must_use]
-    pub const fn low_cut_hertz(self) -> u16 {
+    pub const fn low_cut_hertz(&self) -> u16 {
         self.low_cut_hertz
     }
 
     #[must_use]
-    pub const fn restoration(self) -> RestorationSettings {
+    pub const fn restoration(&self) -> RestorationSettings {
         self.restoration
     }
 
     #[must_use]
-    pub const fn de_hum(self) -> DeHumSettings {
+    pub const fn de_hum(&self) -> DeHumSettings {
         self.de_hum
     }
 
     #[must_use]
-    pub const fn de_click(self) -> DeClickSettings {
+    pub const fn de_click(&self) -> DeClickSettings {
         self.de_click
     }
 
     #[must_use]
-    pub const fn equalizer(self) -> ParametricEqualizer {
+    pub const fn equalizer(&self) -> ParametricEqualizer {
         self.equalizer
     }
 
     #[must_use]
-    pub const fn compressor(self) -> CompressorSettings {
+    pub const fn compressor(&self) -> CompressorSettings {
         self.compressor
     }
 
     #[must_use]
-    pub const fn reverb(self) -> ReverbSettings {
+    pub const fn reverb(&self) -> ReverbSettings {
         self.reverb
     }
 
     #[must_use]
-    pub const fn limiter(self) -> LimiterSettings {
+    pub const fn limiter(&self) -> LimiterSettings {
         self.limiter
     }
 
     #[must_use]
-    pub const fn effect_chain(self) -> EffectChain {
+    pub const fn effect_chain(&self) -> EffectChain {
         self.effect_chain
+    }
+
+    #[must_use]
+    pub const fn edit_timeline(&self) -> &EditTimeline {
+        &self.edit_timeline
+    }
+
+    #[must_use]
+    pub fn effect_masks(&self) -> &[EffectMask] {
+        &self.effect_masks
     }
 }
 
-fn validate_restorative_effects(effects: AdjustmentEffects) -> Result<(), AdjustmentGraphError> {
+fn validated_asset_regions(
+    trim_start_millis: u64,
+    trim_end_millis: u64,
+    effects: &AdjustmentEffects,
+) -> Result<EditTimeline, AdjustmentGraphError> {
+    let edit_timeline = effects.edit_timeline.clone().unwrap_or(
+        EditTimeline::identity(trim_start_millis, trim_end_millis)
+            .map_err(|_| AdjustmentGraphError::InvalidEditTimeline)?,
+    );
+    if edit_timeline.trim_start_millis() != trim_start_millis
+        || edit_timeline.trim_end_millis() != trim_end_millis
+    {
+        return Err(AdjustmentGraphError::InvalidEditTimeline);
+    }
+    if effects.effect_masks.len() > MAX_EFFECT_MASKS
+        || effects.effect_masks.iter().any(|mask| {
+            mask.start_millis() < trim_start_millis
+                || mask.end_millis() > trim_end_millis
+                || mask.effect_nodes().iter().any(|node| {
+                    !effects.effect_chain.nodes().contains(node)
+                        || matches!(node, EffectNodeKind::Master | EffectNodeKind::DeClick)
+                })
+        })
+    {
+        return Err(AdjustmentGraphError::InvalidEffectMasks);
+    }
+    Ok(edit_timeline)
+}
+
+fn validate_restorative_effects(effects: &AdjustmentEffects) -> Result<(), AdjustmentGraphError> {
     let de_hum = effects.de_hum;
     if !matches!(de_hum.fundamental_hertz, 50 | 60)
         || !(MIN_DE_HUM_HARMONIC_COUNT..=MAX_DE_HUM_HARMONIC_COUNT).contains(&de_hum.harmonic_count)
@@ -1106,6 +1235,8 @@ pub enum AdjustmentGraphError {
     ReverbOutOfRange,
     LimiterOutOfRange,
     InvalidEffectChain,
+    InvalidEditTimeline,
+    InvalidEffectMasks,
 }
 
 impl std::fmt::Display for AdjustmentGraphError {
@@ -1129,6 +1260,12 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::LimiterOutOfRange => "limiter parameters are outside the supported range",
             Self::InvalidEffectChain => {
                 "effect chain must contain unique singleton nodes with master last"
+            }
+            Self::InvalidEditTimeline => {
+                "edit timeline must continuously cover the complete trim range"
+            }
+            Self::InvalidEffectMasks => {
+                "effect masks must target active supported inserts inside the trim range"
             }
         })
     }

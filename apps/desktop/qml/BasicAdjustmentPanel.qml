@@ -1,5 +1,5 @@
-//! Cohesive presentation owner for Echo's implemented foundation controls.
-//! Controls flow vertically so this panel stays narrow beside advanced tools.
+//! Clip-level processing that always precedes authored insert effects. This
+//! panel is selected from the pinned source node in SoundSignalChain.
 
 pragma ComponentBehavior: Bound
 
@@ -15,24 +15,24 @@ Rectangle {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitWidth: 300
-    implicitHeight: 224
+    implicitWidth: 560
+    implicitHeight: 300
     radius: Theme.compactControlRadius
     color: Theme.panelRaised
     border.width: 1
     border.color: Theme.borderStrong
 
-    function formatDuration(millis: int) : string {
-        const safe = Math.max(0, millis)
-        const minutes = Math.floor(safe / 60000)
-        const seconds = Math.floor((safe % 60000) / 1000)
-        const tenths = Math.floor((safe % 1000) / 100)
-        return minutes + ":" + String(seconds).padStart(2, "0") + "." + tenths
+    function formatDuration(millis: int): string {
+        const safe = Math.max(0, millis);
+        const minutes = Math.floor(safe / 60000);
+        const seconds = Math.floor((safe % 60000) / 1000);
+        const tenths = Math.floor((safe % 1000) / 100);
+        return minutes + ":" + String(seconds).padStart(2, "0") + "." + tenths;
     }
 
-    function formatGain(centibels: int) : string {
-        const decibels = centibels / 100
-        return (decibels >= 0 ? "+" : "") + decibels.toFixed(1) + " dB"
+    function formatGain(centibels: int): string {
+        const decibels = centibels / 100;
+        return (decibels >= 0 ? "+" : "") + decibels.toFixed(1) + " dB";
     }
 
     ColumnLayout {
@@ -41,230 +41,219 @@ Rectangle {
 
         AdjustmentPanelHeader {
             Layout.fillWidth: true
-            title: qsTr("Basic adjustments")
-            iconSource: "qrc:/EchoDesktop/icons/tune.svg"
-        }
-
-        PanelDivider {}
-
-        ControlRow {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 43
-            title: qsTr("Clip")
+            title: qsTr("Clip / preamp")
             iconSource: "qrc:/EchoDesktop/icons/crop.svg"
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                MetricValue {
-                    Layout.fillWidth: true
-                    label: qsTr("In")
-                    value: panel.formatDuration(panel.draft.trimStartMillis)
-                }
-                MetricValue {
-                    Layout.fillWidth: true
-                    label: qsTr("Out")
-                    value: panel.formatDuration(panel.draft.trimEndMillis)
-                }
-                MetricValue {
-                    Layout.fillWidth: true
-                    label: qsTr("Duration")
-                    value: panel.formatDuration(panel.draft.selectedDurationMillis)
-                }
-
-                EchoIconButton {
-                    visible: panel.hasTimeSelection
-                    source: "qrc:/EchoDesktop/icons/crop.svg"
-                    toolTipText: qsTr("Crop to selection")
-                    enabled: panel.selectionEndMillis > panel.selectionStartMillis
-                    buttonSize: 27
-                    iconSize: 15
-                    onClicked: panel.draft.setTrimRange(
-                        panel.selectionStartMillis, panel.selectionEndMillis)
-                }
-            }
         }
 
         PanelDivider {}
 
-        ControlRow {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 62
-            title: qsTr("Fades")
-            iconSource: "qrc:/EchoDesktop/icons/fade-smooth.svg"
+            Layout.fillHeight: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
+            spacing: 14
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 3
+                Layout.fillHeight: true
+                Layout.minimumWidth: 220
+                spacing: 7
 
-                FadeCurveRow {
+                SectionHeader {
                     Layout.fillWidth: true
-                    label: qsTr("In")
-                    durationText: panel.formatDuration(panel.draft.fadeInMillis)
-                    curve: panel.draft.fadeInCurve
-                    onCurveRequested: value => panel.draft.setFadeCurves(
-                        value, panel.draft.fadeOutCurve)
+                    title: qsTr("Clip")
+                    iconSource: "qrc:/EchoDesktop/icons/crop.svg"
+
+                    EchoIconButton {
+                        visible: panel.hasTimeSelection
+                        source: "qrc:/EchoDesktop/icons/crop.svg"
+                        toolTipText: qsTr("Crop to selection")
+                        enabled: panel.selectionEndMillis > panel.selectionStartMillis
+                        buttonSize: 25
+                        iconSize: 14
+                        onClicked: panel.draft.setTrimRange(panel.selectionStartMillis, panel.selectionEndMillis)
+                    }
                 }
 
-                FadeCurveRow {
+                RowLayout {
                     Layout.fillWidth: true
-                    label: qsTr("Out")
-                    durationText: panel.formatDuration(panel.draft.fadeOutMillis)
-                    curve: panel.draft.fadeOutCurve
-                    onCurveRequested: value => panel.draft.setFadeCurves(
-                        panel.draft.fadeInCurve, value)
+                    Layout.preferredHeight: 43
+                    spacing: 12
+
+                    MetricValue {
+                        Layout.fillWidth: true
+                        label: qsTr("In")
+                        value: panel.formatDuration(panel.draft.trimStartMillis)
+                    }
+                    MetricValue {
+                        Layout.fillWidth: true
+                        label: qsTr("Out")
+                        value: panel.formatDuration(panel.draft.trimEndMillis)
+                    }
+                    MetricValue {
+                        Layout.fillWidth: true
+                        label: qsTr("Duration")
+                        value: panel.formatDuration(panel.draft.selectedDurationMillis)
+                    }
+                }
+
+                PanelDivider {}
+
+                SectionHeader {
+                    Layout.fillWidth: true
+                    title: qsTr("Fades")
+                    iconSource: "qrc:/EchoDesktop/icons/fade-smooth.svg"
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
+
+                    FadeCurveRow {
+                        Layout.fillWidth: true
+                        label: qsTr("In")
+                        durationText: panel.formatDuration(panel.draft.fadeInMillis)
+                        curve: panel.draft.fadeInCurve
+                        onCurveRequested: value => panel.draft.setFadeCurves(value, panel.draft.fadeOutCurve)
+                    }
+
+                    FadeCurveRow {
+                        Layout.fillWidth: true
+                        label: qsTr("Out")
+                        durationText: panel.formatDuration(panel.draft.fadeOutMillis)
+                        curve: panel.draft.fadeOutCurve
+                        onCurveRequested: value => panel.draft.setFadeCurves(panel.draft.fadeInCurve, value)
+                    }
+                }
+
+                Item {
+                    Layout.fillHeight: true
                 }
             }
-        }
 
-        PanelDivider {}
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+                color: Theme.border
+            }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 57
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-            Layout.topMargin: 3
-            Layout.bottomMargin: 3
-            spacing: 0
-
-            RowLayout {
+            ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 5
+                Layout.fillHeight: true
+                Layout.minimumWidth: 220
+                spacing: 7
 
-                EchoIcon {
-                    source: "qrc:/EchoDesktop/icons/high-pass.svg"
-                    size: 13
-                    color: Theme.textSecondary
+                SectionHeader {
+                    Layout.fillWidth: true
+                    title: qsTr("Low cut")
+                    iconSource: "qrc:/EchoDesktop/icons/high-pass.svg"
+
+                    EchoIconButton {
+                        source: panel.draft.lowCutHertz > 0 ? "qrc:/EchoDesktop/icons/filter.svg" : "qrc:/EchoDesktop/icons/filter-off.svg"
+                        toolTipText: panel.draft.lowCutHertz > 0 ? qsTr("Disable low cut") : qsTr("Enable low cut")
+                        selected: panel.draft.lowCutHertz > 0
+                        buttonSize: 25
+                        iconSize: 14
+                        onClicked: panel.draft.setLowCut(panel.draft.lowCutHertz === 0 ? 80 : 0)
+                    }
+                }
+
+                EchoParameterSlider {
+                    Layout.fillWidth: true
+                    label: qsTr("Frequency")
+                    from: 20
+                    to: 240
+                    stepSize: 1
+                    value: panel.draft.lowCutHertz > 0 ? panel.draft.lowCutHertz : 80
+                    valueText: panel.draft.lowCutHertz === 0 ? qsTr("Bypass") : panel.draft.lowCutHertz + " Hz"
+                    accessibleName: qsTr("Low cut")
+                    valueWidth: 64
+                    fillFromMinimum: true
+                    enabled: panel.draft.lowCutHertz > 0
+                    onGestureStarted: panel.draft.beginGesture()
+                    onGestureFinished: panel.draft.endGesture()
+                    onEdited: value => panel.draft.setLowCut(value)
                 }
 
                 Text {
-                    text: qsTr("Low cut")
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontSection
-                    font.weight: Font.DemiBold
+                    Layout.fillWidth: true
+                    text: qsTr("Removes rumble before the insert chain.")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    wrapMode: Text.WordWrap
                 }
 
-                Item { Layout.fillWidth: true }
+                PanelDivider {}
 
-                EchoIconButton {
-                    source: panel.draft.lowCutHertz > 0
-                        ? "qrc:/EchoDesktop/icons/filter.svg"
-                        : "qrc:/EchoDesktop/icons/filter-off.svg"
-                    toolTipText: panel.draft.lowCutHertz > 0
-                        ? qsTr("Disable low cut") : qsTr("Enable low cut")
-                    selected: panel.draft.lowCutHertz > 0
-                    buttonSize: 23
-                    iconSize: 13
-                    onClicked: panel.draft.setLowCut(
-                        panel.draft.lowCutHertz === 0 ? 80 : 0)
+                SectionHeader {
+                    Layout.fillWidth: true
+                    title: qsTr("Clip gain")
+                    iconSource: "qrc:/EchoDesktop/icons/gain.svg"
                 }
-            }
 
-            EchoParameterSlider {
-                Layout.fillWidth: true
-                from: 20
-                to: 240
-                stepSize: 1
-                value: panel.draft.lowCutHertz > 0
-                    ? panel.draft.lowCutHertz : 80
-                valueText: panel.draft.lowCutHertz === 0
-                    ? qsTr("Bypass") : panel.draft.lowCutHertz + " Hz"
-                accessibleName: qsTr("Low cut")
-                valueWidth: 56
-                fillFromMinimum: true
-                enabled: panel.draft.lowCutHertz > 0
-                onGestureStarted: panel.draft.beginGesture()
-                onGestureFinished: panel.draft.endGesture()
-                onEdited: value => panel.draft.setLowCut(value)
-            }
-        }
-
-        PanelDivider {}
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-            Layout.topMargin: 4
-            Layout.bottomMargin: 5
-            spacing: 1
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 20
-                spacing: 5
-
-                EchoIcon {
-                    source: "qrc:/EchoDesktop/icons/gain.svg"
-                    size: 13
-                    color: Theme.textSecondary
+                EchoParameterSlider {
+                    Layout.fillWidth: true
+                    label: qsTr("Gain")
+                    from: -2400
+                    to: 1200
+                    stepSize: 10
+                    value: panel.draft.gainCentibels
+                    valueText: panel.formatGain(panel.draft.gainCentibels)
+                    accessibleName: qsTr("Clip gain")
+                    valueWidth: 70
+                    neutralValue: 0
+                    showNeutralMarker: true
+                    onGestureStarted: panel.draft.beginGesture()
+                    onGestureFinished: panel.draft.endGesture()
+                    onEdited: value => panel.draft.setGain(value)
                 }
 
                 Text {
-                    text: qsTr("Clip gain")
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontSection
-                    font.weight: Font.DemiBold
+                    Layout.fillWidth: true
+                    text: qsTr("Sets level before restoration and effects.")
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontMeta
+                    wrapMode: Text.WordWrap
                 }
 
-                Item { Layout.fillWidth: true }
-            }
-
-            EchoParameterSlider {
-                Layout.fillWidth: true
-                from: -2400
-                to: 1200
-                stepSize: 10
-                value: panel.draft.gainCentibels
-                valueText: panel.formatGain(panel.draft.gainCentibels)
-                accessibleName: qsTr("Clip gain")
-                valueWidth: 66
-                neutralValue: 0
-                showNeutralMarker: true
-                onGestureStarted: panel.draft.beginGesture()
-                onGestureFinished: panel.draft.endGesture()
-                onEdited: value => panel.draft.setGain(value)
+                Item {
+                    Layout.fillHeight: true
+                }
             }
         }
     }
 
-    component ControlRow: RowLayout {
+    component SectionHeader: RowLayout {
+        id: section
+
         property string title: ""
         property url iconSource
-        default property alias content: rowContent.data
+        default property alias actions: actionRow.data
 
-        Layout.leftMargin: 10
-        Layout.rightMargin: 10
-        Layout.topMargin: 4
-        Layout.bottomMargin: 4
-        spacing: 8
+        spacing: 6
 
-        RowLayout {
-            Layout.preferredWidth: 58
-            Layout.minimumWidth: 58
-            spacing: 5
+        EchoIcon {
+            source: section.iconSource
+            size: 14
+            color: Theme.textSecondary
+        }
 
-            EchoIcon {
-                source: parent.parent.iconSource
-                size: 13
-                color: Theme.textSecondary
-            }
-            Text {
-                Layout.fillWidth: true
-                text: parent.parent.title
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontSection
-                font.weight: Font.DemiBold
-                elide: Text.ElideRight
-            }
+        Text {
+            text: section.title
+            color: Theme.textPrimary
+            font.pixelSize: Theme.fontBody
+            font.weight: Font.DemiBold
+        }
+
+        Item {
+            Layout.fillWidth: true
         }
 
         RowLayout {
-            id: rowContent
-            Layout.fillWidth: true
+            id: actionRow
             spacing: 4
         }
     }
@@ -291,7 +280,7 @@ Rectangle {
             text: parent.value
             color: Theme.textPrimary
             font.family: "Menlo"
-            font.pixelSize: Theme.fontSection
+            font.pixelSize: Theme.fontBody
             font.weight: Font.Medium
             elide: Text.ElideRight
         }
@@ -305,10 +294,10 @@ Rectangle {
         property string durationText: ""
         signal curveRequested(int value)
 
-        spacing: 4
+        spacing: 5
 
         Text {
-            Layout.preferredWidth: 22
+            Layout.preferredWidth: 24
             text: curveControl.label
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSection
@@ -317,7 +306,7 @@ Rectangle {
         }
 
         Text {
-            Layout.preferredWidth: 50
+            Layout.preferredWidth: 52
             text: curveControl.durationText
             color: Theme.textPrimary
             font.family: "Menlo"
@@ -360,6 +349,8 @@ Rectangle {
             }
         }
 
-        Item { Layout.fillWidth: true }
+        Item {
+            Layout.fillWidth: true
+        }
     }
 }

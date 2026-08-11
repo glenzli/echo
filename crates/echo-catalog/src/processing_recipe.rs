@@ -886,8 +886,8 @@ fn apply_to_target(
         return Ok(failed_target(asset_id, "asset duration is invalid"));
     };
     let previous = latest_adjustment_graph(transaction, asset_id)?;
-    let target = match previous {
-        Some(revision) => revision.graph,
+    let target = match previous.as_ref() {
+        Some(revision) => revision.graph.clone(),
         None => match AdjustmentGraph::identity(duration) {
             Ok(graph) => graph,
             Err(error) => {
@@ -904,7 +904,7 @@ fn apply_to_target(
             return Ok(ProcessingRecipeTargetReceipt {
                 asset_id,
                 outcome: ProcessingRecipeTargetOutcome::Failed,
-                previous_adjustment_revision_id: previous.map(|item| item.revision_id),
+                previous_adjustment_revision_id: previous.as_ref().map(|item| item.revision_id),
                 resulting_adjustment_revision_id: None,
                 failure_reason: Some(format!(
                     "processing recipe is incompatible with the target: {error}"
@@ -913,7 +913,7 @@ fn apply_to_target(
         }
     };
     let saved = record_adjustment_graph(transaction, asset_id, graph, now_millis)?;
-    let previous_revision_id = previous.map(|item| item.revision_id);
+    let previous_revision_id = previous.as_ref().map(|item| item.revision_id);
     let outcome = if previous_revision_id == Some(saved.revision_id) {
         ProcessingRecipeTargetOutcome::Unchanged
     } else {
@@ -956,7 +956,7 @@ fn revert_application_target(
     now_millis: i64,
 ) -> Result<ProcessingRecipeRevertTargetReceipt, CatalogError> {
     let current = latest_adjustment_graph(transaction, application.asset_id)?;
-    let encountered = current.map(|revision| revision.revision_id);
+    let encountered = current.as_ref().map(|revision| revision.revision_id);
     if application.outcome != ProcessingRecipeTargetOutcome::Updated {
         return Ok(ProcessingRecipeRevertTargetReceipt {
             asset_id: application.asset_id,

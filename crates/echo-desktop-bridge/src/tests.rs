@@ -228,6 +228,36 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
         effect_chain: vec![5, 3, 0, 6, 1, 2, 4],
+        edit_segments: vec![
+            crate::ffi::EditSegmentWire {
+                source_start_millis: 1_000,
+                source_end_millis: 4_000,
+                state: 0,
+                gain_centibels: 125,
+                fade_in_millis: 40,
+                fade_out_millis: 60,
+                fade_in_curve: 1,
+                fade_out_curve: 2,
+                gap_after_millis: 200,
+            },
+            crate::ffi::EditSegmentWire {
+                source_start_millis: 4_000,
+                source_end_millis: 9_000,
+                state: 1,
+                gain_centibels: 0,
+                fade_in_millis: 0,
+                fade_out_millis: 0,
+                fade_in_curve: 0,
+                fade_out_curve: 0,
+                gap_after_millis: 0,
+            },
+        ],
+        effect_masks: vec![crate::ffi::EffectMaskWire {
+            start_millis: 2_000,
+            end_millis: 3_000,
+            feather_millis: 12,
+            effect_nodes: vec![1, 2],
+        }],
     };
     session
         .set_asset_adjustment(&asset.id.to_string(), &adjustment)
@@ -293,6 +323,12 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].limiter_ceiling_centibels, -125);
     assert_eq!(projected[0].limiter_release_millis, 160);
     assert_eq!(projected[0].effect_chain, [5, 3, 0, 6, 1, 2, 4]);
+    assert_eq!(projected[0].edit_segments.len(), 2);
+    assert_eq!(projected[0].edit_segments[0].source_start_millis, 1_000);
+    assert_eq!(projected[0].edit_segments[0].gap_after_millis, 200);
+    assert_eq!(projected[0].edit_segments[1].state, 1);
+    assert_eq!(projected[0].effect_masks.len(), 1);
+    assert_eq!(projected[0].effect_masks[0].effect_nodes, [1, 2]);
     let _ = std::fs::remove_dir_all(root);
 }
 

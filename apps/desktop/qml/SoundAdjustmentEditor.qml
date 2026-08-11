@@ -1,10 +1,10 @@
 //! Borderless adjustment workbench. Global draft history and publication live
-//! in the window toolbar; this owner composes the editing surfaces themselves.
+//! in the window toolbar; this owner composes the resizable signal chain and
+//! the selected node's parameter surface.
 
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Layouts
 import EchoDesktop
 
 Item {
@@ -19,46 +19,26 @@ Item {
     property int selectionStartMillis: 0
     property int selectionEndMillis: 0
 
-    implicitHeight: 300
+    implicitHeight: 320
 
-    function analyzeOutput() : void {
-        effectsRack.runAnalysis()
+    function analyzeOutput(): void {
+        effectsRack.runAnalysis();
     }
 
-    RowLayout {
+    AdvancedEffectsRack {
+        id: effectsRack
         anchors.fill: parent
         anchors.leftMargin: 8
         anchors.rightMargin: 8
         anchors.topMargin: 6
         anchors.bottomMargin: 6
-        spacing: 10
-
-        BasicAdjustmentPanel {
-            Layout.preferredWidth: Math.min(310,
-                Math.max(286, inspector.width * 0.19))
-            Layout.minimumWidth: 280
-            Layout.maximumWidth: 310
-            Layout.fillHeight: true
-            draft: inspector.draft
-            hasTimeSelection: inspector.hasTimeSelection
-            selectionStartMillis: inspector.selectionStartMillis
-            selectionEndMillis: inspector.selectionEndMillis
-        }
-
-        AdvancedEffectsRack {
-            id: effectsRack
-            Layout.preferredWidth: Math.min(840,
-                Math.max(620, inspector.width - 350))
-            Layout.minimumWidth: 600
-            Layout.maximumWidth: 840
-            Layout.fillHeight: true
-            draft: inspector.draft
-            meterSource: inspector.meterSource
-            analyzer: inspector.analyzer
-            sourcePath: inspector.sourcePath
-            analysisKey: inspector.analysisKey
-        }
-
-        Item { Layout.fillWidth: true }
+        draft: inspector.draft
+        meterSource: inspector.meterSource
+        analyzer: inspector.analyzer
+        sourcePath: inspector.sourcePath
+        analysisKey: inspector.analysisKey
+        hasTimeSelection: inspector.hasTimeSelection
+        selectionStartMillis: inspector.selectionStartMillis
+        selectionEndMillis: inspector.selectionEndMillis
     }
 }

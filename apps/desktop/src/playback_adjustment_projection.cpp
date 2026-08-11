@@ -4,6 +4,8 @@
 #include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
 
+#include <utility>
+
 namespace {
 
 struct EffectChainProjection {
@@ -48,6 +50,107 @@ std::optional<EffectChainProjection> effectChainFromQml(const QVariantList& valu
     };
 }
 
+std::optional<std::vector<echo::audio::EditSegment>>
+editSegmentsFromQmlImpl(const QVariantList& values, qint64 trimStartMillis, qint64 trimEndMillis) {
+    if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || values.size() > 128) {
+        return std::nullopt;
+    }
+    if (values.isEmpty()) {
+        return std::vector<echo::audio::EditSegment>{{
+            .source_start_millis = static_cast<std::uint64_t>(trimStartMillis),
+            .source_end_millis = static_cast<std::uint64_t>(trimEndMillis),
+        }};
+    }
+    std::vector<echo::audio::EditSegment> result;
+    result.reserve(static_cast<std::size_t>(values.size()));
+    qint64 expected_start = trimStartMillis;
+    std::uint64_t output_millis = 0;
+    for (const QVariant& item : values) {
+        const QVariantMap value = item.toMap();
+        const qint64 start = value.value(QStringLiteral("sourceStartMillis")).toLongLong();
+        const qint64 end = value.value(QStringLiteral("sourceEndMillis")).toLongLong();
+        const int state = value.value(QStringLiteral("state")).toInt();
+        const int gain = value.value(QStringLiteral("gainCentibels")).toInt();
+        const qint64 fade_in = value.value(QStringLiteral("fadeInMillis")).toLongLong();
+        const qint64 fade_out = value.value(QStringLiteral("fadeOutMillis")).toLongLong();
+        const int fade_in_curve = value.value(QStringLiteral("fadeInCurve")).toInt();
+        const int fade_out_curve = value.value(QStringLiteral("fadeOutCurve")).toInt();
+        const qint64 gap_after = value.value(QStringLiteral("gapAfterMillis")).toLongLong();
+        if (start != expected_start || end <= start || end > trimEndMillis || state < 0 || state > 2
+            || gain < -2400 || gain > 1200 || fade_in < 0 || fade_out < 0
+            || fade_in + fade_out > end - start || fade_in_curve < 0 || fade_in_curve > 2
+            || fade_out_curve < 0 || fade_out_curve > 2 || gap_after < 0 || gap_after > 3'600'000) {
+            return std::nullopt;
+        }
+        result.push_back({
+            .source_start_millis = static_cast<std::uint64_t>(start),
+            .source_end_millis = static_cast<std::uint64_t>(end),
+            .state = static_cast<echo::audio::EditSegmentState>(state),
+            .gain_centibels = static_cast<std::int16_t>(gain),
+            .fade_in_millis = static_cast<std::uint64_t>(fade_in),
+            .fade_out_millis = static_cast<std::uint64_t>(fade_out),
+            .fade_in_curve = static_cast<echo::audio::FadeCurve>(fade_in_curve),
+            .fade_out_curve = static_cast<echo::audio::FadeCurve>(fade_out_curve),
+            .gap_after_millis = static_cast<std::uint64_t>(gap_after),
+        });
+        if (state != static_cast<int>(echo::audio::EditSegmentState::Hidden)) {
+            output_millis += static_cast<std::uint64_t>(end - start);
+        }
+        output_millis += static_cast<std::uint64_t>(gap_after);
+        expected_start = end;
+    }
+    if (expected_start != trimEndMillis || output_millis == 0) {
+        return std::nullopt;
+    }
+    return result;
+}
+
+std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQmlImpl(
+    const QVariantList& values,
+    qint64 trimStartMillis,
+    qint64 trimEndMillis,
+    const EffectChainProjection& chain
+) {
+    if (values.size() > 64) {
+        return std::nullopt;
+    }
+    std::array<bool, echo::audio::kEffectNodeCount> active{};
+    for (std::size_t index = 0; index < chain.active_count; ++index) {
+        active[static_cast<std::size_t>(chain.nodes[index])] = true;
+    }
+    std::vector<echo::audio::EffectMask> result;
+    result.reserve(static_cast<std::size_t>(values.size()));
+    for (const QVariant& item : values) {
+        const QVariantMap value = item.toMap();
+        const qint64 start = value.value(QStringLiteral("startMillis")).toLongLong();
+        const qint64 end = value.value(QStringLiteral("endMillis")).toLongLong();
+        const qint64 feather = value.value(QStringLiteral("featherMillis"), 10).toLongLong();
+        const QVariantList nodes = value.value(QStringLiteral("effectNodes")).toList();
+        if (start < trimStartMillis || end > trimEndMillis || end <= start || feather < 0
+            || feather > 100 || nodes.isEmpty() || nodes.size() > 5) {
+            return std::nullopt;
+        }
+        echo::audio::EffectMask mask{
+            .start_millis = static_cast<std::uint64_t>(start),
+            .end_millis = static_cast<std::uint64_t>(end),
+            .feather_millis = static_cast<std::uint64_t>(feather),
+        };
+        std::array<bool, echo::audio::kEffectNodeCount> seen{};
+        for (const QVariant& node_value : nodes) {
+            const int node = node_value.toInt();
+            if (node < 0 || node >= static_cast<int>(echo::audio::kEffectNodeCount) || node == 4
+                || node == 6 || !active[static_cast<std::size_t>(node)]
+                || seen[static_cast<std::size_t>(node)]) {
+                return std::nullopt;
+            }
+            seen[static_cast<std::size_t>(node)] = true;
+            mask.nodes.push_back(static_cast<echo::audio::EffectNodeKind>(node));
+        }
+        result.push_back(std::move(mask));
+    }
+    return result;
+}
+
 std::optional<echo::audio::DeHumAdjustment> deHumFromQmlImpl(const QVariantMap& value) {
     const int fundamental = value.value(QStringLiteral("fundamentalHertz"), 50).toInt();
     const int harmonics = value.value(QStringLiteral("harmonicCount"), 4).toInt();
@@ -83,6 +186,29 @@ std::optional<echo::audio::DeClickAdjustment> deClickFromQmlImpl(const QVariantM
 }
 
 } // namespace
+
+std::optional<std::vector<echo::audio::EditSegment>>
+PlaybackAdjustmentProjection::editSegmentsFromQml(
+    const QVariantList& values,
+    qint64 trimStartMillis,
+    qint64 trimEndMillis
+) {
+    return editSegmentsFromQmlImpl(values, trimStartMillis, trimEndMillis);
+}
+
+std::optional<std::vector<echo::audio::EffectMask>>
+PlaybackAdjustmentProjection::effectMasksFromQml(
+    const QVariantList& values,
+    qint64 trimStartMillis,
+    qint64 trimEndMillis,
+    const QVariantList& effectChainValue
+) {
+    const auto chain = effectChainFromQml(effectChainValue);
+    if (!chain.has_value()) {
+        return std::nullopt;
+    }
+    return effectMasksFromQmlImpl(values, trimStartMillis, trimEndMillis, *chain);
+}
 
 std::optional<echo::audio::DeHumAdjustment>
 PlaybackAdjustmentProjection::deHumFromQml(const QVariantMap& value) {
@@ -164,7 +290,9 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         asset.value(QStringLiteral("limiterEnabled")).toBool(),
         asset.value(QStringLiteral("limiterCeilingCentibels")).toInt(),
         asset.value(QStringLiteral("limiterReleaseMillis")).toInt(),
-        asset.value(QStringLiteral("effectChain")).toList()
+        asset.value(QStringLiteral("effectChain")).toList(),
+        asset.value(QStringLiteral("editSegments")).toList(),
+        asset.value(QStringLiteral("effectMasks")).toList()
     );
 }
 
@@ -192,7 +320,9 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     bool limiterEnabled,
     int limiterCeilingCentibels,
     int limiterReleaseMillis,
-    const QVariantList& effectChainValue
+    const QVariantList& effectChainValue,
+    const QVariantList& editSegmentsValue,
+    const QVariantList& effectMasksValue
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
@@ -213,8 +343,15 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const auto deHum = deHumFromQml(deHumValue);
     const auto deClick = deClickFromQml(deClickValue);
     const auto effectChain = effectChainFromQml(effectChainValue);
+    auto editSegments = editSegmentsFromQmlImpl(editSegmentsValue, trimStartMillis, trimEndMillis);
     if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()
-        || !deHum.has_value() || !deClick.has_value() || !effectChain.has_value()) {
+        || !deHum.has_value() || !deClick.has_value() || !effectChain.has_value()
+        || !editSegments.has_value()) {
+        return std::nullopt;
+    }
+    auto effectMasks =
+        effectMasksFromQmlImpl(effectMasksValue, trimStartMillis, trimEndMillis, *effectChain);
+    if (!effectMasks.has_value()) {
         return std::nullopt;
     }
     equalizer->enabled = equalizerEnabled;
@@ -249,5 +386,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
             },
         .effect_chain = effectChain->nodes,
         .effect_chain_count = effectChain->active_count,
+        .edit_segments = std::move(*editSegments),
+        .effect_masks = std::move(*effectMasks),
     };
 }

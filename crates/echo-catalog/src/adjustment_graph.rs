@@ -3,15 +3,15 @@
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, AssetId, CompressorSettings, DeClickSettings,
-    DeHumSettings, EffectChain, FadeCurve, LimiterSettings, ParametricEqualizer,
-    RestorationSettings, ReverbSettings,
+    DeHumSettings, EditTimeline, EffectChain, EffectMask, FadeCurve, LimiterSettings,
+    ParametricEqualizer, RestorationSettings, ReverbSettings,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
 use crate::{CatalogError, CatalogErrorKind};
 
 /// One saved adjustment revision for an asset.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssetAdjustmentRevision {
     pub revision_id: i64,
     pub graph: AdjustmentGraph,
@@ -40,6 +40,8 @@ struct StoredAdjustment {
     de_hum_json: String,
     de_click_json: String,
     effect_chain_json: String,
+    edit_timeline_json: String,
+    effect_masks_json: String,
     limiter_enabled: i64,
     limiter_ceiling: i64,
     limiter_release: i64,
@@ -67,7 +69,7 @@ pub fn latest_adjustment_graph(
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
-             de_click_json, effect_chain_json, limiter_enabled, \
+             de_click_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
@@ -108,7 +110,7 @@ pub fn adjustment_graph_at_revision(
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
-             de_click_json, effect_chain_json, limiter_enabled, \
+             de_click_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 AND id = ?2",
             rusqlite::params![asset_id.to_string(), revision_id],
@@ -164,10 +166,12 @@ fn stored_adjustment_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Store
         de_hum_json: row.get(18)?,
         de_click_json: row.get(19)?,
         effect_chain_json: row.get(20)?,
-        limiter_enabled: row.get(21)?,
-        limiter_ceiling: row.get(22)?,
-        limiter_release: row.get(23)?,
-        created_at: row.get(24)?,
+        edit_timeline_json: row.get(21)?,
+        effect_masks_json: row.get(22)?,
+        limiter_enabled: row.get(23)?,
+        limiter_ceiling: row.get(24)?,
+        limiter_release: row.get(25)?,
+        created_at: row.get(26)?,
     })
 }
 
@@ -175,10 +179,12 @@ fn restore_adjustment_graph(
     duration: u64,
     stored: &StoredAdjustment,
 ) -> Result<AssetAdjustmentRevision, CatalogError> {
+    let trim_start = stored_millis(stored.trim_start)?;
+    let trim_end = stored_millis(stored.trim_end)?;
     let graph = AdjustmentGraph::new(
         duration,
-        stored_millis(stored.trim_start)?,
-        stored_millis(stored.trim_end)?,
+        trim_start,
+        trim_end,
         stored_millis(stored.fade_in)?,
         stored_millis(stored.fade_out)?,
         AdjustmentEffects::new(
@@ -211,6 +217,12 @@ fn restore_adjustment_graph(
         })
         .with_reverb(stored_reverb(&stored.reverb_json)?)
         .with_effect_chain(stored_effect_chain(&stored.effect_chain_json)?)
+        .with_edit_timeline(stored_edit_timeline(
+            &stored.edit_timeline_json,
+            trim_start,
+            trim_end,
+        )?)
+        .with_effect_masks(stored_effect_masks(&stored.effect_masks_json)?)
         .with_limiter(LimiterSettings {
             enabled: stored.limiter_enabled != 0,
             ceiling_centibels: stored_centibels(stored.limiter_ceiling, "limiter ceiling")?,
@@ -252,7 +264,8 @@ pub fn record_adjustment_graph(
         ));
     };
     let duration = stored_millis(duration)?;
-    let validated = validated_adjustment_graph(duration, graph)?;
+    let validated = validated_adjustment_graph(duration, &graph)?;
+    drop(graph);
     if let Some(current) = latest_adjustment_graph(transaction, asset_id)?
         && current.graph == validated
     {
@@ -267,11 +280,12 @@ pub fn record_adjustment_graph(
          compressor_threshold_centibels, compressor_ratio_tenths, \
          compressor_attack_millis, compressor_release_millis, \
          compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
-         de_click_json, effect_chain_json, limiter_enabled, limiter_ceiling_centibels, \
+         de_click_json, effect_chain_json, edit_timeline_json, effect_masks_json, \
+         limiter_enabled, limiter_ceiling_centibels, \
          limiter_release_millis, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
                  ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, \
-                 ?27, ?28)",
+                 ?27, ?28, ?29, ?30)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -315,6 +329,14 @@ pub fn record_adjustment_graph(
                 CatalogErrorKind::Other,
                 format!("cannot encode effect chain: {error}"),
             ))?,
+            serde_json::to_string(validated.edit_timeline()).map_err(|error| CatalogError::new(
+                CatalogErrorKind::Other,
+                format!("cannot encode edit timeline: {error}"),
+            ))?,
+            serde_json::to_string(validated.effect_masks()).map_err(|error| CatalogError::new(
+                CatalogErrorKind::Other,
+                format!("cannot encode effect masks: {error}"),
+            ))?,
             i64::from(validated.limiter().enabled),
             i64::from(validated.limiter().ceiling_centibels),
             i64::from(validated.limiter().release_millis),
@@ -330,7 +352,7 @@ pub fn record_adjustment_graph(
 
 fn validated_adjustment_graph(
     duration: u64,
-    graph: AdjustmentGraph,
+    graph: &AdjustmentGraph,
 ) -> Result<AdjustmentGraph, CatalogError> {
     AdjustmentGraph::new(
         duration,
@@ -350,7 +372,9 @@ fn validated_adjustment_graph(
         .with_compressor(graph.compressor())
         .with_reverb(graph.reverb())
         .with_limiter(graph.limiter())
-        .with_effect_chain(graph.effect_chain()),
+        .with_effect_chain(graph.effect_chain())
+        .with_edit_timeline(graph.edit_timeline().clone())
+        .with_effect_masks(graph.effect_masks().to_vec()),
     )
     .map_err(|error| CatalogError::new(CatalogErrorKind::Other, error.to_string()))
 }
@@ -419,6 +443,39 @@ fn stored_effect_chain(value: &str) -> Result<EffectChain, CatalogError> {
         ));
     }
     Ok(chain)
+}
+
+fn stored_edit_timeline(
+    value: &str,
+    trim_start_millis: u64,
+    trim_end_millis: u64,
+) -> Result<EditTimeline, CatalogError> {
+    if value.trim().is_empty() || value.trim() == "[]" {
+        return EditTimeline::identity(trim_start_millis, trim_end_millis).map_err(|error| {
+            CatalogError::new(
+                CatalogErrorKind::Other,
+                format!("cannot restore legacy edit timeline: {error}"),
+            )
+        });
+    }
+    serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored edit timeline is invalid: {error}"),
+        )
+    })
+}
+
+fn stored_effect_masks(value: &str) -> Result<Vec<EffectMask>, CatalogError> {
+    if value.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored effect masks are invalid: {error}"),
+        )
+    })
 }
 
 fn stored_centibels(value: i64, field: &str) -> Result<i16, CatalogError> {

@@ -23,40 +23,27 @@ Popup {
     modal: true
     dim: true
     focus: true
-    closePolicy: exporter.running ? Popup.NoAutoClose
-                                  : Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    closePolicy: exporter.running ? Popup.NoAutoClose : Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    function present() : void {
-        destination = ""
-        open()
+    function present(): void {
+        destination = "";
+        open();
     }
 
-    function fileName(path: string) : string {
-        const normalized = path.replace(/\\/g, "/")
-        return normalized.substring(normalized.lastIndexOf("/") + 1)
+    function fileName(path: string): string {
+        const normalized = path.replace(/\\/g, "/");
+        return normalized.substring(normalized.lastIndexOf("/") + 1);
     }
 
-    function startExport() : void {
-        if (!asset || draft.dirty || destination.toString().length === 0) return
-        exporter.exportAdjusted(
-            asset.id, Number(asset.adjustmentRevision || 0), asset.path, destination,
-            draft.trimStartMillis, draft.trimEndMillis,
-            draft.fadeInMillis, draft.fadeOutMillis,
-            draft.fadeInCurve, draft.fadeOutCurve,
-            draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(),
-            draft.deHumValue(), draft.deClickValue(),
-            draft.equalizerEnabled, draft.equalizerBands,
-            draft.compressorEnabled, draft.compressorThresholdCentibels,
-            draft.compressorRatioTenths, draft.compressorAttackMillis,
-            draft.compressorReleaseMillis, draft.compressorMakeupCentibels,
-            draft.reverbValue(), draft.limiterEnabled,
-            draft.limiterCeilingCentibels, draft.limiterReleaseMillis,
-            draft.effectChain)
+    function startExport(): void {
+        if (!asset || draft.dirty || destination.toString().length === 0)
+            return;
+        exporter.exportAdjusted(asset.id, Number(asset.adjustmentRevision || 0), asset.path, destination, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks);
     }
 
-    function debugExport(destinationUrl: url) : void {
-        destination = destinationUrl
-        startExport()
+    function debugExport(destinationUrl: url): void {
+        destination = destinationUrl;
+        startExport();
     }
 
     background: Rectangle {
@@ -163,9 +150,7 @@ Popup {
 
                         Text {
                             Layout.fillWidth: true
-                            text: dialog.destination.toString().length > 0
-                                ? dialog.fileName(dialog.destination.toString())
-                                : qsTr("Choose where to save the rendered file")
+                            text: dialog.destination.toString().length > 0 ? dialog.fileName(dialog.destination.toString()) : qsTr("Choose where to save the rendered file")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideMiddle
@@ -204,7 +189,9 @@ Popup {
                         font.pixelSize: Theme.fontBody
                     }
 
-                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.fillWidth: true
+                    }
 
                     Text {
                         text: Math.round(dialog.exporter.progress * 100) + "%"
@@ -224,21 +211,15 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 visible: dialog.exporter.hasResult
-                text: dialog.exporter.errorText.length > 0
-                    ? qsTr("WAV created, but Echo could not save its source record.")
-                    : qsTr("WAV created · %1 LUFS · %2 dBTP")
-                        .arg(dialog.exporter.integratedLufs.toFixed(1))
-                        .arg(dialog.exporter.truePeakDbtp.toFixed(1))
-                color: dialog.exporter.errorText.length > 0
-                    ? Theme.warningText : Theme.accentSelectionText
+                text: dialog.exporter.errorText.length > 0 ? qsTr("WAV created, but Echo could not save its source record.") : qsTr("WAV created · %1 LUFS · %2 dBTP").arg(dialog.exporter.integratedLufs.toFixed(1)).arg(dialog.exporter.truePeakDbtp.toFixed(1))
+                color: dialog.exporter.errorText.length > 0 ? Theme.warningText : Theme.accentSelectionText
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap
             }
 
             Text {
                 Layout.fillWidth: true
-                visible: !dialog.exporter.running && !dialog.exporter.hasResult
-                    && dialog.exporter.errorText.length > 0
+                visible: !dialog.exporter.running && !dialog.exporter.hasResult && dialog.exporter.errorText.length > 0
                 text: qsTr("Echo could not export this sound. Check the destination and try again.")
                 color: Theme.warningText
                 font.pixelSize: Theme.fontBody
@@ -249,7 +230,9 @@ Popup {
                 Layout.fillWidth: true
                 spacing: 10
 
-                Item { Layout.fillWidth: true }
+                Item {
+                    Layout.fillWidth: true
+                }
 
                 EchoButton {
                     visible: dialog.exporter.running
@@ -261,9 +244,7 @@ Popup {
                 EchoButton {
                     visible: !dialog.exporter.running
                     text: qsTr("Export WAV")
-                    enabled: !dialog.draft.dirty
-                        && dialog.destination.toString().length > 0
-                        && dialog.asset && dialog.asset.pathStatus !== "missing"
+                    enabled: !dialog.draft.dirty && dialog.destination.toString().length > 0 && dialog.asset && dialog.asset.pathStatus !== "missing"
                     onClicked: dialog.startExport()
                 }
             }

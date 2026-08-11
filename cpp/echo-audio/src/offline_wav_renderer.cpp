@@ -134,11 +134,12 @@ OfflineRenderResult OfflineWavRenderer::render(
     if (adjustment.trim_end_millis <= adjustment.trim_start_millis) {
         throw std::invalid_argument("offline render requires a non-empty selection");
     }
-    const std::uint64_t selected_millis = adjustment.trim_end_millis - adjustment.trim_start_millis;
-    if (selected_millis > std::numeric_limits<std::uint64_t>::max() / kSampleRate) {
-        throw std::invalid_argument("selection exceeds the WAV v1 size limit");
-    }
-    const std::uint64_t expected_frames = selected_millis * kSampleRate / 1000U;
+    PlaybackSession session(
+        sourcePath,
+        adjustment,
+        {.apply_output_guard = false, .collect_metering = false}
+    );
+    const std::uint64_t expected_frames = session.output_frame_count();
     const std::uint16_t bit_depth = static_cast<std::uint16_t>(depth);
     const std::uint16_t bytes_per_sample = static_cast<std::uint16_t>(bit_depth / 8U);
     const std::uint64_t bytes_per_frame = kChannels * bytes_per_sample;
@@ -152,11 +153,6 @@ OfflineRenderResult OfflineWavRenderer::render(
     const auto placeholder = wav_header(0, bit_depth);
     sink.write(placeholder);
 
-    PlaybackSession session(
-        sourcePath,
-        adjustment,
-        {.apply_output_guard = false, .collect_metering = false}
-    );
     OfflineLoudnessAnalyzer analyzer(session.sample_rate(), session.channel_count());
     std::vector<float> decoded(kChunkFrames * session.channel_count());
     std::vector<float> measured;

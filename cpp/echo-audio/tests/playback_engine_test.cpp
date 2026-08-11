@@ -497,6 +497,101 @@ int main(int argc, char* argv[]) {
         sought.stop();
     }
 
+    // Source edits collapse hidden time, preserve muted time, insert explicit
+    // gaps, and keep fixed DeClick latency compensation frame-exact.
+    {
+        echo::audio::PlaybackAdjustment edited;
+        edited.trim_end_millis = 1000;
+        edited.effect_chain = {
+            echo::audio::EffectNodeKind::Equalizer,
+            echo::audio::EffectNodeKind::DeClick,
+            echo::audio::EffectNodeKind::Master,
+            echo::audio::EffectNodeKind::Restoration,
+            echo::audio::EffectNodeKind::Dynamics,
+            echo::audio::EffectNodeKind::Space,
+            echo::audio::EffectNodeKind::DeHum,
+        };
+        edited.effect_chain_count = 3;
+        edited.effect_masks = {{
+            .start_millis = 0,
+            .end_millis = 250,
+            .feather_millis = 10,
+            .nodes = {echo::audio::EffectNodeKind::Equalizer},
+        }};
+        edited.edit_segments = {
+            {
+                .source_start_millis = 0,
+                .source_end_millis = 250,
+                .state = echo::audio::EditSegmentState::Audible,
+            },
+            {
+                .source_start_millis = 250,
+                .source_end_millis = 500,
+                .state = echo::audio::EditSegmentState::Hidden,
+                .gap_after_millis = 100,
+            },
+            {
+                .source_start_millis = 500,
+                .source_end_millis = 750,
+                .state = echo::audio::EditSegmentState::Muted,
+            },
+            {
+                .source_start_millis = 750,
+                .source_end_millis = 1000,
+                .state = echo::audio::EditSegmentState::Audible,
+            },
+        };
+        echo::audio::PlaybackSession source_edited(path.string(), edited);
+        expect(
+            source_edited.output_frame_count() == 40'800,
+            "source edit plan publishes arranged output frame count"
+        );
+        expect(
+            drain_until_ended(source_edited, 127) == 40'800,
+            "hidden mute gap and DeClick compensation preserve arranged frame count"
+        );
+        expect(
+            source_edited.position_millis() == 1000,
+            "source-edited playback position remains original-time anchored"
+        );
+        source_edited.stop();
+    }
+
+    {
+        echo::audio::PlaybackAdjustment hidden_gap;
+        hidden_gap.trim_end_millis = 100;
+        hidden_gap.effect_chain = {
+            echo::audio::EffectNodeKind::Master,
+            echo::audio::EffectNodeKind::Restoration,
+            echo::audio::EffectNodeKind::Equalizer,
+            echo::audio::EffectNodeKind::Dynamics,
+            echo::audio::EffectNodeKind::Space,
+            echo::audio::EffectNodeKind::DeHum,
+            echo::audio::EffectNodeKind::DeClick,
+        };
+        hidden_gap.effect_chain_count = 1;
+        hidden_gap.edit_segments = {{
+            .source_start_millis = 0,
+            .source_end_millis = 100,
+            .state = echo::audio::EditSegmentState::Hidden,
+            .gap_after_millis = 50,
+        }};
+        echo::audio::PlaybackSession silence(path.string(), hidden_gap);
+        std::vector<float> gap_samples(4'800, 1.0F);
+        const std::size_t gap_frames = pull_until(silence, gap_samples.data(), 2'400, 127);
+        expect(gap_frames == 2'400, "all-hidden edit still emits its authored gap");
+        expect(
+            std::all_of(
+                gap_samples.begin(),
+                gap_samples.begin()
+                    + static_cast<std::ptrdiff_t>(gap_frames * silence.channel_count()),
+                [](float sample) { return sample == 0.0F; }
+            ),
+            "all-hidden authored gap is silent"
+        );
+        silence.stop();
+    }
+
     // Positive EQ on near-full-scale material must not recreate the former
     // hard-clipped plateau at the device boundary.
     {
