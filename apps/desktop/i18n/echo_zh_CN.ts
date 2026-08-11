@@ -2463,11 +2463,6 @@
         <translation>显示全部</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditorTimeline.qml" line="352"/>
-        <source>Zoom</source>
-        <translation>缩放</translation>
-    </message>
-    <message>
         <location filename="../qml/SoundEditorTimeline.qml" line="365"/>
         <source>Timeline zoom</source>
         <translation>时间轴缩放</translation>

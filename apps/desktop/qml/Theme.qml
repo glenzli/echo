@@ -50,6 +50,7 @@ QtObject {
     readonly property int editorControlTrackWidth: 260
     readonly property int editorSectionColumnWidth: 320
     readonly property int editorPanelGap: 12
+    readonly property int editorPanelHeaderHeight: 38
 
     // Base surfaces
     readonly property color window: effectiveDark ? "#101214" : "#f1f3f5"

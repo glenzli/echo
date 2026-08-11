@@ -285,10 +285,10 @@ Item {
             Item {
                 id: parameterCanvas
 
-                x: 16
-                y: 14
-                width: Math.min(rack.preferredParameterWidth, Math.max(416, parameterSurface.width - 32))
-                height: Math.min(rack.preferredParameterHeight, Math.max(0, parameterSurface.height - 28))
+                x: Theme.editorPanelGap
+                y: 0
+                width: Math.min(rack.preferredParameterWidth, Math.max(416, parameterSurface.width - Theme.editorPanelGap * 2))
+                height: Math.min(rack.preferredParameterHeight, parameterSurface.height)
 
                 BasicAdjustmentPanel {
                     anchors.fill: parent

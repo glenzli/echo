@@ -12,7 +12,9 @@ RowLayout {
     required property string title
     required property string iconSource
 
-    implicitHeight: 40
+    implicitHeight: Theme.editorPanelHeaderHeight
+    Layout.minimumHeight: Theme.editorPanelHeaderHeight
+    Layout.preferredHeight: Theme.editorPanelHeaderHeight
     Layout.leftMargin: 12
     Layout.rightMargin: 10
     spacing: 7

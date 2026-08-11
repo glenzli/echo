@@ -194,7 +194,7 @@ Rectangle {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 32
+            Layout.preferredHeight: Theme.editorPanelHeaderHeight
 
             AdjustmentPanelHeader {
                 anchors.fill: parent

@@ -43,6 +43,7 @@ Rectangle {
     readonly property int tickIntervalMillis: chooseTickInterval()
     readonly property int firstTickMillis: tickIntervalMillis > 0 ? Math.ceil(viewStartMillis / tickIntervalMillis) * tickIntervalMillis : 0
     readonly property int tickCount: tickIntervalMillis > 0 ? Math.ceil(viewDurationMillis / tickIntervalMillis) + 2 : 0
+    readonly property bool showNavigator: zoomFactor > 1 && height >= 250
 
     signal trimRequested(int startMillis, int endMillis)
     signal fadeRequested(int fadeInMillis, int fadeOutMillis)
@@ -288,12 +289,12 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
+        anchors.margins: 10
         spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
+            Layout.preferredHeight: 36
             spacing: 8
 
             Text {
@@ -355,22 +356,48 @@ Rectangle {
                 onClicked: timeline.fitAll()
             }
 
-            Text {
-                text: qsTr("Zoom")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-            }
-
             Slider {
                 id: zoomSlider
 
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: 104
+                Layout.preferredHeight: 24
                 from: 0
                 to: Math.log(Math.max(1, timeline.maximumZoomFactor)) / Math.LN2
                 value: Math.log(Math.max(1, timeline.zoomFactor)) / Math.LN2
                 enabled: timeline.maximumZoomFactor > 1
                 Accessible.name: qsTr("Timeline zoom")
                 onMoved: timeline.setZoomAround(trackSurface.width / 2, Math.pow(2, value), true)
+
+                background: Rectangle {
+                    x: zoomSlider.leftPadding
+                    y: Math.round((zoomSlider.height - height) / 2)
+                    width: zoomSlider.availableWidth
+                    height: 3
+                    radius: 2
+                    color: zoomSlider.enabled ? Theme.track : Theme.border
+                }
+
+                handle: Rectangle {
+                    x: zoomSlider.leftPadding + zoomSlider.visualPosition * (zoomSlider.availableWidth - width)
+                    y: Math.round((zoomSlider.height - height) / 2)
+                    implicitWidth: zoomSlider.pressed ? 13 : 11
+                    implicitHeight: zoomSlider.pressed ? 13 : 11
+                    radius: width / 2
+                    color: zoomSlider.enabled ? Theme.panelRaised : Theme.controlQuiet
+                    border.width: 1
+                    border.color: zoomSlider.enabled ? Theme.accent : Theme.textDisabled
+
+                    Behavior on implicitWidth {
+                        NumberAnimation {
+                            duration: 80
+                        }
+                    }
+                    Behavior on implicitHeight {
+                        NumberAnimation {
+                            duration: 80
+                        }
+                    }
+                }
             }
 
             Text {
@@ -386,7 +413,7 @@ Rectangle {
             id: ruler
 
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
+            Layout.preferredHeight: 26
             color: Theme.surfaceSubtle
             border.color: Theme.border
             clip: true
@@ -427,7 +454,7 @@ Rectangle {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 250
+            Layout.minimumHeight: 96
             color: Theme.waveformSurface
             clip: true
 
@@ -450,8 +477,12 @@ Rectangle {
             }
 
             WaveformView {
-                anchors.fill: parent
-                anchors.margins: 14
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.verticalCenter: parent.verticalCenter
+                height: Math.max(64, parent.height - 28)
                 levels: timeline.waveformLevels
                 viewStartRatio: timeline.viewStartRatio
                 viewEndRatio: timeline.viewEndRatio
@@ -809,8 +840,9 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 42
+            Layout.preferredHeight: timeline.showNavigator ? 34 : 0
             spacing: 10
+            visible: timeline.showNavigator
 
             Text {
                 text: timeline.formatTime(timeline.viewStartMillis, true)
@@ -829,6 +861,26 @@ Rectangle {
                 enabled: timeline.zoomFactor > 1
                 Accessible.name: qsTr("Timeline position")
                 onMoved: timeline.setViewStart(value, true)
+
+                background: Rectangle {
+                    x: navigator.leftPadding
+                    y: Math.round((navigator.height - height) / 2)
+                    width: navigator.availableWidth
+                    height: 3
+                    radius: 2
+                    color: navigator.enabled ? Theme.track : Theme.border
+                }
+
+                handle: Rectangle {
+                    x: navigator.leftPadding + navigator.visualPosition * (navigator.availableWidth - width)
+                    y: Math.round((navigator.height - height) / 2)
+                    implicitWidth: navigator.pressed ? 13 : 11
+                    implicitHeight: navigator.pressed ? 13 : 11
+                    radius: width / 2
+                    color: navigator.enabled ? Theme.panelRaised : Theme.controlQuiet
+                    border.width: 1
+                    border.color: navigator.enabled ? Theme.accent : Theme.textDisabled
+                }
             }
 
             Text {
