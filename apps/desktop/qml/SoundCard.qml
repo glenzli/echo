@@ -135,41 +135,41 @@ Rectangle {
     function toneFor(recordedAtMillis: double, dark: bool): var {
         const palettes = dark ? {
             dawn: {
-                start: "#293336",
-                end: "#3c4140"
+                start: "#2b2e32",
+                end: "#3a3d41"
             },
             day: {
-                start: "#26343a",
-                end: "#35464a"
+                start: "#292d31",
+                end: "#383c40"
             },
             dusk: {
-                start: "#332f37",
-                end: "#493b41"
+                start: "#2d2d31",
+                end: "#3e3d42"
             },
             night: {
-                start: "#202832",
-                end: "#2d3742"
+                start: "#24282d",
+                end: "#32373d"
             },
             unknown: {
-                start: "#292e33",
-                end: "#383f45"
+                start: "#2a2d31",
+                end: "#393d42"
             }
         } : {
             dawn: {
-                start: "#e9eeed",
-                end: "#f2eee8"
+                start: "#e9ebed",
+                end: "#f2f3f4"
             },
             day: {
-                start: "#e5ecee",
-                end: "#eff3f3"
+                start: "#e7eaed",
+                end: "#f1f3f5"
             },
             dusk: {
-                start: "#eee8ec",
-                end: "#f3ece9"
+                start: "#eaeaec",
+                end: "#f3f3f5"
             },
             night: {
-                start: "#e4e9ef",
-                end: "#edf0f4"
+                start: "#e5e8eb",
+                end: "#eef0f2"
             },
             unknown: {
                 start: "#e9ecef",
@@ -250,14 +250,14 @@ Rectangle {
         }
 
         Repeater {
-            model: card.overview ? 5 : card.rich ? 17 : 11
+            model: card.overview ? 4 : card.rich ? 8 : 6
 
             Rectangle {
                 required property int index
-                x: index * soundVisual.width / (card.overview ? 5 : card.rich ? 17 : 11)
+                x: index * soundVisual.width / (card.overview ? 4 : card.rich ? 8 : 6)
                 width: 1
                 height: soundVisual.height
-                color: Theme.effectiveDark ? "#20ffffff" : "#14000000"
+                color: Theme.effectiveDark ? "#12ffffff" : "#0d000000"
             }
         }
 
@@ -270,8 +270,14 @@ Rectangle {
             levels: card.waveformLevels
             fillColor: Theme.waveformFill
             progressColor: Theme.waveformPlayed
-            centerLineColor: Theme.effectiveDark ? "#52636a" : "#bdc9cd"
-            amplitudeExponent: 0.74
+            centerLineColor: Theme.waveformCenter
+            renderMode: "bars"
+            barWidth: card.rich ? 2.4 : 2.1
+            barGap: card.rich ? 1.5 : 1.35
+            barRadius: 1.2
+            normalize: true
+            normalizationFloor: 0.28
+            amplitudeExponent: 0.76
             progress: 0
         }
 
@@ -283,13 +289,13 @@ Rectangle {
             width: durationText.implicitWidth + 10
             height: 18
             radius: 5
-            color: Theme.effectiveDark ? "#66081319" : "#ccffffff"
+            color: Theme.effectiveDark ? "#70121518" : "#d6ffffff"
 
             Text {
                 id: durationText
                 anchors.centerIn: parent
                 text: card.formatDuration(card.entry.durationMillis)
-                color: Theme.effectiveDark ? "#f4f8fa" : "#324148"
+                color: Theme.effectiveDark ? "#f4f5f6" : "#343b42"
                 font.pixelSize: 9
             }
         }
@@ -298,7 +304,7 @@ Rectangle {
             anchors.centerIn: parent
             visible: card.waveformLevels.length === 0
             text: card.entry.pathStatus === "missing" ? qsTr("Original missing") : qsTr("Preparing waveform…")
-            color: Theme.effectiveDark ? "#d0e0e5" : "#52636a"
+            color: Theme.effectiveDark ? "#d2d7dc" : "#59636d"
             font.pixelSize: Theme.fontMeta
         }
     }

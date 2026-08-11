@@ -1,6 +1,7 @@
-//! WaveformView renders a cached min/max pyramid as a continuous antialiased
-//! envelope. Geometry is interpolated for presentation; evidence remains the
-//! immutable cached buckets supplied by the audio engine.
+//! WaveformView renders a cached min/max pyramid as either a continuous
+//! envelope or compact rounded bars. Geometry is interpolated or aggregated
+//! only for presentation; evidence remains the immutable cached buckets
+//! supplied by the audio engine.
 
 import QtQuick
 
@@ -11,9 +12,16 @@ Canvas {
     property color fillColor: Theme.waveformFill
     property color progressColor: Theme.waveformPlayed
     property color centerLineColor: Theme.waveformCenter
-    property color outlineColor: Theme.effectiveDark ? "#a6c0c7" : "#728b93"
+    property color outlineColor: Theme.effectiveDark ? "#c3c9cf" : "#4f5963"
+    property string renderMode: "envelope"
+    property bool normalize: true
+    property real normalizationFloor: 0.32
+    property real peakHeadroom: 1.08
     property real amplitudeExponent: 0.78
     property real verticalPadding: 4
+    property real barWidth: 2.25
+    property real barGap: 1.5
+    property real barRadius: 1.1
     property real progress: 0.0
     property real viewStartRatio: 0.0
     property real viewEndRatio: 1.0
@@ -51,6 +59,21 @@ Canvas {
         const normalized = Math.min(1, Math.abs(value) / peak);
         const shaped = Math.pow(normalized, Math.max(0.55, Math.min(1, amplitudeExponent)));
         return centerY + (value < 0 ? -shaped : shaped) * scale;
+    }
+
+    function roundedRect(context: var, x: real, y: real, widthValue: real, heightValue: real, radiusValue: real): void {
+        const radius = Math.min(Math.max(0, radiusValue), widthValue / 2, heightValue / 2);
+        context.beginPath();
+        context.moveTo(x + radius, y);
+        context.lineTo(x + widthValue - radius, y);
+        context.quadraticCurveTo(x + widthValue, y, x + widthValue, y + radius);
+        context.lineTo(x + widthValue, y + heightValue - radius);
+        context.quadraticCurveTo(x + widthValue, y + heightValue, x + widthValue - radius, y + heightValue);
+        context.lineTo(x + radius, y + heightValue);
+        context.quadraticCurveTo(x, y + heightValue, x, y + heightValue - radius);
+        context.lineTo(x, y + radius);
+        context.quadraticCurveTo(x, y, x + radius, y);
+        context.closePath();
     }
 
     function traceSmoothed(context: var, values: var, first: int, last: int, peak: real, centerY: real, scale: real, reverse: bool): void {
@@ -93,6 +116,37 @@ Canvas {
         context.globalAlpha /= 0.34;
     }
 
+    function drawBars(context: var, mins: var, maxs: var, first: int, last: int, peak: real, centerY: real, scale: real, color: color): void {
+        const count = last - first + 1;
+        const stride = Math.max(1, barWidth + barGap);
+        const barCount = Math.max(1, Math.floor((width + barGap) / stride));
+        context.fillStyle = color;
+        for (let barIndex = 0; barIndex < barCount; ++barIndex) {
+            const sourceStart = first + Math.floor(barIndex * count / barCount);
+            const sourceEnd = Math.max(sourceStart, Math.min(last, first + Math.ceil((barIndex + 1) * count / barCount) - 1));
+            let minimum = 0;
+            let maximum = 0;
+            for (let sourceIndex = sourceStart; sourceIndex <= sourceEnd; ++sourceIndex) {
+                minimum = Math.min(minimum, Number(mins[sourceIndex]));
+                maximum = Math.max(maximum, Number(maxs[sourceIndex]));
+            }
+            const top = Math.min(displayY(minimum, peak, centerY, scale), displayY(maximum, peak, centerY, scale));
+            const bottom = Math.max(displayY(minimum, peak, centerY, scale), displayY(maximum, peak, centerY, scale));
+            const heightValue = Math.max(1.5, bottom - top);
+            const x = barIndex * stride;
+            roundedRect(context, x, centerY - heightValue / 2, Math.min(barWidth, width - x), heightValue, barRadius);
+            context.fill();
+        }
+    }
+
+    function drawWaveform(context: var, mins: var, maxs: var, first: int, last: int, peak: real, centerY: real, scale: real, color: color): void {
+        if (renderMode === "bars") {
+            drawBars(context, mins, maxs, first, last, peak, centerY, scale, color);
+        } else {
+            drawEnvelope(context, mins, maxs, first, last, peak, centerY, scale, color);
+        }
+    }
+
     onLevelsChanged: {
         paintReady = false;
         requestPaint();
@@ -118,8 +172,15 @@ Canvas {
     onProgressColorChanged: requestPaint()
     onCenterLineColorChanged: requestPaint()
     onOutlineColorChanged: requestPaint()
+    onRenderModeChanged: requestPaint()
+    onNormalizeChanged: requestPaint()
+    onNormalizationFloorChanged: requestPaint()
+    onPeakHeadroomChanged: requestPaint()
     onAmplitudeExponentChanged: requestPaint()
     onVerticalPaddingChanged: requestPaint()
+    onBarWidthChanged: requestPaint()
+    onBarGapChanged: requestPaint()
+    onBarRadiusChanged: requestPaint()
 
     onPaint: {
         const context = getContext("2d");
@@ -147,22 +208,25 @@ Canvas {
         for (let index = firstBucket; index <= lastBucket; ++index) {
             peak = Math.max(peak, Math.abs(mins[index]), Math.abs(maxs[index]));
         }
-        if (peak <= 0.0) {
+        if (peak <= 0.0)
             peak = 1.0;
-        }
+        else if (normalize)
+            peak = Math.max(Math.max(0.05, normalizationFloor), peak * Math.max(1, peakHeadroom));
+        else
+            peak = 1.0;
 
         const centerY = height / 2;
         const scale = Math.max(1, height / 2 - verticalPadding);
 
         context.strokeStyle = centerLineColor;
         context.lineWidth = 1;
-        context.globalAlpha = 0.48;
+        context.globalAlpha = renderMode === "bars" ? 0.26 : 0.42;
         context.beginPath();
         context.moveTo(0, centerY + 0.5);
         context.lineTo(width, centerY + 0.5);
         context.stroke();
-        context.globalAlpha = 0.88;
-        drawEnvelope(context, mins, maxs, firstBucket, lastBucket, peak, centerY, scale, fillColor);
+        context.globalAlpha = renderMode === "bars" ? 0.9 : 0.88;
+        drawWaveform(context, mins, maxs, firstBucket, lastBucket, peak, centerY, scale, fillColor);
 
         const viewProgress = (progress - normalizedStart) / Math.max(0.000001, normalizedEnd - normalizedStart);
         const playedWidth = Math.max(0, Math.min(width, viewProgress * width));
@@ -172,7 +236,7 @@ Canvas {
             context.rect(0, 0, playedWidth, height);
             context.clip();
             context.globalAlpha = 1.0;
-            drawEnvelope(context, mins, maxs, firstBucket, lastBucket, peak, centerY, scale, progressColor);
+            drawWaveform(context, mins, maxs, firstBucket, lastBucket, peak, centerY, scale, progressColor);
             context.restore();
         }
         context.globalAlpha = 1.0;

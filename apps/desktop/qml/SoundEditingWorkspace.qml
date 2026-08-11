@@ -668,16 +668,18 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
-            EchoButton {
-                text: qsTr("Save as recipe")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/recipe-save.svg"
+                toolTipText: qsTr("Save as recipe")
+                accessibleName: toolTipText
                 enabled: workspace.hasAsset && !workspace.dirty && Number(workspace.asset.adjustmentRevision || 0) > 0
                 onClicked: workspace.presentSaveProcessingRecipe()
             }
 
-            EchoButton {
-                text: qsTr("Apply recipe")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/recipe-apply.svg"
+                toolTipText: qsTr("Apply recipe")
+                accessibleName: toolTipText
                 enabled: workspace.hasAsset && !workspace.dirty
                 onClicked: workspace.presentApplyProcessingRecipe()
             }
@@ -701,9 +703,10 @@ Rectangle {
                 onClicked: workspace.presentProcessingHistory()
             }
 
-            EchoButton {
-                text: qsTr("Export")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/export.svg"
+                toolTipText: qsTr("Export")
+                accessibleName: toolTipText
                 enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing" && !renderExporter.running
                 onClicked: workspace.openExport()
             }

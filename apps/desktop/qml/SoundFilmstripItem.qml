@@ -11,7 +11,7 @@ Rectangle {
     required property bool selected
     property var waveformLevels: []
 
-    signal activated()
+    signal activated
 
     width: 152
     height: 84
@@ -21,20 +21,20 @@ Rectangle {
     border.color: selected ? Theme.accent : Theme.border
     clip: true
 
-    function fileName(path: string) : string {
-        const normalized = path.replace(/\\/g, "/")
-        return normalized.substring(normalized.lastIndexOf("/") + 1)
+    function fileName(path: string): string {
+        const normalized = path.replace(/\\/g, "/");
+        return normalized.substring(normalized.lastIndexOf("/") + 1);
     }
 
-    function loadWaveform() : void {
-        waveformLevels = []
+    function loadWaveform(): void {
+        waveformLevels = [];
         if (!entry || !entry.id || entry.pathStatus === "missing") {
-            return
+            return;
         }
         try {
-            waveformLevels = backend.waveformForAsset(entry.id)
+            waveformLevels = backend.waveformForAsset(entry.id);
         } catch (error) {
-            waveformLevels = []
+            waveformLevels = [];
         }
     }
 
@@ -46,7 +46,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         height: 58
-        color: selected ? "#395a65" : "#31464d"
+        color: thumbnail.selected ? Theme.surfaceSelected : Theme.waveformSurface
 
         WaveformView {
             anchors.fill: parent
@@ -55,8 +55,14 @@ Rectangle {
             anchors.topMargin: 8
             anchors.bottomMargin: 8
             levels: thumbnail.waveformLevels
-            fillColor: "#d9f4f8"
-            progressColor: "#ffffff"
+            fillColor: thumbnail.selected ? Theme.accent : Theme.waveformFill
+            progressColor: Theme.waveformPlayed
+            centerLineColor: Theme.waveformCenter
+            renderMode: "bars"
+            barWidth: 2.2
+            barGap: 1.4
+            barRadius: 1.2
+            normalizationFloor: 0.25
             progress: 0
         }
     }
@@ -68,11 +74,7 @@ Rectangle {
         anchors.leftMargin: 7
         anchors.rightMargin: 7
         height: 25
-        text: thumbnail.entry.soundCaption.length > 0
-            ? thumbnail.entry.soundCaption
-            : thumbnail.entry.sourceTitle.length > 0
-                ? thumbnail.entry.sourceTitle
-                : thumbnail.fileName(thumbnail.entry.path)
+        text: thumbnail.entry.soundCaption.length > 0 ? thumbnail.entry.soundCaption : thumbnail.entry.sourceTitle.length > 0 ? thumbnail.entry.sourceTitle : thumbnail.fileName(thumbnail.entry.path)
         color: Theme.textPrimary
         font.pixelSize: 9
         font.bold: thumbnail.selected

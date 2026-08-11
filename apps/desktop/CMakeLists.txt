@@ -254,6 +254,13 @@ qt_add_qml_module(
         icons/plus.svg
         icons/more-horizontal.svg
         icons/chevron-down.svg
+        icons/follow-playhead.svg
+        icons/loop.svg
+        icons/fit-selection.svg
+        icons/fit-all.svg
+        icons/clear-selection.svg
+        icons/recipe-save.svg
+        icons/recipe-apply.svg
 )
 
 target_compile_features(echo-desktop PUBLIC cxx_std_20)

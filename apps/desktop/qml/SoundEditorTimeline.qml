@@ -313,38 +313,45 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
-            EchoButton {
-                text: qsTr("Follow")
-                ghost: true
-                selected: timeline.followPlayhead
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/follow-playhead.svg"
+                toolTipText: qsTr("Follow")
+                accessibleName: toolTipText
+                checkable: true
+                checked: timeline.followPlayhead
                 onClicked: timeline.followPlayhead = !timeline.followPlayhead
             }
 
-            EchoButton {
-                text: qsTr("Loop")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/loop.svg"
+                toolTipText: qsTr("Loop")
+                accessibleName: toolTipText
+                checkable: true
                 enabled: timeline.hasTimeSelection
-                selected: timeline.loopSelection
+                checked: timeline.loopSelection
                 onClicked: timeline.loopSelection = !timeline.loopSelection
             }
 
-            EchoButton {
-                text: qsTr("Clear selection")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/clear-selection.svg"
+                toolTipText: qsTr("Clear selection")
+                accessibleName: toolTipText
                 visible: timeline.hasTimeSelection
                 onClicked: timeline.clearTimeSelection()
             }
 
-            EchoButton {
-                text: qsTr("Fit selection")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/fit-selection.svg"
+                toolTipText: qsTr("Fit selection")
+                accessibleName: toolTipText
                 enabled: timeline.trimEndMillis > timeline.trimStartMillis
                 onClicked: timeline.fitSelection()
             }
 
-            EchoButton {
-                text: qsTr("Fit all")
-                ghost: true
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/fit-all.svg"
+                toolTipText: qsTr("Fit all")
+                accessibleName: toolTipText
                 onClicked: timeline.fitAll()
             }
 
@@ -451,6 +458,7 @@ Rectangle {
                 progress: timeline.sourceDurationMillis > 0 ? timeline.playbackPositionMillis / timeline.sourceDurationMillis : 0
                 fillColor: Theme.textSecondary
                 progressColor: Theme.accent
+                normalize: false
                 opacity: 0.78
             }
 

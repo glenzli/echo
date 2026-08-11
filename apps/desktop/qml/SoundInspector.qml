@@ -281,6 +281,12 @@ Rectangle {
                         fillColor: Theme.waveformFill
                         progressColor: Theme.waveformPlayed
                         centerLineColor: Theme.waveformCenter
+                        renderMode: "bars"
+                        barWidth: 2.4
+                        barGap: 1.6
+                        barRadius: 1.3
+                        normalize: true
+                        normalizationFloor: 0.24
                         amplitudeExponent: 0.8
                         progress: inspector.hasAsset && player.duration > 0 && inspector.loadedPath === inspector.asset.path ? player.position / player.duration : 0
                     }
