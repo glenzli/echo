@@ -16,6 +16,7 @@ add_library(
     src/de_plosive_processor.cpp
     src/delay_vfx_processor.cpp
     src/digital_degrade_vfx_processor.cpp
+    src/drive_vfx_processor.cpp
     src/diffuse_space_reverb.cpp
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
@@ -135,6 +136,11 @@ if(BUILD_TESTING)
         NAME echo-digital-degrade-vfx-processor-test
         COMMAND echo-digital-degrade-vfx-processor-test
     )
+
+    add_executable(echo-drive-vfx-processor-test tests/drive_vfx_processor_test.cpp)
+    target_link_libraries(echo-drive-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-drive-vfx-processor-test)
+    add_test(NAME echo-drive-vfx-processor-test COMMAND echo-drive-vfx-processor-test)
 
     add_executable(
         echo-analysis-proxy-test
