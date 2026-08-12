@@ -36,6 +36,7 @@ add_library(
     src/playback.cpp
     src/parametric_equalizer.cpp
     src/phaser_vfx.cpp
+    src/rotary_vfx_processor.cpp
     src/scene_vfx_processor.cpp
     src/source_edit_plan.cpp
     src/spring_space_reverb.cpp
@@ -141,6 +142,11 @@ if(BUILD_TESTING)
     target_link_libraries(echo-drive-vfx-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-drive-vfx-processor-test)
     add_test(NAME echo-drive-vfx-processor-test COMMAND echo-drive-vfx-processor-test)
+
+    add_executable(echo-rotary-vfx-processor-test tests/rotary_vfx_processor_test.cpp)
+    target_link_libraries(echo-rotary-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-rotary-vfx-processor-test)
+    add_test(NAME echo-rotary-vfx-processor-test COMMAND echo-rotary-vfx-processor-test)
 
     add_executable(
         echo-analysis-proxy-test
