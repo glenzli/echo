@@ -9,6 +9,8 @@ add_library(
     src/algorithmic_reverb.cpp
     src/adjustment.cpp
     src/channel_repair_processor.cpp
+    src/convolution/signalsmith_audiofft_adapter.cpp
+    src/convolution_space_processor.cpp
     src/decode.cpp
     src/de_click_processor.cpp
     src/de_esser.cpp
@@ -43,10 +45,13 @@ add_library(
     src/transform_vfx_processor.cpp
     src/tremolo_vfx.cpp
     src/waveform.cpp
+    third_party/fftconvolver/FFTConvolver.cpp
+    third_party/fftconvolver/Utilities.cpp
 )
 add_library(Echo::Audio ALIAS echo-audio)
 
-target_include_directories(echo-audio PUBLIC include)
+target_include_directories(echo-audio PUBLIC include PRIVATE src)
+target_include_directories(echo-audio SYSTEM PRIVATE third_party)
 
 target_compile_features(echo-audio PUBLIC cxx_std_20)
 
@@ -142,6 +147,17 @@ if(BUILD_TESTING)
     target_link_libraries(echo-drive-vfx-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-drive-vfx-processor-test)
     add_test(NAME echo-drive-vfx-processor-test COMMAND echo-drive-vfx-processor-test)
+
+    add_executable(
+        echo-convolution-space-processor-test
+        tests/convolution_space_processor_test.cpp
+    )
+    target_link_libraries(echo-convolution-space-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-convolution-space-processor-test)
+    add_test(
+        NAME echo-convolution-space-processor-test
+        COMMAND echo-convolution-space-processor-test
+    )
 
     add_executable(echo-rotary-vfx-processor-test tests/rotary_vfx_processor_test.cpp)
     target_link_libraries(echo-rotary-vfx-processor-test PRIVATE Echo::Audio)

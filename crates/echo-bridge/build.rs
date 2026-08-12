@@ -17,6 +17,8 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/algorithmic_reverb.cpp",
     "src/adjustment.cpp",
     "src/channel_repair_processor.cpp",
+    "src/convolution/signalsmith_audiofft_adapter.cpp",
+    "src/convolution_space_processor.cpp",
     "src/decode.cpp",
     "src/de_click_processor.cpp",
     "src/de_esser.cpp",
@@ -51,6 +53,8 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/transform_vfx_processor.cpp",
     "src/tremolo_vfx.cpp",
     "src/waveform.cpp",
+    "third_party/fftconvolver/FFTConvolver.cpp",
+    "third_party/fftconvolver/Utilities.cpp",
 ];
 
 const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
@@ -59,6 +63,7 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/algorithmic_reverb.hpp",
     "include/echo/audio/adjustment.hpp",
     "include/echo/audio/channel_repair_processor.hpp",
+    "include/echo/audio/convolution_space_processor.hpp",
     "include/echo/audio/decode.hpp",
     "include/echo/audio/de_click_processor.hpp",
     "include/echo/audio/de_esser.hpp",
@@ -95,6 +100,12 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "src/phaser_vfx.hpp",
     "src/tremolo_vfx.hpp",
     "src/bridge/cxx_bridge.hpp",
+    "src/convolution/signalsmith_audiofft_adapter.hpp",
+    "third_party/fftconvolver/FFTConvolver.h",
+    "third_party/fftconvolver/Utilities.h",
+    "third_party/signalsmith-dsp/common.h",
+    "third_party/signalsmith-dsp/fft.h",
+    "third_party/signalsmith-dsp/perf.h",
 ];
 
 fn track_inputs(audio_root: &Path, inputs: &[&str]) {
@@ -114,7 +125,7 @@ fn verify_source_manifest(audio_root: &Path) {
         .split_whitespace()
         .map(|token| token.trim_matches(|character| matches!(character, '"' | '(' | ')')))
         .filter(|token| {
-            token.starts_with("src/")
+            (token.starts_with("src/") || token.starts_with("third_party/"))
                 && !token.starts_with("src/bridge/")
                 && Path::new(token)
                     .extension()
@@ -176,7 +187,18 @@ fn main() {
     for relative_path in ENGINE_SOURCES {
         build.file(audio_root.join(relative_path));
     }
-    build.include(&audio_include).include(&audio_root);
+    build
+        .include(&audio_include)
+        .include(audio_root.join("src"))
+        .include(&audio_root);
+    let third_party_include = audio_root.join("third_party");
+    if env::var("CARGO_CFG_TARGET_FAMILY").as_deref() == Ok("unix") {
+        build
+            .flag("-isystem")
+            .flag(third_party_include.to_string_lossy().as_ref());
+    } else {
+        build.include(&third_party_include);
+    }
     for include_path in &include_paths {
         if env::var("CARGO_CFG_TARGET_FAMILY").as_deref() == Ok("unix") {
             build
