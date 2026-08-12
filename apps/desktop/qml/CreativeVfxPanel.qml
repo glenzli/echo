@@ -17,8 +17,8 @@ Item {
 
     readonly property var availableFamilies: {
         const choices = [];
-        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade")];
-        for (let kind = 8; kind <= 12; ++kind) {
+        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade"), qsTr("Drive"), qsTr("Rotary")];
+        for (let kind = 8; kind <= 14; ++kind) {
             if (draft.effectChain.indexOf(kind) >= 0) {
                 choices.push({
                     kind: kind,
@@ -146,6 +146,18 @@ Item {
             DigitalDegradeVfxPanel {
                 anchors.fill: parent
                 visible: panel.familyKind === 12
+                draft: panel.draft
+            }
+
+            DriveVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 13
+                draft: panel.draft
+            }
+
+            RotaryVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 14
                 draft: panel.draft
             }
         }

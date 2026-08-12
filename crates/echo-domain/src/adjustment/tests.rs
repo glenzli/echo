@@ -150,13 +150,15 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     assert_eq!(EffectNodeKind::ModulationVfx.wire_value(), 10);
     assert_eq!(EffectNodeKind::TransformVfx.wire_value(), 11);
     assert_eq!(EffectNodeKind::DigitalDegradeVfx.wire_value(), 12);
-    assert_eq!(EFFECT_NODE_COUNT, 13);
+    assert_eq!(EffectNodeKind::DriveVfx.wire_value(), 13);
+    assert_eq!(EffectNodeKind::RotaryVfx.wire_value(), 14);
+    assert_eq!(EFFECT_NODE_COUNT, 15);
     assert_eq!(
         EffectNodeKind::from_wire_value(3),
         Ok(EffectNodeKind::Space)
     );
     assert_eq!(
-        EffectNodeKind::from_wire_value(13),
+        EffectNodeKind::from_wire_value(15),
         Err(EffectNodeKindValueError)
     );
 
@@ -198,7 +200,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
     let encoded_value: serde_json::Value =
         serde_json::from_str(&encoded).expect("encoded chain is JSON");
-    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(13));
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(15));
     assert_eq!(encoded_value["active_count"], 3);
     let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
     assert_eq!(decoded, reduced);
@@ -222,7 +224,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]
     );
     let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(13));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(15));
     assert_eq!(normalized["active_count"], 3);
 
     assert_eq!(
@@ -244,7 +246,20 @@ fn twelve_node_chain_json_migrates_with_disabled_digital_degrade_tail() {
         .get_mut("nodes")
         .and_then(serde_json::Value::as_array_mut)
         .expect("nodes array");
-    assert_eq!(nodes.pop(), Some(serde_json::json!("digital_degrade_vfx")));
+    nodes.truncate(12);
+    let restored: EffectChain = serde_json::from_value(stored).expect("legacy chain decodes");
+    assert!(restored.is_valid());
+    assert_eq!(restored.nodes(), EffectChain::standard().nodes());
+}
+
+#[test]
+fn thirteen_node_chain_json_migrates_with_drive_and_rotary_tail() {
+    let mut stored = serde_json::to_value(EffectChain::standard()).expect("chain encodes");
+    let nodes = stored
+        .get_mut("nodes")
+        .and_then(serde_json::Value::as_array_mut)
+        .expect("nodes array");
+    nodes.truncate(13);
     let restored: EffectChain = serde_json::from_value(stored).expect("legacy chain decodes");
     assert!(restored.is_valid());
     assert_eq!(restored.nodes(), EffectChain::standard().nodes());

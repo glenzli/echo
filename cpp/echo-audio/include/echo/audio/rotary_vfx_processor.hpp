@@ -1,28 +1,11 @@
 #pragma once
 
+#include "echo/audio/creative_vfx.hpp"
+
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 
 namespace echo::audio {
-
-enum class RotaryVfxSpeed : std::uint8_t {
-    Slow = 0,
-    Fast = 1,
-    Brake = 2,
-};
-
-/// Authored input for a rotary-speaker-inspired creative effect.
-///
-/// The effect is deliberately generic: it does not claim to reproduce a
-/// particular cabinet, microphone arrangement, or trademarked product.
-struct RotaryVfxAdjustment {
-    RotaryVfxSpeed speed = RotaryVfxSpeed::Slow;
-    bool enabled = false;
-    std::uint8_t mix_percent = 55;
-    std::uint8_t motion_percent = 65;
-    std::uint8_t stereo_width_percent = 80;
-};
 
 /// Deterministic dual-rotor amplitude and Doppler motion.
 ///

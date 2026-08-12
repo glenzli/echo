@@ -45,6 +45,21 @@ int main() {
         .bitcrusher = {.bit_depth = 7},
         .sample_rate_reduction = {.target_rate_hertz = 11025},
     };
+    authored.drive = {
+        .character = echo::audio::DriveVfxCharacter::Fuzz,
+        .enabled = true,
+        .mix_percent = 68,
+        .drive_centibels = 2450,
+        .tone_hertz = 6200,
+        .output_gain_centibels = -475,
+    };
+    authored.rotary = {
+        .speed = echo::audio::RotaryVfxSpeed::Fast,
+        .enabled = true,
+        .mix_percent = 62,
+        .motion_percent = 74,
+        .stereo_width_percent = 91,
+    };
 
     const QVariantMap qml = CreativeVfxProjection::toQml(authored);
     const auto from_qml = CreativeVfxProjection::fromQml(qml);
@@ -54,6 +69,10 @@ int main() {
     assert(from_qml->modulation.phaser.feedback_percent == -18);
     assert(from_qml->transform.character == echo::audio::TransformVfxCharacter::Ghost);
     assert(from_qml->digital_degrade.character == echo::audio::DigitalDegradeVfxCharacter::LoFi);
+    assert(from_qml->drive.character == echo::audio::DriveVfxCharacter::Fuzz);
+    assert(from_qml->drive.drive_centibels == 2450);
+    assert(from_qml->rotary.speed == echo::audio::RotaryVfxSpeed::Fast);
+    assert(from_qml->rotary.stereo_width_percent == 91);
 
     const QByteArray encoded = CreativeVfxProjection::toJson(authored);
     const QJsonObject json = QJsonDocument::fromJson(encoded).object();
@@ -61,6 +80,10 @@ int main() {
            == QStringLiteral("underwater"));
     assert(json.value(QStringLiteral("scene")).toObject().contains(QStringLiteral("mix_percent")));
     assert(!json.value(QStringLiteral("scene")).toObject().contains(QStringLiteral("mixPercent")));
+    assert(json.value(QStringLiteral("drive")).toObject().value(QStringLiteral("character"))
+           == QStringLiteral("fuzz"));
+    assert(json.value(QStringLiteral("rotary")).toObject().value(QStringLiteral("speed"))
+           == QStringLiteral("fast"));
     const auto from_json = CreativeVfxProjection::fromJson(encoded);
     assert(from_json.has_value());
     assert(CreativeVfxProjection::toJson(*from_json) == encoded);
@@ -69,6 +92,11 @@ int main() {
     QVariantMap scene = invalid.value(QStringLiteral("scene")).toMap();
     scene.insert(QStringLiteral("mixPercent"), 101);
     invalid.insert(QStringLiteral("scene"), scene);
+    assert(!CreativeVfxProjection::fromQml(invalid).has_value());
+    invalid = qml;
+    QVariantMap drive = invalid.value(QStringLiteral("drive")).toMap();
+    drive.insert(QStringLiteral("toneHertz"), 499);
+    invalid.insert(QStringLiteral("drive"), drive);
     assert(!CreativeVfxProjection::fromQml(invalid).has_value());
     assert(!CreativeVfxProjection::fromJson(QByteArrayLiteral("[]")).has_value());
 
@@ -79,4 +107,6 @@ int main() {
     assert(!defaults->modulation.enabled);
     assert(!defaults->transform.enabled);
     assert(!defaults->digital_degrade.enabled);
+    assert(!defaults->drive.enabled);
+    assert(!defaults->rotary.enabled);
 }

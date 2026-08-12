@@ -83,6 +83,12 @@ fn source_creative_vfx() -> CreativeVfxSettings {
     creative_vfx.digital_degrade.enabled = true;
     creative_vfx.digital_degrade.character = crate::DigitalDegradeVfxCharacter::LoFi;
     creative_vfx.digital_degrade.bitcrusher.bit_depth = 7;
+    creative_vfx.drive.enabled = true;
+    creative_vfx.drive.character = crate::DriveVfxCharacter::Overdrive;
+    creative_vfx.drive.drive_centibels = 2_100;
+    creative_vfx.rotary.enabled = true;
+    creative_vfx.rotary.speed = crate::RotaryVfxSpeed::Fast;
+    creative_vfx.rotary.motion_percent = 83;
     creative_vfx
 }
 
@@ -178,6 +184,8 @@ fn source_effect_chain() -> EffectChain {
         EffectNodeKind::ModulationVfx,
         EffectNodeKind::TransformVfx,
         EffectNodeKind::DigitalDegradeVfx,
+        EffectNodeKind::DriveVfx,
+        EffectNodeKind::RotaryVfx,
         EffectNodeKind::Master,
     ])
     .expect("source chain is valid")
@@ -204,7 +212,7 @@ fn graph_with_processing(
 
 #[test]
 fn default_components_are_complete_and_clip_local_controls_are_absent() {
-    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 14);
+    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 16);
     for component in DEFAULT_PROCESSING_COMPONENTS.iter().copied() {
         assert_eq!(
             ProcessingComponent::from_wire_value(component.wire_value()),
@@ -212,7 +220,7 @@ fn default_components_are_complete_and_clip_local_controls_are_absent() {
         );
     }
     assert_eq!(
-        ProcessingComponent::from_wire_value(14),
+        ProcessingComponent::from_wire_value(16),
         Err(ProcessingComponentValueError)
     );
 }

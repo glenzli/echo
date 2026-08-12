@@ -126,6 +126,23 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
     const int target_rate =
         field(sample_rate_reduction, "targetRateHertz", "target_rate_hertz", 8000).toInt();
 
+    const QVariantMap drive = nested(value, "drive");
+    const auto drive_character =
+        character(drive.value(QStringLiteral("character"), 0), {"soft_clip", "overdrive", "fuzz"});
+    const int drive_mix = field(drive, "mixPercent", "mix_percent", 100).toInt();
+    const int drive_amount = field(drive, "driveCentibels", "drive_centibels", 1200).toInt();
+    const int drive_tone = field(drive, "toneHertz", "tone_hertz", 8000).toInt();
+    const int drive_output =
+        field(drive, "outputGainCentibels", "output_gain_centibels", -300).toInt();
+
+    const QVariantMap rotary = nested(value, "rotary");
+    const auto rotary_speed =
+        character(rotary.value(QStringLiteral("speed"), 0), {"slow", "fast", "brake"});
+    const int rotary_mix = field(rotary, "mixPercent", "mix_percent", 55).toInt();
+    const int rotary_motion = field(rotary, "motionPercent", "motion_percent", 65).toInt();
+    const int rotary_width =
+        field(rotary, "stereoWidthPercent", "stereo_width_percent", 80).toInt();
+
     if (!scene_character || scene_mix < 0 || scene_mix > 100 || scene_intensity < 0
         || scene_intensity > 100 || !delay_character || slapback_time < 30 || slapback_time > 180
         || slapback_mix < 0 || slapback_mix > 100 || slapback_cut < 1000 || slapback_cut > 20000
@@ -146,7 +163,11 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
         || tremolo_phase > 180 || !transform_character || transform_mix < 0 || transform_mix > 100
         || transform_amount < 0 || transform_amount > 100 || !digital_degrade_character
         || digital_mix < 0 || digital_mix > 100 || bit_depth < 2 || bit_depth > 16
-        || target_rate < 1000 || target_rate > 24000) {
+        || target_rate < 1000 || target_rate > 24000 || !drive_character || drive_mix < 0
+        || drive_mix > 100 || drive_amount < 0 || drive_amount > 3600 || drive_tone < 500
+        || drive_tone > 16000 || drive_output < -2400 || drive_output > 600 || !rotary_speed
+        || rotary_mix < 0 || rotary_mix > 100 || rotary_motion < 0 || rotary_motion > 100
+        || rotary_width < 0 || rotary_width > 100) {
         return std::nullopt;
     }
 
@@ -222,15 +243,34 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
                 .mix_percent = static_cast<std::uint8_t>(transform_mix),
                 .amount_percent = static_cast<std::uint8_t>(transform_amount),
             },
-        .digital_degrade = {
-            .character =
-                static_cast<echo::audio::DigitalDegradeVfxCharacter>(*digital_degrade_character),
-            .enabled = digital_degrade.value(QStringLiteral("enabled"), false).toBool(),
-            .mix_percent = static_cast<std::uint8_t>(digital_mix),
-            .bitcrusher = {.bit_depth = static_cast<std::uint8_t>(bit_depth)},
-            .sample_rate_reduction = {
-                .target_rate_hertz = static_cast<std::uint16_t>(target_rate),
+        .digital_degrade =
+            {
+                .character = static_cast<echo::audio::DigitalDegradeVfxCharacter>(
+                    *digital_degrade_character
+                ),
+                .enabled = digital_degrade.value(QStringLiteral("enabled"), false).toBool(),
+                .mix_percent = static_cast<std::uint8_t>(digital_mix),
+                .bitcrusher = {.bit_depth = static_cast<std::uint8_t>(bit_depth)},
+                .sample_rate_reduction =
+                    {
+                        .target_rate_hertz = static_cast<std::uint16_t>(target_rate),
+                    },
             },
+        .drive =
+            {
+                .character = static_cast<echo::audio::DriveVfxCharacter>(*drive_character),
+                .enabled = drive.value(QStringLiteral("enabled"), false).toBool(),
+                .mix_percent = static_cast<std::uint8_t>(drive_mix),
+                .drive_centibels = static_cast<std::uint16_t>(drive_amount),
+                .tone_hertz = static_cast<std::uint16_t>(drive_tone),
+                .output_gain_centibels = static_cast<std::int16_t>(drive_output),
+            },
+        .rotary = {
+            .speed = static_cast<echo::audio::RotaryVfxSpeed>(*rotary_speed),
+            .enabled = rotary.value(QStringLiteral("enabled"), false).toBool(),
+            .mix_percent = static_cast<std::uint8_t>(rotary_mix),
+            .motion_percent = static_cast<std::uint8_t>(rotary_motion),
+            .stereo_width_percent = static_cast<std::uint8_t>(rotary_width),
         },
     };
 }
@@ -335,6 +375,19 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         QStringLiteral("bitcrusher"),
         QVariantMap{{QStringLiteral("bitDepth"), adjustment.digital_degrade.bitcrusher.bit_depth}}
     );
+    QVariantMap drive =
+        familyHeader(static_cast<int>(adjustment.drive.character), adjustment.drive.enabled);
+    drive.insert(QStringLiteral("mixPercent"), adjustment.drive.mix_percent);
+    drive.insert(QStringLiteral("driveCentibels"), adjustment.drive.drive_centibels);
+    drive.insert(QStringLiteral("toneHertz"), adjustment.drive.tone_hertz);
+    drive.insert(QStringLiteral("outputGainCentibels"), adjustment.drive.output_gain_centibels);
+    QVariantMap rotary{
+        {QStringLiteral("speed"), static_cast<int>(adjustment.rotary.speed)},
+        {QStringLiteral("enabled"), adjustment.rotary.enabled},
+        {QStringLiteral("mixPercent"), adjustment.rotary.mix_percent},
+        {QStringLiteral("motionPercent"), adjustment.rotary.motion_percent},
+        {QStringLiteral("stereoWidthPercent"), adjustment.rotary.stereo_width_percent},
+    };
     digital_degrade.insert(
         QStringLiteral("sampleRateReduction"),
         QVariantMap{
@@ -348,6 +401,8 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         {QStringLiteral("modulation"), modulation},
         {QStringLiteral("transform"), transform},
         {QStringLiteral("digitalDegrade"), digital_degrade},
+        {QStringLiteral("drive"), drive},
+        {QStringLiteral("rotary"), rotary},
     };
 }
 
@@ -377,6 +432,14 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
         digital_degrade.value(QStringLiteral("character")).toInt(),
         {"bitcrusher", "sample_rate_reduction", "lo_fi"}
     );
+    QVariantMap drive = nested(qml, "drive");
+    drive[QStringLiteral("character")] = enum_name(
+        drive.value(QStringLiteral("character")).toInt(),
+        {"soft_clip", "overdrive", "fuzz"}
+    );
+    QVariantMap rotary = nested(qml, "rotary");
+    rotary[QStringLiteral("speed")] =
+        enum_name(rotary.value(QStringLiteral("speed")).toInt(), {"slow", "fast", "brake"});
     auto snake = [](QVariantMap map, const QString& camel, const QString& snake_name) {
         map.insert(snake_name, map.take(camel));
         return map;
@@ -430,6 +493,13 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
     digital_degrade[QStringLiteral("bitcrusher")] = digital_bitcrusher;
     digital_degrade.remove(QStringLiteral("sampleRateReduction"));
     digital_degrade[QStringLiteral("sample_rate_reduction")] = digital_rate;
+    drive = snake(drive, "mixPercent", "mix_percent");
+    drive = snake(drive, "driveCentibels", "drive_centibels");
+    drive = snake(drive, "toneHertz", "tone_hertz");
+    drive = snake(drive, "outputGainCentibels", "output_gain_centibels");
+    rotary = snake(rotary, "mixPercent", "mix_percent");
+    rotary = snake(rotary, "motionPercent", "motion_percent");
+    rotary = snake(rotary, "stereoWidthPercent", "stereo_width_percent");
     return QJsonDocument::fromVariant(
                QVariantMap{
                    {QStringLiteral("scene"), scene},
@@ -437,6 +507,8 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
                    {QStringLiteral("modulation"), modulation},
                    {QStringLiteral("transform"), transform},
                    {QStringLiteral("digital_degrade"), digital_degrade},
+                   {QStringLiteral("drive"), drive},
+                   {QStringLiteral("rotary"), rotary},
                }
     )
         .toJson(QJsonDocument::Compact);

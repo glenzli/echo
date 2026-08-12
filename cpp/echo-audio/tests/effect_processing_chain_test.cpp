@@ -30,6 +30,8 @@ echo::audio::PlaybackAdjustment master_only() {
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     adjustment.effect_chain_count = 1;
     return adjustment;
@@ -51,6 +53,8 @@ echo::audio::PlaybackAdjustment bypassed_de_click() {
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     adjustment.effect_chain_count = 3;
     return adjustment;
@@ -72,6 +76,8 @@ echo::audio::PlaybackAdjustment reordered_bypassed_de_click() {
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     return adjustment;
 }
@@ -98,6 +104,8 @@ echo::audio::PlaybackAdjustment channel_repair_only() {
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     adjustment.effect_chain_count = 2;
     return adjustment;
@@ -130,6 +138,8 @@ echo::audio::PlaybackAdjustment space_character(echo::audio::ReverbCharacter cha
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     adjustment.effect_chain_count = 2;
     return adjustment;
@@ -171,6 +181,14 @@ echo::audio::PlaybackAdjustment creative_only(echo::audio::EffectNodeKind node) 
         adjustment.creative_vfx.digital_degrade.character =
             echo::audio::DigitalDegradeVfxCharacter::LoFi;
         break;
+    case echo::audio::EffectNodeKind::DriveVfx:
+        adjustment.creative_vfx.drive.enabled = true;
+        adjustment.creative_vfx.drive.character = echo::audio::DriveVfxCharacter::Overdrive;
+        break;
+    case echo::audio::EffectNodeKind::RotaryVfx:
+        adjustment.creative_vfx.rotary.enabled = true;
+        adjustment.creative_vfx.rotary.speed = echo::audio::RotaryVfxSpeed::Fast;
+        break;
     case echo::audio::EffectNodeKind::Restoration:
     case echo::audio::EffectNodeKind::Equalizer:
     case echo::audio::EffectNodeKind::Dynamics:
@@ -203,6 +221,8 @@ echo::audio::PlaybackAdjustment two_latency_nodes(bool transform_first) {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     adjustment.effect_chain_count = 3;
     return adjustment;
@@ -321,13 +341,17 @@ int main() {
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
+            echo::audio::EffectNodeKind::DriveVfx,
+            echo::audio::EffectNodeKind::RotaryVfx,
         };
         for (const auto node : creative_nodes) {
             const echo::audio::PreparedAdjustment prepared(creative_only(node), 1000, kSampleRate);
             echo::audio::EffectProcessingChain chain(prepared, kSampleRate, kChannels);
             assert(
                 chain.latency_frames()
-                == (node == echo::audio::EffectNodeKind::TransformVfx ? 2'400 : 0)
+                == (node == echo::audio::EffectNodeKind::TransformVfx
+                        ? 2'400
+                        : (node == echo::audio::EffectNodeKind::DriveVfx ? 32 : 0))
             );
             const auto output = process_in_chunks(chain, input, 137);
             assert(output.size() == input.size());
@@ -409,6 +433,8 @@ int main() {
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
+            echo::audio::EffectNodeKind::DriveVfx,
+            echo::audio::EffectNodeKind::RotaryVfx,
         };
         adjustment.effect_chain_count = 2;
         adjustment.equalizer.bands[0].gain_centibels = 1200;

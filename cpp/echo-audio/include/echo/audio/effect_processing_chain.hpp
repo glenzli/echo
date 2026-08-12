@@ -70,6 +70,8 @@ class EffectProcessingChain {
     void update_modulation_vfx(ModulationVfxAdjustment adjustment);
     void update_transform_vfx(TransformVfxAdjustment adjustment);
     void update_digital_degrade_vfx(DigitalDegradeVfxAdjustment adjustment);
+    void update_drive_vfx(DriveVfxAdjustment adjustment);
+    void update_rotary_vfx(RotaryVfxAdjustment adjustment);
 
     static void validate_restoration(
         RestorationAdjustment adjustment,
@@ -124,6 +126,16 @@ class EffectProcessingChain {
     );
     static void validate_digital_degrade_vfx(
         DigitalDegradeVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_drive_vfx(
+        DriveVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_rotary_vfx(
+        RotaryVfxAdjustment adjustment,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );

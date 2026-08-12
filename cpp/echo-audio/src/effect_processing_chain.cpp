@@ -9,9 +9,11 @@
 #include "echo/audio/de_plosive_processor.hpp"
 #include "echo/audio/delay_vfx_processor.hpp"
 #include "echo/audio/digital_degrade_vfx_processor.hpp"
+#include "echo/audio/drive_vfx_processor.hpp"
 #include "echo/audio/dynamics_processor.hpp"
 #include "echo/audio/modulation_vfx_processor.hpp"
 #include "echo/audio/parametric_equalizer.hpp"
+#include "echo/audio/rotary_vfx_processor.hpp"
 #include "echo/audio/scene_vfx_processor.hpp"
 #include "echo/audio/transform_vfx_processor.hpp"
 
@@ -71,6 +73,8 @@ class EffectProcessingChain::Impl {
         modulation_vfx_(adjustment.creative_vfx().modulation, sample_rate, channel_count),
         transform_vfx_(adjustment.creative_vfx().transform, sample_rate, channel_count),
         digital_degrade_vfx_(adjustment.creative_vfx().digital_degrade, sample_rate, channel_count),
+        drive_vfx_(adjustment.creative_vfx().drive, sample_rate, channel_count),
+        rotary_vfx_(adjustment.creative_vfx().rotary, sample_rate, channel_count),
         restoration_enabled_(adjustment.restoration().enabled), mask_plan_(mask_plan),
         dry_samples_(kMaximumProcessingFrames * channel_count, 0.0F) {
         if (sample_rate_ == 0 || channel_count_ == 0) {
@@ -167,6 +171,8 @@ class EffectProcessingChain::Impl {
         modulation_vfx_.reset();
         transform_vfx_.reset();
         digital_degrade_vfx_.reset();
+        drive_vfx_.reset();
+        rotary_vfx_.reset();
         reset_compensation();
     }
 
@@ -232,6 +238,14 @@ class EffectProcessingChain::Impl {
         digital_degrade_vfx_.update(adjustment);
     }
 
+    void update_drive_vfx(DriveVfxAdjustment adjustment) {
+        drive_vfx_.update(adjustment);
+    }
+
+    void update_rotary_vfx(RotaryVfxAdjustment adjustment) {
+        rotary_vfx_.update(adjustment);
+    }
+
     [[nodiscard]] std::size_t latency_frames() const {
         return latency_frames_;
     }
@@ -251,6 +265,8 @@ class EffectProcessingChain::Impl {
             return de_click_.latency_frames();
         case EffectNodeKind::TransformVfx:
             return transform_vfx_.latency_frames();
+        case EffectNodeKind::DriveVfx:
+            return drive_vfx_.latency_frames();
         case EffectNodeKind::Restoration:
         case EffectNodeKind::Equalizer:
         case EffectNodeKind::Dynamics:
@@ -262,6 +278,7 @@ class EffectProcessingChain::Impl {
         case EffectNodeKind::DelayVfx:
         case EffectNodeKind::ModulationVfx:
         case EffectNodeKind::DigitalDegradeVfx:
+        case EffectNodeKind::RotaryVfx:
             return 0;
         }
         return 0;
@@ -335,6 +352,13 @@ class EffectProcessingChain::Impl {
                 break;
             case EffectNodeKind::DigitalDegradeVfx:
                 digital_degrade_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::DriveVfx:
+                drive_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                delay_source_anchors(node, source_frames, frame_count);
+                break;
+            case EffectNodeKind::RotaryVfx:
+                rotary_vfx_.process_interleaved(samples, frame_count, channel_count_);
                 break;
             case EffectNodeKind::Master:
                 break;
@@ -426,6 +450,8 @@ class EffectProcessingChain::Impl {
     ModulationVfxProcessor modulation_vfx_;
     TransformVfxProcessor transform_vfx_;
     DigitalDegradeVfxProcessor digital_degrade_vfx_;
+    DriveVfxProcessor drive_vfx_;
+    RotaryVfxProcessor rotary_vfx_;
     bool restoration_enabled_ = true;
     const EffectMaskPlan* mask_plan_ = nullptr;
     bool has_local_masks_ = false;
@@ -532,6 +558,14 @@ void EffectProcessingChain::update_transform_vfx(TransformVfxAdjustment adjustme
 
 void EffectProcessingChain::update_digital_degrade_vfx(DigitalDegradeVfxAdjustment adjustment) {
     impl_->update_digital_degrade_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_drive_vfx(DriveVfxAdjustment adjustment) {
+    impl_->update_drive_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_rotary_vfx(RotaryVfxAdjustment adjustment) {
+    impl_->update_rotary_vfx(adjustment);
 }
 
 void EffectProcessingChain::validate_restoration(
@@ -656,6 +690,22 @@ void EffectProcessingChain::validate_digital_degrade_vfx(
         sample_rate,
         channel_count
     );
+}
+
+void EffectProcessingChain::validate_drive_vfx(
+    DriveVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const DriveVfxProcessor processor(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_rotary_vfx(
+    RotaryVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const RotaryVfxProcessor processor(adjustment, sample_rate, channel_count);
 }
 
 std::size_t EffectProcessingChain::latency_frames() const {

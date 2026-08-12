@@ -111,6 +111,26 @@ bool valid_digital_degrade_character(DigitalDegradeVfxCharacter character) {
     return false;
 }
 
+bool valid_drive_character(DriveVfxCharacter character) {
+    switch (character) {
+    case DriveVfxCharacter::SoftClip:
+    case DriveVfxCharacter::Overdrive:
+    case DriveVfxCharacter::Fuzz:
+        return true;
+    }
+    return false;
+}
+
+bool valid_rotary_speed(RotaryVfxSpeed speed) {
+    switch (speed) {
+    case RotaryVfxSpeed::Slow:
+    case RotaryVfxSpeed::Fast:
+    case RotaryVfxSpeed::Brake:
+        return true;
+    }
+    return false;
+}
+
 bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
     const SceneVfxAdjustment& scene = creative.scene;
     if (!valid_scene_character(scene.character) || scene.mix_percent > 100
@@ -159,12 +179,19 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
     }
 
     const DigitalDegradeVfxAdjustment& digital = creative.digital_degrade;
+    const DriveVfxAdjustment& drive = creative.drive;
+    const RotaryVfxAdjustment& rotary = creative.rotary;
     return valid_transform_character(creative.transform.character)
            && creative.transform.mix_percent <= 100 && creative.transform.amount_percent <= 100
            && valid_digital_degrade_character(digital.character) && digital.mix_percent <= 100
            && digital.bitcrusher.bit_depth >= 2 && digital.bitcrusher.bit_depth <= 16
            && digital.sample_rate_reduction.target_rate_hertz >= 1000
-           && digital.sample_rate_reduction.target_rate_hertz <= 24000;
+           && digital.sample_rate_reduction.target_rate_hertz <= 24000
+           && valid_drive_character(drive.character) && drive.mix_percent <= 100
+           && drive.drive_centibels <= 3600 && drive.tone_hertz >= 500 && drive.tone_hertz <= 16000
+           && drive.output_gain_centibels >= -2400 && drive.output_gain_centibels <= 600
+           && valid_rotary_speed(rotary.speed) && rotary.mix_percent <= 100
+           && rotary.motion_percent <= 100 && rotary.stereo_width_percent <= 100;
 }
 
 float evaluate_curve(float progress, FadeCurve curve) {

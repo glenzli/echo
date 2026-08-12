@@ -58,10 +58,10 @@ pub use audio_asset::AudioAsset;
 pub use creative_vfx::{
     BitcrusherSettings, ChorusSettings, CreativeVfxSettings, CreativeVfxSettingsError,
     CreativeVfxValueError, DelayVfxCharacter, DelayVfxSettings, DigitalDegradeVfxCharacter,
-    DigitalDegradeVfxSettings, EchoSettings, FlangerSettings, ModulationVfxCharacter,
-    ModulationVfxSettings, PhaserSettings, SampleRateReductionSettings, SceneVfxCharacter,
-    SceneVfxSettings, SlapbackSettings, TransformVfxCharacter, TransformVfxSettings,
-    TremoloSettings,
+    DigitalDegradeVfxSettings, DriveVfxCharacter, DriveVfxSettings, EchoSettings, FlangerSettings,
+    ModulationVfxCharacter, ModulationVfxSettings, PhaserSettings, RotaryVfxSettings,
+    RotaryVfxSpeed, SampleRateReductionSettings, SceneVfxCharacter, SceneVfxSettings,
+    SlapbackSettings, TransformVfxCharacter, TransformVfxSettings, TremoloSettings,
 };
 pub use ids::{AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId};
 pub use original::{AssetPathStatus, ContentHash, ContentHashParseError, OriginalRef};

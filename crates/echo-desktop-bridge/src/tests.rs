@@ -201,6 +201,12 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     creative_vfx.digital_degrade.enabled = true;
     creative_vfx.digital_degrade.character = echo_domain::DigitalDegradeVfxCharacter::LoFi;
     creative_vfx.digital_degrade.bitcrusher.bit_depth = 7;
+    creative_vfx.drive.enabled = true;
+    creative_vfx.drive.character = echo_domain::DriveVfxCharacter::Fuzz;
+    creative_vfx.drive.drive_centibels = 2_400;
+    creative_vfx.rotary.enabled = true;
+    creative_vfx.rotary.speed = echo_domain::RotaryVfxSpeed::Fast;
+    creative_vfx.rotary.motion_percent = 74;
     let mut adjustment = crate::ffi::AssetAdjustmentWire {
         trim_start_millis: 1_000,
         trim_end_millis: 9_000,
@@ -260,7 +266,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
-        effect_chain: vec![5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 12, 2, 4],
+        effect_chain: vec![5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 12, 13, 14, 2, 4],
         edit_segments: vec![
             crate::ffi::EditSegmentWire {
                 source_start_millis: 1_000,
@@ -384,7 +390,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].limiter_release_millis, 160);
     assert_eq!(
         projected[0].effect_chain,
-        [5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 12, 2, 4]
+        [5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 12, 13, 14, 2, 4]
     );
     assert_eq!(projected[0].edit_segments.len(), 2);
     assert_eq!(projected[0].edit_segments[0].source_start_millis, 1_000);

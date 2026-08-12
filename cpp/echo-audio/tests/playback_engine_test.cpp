@@ -312,6 +312,8 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::DeHum,
                     echo::audio::EffectNodeKind::DeClick,
                     echo::audio::EffectNodeKind::DigitalDegradeVfx,
+                    echo::audio::EffectNodeKind::DriveVfx,
+                    echo::audio::EffectNodeKind::RotaryVfx,
                 },
             .effect_chain_count = 10,
         };
@@ -530,7 +532,9 @@ int main(int argc, char* argv[]) {
                  echo::audio::EffectNodeKind::DelayVfx,
                  echo::audio::EffectNodeKind::ModulationVfx,
                  echo::audio::EffectNodeKind::TransformVfx,
-                 echo::audio::EffectNodeKind::DigitalDegradeVfx},
+                 echo::audio::EffectNodeKind::DigitalDegradeVfx,
+                 echo::audio::EffectNodeKind::DriveVfx,
+                 echo::audio::EffectNodeKind::RotaryVfx},
             .effect_chain_count = 5,
         };
         auto space_then_dynamics = dynamics_then_space;
@@ -548,6 +552,8 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
+            echo::audio::EffectNodeKind::DriveVfx,
+            echo::audio::EffectNodeKind::RotaryVfx,
         };
 
         echo::audio::PlaybackSession first_order(path.string(), dynamics_then_space);
@@ -601,6 +607,8 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::ModulationVfx,
                     echo::audio::EffectNodeKind::TransformVfx,
                     echo::audio::EffectNodeKind::DigitalDegradeVfx,
+                    echo::audio::EffectNodeKind::DriveVfx,
+                    echo::audio::EffectNodeKind::RotaryVfx,
                 },
             .effect_chain_count = 3,
         };
@@ -641,6 +649,8 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
+            echo::audio::EffectNodeKind::DriveVfx,
+            echo::audio::EffectNodeKind::RotaryVfx,
         };
         edited.effect_chain_count = 3;
         edited.effect_masks = {{
@@ -705,6 +715,8 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
+            echo::audio::EffectNodeKind::DriveVfx,
+            echo::audio::EffectNodeKind::RotaryVfx,
         };
         hidden_gap.effect_chain_count = 1;
         hidden_gap.edit_segments = {{

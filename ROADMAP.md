@@ -607,6 +607,16 @@ InferenceBackend
     prepared identity、append-only IR provenance／license、离线 48 kHz preparation、可验证的无分配
     runtime bank 与明确失败语义；不得只增加一个 IR 路径控件，也不得把 2ch dual-mono 宣称为
     true-stereo。Freeze／Granular 因静音后持续生成内容和尾音边界不同，不纳入本输入驱动切片。
+  - 驱动与旋转扬声器切片（2026-08-13）：Catalog `20260813.1` 在 Creative map 与 authored
+    chain 尾部追加默认关闭的 Drive 和 Rotary 两个独立 singleton。Drive 提供 Soft Clip／
+    Overdrive／Fuzz、干湿比、驱动量、音色与输出增益；独立处理器以二倍过采样和固定 FIR 抑制
+    非线性混叠，并始终报告 32 帧基础设施延迟，使启停、旁路和链内重排不会跳时。Rotary 提供
+    Slow／Fast／Brake、干湿比、运动量与立体声宽度；独立处理器以低／高频分路、两组受约束转速、
+    幅度调制和有界分数延迟形成通用旋转运动，不冒充任何品牌箱体，基础设施延迟为零。两者都在
+    构造期准备工作区，实时 update／process 不分配，静音不生声；首版因 Drive 固有延迟和 Rotary
+    的连续运动状态均不接受 Original 时间遮罩。试听、整段分析、离线导出、Catalog revision、
+    处理方案与专属 Creative 参数页共享同一类型化设置；旧 `20260812.4` revision、Listening 状态、
+    Creative JSON 和 effect-chain bytes 在迁移时不改写，缺失字段只在读取时恢复为 disabled 默认值。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，

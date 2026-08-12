@@ -517,6 +517,16 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        EffectProcessingChain::validate_drive_vfx(
+            adjustment.drive,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        EffectProcessingChain::validate_rotary_vfx(
+            adjustment.rotary,
+            kCanonicalSampleRate,
+            channel_count_
+        );
         {
             std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_creative_vfx_ = adjustment;
@@ -699,6 +709,8 @@ class PlaybackSession::Impl {
             effect_chain_->update_modulation_vfx(pending_creative_vfx_.modulation);
             effect_chain_->update_transform_vfx(pending_creative_vfx_.transform);
             effect_chain_->update_digital_degrade_vfx(pending_creative_vfx_.digital_degrade);
+            effect_chain_->update_drive_vfx(pending_creative_vfx_.drive);
+            effect_chain_->update_rotary_vfx(pending_creative_vfx_.rotary);
             creative_vfx_update_pending_ = false;
         }
     }

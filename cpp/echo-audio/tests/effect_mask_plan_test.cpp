@@ -71,6 +71,8 @@ int main() {
         for (const auto node : {
                  echo::audio::EffectNodeKind::DeClick,
                  echo::audio::EffectNodeKind::TransformVfx,
+                 echo::audio::EffectNodeKind::DriveVfx,
+                 echo::audio::EffectNodeKind::RotaryVfx,
              }) {
             invalid.effect_masks[0].nodes = {node};
             if (node == echo::audio::EffectNodeKind::TransformVfx) {
@@ -88,6 +90,8 @@ int main() {
                     echo::audio::EffectNodeKind::DelayVfx,
                     echo::audio::EffectNodeKind::ModulationVfx,
                     echo::audio::EffectNodeKind::DigitalDegradeVfx,
+                    echo::audio::EffectNodeKind::DriveVfx,
+                    echo::audio::EffectNodeKind::RotaryVfx,
                 };
                 invalid.effect_chain_count = 2;
             }

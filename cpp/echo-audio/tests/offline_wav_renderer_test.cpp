@@ -213,6 +213,8 @@ int main() {
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     latency_compensated.effect_chain_count = 3;
     const auto compensated = echo::audio::OfflineWavRenderer::render(
@@ -272,6 +274,8 @@ int main() {
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     channel_repaired.effect_chain_count = 4;
     const auto live_channel_repaired = render_playback(source, channel_repaired);
@@ -318,6 +322,8 @@ int main() {
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     spring_space.effect_chain_count = 3;
     const auto live_spring_space = render_playback(source, spring_space);
@@ -346,12 +352,18 @@ int main() {
     creative_vfx.creative_vfx.digital_degrade.enabled = true;
     creative_vfx.creative_vfx.digital_degrade.character =
         echo::audio::DigitalDegradeVfxCharacter::LoFi;
+    creative_vfx.creative_vfx.drive.enabled = true;
+    creative_vfx.creative_vfx.drive.character = echo::audio::DriveVfxCharacter::Overdrive;
+    creative_vfx.creative_vfx.rotary.enabled = true;
+    creative_vfx.creative_vfx.rotary.speed = echo::audio::RotaryVfxSpeed::Fast;
     creative_vfx.effect_chain = {
         echo::audio::EffectNodeKind::SceneVfx,
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
         echo::audio::EffectNodeKind::Master,
         echo::audio::EffectNodeKind::Restoration,
         echo::audio::EffectNodeKind::Equalizer,
@@ -361,7 +373,7 @@ int main() {
         echo::audio::EffectNodeKind::DeClick,
         echo::audio::EffectNodeKind::ChannelRepair,
     };
-    creative_vfx.effect_chain_count = 6;
+    creative_vfx.effect_chain_count = 8;
     const auto live_creative_vfx = render_playback(source, creative_vfx);
     MemorySink creative_vfx_sink;
     const auto creative_vfx_result =

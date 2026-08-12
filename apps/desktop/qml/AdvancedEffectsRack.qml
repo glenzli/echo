@@ -56,6 +56,10 @@ Item {
             return qsTr("Transform VFX");
         if (kind === 12)
             return qsTr("Digital Degrade");
+        if (kind === 13)
+            return qsTr("Drive");
+        if (kind === 14)
+            return qsTr("Rotary");
         return qsTr("Master");
     }
 
@@ -84,6 +88,10 @@ Item {
             return qsTr("Robot · Monster · Tiny · Giant · Ghost");
         if (kind === 12)
             return qsTr("Bitcrusher · Sample-rate reduction · Lo-Fi");
+        if (kind === 13)
+            return qsTr("Soft clip · Overdrive · Fuzz");
+        if (kind === 14)
+            return qsTr("Slow · Fast · Brake motion");
         return qsTr("Limiter · Loudness");
     }
 
@@ -108,11 +116,11 @@ Item {
     }
 
     function effectId(kind: int): string {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade"][kind];
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx"][kind];
     }
 
     function effectKind(effectId: string): int {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade"].indexOf(effectId);
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx"].indexOf(effectId);
     }
 
     function buildChainModel(chain: var): var {
@@ -241,6 +249,24 @@ Item {
                 categoryTitle: qsTr("Creative"),
                 iconSource: nodeIcon(12),
                 available: chain.indexOf(12) < 0
+            },
+            {
+                effectId: "driveVfx",
+                title: nodeTitle(13),
+                summary: nodeSummary(13),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(13),
+                available: chain.indexOf(13) < 0
+            },
+            {
+                effectId: "rotaryVfx",
+                title: nodeTitle(14),
+                summary: nodeSummary(14),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(14),
+                available: chain.indexOf(14) < 0
             }
         ];
     }
@@ -422,7 +448,7 @@ Item {
 
                 CreativeVfxPanel {
                     anchors.fill: parent
-                    visible: rack.currentKind >= 8 && rack.currentKind <= 12
+                    visible: rack.currentKind >= 8 && rack.currentKind <= 14
                     draft: rack.draft
                     familyKind: rack.currentKind
                     onFamilySelected: kind => rack.selectedNodeId = rack.effectId(kind)

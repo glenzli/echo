@@ -33,6 +33,8 @@ std::optional<EffectChainProjection> effectChainFromQml(const QVariantList& valu
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
     };
     std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result = standard;
     std::array<bool, echo::audio::kEffectNodeCount> seen{};
@@ -147,7 +149,8 @@ std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQmlImpl(
         for (const QVariant& node_value : nodes) {
             const int node = node_value.toInt();
             if (node < 0 || node >= static_cast<int>(echo::audio::kEffectNodeCount) || node == 4
-                || node == 6 || node == 11 || !active[static_cast<std::size_t>(node)]
+                || node == 6 || node == 11 || node == 13 || node == 14
+                || !active[static_cast<std::size_t>(node)]
                 || seen[static_cast<std::size_t>(node)]) {
                 return std::nullopt;
             }

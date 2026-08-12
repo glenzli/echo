@@ -35,12 +35,14 @@ pub enum ProcessingComponent {
     ModulationVfx = 11,
     TransformVfx = 12,
     DigitalDegradeVfx = 13,
+    DriveVfx = 14,
+    RotaryVfx = 15,
 }
 
 /// Echo's complete reusable processing surface.
 ///
 /// Clip-local trim, fades, and gain are intentionally absent.
-pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 14] = [
+pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 16] = [
     ProcessingComponent::LowCut,
     ProcessingComponent::Restoration,
     ProcessingComponent::DeHum,
@@ -54,6 +56,8 @@ pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 14] = [
     ProcessingComponent::ModulationVfx,
     ProcessingComponent::TransformVfx,
     ProcessingComponent::DigitalDegradeVfx,
+    ProcessingComponent::DriveVfx,
+    ProcessingComponent::RotaryVfx,
     ProcessingComponent::Master,
 ];
 
@@ -84,6 +88,8 @@ impl ProcessingComponent {
             11 => Ok(Self::ModulationVfx),
             12 => Ok(Self::TransformVfx),
             13 => Ok(Self::DigitalDegradeVfx),
+            14 => Ok(Self::DriveVfx),
+            15 => Ok(Self::RotaryVfx),
             _ => Err(ProcessingComponentValueError),
         }
     }
@@ -104,6 +110,8 @@ impl ProcessingComponent {
             Self::ModulationVfx => Some(EffectNodeKind::ModulationVfx),
             Self::TransformVfx => Some(EffectNodeKind::TransformVfx),
             Self::DigitalDegradeVfx => Some(EffectNodeKind::DigitalDegradeVfx),
+            Self::DriveVfx => Some(EffectNodeKind::DriveVfx),
+            Self::RotaryVfx => Some(EffectNodeKind::RotaryVfx),
         }
     }
 }
@@ -288,6 +296,12 @@ impl AdjustmentPatch {
         if self.contains(ProcessingComponent::DigitalDegradeVfx) {
             effects.creative_vfx.digital_degrade = self.creative_vfx.digital_degrade;
         }
+        if self.contains(ProcessingComponent::DriveVfx) {
+            effects.creative_vfx.drive = self.creative_vfx.drive;
+        }
+        if self.contains(ProcessingComponent::RotaryVfx) {
+            effects.creative_vfx.rotary = self.creative_vfx.rotary;
+        }
         if self.contains(ProcessingComponent::Master) {
             effects.limiter = self.limiter;
         }
@@ -318,7 +332,7 @@ impl AdjustmentPatch {
         if self.components.is_empty() {
             return Err(ProcessingRecipeError::EmptyComponents);
         }
-        let mut seen = [false; 14];
+        let mut seen = [false; 16];
         for component in &self.components {
             let index = usize::from(component.wire_value());
             if seen[index] {
@@ -349,7 +363,7 @@ impl AdjustmentPatch {
     }
 
     fn replacement_chain(&self) -> Result<EffectChain, ProcessingRecipeError> {
-        let mut nodes = Vec::with_capacity(14);
+        let mut nodes = Vec::with_capacity(16);
         for &node in self.effect_chain.nodes() {
             if node != EffectNodeKind::Master && self.selects_node(node) {
                 nodes.push(node);
@@ -370,7 +384,7 @@ impl AdjustmentPatch {
             return Ok(target);
         }
 
-        let mut retained = Vec::with_capacity(14);
+        let mut retained = Vec::with_capacity(16);
         let mut insertion_index = None;
         for &node in target.nodes() {
             if node == EffectNodeKind::Master {

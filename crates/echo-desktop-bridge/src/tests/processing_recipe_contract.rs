@@ -36,6 +36,8 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
                 echo_domain::ProcessingComponent::SceneVfx.wire_value(),
                 echo_domain::ProcessingComponent::TransformVfx.wire_value(),
                 echo_domain::ProcessingComponent::DigitalDegradeVfx.wire_value(),
+                echo_domain::ProcessingComponent::DriveVfx.wire_value(),
+                echo_domain::ProcessingComponent::RotaryVfx.wire_value(),
             ],
         )
         .expect("recipe creates");
@@ -43,7 +45,7 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(recipes.len(), 1);
     assert_eq!(recipes[0].id, recipe_id);
     assert_eq!(recipes[0].name, "Dialogue cleanup");
-    assert_eq!(recipes[0].components, vec![0, 5, 9, 12, 13]);
+    assert_eq!(recipes[0].components, vec![0, 5, 9, 12, 13, 14, 15]);
 
     let receipt = session
         .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
@@ -63,27 +65,7 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(applied.low_cut_hertz(), 90);
     assert!(applied.compressor().enabled);
     assert_eq!(applied.compressor().threshold_centibels, -2_400);
-    assert_eq!(
-        applied.creative_vfx().scene.character,
-        echo_domain::SceneVfxCharacter::Underwater
-    );
-    assert!(applied.creative_vfx().scene.enabled);
-    assert_eq!(
-        applied.creative_vfx().transform.character,
-        echo_domain::TransformVfxCharacter::Ghost
-    );
-    assert!(applied.creative_vfx().transform.enabled);
-    assert_eq!(
-        applied.creative_vfx().digital_degrade.character,
-        echo_domain::DigitalDegradeVfxCharacter::LoFi
-    );
-    assert!(applied.creative_vfx().digital_degrade.enabled);
-    assert!(
-        applied
-            .effect_chain()
-            .nodes()
-            .contains(&echo_domain::EffectNodeKind::DigitalDegradeVfx)
-    );
+    assert_target_creative_vfx(&applied);
 
     let repeated = session
         .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
@@ -105,6 +87,39 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     let _ = std::fs::remove_dir_all(root);
 }
 
+fn assert_target_creative_vfx(applied: &echo_domain::AdjustmentGraph) {
+    let creative = applied.creative_vfx();
+    assert_eq!(
+        creative.scene.character,
+        echo_domain::SceneVfxCharacter::Underwater
+    );
+    assert!(creative.scene.enabled);
+    assert_eq!(
+        creative.transform.character,
+        echo_domain::TransformVfxCharacter::Ghost
+    );
+    assert!(creative.transform.enabled);
+    assert_eq!(
+        creative.digital_degrade.character,
+        echo_domain::DigitalDegradeVfxCharacter::LoFi
+    );
+    assert!(creative.digital_degrade.enabled);
+    assert_eq!(
+        creative.drive.character,
+        echo_domain::DriveVfxCharacter::Overdrive
+    );
+    assert!(creative.drive.enabled);
+    assert_eq!(creative.rotary.speed, echo_domain::RotaryVfxSpeed::Fast);
+    assert!(creative.rotary.enabled);
+    for node in [
+        echo_domain::EffectNodeKind::DigitalDegradeVfx,
+        echo_domain::EffectNodeKind::DriveVfx,
+        echo_domain::EffectNodeKind::RotaryVfx,
+    ] {
+        assert!(applied.effect_chain().nodes().contains(&node));
+    }
+}
+
 fn recipe_source_adjustment() -> AssetAdjustmentWire {
     let mut source = adjustment(10_000);
     source.trim_start_millis = 500;
@@ -122,9 +137,13 @@ fn recipe_source_adjustment() -> AssetAdjustmentWire {
     creative_vfx.transform.character = echo_domain::TransformVfxCharacter::Ghost;
     creative_vfx.digital_degrade.enabled = true;
     creative_vfx.digital_degrade.character = echo_domain::DigitalDegradeVfxCharacter::LoFi;
+    creative_vfx.drive.enabled = true;
+    creative_vfx.drive.character = echo_domain::DriveVfxCharacter::Overdrive;
+    creative_vfx.rotary.enabled = true;
+    creative_vfx.rotary.speed = echo_domain::RotaryVfxSpeed::Fast;
     source.creative_vfx_json =
         serde_json::to_string(&creative_vfx).expect("source creative VFX encodes");
-    source.effect_chain = vec![0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 4];
+    source.effect_chain = vec![0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 4];
     source.edit_segments = vec![crate::ffi::EditSegmentWire {
         source_start_millis: 500,
         source_end_millis: 9_500,

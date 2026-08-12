@@ -131,6 +131,70 @@ pub enum DigitalDegradeVfxCharacter {
     LoFi = 2,
 }
 
+/// Stable antialiased saturation identity.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[repr(u8)]
+pub enum DriveVfxCharacter {
+    #[default]
+    SoftClip = 0,
+    Overdrive = 1,
+    Fuzz = 2,
+}
+
+impl DriveVfxCharacter {
+    #[must_use]
+    pub const fn wire_value(self) -> u8 {
+        self as u8
+    }
+
+    /// Restores the stable desktop ABI value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CreativeVfxValueError`] for an unknown value.
+    pub const fn from_wire_value(value: u8) -> Result<Self, CreativeVfxValueError> {
+        match value {
+            0 => Ok(Self::SoftClip),
+            1 => Ok(Self::Overdrive),
+            2 => Ok(Self::Fuzz),
+            _ => Err(CreativeVfxValueError),
+        }
+    }
+}
+
+/// Stable rotary motion role.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[repr(u8)]
+pub enum RotaryVfxSpeed {
+    #[default]
+    Slow = 0,
+    Fast = 1,
+    Brake = 2,
+}
+
+impl RotaryVfxSpeed {
+    #[must_use]
+    pub const fn wire_value(self) -> u8 {
+        self as u8
+    }
+
+    /// Restores the stable desktop ABI value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CreativeVfxValueError`] for an unknown value.
+    pub const fn from_wire_value(value: u8) -> Result<Self, CreativeVfxValueError> {
+        match value {
+            0 => Ok(Self::Slow),
+            1 => Ok(Self::Fast),
+            2 => Ok(Self::Brake),
+            _ => Err(CreativeVfxValueError),
+        }
+    }
+}
+
 impl DigitalDegradeVfxCharacter {
     #[must_use]
     pub const fn wire_value(self) -> u8 {
@@ -412,6 +476,53 @@ impl Default for DigitalDegradeVfxSettings {
     }
 }
 
+/// Input-driven, antialiased drive. Characters are listening roles rather
+/// than physical models of a named circuit or device.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DriveVfxSettings {
+    pub character: DriveVfxCharacter,
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub drive_centibels: u16,
+    pub tone_hertz: u16,
+    pub output_gain_centibels: i16,
+}
+
+impl Default for DriveVfxSettings {
+    fn default() -> Self {
+        Self {
+            character: DriveVfxCharacter::SoftClip,
+            enabled: false,
+            mix_percent: 100,
+            drive_centibels: 1_200,
+            tone_hertz: 8_000,
+            output_gain_centibels: -300,
+        }
+    }
+}
+
+/// Generic rotary-speaker-inspired motion without a brand or cabinet claim.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RotaryVfxSettings {
+    pub speed: RotaryVfxSpeed,
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub motion_percent: u8,
+    pub stereo_width_percent: u8,
+}
+
+impl Default for RotaryVfxSettings {
+    fn default() -> Self {
+        Self {
+            speed: RotaryVfxSpeed::Slow,
+            enabled: false,
+            mix_percent: 55,
+            motion_percent: 65,
+            stereo_width_percent: 80,
+        }
+    }
+}
+
 /// Complete bounded Creative VFX state persisted with one adjustment revision.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreativeVfxSettings {
@@ -425,6 +536,10 @@ pub struct CreativeVfxSettings {
     pub transform: TransformVfxSettings,
     #[serde(default)]
     pub digital_degrade: DigitalDegradeVfxSettings,
+    #[serde(default)]
+    pub drive: DriveVfxSettings,
+    #[serde(default)]
+    pub rotary: RotaryVfxSettings,
 }
 
 impl CreativeVfxSettings {
@@ -499,6 +614,21 @@ impl CreativeVfxSettings {
                 sample_rate_reduction: SampleRateReductionSettings {
                     target_rate_hertz: 8_000,
                 },
+            },
+            drive: DriveVfxSettings {
+                character: DriveVfxCharacter::SoftClip,
+                enabled: false,
+                mix_percent: 100,
+                drive_centibels: 1_200,
+                tone_hertz: 8_000,
+                output_gain_centibels: -300,
+            },
+            rotary: RotaryVfxSettings {
+                speed: RotaryVfxSpeed::Slow,
+                enabled: false,
+                mix_percent: 55,
+                motion_percent: 65,
+                stereo_width_percent: 80,
             },
         }
     }
@@ -579,6 +709,21 @@ impl CreativeVfxSettings {
         {
             return Err(CreativeVfxSettingsError::DigitalDegrade);
         }
+        if self.drive.mix_percent > 100
+            || self.drive.drive_centibels > 3_600
+            || self.drive.tone_hertz < 500
+            || self.drive.tone_hertz > 16_000
+            || self.drive.output_gain_centibels < -2_400
+            || self.drive.output_gain_centibels > 600
+        {
+            return Err(CreativeVfxSettingsError::Drive);
+        }
+        if self.rotary.mix_percent > 100
+            || self.rotary.motion_percent > 100
+            || self.rotary.stereo_width_percent > 100
+        {
+            return Err(CreativeVfxSettingsError::Rotary);
+        }
         Ok(())
     }
 }
@@ -590,6 +735,8 @@ pub enum CreativeVfxSettingsError {
     Modulation,
     Transform,
     DigitalDegrade,
+    Drive,
+    Rotary,
 }
 
 impl std::fmt::Display for CreativeVfxSettingsError {
@@ -600,6 +747,8 @@ impl std::fmt::Display for CreativeVfxSettingsError {
             Self::Modulation => "modulation",
             Self::Transform => "transform",
             Self::DigitalDegrade => "digital degrade",
+            Self::Drive => "drive",
+            Self::Rotary => "rotary",
         };
         write!(
             formatter,

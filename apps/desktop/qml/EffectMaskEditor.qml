@@ -49,6 +49,10 @@ Popup {
             return qsTr("Modulation VFX");
         if (kind === 12)
             return qsTr("Digital Degrade");
+        if (kind === 13)
+            return qsTr("Drive");
+        if (kind === 14)
+            return qsTr("Rotary");
         return qsTr("Effect");
     }
 
@@ -70,7 +74,7 @@ Popup {
         effectModel.clear();
         for (let index = 0; index < draft.effectChain.length; ++index) {
             const kind = Number(draft.effectChain[index]);
-            if (kind === 4 || kind === 6 || kind === 11)
+            if (kind === 4 || kind === 6 || kind === 11 || kind === 13 || kind === 14)
                 continue;
             effectModel.append({
                 kind: kind,

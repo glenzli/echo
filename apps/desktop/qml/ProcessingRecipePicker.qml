@@ -70,6 +70,10 @@ Rectangle {
             return qsTr("Transform VFX");
         if (componentId === "digitalDegradeVfx")
             return qsTr("Digital Degrade");
+        if (componentId === "driveVfx")
+            return qsTr("Drive");
+        if (componentId === "rotaryVfx")
+            return qsTr("Rotary");
         if (componentId === "master")
             return qsTr("Master output");
         return componentId;

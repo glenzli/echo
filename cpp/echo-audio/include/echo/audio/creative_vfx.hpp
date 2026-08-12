@@ -130,6 +130,37 @@ struct DigitalDegradeVfxAdjustment {
     SampleRateReductionAdjustment sample_rate_reduction;
 };
 
+enum class DriveVfxCharacter : std::uint8_t {
+    SoftClip = 0,
+    Overdrive = 1,
+    Fuzz = 2,
+};
+
+/// Authored input for a deliberately stylized, non-physical drive effect.
+struct DriveVfxAdjustment {
+    DriveVfxCharacter character = DriveVfxCharacter::SoftClip;
+    bool enabled = false;
+    std::uint8_t mix_percent = 100;
+    std::uint16_t drive_centibels = 1200;
+    std::uint16_t tone_hertz = 8000;
+    std::int16_t output_gain_centibels = -300;
+};
+
+enum class RotaryVfxSpeed : std::uint8_t {
+    Slow = 0,
+    Fast = 1,
+    Brake = 2,
+};
+
+/// Authored input for a generic rotary-speaker-inspired creative effect.
+struct RotaryVfxAdjustment {
+    RotaryVfxSpeed speed = RotaryVfxSpeed::Slow;
+    bool enabled = false;
+    std::uint8_t mix_percent = 55;
+    std::uint8_t motion_percent = 65;
+    std::uint8_t stereo_width_percent = 80;
+};
+
 /// Complete prepared input state for the independent Creative VFX nodes.
 struct CreativeVfxAdjustment {
     SceneVfxAdjustment scene;
@@ -137,6 +168,8 @@ struct CreativeVfxAdjustment {
     ModulationVfxAdjustment modulation;
     TransformVfxAdjustment transform;
     DigitalDegradeVfxAdjustment digital_degrade;
+    DriveVfxAdjustment drive;
+    RotaryVfxAdjustment rotary;
 };
 
 } // namespace echo::audio

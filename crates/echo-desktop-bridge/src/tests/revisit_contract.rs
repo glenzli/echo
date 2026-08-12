@@ -67,6 +67,6 @@ fn revisit_sections_cross_the_live_desktop_session() {
     assert_eq!(snapshot.continue_listening, vec![resumable.to_string()]);
     assert_eq!(snapshot.recently_listened, vec![completed.to_string()]);
     assert_eq!(snapshot.on_this_day, vec![anniversary.to_string()]);
-    assert_eq!(snapshot.recently_added.len(), 3);
+    assert_eq!(snapshot.recently_added, vec![anniversary.to_string()]);
     let _ = std::fs::remove_dir_all(root);
 }

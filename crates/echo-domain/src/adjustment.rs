@@ -81,7 +81,7 @@ pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
 pub const MIN_CHANNEL_BALANCE_PERCENT: i8 = -100;
 pub const MAX_CHANNEL_BALANCE_PERCENT: i8 = 100;
 /// Echo's authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 13;
+pub const EFFECT_NODE_COUNT: usize = 15;
 const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
@@ -106,6 +106,8 @@ pub enum EffectNodeKind {
     ModulationVfx = 10,
     TransformVfx = 11,
     DigitalDegradeVfx = 12,
+    DriveVfx = 13,
+    RotaryVfx = 14,
 }
 
 impl EffectNodeKind {
@@ -134,6 +136,8 @@ impl EffectNodeKind {
             10 => Ok(Self::ModulationVfx),
             11 => Ok(Self::TransformVfx),
             12 => Ok(Self::DigitalDegradeVfx),
+            13 => Ok(Self::DriveVfx),
+            14 => Ok(Self::RotaryVfx),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -174,9 +178,9 @@ impl<'de> Deserialize<'de> for EffectChain {
     {
         let stored = StoredEffectChain::deserialize(deserializer)?;
         let legacy_node_count = stored.nodes.len();
-        if !matches!(legacy_node_count, 5 | 7 | 8 | 12 | EFFECT_NODE_COUNT) {
+        if !matches!(legacy_node_count, 5 | 7 | 8 | 12 | 13 | EFFECT_NODE_COUNT) {
             return Err(D::Error::custom(
-                "effect chain must contain five, seven, eight, twelve, or thirteen stable nodes",
+                "effect chain must contain five, seven, eight, twelve, thirteen, or fifteen stable nodes",
             ));
         }
         let active_count = stored.active_count.unwrap_or(STANDARD_EFFECT_NODE_COUNT);
@@ -217,6 +221,8 @@ impl EffectChain {
                 EffectNodeKind::ModulationVfx,
                 EffectNodeKind::TransformVfx,
                 EffectNodeKind::DigitalDegradeVfx,
+                EffectNodeKind::DriveVfx,
+                EffectNodeKind::RotaryVfx,
             ],
             active_count: STANDARD_EFFECT_NODE_COUNT,
         }
@@ -1364,6 +1370,8 @@ fn validated_asset_regions(
                             EffectNodeKind::Master
                                 | EffectNodeKind::DeClick
                                 | EffectNodeKind::TransformVfx
+                                | EffectNodeKind::DriveVfx
+                                | EffectNodeKind::RotaryVfx
                         )
                 })
         })

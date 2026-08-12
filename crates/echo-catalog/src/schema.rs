@@ -135,9 +135,11 @@ pub(crate) const CREATIVE_VFX_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_812, 2);
 pub(crate) const LISTENING_STATE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_812, 3);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_812, 4);
+pub(crate) const DETERMINISTIC_VFX_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_812, 4);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 1);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260812.4-deterministic-vfx";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.1-drive-rotary-vfx";
 pub(crate) const LISTENING_STATE_MIGRATION_SQL: &str = r"
 ALTER TABLE asset_user_state
     ADD COLUMN last_listened_at_millis INTEGER NOT NULL DEFAULT 0

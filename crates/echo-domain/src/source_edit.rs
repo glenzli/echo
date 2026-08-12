@@ -450,7 +450,11 @@ impl EffectMask {
         for node in &effect_nodes {
             if matches!(
                 node,
-                EffectNodeKind::Master | EffectNodeKind::DeClick | EffectNodeKind::TransformVfx
+                EffectNodeKind::Master
+                    | EffectNodeKind::DeClick
+                    | EffectNodeKind::TransformVfx
+                    | EffectNodeKind::DriveVfx
+                    | EffectNodeKind::RotaryVfx
             ) {
                 return Err(EffectMaskError::UnsupportedEffectNode);
             }
@@ -507,7 +511,7 @@ impl std::fmt::Display for EffectMaskError {
             Self::EmptyEffectNodes => "effect mask must target at least one insert effect",
             Self::DuplicateEffectNode => "effect mask effect nodes must be unique",
             Self::UnsupportedEffectNode => {
-                "effect masks cannot target master output or fixed-latency de-click"
+                "effect masks cannot target unsupported terminal or fixed-latency effects"
             }
         })
     }

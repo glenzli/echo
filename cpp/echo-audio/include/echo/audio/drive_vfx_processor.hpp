@@ -1,29 +1,11 @@
 #pragma once
 
+#include "echo/audio/creative_vfx.hpp"
+
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 
 namespace echo::audio {
-
-enum class DriveVfxCharacter : std::uint8_t {
-    SoftClip = 0,
-    Overdrive = 1,
-    Fuzz = 2,
-};
-
-/// Authored input for a deliberately stylized, non-physical drive effect.
-///
-/// Centibels preserve an integer wire representation without implying that
-/// these clean-room waveshapers model a particular tube, tape, or pedal.
-struct DriveVfxAdjustment {
-    DriveVfxCharacter character = DriveVfxCharacter::SoftClip;
-    bool enabled = false;
-    std::uint8_t mix_percent = 100;
-    std::uint16_t drive_centibels = 1200;
-    std::uint16_t tone_hertz = 8000;
-    std::int16_t output_gain_centibels = -300;
-};
 
 /// Deterministic, input-driven saturation with fixed-latency antialiasing.
 ///

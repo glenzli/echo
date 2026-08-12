@@ -14,10 +14,11 @@ use crate::{
         CHANNEL_REPAIR_MIGRATION_SQL, CHANNEL_REPAIR_SCHEMA_VERSION, CREATIVE_VFX_MIGRATION_SQL,
         CREATIVE_VFX_SCHEMA_VERSION, CatalogSchemaRevision, DE_CLICK_MIGRATION_SQL,
         DE_HUM_MIGRATION_SQL, DE_PLOSIVE_SCHEMA_VERSION, DELIVERY_FORMATS_MIGRATION_SQL,
-        EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
-        EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
-        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL,
-        LISTENING_STATE_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
+        DETERMINISTIC_VFX_SCHEMA_VERSION, EARLIEST_COMPATIBLE_SCHEMA_VERSION,
+        EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION, EFFECT_CHAIN_MIGRATION_SQL,
+        FIXED_EFFECT_CHAIN_SCHEMA_VERSION, INITIAL_COMPATIBLE_SCHEMA_VERSION,
+        LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL, LISTENING_STATE_SCHEMA_VERSION,
+        LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
         OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
         PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
@@ -92,6 +93,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1)",
                 [SCHEMA_IDENTITY.to_string()],
             )?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == DETERMINISTIC_VFX_SCHEMA_VERSION) =>
+        {
+            migrate_drive_rotary_vfx_schema(connection)?;
         }
         Some(version)
             if version
@@ -245,6 +253,16 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_drive_rotary_vfx_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    // Drive, Rotary, and their stable chain tail are backward-readable JSON
+    // additions. Historical authored bytes remain immutable; the dated
+    // boundary ensures older binaries reject revisions they cannot preserve.
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 
