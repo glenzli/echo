@@ -93,3 +93,20 @@ fn bounded_read_rejects_oversized_payload() {
     drop(store);
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn impulse_response_preparations_are_explicitly_rebuildable() {
+    let root = fixture_root("ir-preparation");
+    let store = open_blob_store(&root).expect("store opens");
+    let payload = b"ECHOIR01 canonical prepared bytes";
+    let (blob, status) =
+        put_blob(&store, BlobRole::ImpulseResponsePreparation, payload).expect("put IR prep");
+    assert_eq!(status, PutBlob::Stored);
+    assert_eq!(blob.role, BlobRole::ImpulseResponsePreparation);
+    assert_eq!(
+        read_verified(&store, blob.content_hash, 1024).expect("verified read"),
+        payload
+    );
+    drop(store);
+    let _ = std::fs::remove_dir_all(root);
+}

@@ -35,6 +35,8 @@ pub enum BlobRole {
     Transcript,
     /// Rendered proxy audio.
     RenderProxy,
+    /// Canonical 48 kHz planar impulse-response preparation.
+    ImpulseResponsePreparation,
 }
 
 /// A blob stored in the cache.

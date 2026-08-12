@@ -12,7 +12,7 @@ pub mod waveform;
 
 use std::path::Path;
 
-use error::{BridgeError, BridgeErrorKind};
+pub use error::{BridgeError, BridgeErrorKind};
 
 #[cxx::bridge(namespace = "echo::bridge")]
 mod ffi {

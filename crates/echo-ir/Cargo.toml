@@ -8,6 +8,8 @@ authors.workspace = true
 
 [dependencies]
 blake3.workspace = true
+echo-bridge.workspace = true
+echo-cache.workspace = true
 echo-domain.workspace = true
 serde.workspace = true
 serde_json.workspace = true

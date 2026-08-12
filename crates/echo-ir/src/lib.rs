@@ -7,9 +7,12 @@
 //! are separate lifecycles.
 
 mod error;
+mod import_pipeline;
 mod source_store;
 
 pub use error::{IrStoreError, IrStoreErrorKind};
+pub use import_pipeline::{ImportedIr, IrImportPipeline, PreparationOutcome, PreparedIrArtifact};
 pub use source_store::{
     ImportOutcome, IrImportProvenance, IrImportRecord, IrRightsDeclaration, IrSourceStore,
+    StoredIrSource,
 };

@@ -11,6 +11,10 @@ pub enum IrStoreErrorKind {
     TooLarge,
     /// Stored bytes no longer match their content identity.
     Corrupt,
+    /// The audio engine rejected WAV validation or canonical preparation.
+    PreparationRejected,
+    /// Rebuildable prepared-artifact cache failure.
+    Cache,
     /// Filesystem or serialization failure.
     Other,
 }
@@ -42,5 +46,17 @@ impl From<std::io::Error> for IrStoreError {
 impl From<serde_json::Error> for IrStoreError {
     fn from(error: serde_json::Error) -> Self {
         Self::new(IrStoreErrorKind::Other, error.to_string())
+    }
+}
+
+impl From<echo_bridge::BridgeError> for IrStoreError {
+    fn from(error: echo_bridge::BridgeError) -> Self {
+        Self::new(IrStoreErrorKind::PreparationRejected, error.message)
+    }
+}
+
+impl From<echo_cache::CacheError> for IrStoreError {
+    fn from(error: echo_cache::CacheError) -> Self {
+        Self::new(IrStoreErrorKind::Cache, error.message)
     }
 }

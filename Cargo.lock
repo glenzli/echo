@@ -411,6 +411,8 @@ name = "echo-ir"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "echo-bridge",
+ "echo-cache",
  "echo-domain",
  "serde",
  "serde_json",

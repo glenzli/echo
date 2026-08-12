@@ -43,6 +43,17 @@ pub struct IrImportProvenance {
     pub rights: IrRightsDeclaration,
 }
 
+impl IrImportProvenance {
+    /// Validates the user declaration before source or cache publication.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidInput` for a blank display name or SPDX expression.
+    pub fn validate(&self) -> Result<(), IrStoreError> {
+        validate_provenance(self)
+    }
+}
+
 /// Immutable append-only record written after source publication succeeds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IrImportRecord {
@@ -59,6 +70,14 @@ pub struct IrImportRecord {
 pub enum ImportOutcome {
     Stored,
     AlreadyPresent,
+}
+
+/// One exact source object published before any provenance event exists.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StoredIrSource {
+    pub source_hash: ContentHash,
+    pub source_size_bytes: u64,
+    pub outcome: ImportOutcome,
 }
 
 /// Durable IR source store rooted independently from Echo's rebuildable cache.
@@ -98,6 +117,22 @@ impl IrSourceStore {
         provenance: IrImportProvenance,
     ) -> Result<(IrImportRecord, ImportOutcome), IrStoreError> {
         validate_provenance(&provenance)?;
+        let stored = self.store_source(source)?;
+        let record = self.append_provenance(&stored, source, provenance)?;
+        Ok((record, stored.outcome))
+    }
+
+    /// Publishes exact source bytes without claiming that they are a valid IR.
+    ///
+    /// This split phase lets the import workflow prepare and verify an owned
+    /// source before it publishes provenance. Failure may leave an unreferenced
+    /// source object, but never a provenance record without usable bytes.
+    ///
+    /// # Errors
+    ///
+    /// Fails for non-files, empty/oversized input, I/O failure, or corruption
+    /// at an existing content address.
+    pub fn store_source(&self, source: &Path) -> Result<StoredIrSource, IrStoreError> {
         let metadata = fs::metadata(source)?;
         if !metadata.is_file() {
             return Err(IrStoreError::new(
@@ -118,27 +153,49 @@ impl IrSourceStore {
             ));
         }
 
-        let import_id = Uuid::now_v7();
+        let operation_id = Uuid::now_v7();
         let staging = self
             .root
             .join("sources")
             .join("staging")
-            .join(format!("{import_id}.source"));
+            .join(format!("{operation_id}.source"));
         let result = self.publish_source(source, &staging, metadata.len());
         if result.is_err() {
             let _ = fs::remove_file(&staging);
         }
         let (source_hash, source_size_bytes, outcome) = result?;
-        let record = IrImportRecord {
-            import_id,
+        Ok(StoredIrSource {
             source_hash,
             source_size_bytes,
+            outcome,
+        })
+    }
+
+    /// Appends provenance only after re-verifying an owned source object.
+    ///
+    /// # Errors
+    ///
+    /// Fails for invalid provenance, missing/corrupt owned bytes, clock, JSON,
+    /// or filesystem publication errors.
+    pub fn append_provenance(
+        &self,
+        stored: &StoredIrSource,
+        original_path: &Path,
+        provenance: IrImportProvenance,
+    ) -> Result<IrImportRecord, IrStoreError> {
+        validate_provenance(&provenance)?;
+        self.verify_source(stored.source_hash, stored.source_size_bytes)?;
+        let import_id = Uuid::now_v7();
+        let record = IrImportRecord {
+            import_id,
+            source_hash: stored.source_hash,
+            source_size_bytes: stored.source_size_bytes,
             imported_at_millis: now_millis()?,
-            original_path: source.to_string_lossy().into_owned(),
+            original_path: original_path.to_string_lossy().into_owned(),
             provenance,
         };
         self.publish_event(&record)?;
-        Ok((record, outcome))
+        Ok(record)
     }
 
     /// Verifies an owned source object and returns its stable path.
