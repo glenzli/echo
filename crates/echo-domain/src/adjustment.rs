@@ -7,8 +7,8 @@
 
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
-use crate::creative_vfx::CreativeVfxSettings;
 use crate::source_edit::{EditTimeline, EffectMask, MAX_EFFECT_MASKS};
+use crate::{SpaceSettings, creative_vfx::CreativeVfxSettings};
 
 /// Lowest supported output gain in hundredths of one decibel.
 pub const MIN_GAIN_CENTIBELS: i16 = -2_400;
@@ -909,6 +909,7 @@ pub struct AdjustmentEffects {
     pub equalizer: ParametricEqualizer,
     pub compressor: CompressorSettings,
     pub reverb: ReverbSettings,
+    pub space: SpaceSettings,
     pub creative_vfx: CreativeVfxSettings,
     pub limiter: LimiterSettings,
     pub effect_chain: EffectChain,
@@ -930,6 +931,7 @@ impl AdjustmentEffects {
             equalizer: ParametricEqualizer::flat(),
             compressor: CompressorSettings::standard(),
             reverb: ReverbSettings::studio_room(),
+            space: SpaceSettings::algorithmic(),
             creative_vfx: CreativeVfxSettings::standard(),
             limiter: LimiterSettings::standard(),
             effect_chain: EffectChain::standard(),
@@ -977,6 +979,12 @@ impl AdjustmentEffects {
     #[must_use]
     pub const fn with_reverb(mut self, reverb: ReverbSettings) -> Self {
         self.reverb = reverb;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_space(mut self, space: SpaceSettings) -> Self {
+        self.space = space;
         self
     }
 
@@ -1040,6 +1048,8 @@ pub struct AdjustmentGraph {
     #[serde(default)]
     reverb: ReverbSettings,
     #[serde(default)]
+    space: SpaceSettings,
+    #[serde(default)]
     creative_vfx: CreativeVfxSettings,
     #[serde(default)]
     limiter: LimiterSettings,
@@ -1071,6 +1081,8 @@ struct StoredAdjustmentGraph {
     compressor: CompressorSettings,
     #[serde(default)]
     reverb: ReverbSettings,
+    #[serde(default)]
+    space: SpaceSettings,
     #[serde(default)]
     creative_vfx: CreativeVfxSettings,
     #[serde(default)]
@@ -1107,6 +1119,7 @@ impl<'de> Deserialize<'de> for AdjustmentGraph {
             .with_equalizer(stored.equalizer)
             .with_compressor(stored.compressor)
             .with_reverb(stored.reverb)
+            .with_space(stored.space)
             .with_creative_vfx(stored.creative_vfx)
             .with_limiter(stored.limiter)
             .with_effect_chain(stored.effect_chain)
@@ -1197,6 +1210,9 @@ impl AdjustmentGraph {
         {
             return Err(AdjustmentGraphError::ReverbOutOfRange);
         }
+        if !effects.space.is_valid() {
+            return Err(AdjustmentGraphError::SpaceOutOfRange);
+        }
         effects
             .creative_vfx
             .validate()
@@ -1218,6 +1234,7 @@ impl AdjustmentGraph {
             equalizer: effects.equalizer,
             compressor,
             reverb,
+            space: effects.space,
             creative_vfx: effects.creative_vfx,
             limiter,
             effect_chain: effects.effect_chain,
@@ -1317,6 +1334,11 @@ impl AdjustmentGraph {
     #[must_use]
     pub const fn reverb(&self) -> ReverbSettings {
         self.reverb
+    }
+
+    #[must_use]
+    pub const fn space(&self) -> SpaceSettings {
+        self.space
     }
 
     #[must_use]
@@ -1449,6 +1471,7 @@ pub enum AdjustmentGraphError {
     EqualizerBandOutOfRange,
     CompressorOutOfRange,
     ReverbOutOfRange,
+    SpaceOutOfRange,
     CreativeVfxOutOfRange,
     LimiterOutOfRange,
     InvalidEffectChain,
@@ -1478,6 +1501,7 @@ impl std::fmt::Display for AdjustmentGraphError {
             }
             Self::CompressorOutOfRange => "compressor parameters are outside the supported range",
             Self::ReverbOutOfRange => "reverb parameters are outside the supported range",
+            Self::SpaceOutOfRange => "space parameters are outside the supported range",
             Self::CreativeVfxOutOfRange => {
                 "creative VFX parameters are outside the supported range"
             }

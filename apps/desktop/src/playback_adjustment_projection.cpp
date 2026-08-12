@@ -4,6 +4,7 @@
 #include "parametric_equalizer_projection.hpp"
 #include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
+#include "space_projection.hpp"
 
 #include <utility>
 
@@ -307,6 +308,19 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         {QStringLiteral("dampingPercent"), asset.value(QStringLiteral("reverbDampingPercent"))},
         {QStringLiteral("lowCutHertz"), asset.value(QStringLiteral("reverbLowCutHertz"))},
         {QStringLiteral("highCutHertz"), asset.value(QStringLiteral("reverbHighCutHertz"))},
+        {QStringLiteral("mode"), asset.value(QStringLiteral("spaceMode"), 0)},
+        {QStringLiteral("impulseResponseImportId"),
+         asset.value(QStringLiteral("impulseResponseImportId"))},
+        {QStringLiteral("impulseResponseSourceHash"),
+         asset.value(QStringLiteral("impulseResponseSourceHash"))},
+        {QStringLiteral("impulseResponsePreparedHash"),
+         asset.value(QStringLiteral("impulseResponsePreparedHash"))},
+        {QStringLiteral("impulseResponsePreparedPath"),
+         asset.value(QStringLiteral("impulseResponsePreparedPath"))},
+        {QStringLiteral("convolutionMixPercent"),
+         asset.value(QStringLiteral("convolutionMixPercent"), 35)},
+        {QStringLiteral("convolutionWetGainCentibels"),
+         asset.value(QStringLiteral("convolutionWetGainCentibels"), 0)},
     };
     return fromQml(
         asset.value(QStringLiteral("trimStartMillis")).toLongLong(),
@@ -392,9 +406,12 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const auto creativeVfx = CreativeVfxProjection::fromQml(creativeVfxValue);
     const auto effectChain = effectChainFromQml(effectChainValue);
     auto editSegments = editSegmentsFromQmlImpl(editSegmentsValue, trimStartMillis, trimEndMillis);
-    if (!equalizer.has_value() || !reverb.has_value() || !restoration.has_value()
-        || !deHum.has_value() || !deClick.has_value() || !channelRepair.has_value()
-        || !creativeVfx.has_value() || !effectChain.has_value() || !editSegments.has_value()) {
+    const auto space =
+        reverb.has_value() ? SpaceProjection::fromQml(reverbValue, *reverb) : std::nullopt;
+    if (!equalizer.has_value() || !reverb.has_value() || !space.has_value()
+        || !restoration.has_value() || !deHum.has_value() || !deClick.has_value()
+        || !channelRepair.has_value() || !creativeVfx.has_value() || !effectChain.has_value()
+        || !editSegments.has_value()) {
         return std::nullopt;
     }
     auto effectMasks =
@@ -427,6 +444,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
                 .makeup_centibels = static_cast<std::int16_t>(compressorMakeupCentibels),
             },
         .reverb = *reverb,
+        .space = *space,
         .creative_vfx = *creativeVfx,
         .limiter =
             {

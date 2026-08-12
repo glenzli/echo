@@ -19,6 +19,27 @@ fn fixture_catalog() -> std::path::PathBuf {
     ))
 }
 
+fn pcm16_mono_wav(sample_rate: u32, samples: &[i16]) -> Vec<u8> {
+    let data_bytes = u32::try_from(samples.len() * 2).expect("bounded fixture");
+    let mut wav = Vec::with_capacity(44 + samples.len() * 2);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36 + data_bytes).to_le_bytes());
+    wav.extend_from_slice(b"WAVEfmt ");
+    wav.extend_from_slice(&16_u32.to_le_bytes());
+    wav.extend_from_slice(&1_u16.to_le_bytes());
+    wav.extend_from_slice(&1_u16.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&(sample_rate * 2).to_le_bytes());
+    wav.extend_from_slice(&2_u16.to_le_bytes());
+    wav.extend_from_slice(&16_u16.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_bytes.to_le_bytes());
+    for sample in samples {
+        wav.extend_from_slice(&sample.to_le_bytes());
+    }
+    wav
+}
+
 fn test_equalizer_bands() -> Vec<crate::ffi::EqualizerBandWire> {
     let equalizer = echo_domain::ParametricEqualizer::from_legacy_gains(250, -175, 300);
     equalizer
@@ -165,6 +186,24 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         root.join("cache").to_str().expect("utf8"),
     )
     .expect("session opens");
+    let impulse_path = root.join("small-room-ir.wav");
+    let mut impulse_samples = vec![0_i16; 2_400];
+    impulse_samples[0] = 28_000;
+    impulse_samples[317] = -10_000;
+    std::fs::write(&impulse_path, pcm16_mono_wav(24_000, &impulse_samples))
+        .expect("impulse fixture writes");
+    let impulse = session
+        .import_impulse_response(
+            impulse_path.to_str().expect("utf8"),
+            "Small room",
+            "Echo fixture",
+            "",
+            "Recorded for the bridge contract",
+            "user_owned_no_redistribution",
+            "",
+            "",
+        )
+        .expect("impulse response imports");
     let asset = session
         .catalog()
         .with_transaction(|transaction| {
@@ -262,6 +301,12 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         reverb_damping_percent: 52,
         reverb_low_cut_hertz: 150,
         reverb_high_cut_hertz: 9_000,
+        space_mode: echo_domain::SpaceMode::Convolution.wire_value(),
+        impulse_response_import_id: impulse.import_id.clone(),
+        impulse_response_source_hash: impulse.source_hash.clone(),
+        impulse_response_prepared_hash: impulse.prepared_hash.clone(),
+        convolution_mix_percent: 46,
+        convolution_wet_gain_centibels: -175,
         creative_vfx_json: serde_json::to_string(&creative_vfx).expect("creative VFX encodes"),
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
@@ -316,6 +361,20 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         echo_domain::ReverbCharacter::Spring
     );
     assert_eq!(stored.graph.creative_vfx(), creative_vfx);
+    assert_eq!(
+        stored.graph.space().mode,
+        echo_domain::SpaceMode::Convolution
+    );
+    assert_eq!(
+        stored
+            .graph
+            .space()
+            .impulse_response
+            .expect("IR selection remains")
+            .import_id
+            .to_string(),
+        impulse.import_id
+    );
     let projected = session.list_assets().expect("assets project");
     assert_eq!(projected.len(), 1);
     assert!(projected[0].adjustment_revision > 0);
@@ -380,6 +439,25 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].reverb_damping_percent, 52);
     assert_eq!(projected[0].reverb_low_cut_hertz, 150);
     assert_eq!(projected[0].reverb_high_cut_hertz, 9_000);
+    assert_eq!(
+        projected[0].space_mode,
+        echo_domain::SpaceMode::Convolution.wire_value()
+    );
+    assert_eq!(projected[0].impulse_response_import_id, impulse.import_id);
+    assert_eq!(
+        projected[0].impulse_response_source_hash,
+        impulse.source_hash
+    );
+    assert_eq!(
+        projected[0].impulse_response_prepared_hash,
+        impulse.prepared_hash
+    );
+    assert_eq!(
+        projected[0].impulse_response_prepared_path,
+        impulse.prepared_path
+    );
+    assert_eq!(projected[0].convolution_mix_percent, 46);
+    assert_eq!(projected[0].convolution_wet_gain_centibels, -175);
     assert_eq!(
         serde_json::from_str::<echo_domain::CreativeVfxSettings>(&projected[0].creative_vfx_json)
             .expect("projected creative VFX decodes"),

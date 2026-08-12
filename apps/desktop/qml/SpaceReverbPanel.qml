@@ -3,6 +3,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import EchoDesktop
 
@@ -10,9 +11,10 @@ Rectangle {
     id: panel
 
     required property var draft
+    property var impulseResponses: impulseResponseController.impulseResponses
 
     implicitWidth: 560
-    implicitHeight: 286
+    implicitHeight: 318
     radius: Theme.panelRadius
     color: Theme.parameterPanel
     border.width: 1
@@ -20,6 +22,44 @@ Rectangle {
 
     function frequency(hertz: int): string {
         return hertz >= 1000 ? (hertz / 1000).toFixed(hertz % 1000 === 0 ? 0 : 1) + " kHz" : hertz + " Hz";
+    }
+
+    function refreshImpulseResponses(): void {
+        impulseResponseController.refresh();
+    }
+
+    function selectedImpulseIndex(): int {
+        const selected = String(draft.space.impulseResponseImportId || "");
+        for (let index = 0; index < impulseResponses.length; ++index) {
+            if (String(impulseResponses[index].importId) === selected)
+                return index;
+        }
+        return -1;
+    }
+
+    function activateSpaceMode(index: int): void {
+        if (index === 0) {
+            draft.setSpaceMode(0);
+            return;
+        }
+        if (String(draft.space.impulseResponseImportId || "").length > 0) {
+            draft.setSpaceMode(1);
+            return;
+        }
+        if (impulseResponses.length > 0) {
+            draft.selectImpulseResponse(impulseResponses[0]);
+            return;
+        }
+        importDialog.present();
+    }
+
+    Component.onCompleted: refreshImpulseResponses()
+
+    Connections {
+        target: impulseResponseController
+        function onImported(value): void {
+            panel.draft.selectImpulseResponse(value);
+        }
     }
 
     ColumnLayout {
@@ -40,7 +80,7 @@ Rectangle {
             }
 
             Text {
-                text: qsTr("Algorithmic space")
+                text: qsTr("Space")
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontBody
                 font.weight: Font.DemiBold
@@ -68,9 +108,19 @@ Rectangle {
             }
 
             EchoSegmentedControl {
+                objectName: "spaceModeSelector"
+                Layout.preferredWidth: 176
+                Layout.preferredHeight: 28
+                model: [qsTr("Algorithmic"), qsTr("Convolution")]
+                currentIndex: Number(panel.draft.space.mode)
+                onActivated: index => panel.activateSpaceMode(index)
+            }
+
+            EchoSegmentedControl {
                 objectName: "spaceCharacterSelector"
                 Layout.preferredWidth: 248
                 Layout.preferredHeight: 28
+                visible: Number(panel.draft.space.mode) === 0
                 model: [qsTr("Room"), qsTr("Hall"), qsTr("Plate"), qsTr("Spring")]
                 currentIndex: panel.draft.reverbCharacter
                 onActivated: index => panel.draft.setReverbCharacter(index)
@@ -100,6 +150,7 @@ Rectangle {
             Layout.topMargin: 7
             Layout.bottomMargin: 7
             spacing: 18
+            visible: Number(panel.draft.space.mode) === 0
 
             ColumnLayout {
                 Layout.preferredWidth: Math.min(340, (panel.width - 58) / 2)
@@ -225,5 +276,102 @@ Rectangle {
                 Layout.fillWidth: true
             }
         }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.leftMargin: 14
+            Layout.rightMargin: 14
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
+            spacing: 8
+            visible: Number(panel.draft.space.mode) === 1
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ComboBox {
+                    id: impulseSelector
+                    Layout.fillWidth: true
+                    model: panel.impulseResponses
+                    textRole: "displayName"
+                    currentIndex: panel.selectedImpulseIndex()
+                    displayText: currentIndex >= 0 ? currentText : qsTr("Choose an imported impulse response")
+                    onActivated: index => panel.draft.selectImpulseResponse(panel.impulseResponses[index])
+                }
+
+                Button {
+                    text: qsTr("Import WAV…")
+                    onClicked: importDialog.present()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 18
+
+                EchoParameterSlider {
+                    Layout.preferredWidth: 330
+                    label: qsTr("Mix")
+                    from: 0
+                    to: 100
+                    stepSize: 1
+                    value: Number(panel.draft.space.convolutionMixPercent)
+                    valueText: Math.round(value) + "%"
+                    onGestureStarted: panel.draft.beginGesture()
+                    onEdited: value => panel.draft.setConvolutionParameter("mix", value)
+                    onGestureFinished: panel.draft.endGesture()
+                }
+
+                EchoParameterSlider {
+                    Layout.preferredWidth: 330
+                    label: qsTr("Wet gain")
+                    from: -2400
+                    to: 1200
+                    stepSize: 10
+                    value: Number(panel.draft.space.convolutionWetGainCentibels)
+                    valueText: (value / 100).toFixed(1) + " dB"
+                    onGestureStarted: panel.draft.beginGesture()
+                    onEdited: value => panel.draft.setConvolutionParameter("wetGain", value)
+                    onGestureFinished: panel.draft.endGesture()
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Stereo IRs use parallel L→L and R→R processing. Echo does not label this true stereo.")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontMeta
+                wrapMode: Text.WordWrap
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: impulseSelector.currentIndex >= 0
+                text: {
+                    if (impulseSelector.currentIndex < 0)
+                        return "";
+                    const value = panel.impulseResponses[impulseSelector.currentIndex];
+                    const rights = value.rightsKind === "spdx" ? value.spdxExpression : qsTr("User-owned · no redistribution");
+                    return [value.creator, rights, value.attribution].filter(part => String(part || "").length > 0).join(" · ");
+                }
+                color: Theme.textDisabled
+                font.pixelSize: Theme.fontMeta
+                elide: Text.ElideRight
+            }
+
+            Item {
+                Layout.fillHeight: true
+            }
+        }
+    }
+
+    ImpulseResponseImportDialog {
+        id: importDialog
     }
 }

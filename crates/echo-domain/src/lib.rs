@@ -24,6 +24,7 @@ mod ids;
 mod original;
 mod processing_recipe;
 mod source_edit;
+mod space;
 
 pub use adjustment::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, ChannelRepairSettings,
@@ -74,6 +75,10 @@ pub use source_edit::{
     DEFAULT_EFFECT_MASK_FEATHER_MILLIS, EditSegment, EditSegmentState, EditSegmentStateValueError,
     EditTimeline, EditTimelineError, EffectMask, EffectMaskError, MAX_EDIT_GAP_MILLIS,
     MAX_EDIT_SEGMENTS, MAX_EFFECT_MASK_FEATHER_MILLIS, MAX_EFFECT_MASKS,
+};
+pub use space::{
+    ImpulseResponseSelection, MAX_CONVOLUTION_WET_GAIN_CENTIBELS,
+    MIN_CONVOLUTION_WET_GAIN_CENTIBELS, SpaceMode, SpaceModeValueError, SpaceSettings,
 };
 
 #[cfg(test)]

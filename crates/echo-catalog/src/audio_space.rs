@@ -86,7 +86,7 @@ pub fn list_audio_space(
          adj.compressor_enabled, adj.compressor_threshold_centibels, \
          adj.compressor_ratio_tenths, adj.compressor_attack_millis, \
          adj.compressor_release_millis, adj.compressor_makeup_centibels, \
-         adj.reverb_json, adj.restoration_json, adj.de_hum_json, adj.de_click_json, \
+         adj.reverb_json, adj.space_json, adj.restoration_json, adj.de_hum_json, adj.de_click_json, \
          adj.channel_repair_json, adj.effect_chain_json, adj.edit_timeline_json, adj.effect_masks_json, \
          adj.limiter_enabled, adj.limiter_ceiling_centibels, \
          adj.limiter_release_millis, \
@@ -137,8 +137,8 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
         liked: row.get::<_, i64>(13)? != 0,
         rating: u8::try_from(row.get::<_, i64>(14)?)
             .expect("stored rating is between zero and five"),
-        last_listened_at_millis: row.get(48)?,
-        resume_position_millis: u64::try_from(row.get::<_, i64>(49)?)
+        last_listened_at_millis: row.get(49)?,
+        resume_position_millis: u64::try_from(row.get::<_, i64>(50)?)
             .expect("stored resume position is non-negative"),
         adjustment,
         source_metadata: match row.get::<_, Option<String>>(15)? {
@@ -180,16 +180,16 @@ fn audio_space_adjustment_from_row(
         serde_json::from_str(&row.get::<_, String>(28)?).expect("stored parametric EQ parses"),
     )
     .with_restoration(
-        serde_json::from_str(&row.get::<_, String>(36)?).expect("stored restoration chain parses"),
+        serde_json::from_str(&row.get::<_, String>(37)?).expect("stored restoration chain parses"),
     )
     .with_de_hum(
-        serde_json::from_str(&row.get::<_, String>(37)?).expect("stored de-hum settings parse"),
+        serde_json::from_str(&row.get::<_, String>(38)?).expect("stored de-hum settings parse"),
     )
     .with_de_click(
-        serde_json::from_str(&row.get::<_, String>(38)?).expect("stored de-click settings parse"),
+        serde_json::from_str(&row.get::<_, String>(39)?).expect("stored de-click settings parse"),
     )
     .with_channel_repair(
-        serde_json::from_str(&row.get::<_, String>(39)?)
+        serde_json::from_str(&row.get::<_, String>(40)?)
             .expect("stored channel repair settings parse"),
     )
     .with_compressor(echo_domain::CompressorSettings {
@@ -205,11 +205,12 @@ fn audio_space_adjustment_from_row(
             .expect("compressor makeup fits centibels"),
     })
     .with_reverb(serde_json::from_str(&row.get::<_, String>(35)?).expect("stored reverb parses"))
+    .with_space(serde_json::from_str(&row.get::<_, String>(36)?).expect("stored space parses"))
     .with_effect_chain(
-        serde_json::from_str(&row.get::<_, String>(40)?).expect("stored effect chain parses"),
+        serde_json::from_str(&row.get::<_, String>(41)?).expect("stored effect chain parses"),
     )
     .with_edit_timeline({
-        let encoded = row.get::<_, String>(41)?;
+        let encoded = row.get::<_, String>(42)?;
         if encoded.trim().is_empty() || encoded.trim() == "[]" {
             echo_domain::EditTimeline::identity(trim_start_millis, trim_end_millis)
                 .expect("legacy edit timeline restores")
@@ -218,7 +219,7 @@ fn audio_space_adjustment_from_row(
         }
     })
     .with_effect_masks({
-        let encoded = row.get::<_, String>(42)?;
+        let encoded = row.get::<_, String>(43)?;
         if encoded.trim().is_empty() {
             Vec::new()
         } else {
@@ -226,14 +227,14 @@ fn audio_space_adjustment_from_row(
         }
     })
     .with_limiter(echo_domain::LimiterSettings {
-        enabled: row.get::<_, i64>(43)? != 0,
-        ceiling_centibels: i16::try_from(row.get::<_, i64>(44)?)
+        enabled: row.get::<_, i64>(44)? != 0,
+        ceiling_centibels: i16::try_from(row.get::<_, i64>(45)?)
             .expect("limiter ceiling fits centibels"),
-        release_millis: u16::try_from(row.get::<_, i64>(45)?)
+        release_millis: u16::try_from(row.get::<_, i64>(46)?)
             .expect("limiter release fits milliseconds"),
     })
     .with_creative_vfx(
-        serde_json::from_str(&row.get::<_, String>(46)?)
+        serde_json::from_str(&row.get::<_, String>(47)?)
             .expect("stored creative VFX settings parse"),
     );
     let graph = echo_domain::AdjustmentGraph::new(
@@ -248,7 +249,7 @@ fn audio_space_adjustment_from_row(
     Ok(Some(crate::AssetAdjustmentRevision {
         revision_id,
         graph,
-        created_at_millis: row.get(47)?,
+        created_at_millis: row.get(48)?,
     }))
 }
 

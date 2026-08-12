@@ -136,6 +136,13 @@ QVariantMap snapshot_asset(const QVariantMap& asset) {
         QStringLiteral("reverbDampingPercent"),
         QStringLiteral("reverbLowCutHertz"),
         QStringLiteral("reverbHighCutHertz"),
+        QStringLiteral("spaceMode"),
+        QStringLiteral("impulseResponseImportId"),
+        QStringLiteral("impulseResponseSourceHash"),
+        QStringLiteral("impulseResponsePreparedHash"),
+        QStringLiteral("impulseResponsePreparedPath"),
+        QStringLiteral("convolutionMixPercent"),
+        QStringLiteral("convolutionWetGainCentibels"),
         QStringLiteral("limiterEnabled"),
         QStringLiteral("limiterCeilingCentibels"),
         QStringLiteral("limiterReleaseMillis")

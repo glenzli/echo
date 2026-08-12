@@ -137,9 +137,58 @@ pub(crate) const LISTENING_STATE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_812, 3);
 pub(crate) const DETERMINISTIC_VFX_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_812, 4);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 1);
+pub(crate) const DRIVE_ROTARY_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_813, 1);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 2);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.1-drive-rotary-vfx";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.2-convolution-space";
+pub(crate) const CONVOLUTION_SPACE_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN space_json TEXT NOT NULL DEFAULT
+    '{"mode":"algorithmic","impulse_response":null,"convolution_mix_percent":35,"convolution_wet_gain_centibels":0}';
+
+CREATE TABLE impulse_response_sources (
+    source_hash       TEXT PRIMARY KEY,
+    size_bytes        INTEGER NOT NULL CHECK (size_bytes > 0),
+    created_at_millis INTEGER NOT NULL CHECK (created_at_millis >= 0)
+);
+
+CREATE TABLE impulse_response_preparations (
+    prepared_hash       TEXT PRIMARY KEY,
+    source_hash         TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+    size_bytes          INTEGER NOT NULL CHECK (size_bytes > 0),
+    preparation_version INTEGER NOT NULL CHECK (preparation_version > 0),
+    source_sample_rate  INTEGER NOT NULL CHECK (source_sample_rate > 0),
+    channel_count       INTEGER NOT NULL CHECK (channel_count IN (1, 2)),
+    source_frame_count  INTEGER NOT NULL CHECK (source_frame_count > 0),
+    prepared_frame_count INTEGER NOT NULL CHECK (prepared_frame_count > 0),
+    avcodec_version     INTEGER NOT NULL CHECK (avcodec_version > 0),
+    swresample_version  INTEGER NOT NULL CHECK (swresample_version > 0),
+    created_at_millis   INTEGER NOT NULL CHECK (created_at_millis >= 0)
+);
+
+CREATE TABLE impulse_response_imports (
+    import_id          TEXT PRIMARY KEY,
+    source_hash        TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+    prepared_hash      TEXT NOT NULL REFERENCES impulse_response_preparations(prepared_hash),
+    imported_at_millis INTEGER NOT NULL CHECK (imported_at_millis >= 0),
+    original_path      TEXT NOT NULL,
+    display_name       TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+    creator            TEXT,
+    source_url         TEXT,
+    attribution        TEXT,
+    rights_kind        TEXT NOT NULL CHECK (
+                       rights_kind IN ('spdx', 'user_owned_no_redistribution')),
+    spdx_expression    TEXT,
+    license_url        TEXT,
+    CHECK ((rights_kind = 'spdx' AND length(trim(spdx_expression)) > 0) OR
+           (rights_kind = 'user_owned_no_redistribution' AND spdx_expression IS NULL
+            AND license_url IS NULL))
+);
+
+CREATE INDEX impulse_response_imports_newest
+    ON impulse_response_imports (imported_at_millis DESC, import_id DESC);
+"#;
 pub(crate) const LISTENING_STATE_MIGRATION_SQL: &str = r"
 ALTER TABLE asset_user_state
     ADD COLUMN last_listened_at_millis INTEGER NOT NULL DEFAULT 0
@@ -639,6 +688,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            CHECK (compressor_makeup_centibels BETWEEN 0 AND 2400),
     reverb_json             TEXT NOT NULL DEFAULT
                            '{\"character\":\"room\",\"enabled\":false,\"mix_percent\":18,\"pre_delay_millis\":20,\"decay_millis\":1800,\"size_percent\":55,\"damping_percent\":45,\"low_cut_hertz\":120,\"high_cut_hertz\":10000}',
+    space_json              TEXT NOT NULL DEFAULT
+                           '{\"mode\":\"algorithmic\",\"impulse_response\":null,\"convolution_mix_percent\":35,\"convolution_wet_gain_centibels\":0}',
     creative_vfx_json       TEXT NOT NULL DEFAULT
                            '{\"scene\":{\"character\":\"telephone\",\"enabled\":false,\"mix_percent\":100,\"intensity_percent\":50},\"delay\":{\"character\":\"slapback\",\"enabled\":false,\"slapback\":{\"delay_millis\":90,\"mix_percent\":22,\"high_cut_hertz\":7000},\"echo\":{\"delay_millis\":375,\"feedback_percent\":36,\"mix_percent\":28,\"high_cut_hertz\":6500,\"stereo_crossfeed_percent\":70}},\"modulation\":{\"character\":\"chorus\",\"enabled\":false,\"chorus\":{\"mix_percent\":35,\"rate_millihertz\":800,\"minimum_delay_microseconds\":8000,\"sweep_microseconds\":10000,\"stereo_phase_degrees\":90},\"flanger\":{\"mix_percent\":50,\"rate_millihertz\":250,\"minimum_delay_microseconds\":200,\"sweep_microseconds\":3500,\"feedback_percent\":35,\"stereo_phase_degrees\":180},\"phaser\":{\"mix_percent\":50,\"rate_millihertz\":350,\"sweep_low_hertz\":300,\"sweep_high_hertz\":2500,\"feedback_percent\":25,\"stereo_phase_degrees\":90},\"tremolo\":{\"rate_millihertz\":4000,\"depth_percent\":60,\"stereo_phase_degrees\":0}},\"transform\":{\"character\":\"robot\",\"enabled\":false,\"mix_percent\":100,\"amount_percent\":50}}',
     restoration_json        TEXT NOT NULL DEFAULT
@@ -665,6 +716,48 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
 
 CREATE INDEX IF NOT EXISTS asset_adjustment_revisions_latest
     ON asset_adjustment_revisions (asset_id, id DESC);
+
+CREATE TABLE IF NOT EXISTS impulse_response_sources (
+    source_hash       TEXT PRIMARY KEY,
+    size_bytes        INTEGER NOT NULL CHECK (size_bytes > 0),
+    created_at_millis INTEGER NOT NULL CHECK (created_at_millis >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS impulse_response_preparations (
+    prepared_hash       TEXT PRIMARY KEY,
+    source_hash         TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+    size_bytes          INTEGER NOT NULL CHECK (size_bytes > 0),
+    preparation_version INTEGER NOT NULL CHECK (preparation_version > 0),
+    source_sample_rate  INTEGER NOT NULL CHECK (source_sample_rate > 0),
+    channel_count       INTEGER NOT NULL CHECK (channel_count IN (1, 2)),
+    source_frame_count  INTEGER NOT NULL CHECK (source_frame_count > 0),
+    prepared_frame_count INTEGER NOT NULL CHECK (prepared_frame_count > 0),
+    avcodec_version     INTEGER NOT NULL CHECK (avcodec_version > 0),
+    swresample_version  INTEGER NOT NULL CHECK (swresample_version > 0),
+    created_at_millis   INTEGER NOT NULL CHECK (created_at_millis >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS impulse_response_imports (
+    import_id          TEXT PRIMARY KEY,
+    source_hash        TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+    prepared_hash      TEXT NOT NULL REFERENCES impulse_response_preparations(prepared_hash),
+    imported_at_millis INTEGER NOT NULL CHECK (imported_at_millis >= 0),
+    original_path      TEXT NOT NULL,
+    display_name       TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+    creator            TEXT,
+    source_url         TEXT,
+    attribution        TEXT,
+    rights_kind        TEXT NOT NULL CHECK (
+                       rights_kind IN ('spdx', 'user_owned_no_redistribution')),
+    spdx_expression    TEXT,
+    license_url        TEXT,
+    CHECK ((rights_kind = 'spdx' AND length(trim(spdx_expression)) > 0) OR
+           (rights_kind = 'user_owned_no_redistribution' AND spdx_expression IS NULL
+            AND license_url IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS impulse_response_imports_newest
+    ON impulse_response_imports (imported_at_millis DESC, import_id DESC);
 
 CREATE TABLE IF NOT EXISTS processing_recipes (
     id                 TEXT PRIMARY KEY,

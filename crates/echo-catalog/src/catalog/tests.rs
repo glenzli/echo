@@ -87,7 +87,7 @@ fn listening_continuity_revision_preserves_user_and_adjustment_state() {
             ))
         })
         .expect("migrated listening state reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(
         affinity,
         crate::AssetAffinity {
@@ -230,8 +230,8 @@ fn deterministic_vfx_revision_preserves_listening_state_and_legacy_json() {
             ))
         })
         .expect("migrated deterministic VFX reads");
-    assert_eq!(version, "20260813.1");
-    assert_eq!(identity, "echo-catalog-20260813.1-drive-rotary-vfx");
+    assert_eq!(version, "20260813.2");
+    assert_eq!(identity, "echo-catalog-20260813.2-convolution-space");
     assert_eq!(listening_columns, 2);
     assert_eq!(listening_values, (987_654_321, 640));
     assert_eq!(stored_creative, legacy_creative);
@@ -338,7 +338,7 @@ fn drive_rotary_revision_preserves_deterministic_vfx_bytes_and_listening_state()
             ))
         })
         .expect("migrated state reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(stored_creative, legacy_creative);
     assert_eq!(stored_chain, legacy_chain);
     assert_eq!(listening.last_listened_at_millis, 1_234_567);
@@ -355,6 +355,111 @@ fn drive_rotary_revision_preserves_deterministic_vfx_bytes_and_listening_state()
     assert_eq!(restored.graph.effect_chain().nodes().len(), 5);
     let normalized = serde_json::to_value(restored.graph.effect_chain()).expect("chain normalizes");
     assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(15));
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // One migration contract protects authored and listening evidence.
+fn convolution_space_revision_preserves_drive_rotary_and_listening_state() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-convolution-space-migration-{}",
+        std::process::id()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    let graph = echo_domain::AdjustmentGraph::identity(2_000).expect("identity graph validates");
+    let (asset_id, revision_id, creative_json) = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            let registered = crate::register_asset(
+                transaction,
+                &crate::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([74; 32]),
+                    path: std::path::Path::new("/voice/convolution-space-migration.wav"),
+                    size_bytes: 1,
+                    codec: Some("pcm"),
+                    duration_millis: Some(2_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )?;
+            let asset_id = match registered {
+                crate::RegisterAsset::Created(asset) | crate::RegisterAsset::Existed(asset) => {
+                    asset.id
+                }
+            };
+            transaction.execute(
+                "INSERT INTO asset_user_state
+                     (asset_id, liked, rating, last_listened_at_millis,
+                      resume_position_millis, updated_at_millis)
+                 VALUES (?1, 1, 5, 7654321, 1250, 7654322)",
+                [asset_id.to_string()],
+            )?;
+            let revision = crate::record_adjustment_graph(transaction, asset_id, graph, 2)?;
+            let creative_json = transaction.query_row(
+                "SELECT creative_vfx_json FROM asset_adjustment_revisions WHERE id = ?1",
+                [revision.revision_id],
+                |row| row.get::<_, String>(0),
+            )?;
+            transaction.execute_batch(
+                "DROP TABLE impulse_response_imports;
+                 DROP TABLE impulse_response_preparations;
+                 DROP TABLE impulse_response_sources;
+                 ALTER TABLE asset_adjustment_revisions DROP COLUMN space_json;",
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260813.1' WHERE key = 'schema_version'",
+                [],
+            )?;
+            Ok((asset_id, revision.revision_id, creative_json))
+        })
+        .expect("Drive and Rotary fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("Convolution Space revision migrates");
+    let (version, stored_creative, stored_space, listening, restored, ir_table_count) = migrated
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok((
+                transaction.query_row(
+                    "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT creative_vfx_json FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision_id],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT space_json FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision_id],
+                    |row| row.get::<_, String>(0),
+                )?,
+                crate::asset_listening_state(transaction, asset_id)?,
+                crate::latest_adjustment_graph(transaction, asset_id)?.expect("adjustment remains"),
+                transaction.query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN
+                     ('impulse_response_sources', 'impulse_response_preparations',
+                      'impulse_response_imports')",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )?,
+            ))
+        })
+        .expect("migrated Convolution Space state reads");
+    assert_eq!(version, "20260813.2");
+    assert_eq!(stored_creative, creative_json);
+    assert_eq!(
+        stored_space,
+        serde_json::to_string(&echo_domain::SpaceSettings::default()).expect("space encodes")
+    );
+    assert_eq!(listening.last_listened_at_millis, 7_654_321);
+    assert_eq!(listening.resume_position_millis, 1_250);
+    assert_eq!(restored.revision_id, revision_id);
+    assert_eq!(
+        restored.graph.space(),
+        echo_domain::SpaceSettings::default()
+    );
+    assert_eq!(ir_table_count, 3);
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -425,7 +530,7 @@ fn space_character_revision_preserves_legacy_reverb_json_as_room() {
             ))
         })
         .expect("migrated room reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(stored_json, legacy_json);
     assert_eq!(restored.revision_id, revision_id);
     assert_eq!(
@@ -522,7 +627,7 @@ fn creative_vfx_revision_defaults_legacy_history_to_disabled_without_rewriting_i
             ))
         })
         .expect("migrated creative VFX reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(stored_reverb, legacy_reverb);
     assert_eq!(stored_chain, legacy_chain);
     assert!(default_expression.contains("telephone"));
@@ -634,7 +739,7 @@ fn channel_repair_revision_adds_identity_without_rewriting_existing_history() {
             ))
         })
         .expect("migrated channel history reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(channel_column_count, 1);
     assert_eq!(stored_chain, legacy_chain);
     assert_eq!(stored_patch, legacy_patch);
@@ -717,7 +822,7 @@ fn de_plosive_revision_preserves_legacy_restoration_json_and_defaults_disabled()
             ))
         })
         .expect("migrated restoration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(stored_json, legacy_json);
     assert_eq!(restored.revision_id, revision_id);
     assert_eq!(
@@ -842,7 +947,7 @@ fn source_edit_revision_adds_columns_without_rewriting_adjustments_recipes_or_re
             ))
         })
         .expect("migrated evidence reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(source_edit_columns, 2);
     assert_eq!(adjustment_ids, vec![adjustment_revision_id]);
     assert_eq!(stored_patch_json, patch_json);
@@ -961,7 +1066,7 @@ fn immediately_previous_revision_adds_recipe_management_without_rewriting_histor
             },
         )
         .expect("migration schema reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(archived_column_count, 1);
     assert_eq!(revert_table_count, 2);
     assert_eq!(revision_count, 1);
@@ -1061,7 +1166,7 @@ fn processing_recipe_revision_adds_recipes_without_rewriting_assets() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(table_count, 4);
     assert_eq!(asset_count, 1);
     assert_eq!(stored_revision_id, revision_id);
@@ -1148,7 +1253,7 @@ fn restorative_effects_revision_adds_settings_without_rewriting_history() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(column_count, 2);
     assert!(!legacy_json.contains("active_count"));
     assert!(!legacy_json.contains("de_hum"));
@@ -1256,7 +1361,7 @@ fn fixed_chain_revision_adds_authored_effect_chain_column() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert!(default_expression.contains("restoration"));
     assert!(default_expression.contains("master"));
     let _ = std::fs::remove_dir_all(root);
@@ -1300,7 +1405,7 @@ fn immediately_previous_revision_adds_delivery_formats() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert!(table_sql.contains("wav_pcm16"));
     assert!(table_sql.contains("flac24"));
     let _ = std::fs::remove_dir_all(root);
@@ -1347,7 +1452,7 @@ fn immediately_previous_revision_adds_restoration_chain() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(restoration_column_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1415,7 +1520,7 @@ fn previous_catalog_revision_adds_render_exports_without_losing_assets() {
                 ))
             })
             .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(asset_count, 1);
     assert_eq!(render_table_count, 1);
     assert_eq!(album_table_count, 1);
@@ -1463,7 +1568,7 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(album_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1530,7 +1635,7 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(render_table_count, 1);
     assert_eq!(reverb_column_count, 1);
     assert_eq!(album_table_count, 1);
@@ -1576,7 +1681,7 @@ fn immediately_previous_revision_adds_long_audio_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(segment_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1626,7 +1731,7 @@ fn immediately_previous_revision_adds_semantic_search_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.1");
+    assert_eq!(version, "20260813.2");
     assert_eq!(document_count, 1);
     assert_eq!(fts_count, 1);
     let _ = std::fs::remove_dir_all(root);

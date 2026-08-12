@@ -51,6 +51,26 @@ mod ffi {
         resume_position_millis: u64,
     }
 
+    /// Rights-tracked local impulse response ready for the Space node.
+    #[derive(Debug)]
+    struct ImpulseResponseWire {
+        import_id: String,
+        source_hash: String,
+        prepared_hash: String,
+        prepared_path: String,
+        display_name: String,
+        creator: String,
+        source_url: String,
+        attribution: String,
+        rights_kind: String,
+        spdx_expression: String,
+        license_url: String,
+        imported_at_millis: u64,
+        source_sample_rate: u32,
+        channel_count: u32,
+        prepared_frame_count: u64,
+    }
+
     /// Bounded presentation projection of one asset for the desktop shell.
     #[derive(Debug)]
     struct AssetSummaryWire {
@@ -134,6 +154,13 @@ mod ffi {
         reverb_damping_percent: u8,
         reverb_low_cut_hertz: u16,
         reverb_high_cut_hertz: u16,
+        space_mode: u8,
+        impulse_response_import_id: String,
+        impulse_response_source_hash: String,
+        impulse_response_prepared_hash: String,
+        impulse_response_prepared_path: String,
+        convolution_mix_percent: u8,
+        convolution_wet_gain_centibels: i16,
         creative_vfx_json: String,
         limiter_enabled: bool,
         limiter_ceiling_centibels: i16,
@@ -206,6 +233,12 @@ mod ffi {
         reverb_damping_percent: u8,
         reverb_low_cut_hertz: u16,
         reverb_high_cut_hertz: u16,
+        space_mode: u8,
+        impulse_response_import_id: String,
+        impulse_response_source_hash: String,
+        impulse_response_prepared_hash: String,
+        convolution_mix_percent: u8,
+        convolution_wet_gain_centibels: i16,
         creative_vfx_json: String,
         limiter_enabled: bool,
         limiter_ceiling_centibels: i16,
@@ -531,6 +564,21 @@ mod ffi {
         fn session_catalog_path(self: &LibrarySession) -> String;
         /// The cache root path.
         fn session_cache_root(self: &LibrarySession) -> String;
+        /// Lists imported IRs after verifying or rebuilding their prepared bytes.
+        fn session_impulse_responses(self: &LibrarySession) -> Result<Vec<ImpulseResponseWire>>;
+        /// Imports one local WAV with an explicit user rights declaration.
+        #[allow(clippy::too_many_arguments)]
+        fn session_import_impulse_response(
+            self: &LibrarySession,
+            source_path: &str,
+            display_name: &str,
+            creator: &str,
+            source_url: &str,
+            attribution: &str,
+            rights_kind: &str,
+            spdx_expression: &str,
+            license_url: &str,
+        ) -> Result<ImpulseResponseWire>;
         /// Returns the waveform artifact for an asset, building and caching
         /// it when absent.
         fn session_waveform_artifact(
@@ -804,6 +852,35 @@ impl LibrarySession {
     /// The cache root path.
     fn session_cache_root(&self) -> String {
         self.cache_root().to_string_lossy().into_owned()
+    }
+
+    fn session_impulse_responses(&self) -> Result<Vec<ffi::ImpulseResponseWire>, String> {
+        self.impulse_responses().map_err(|error| error.to_string())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn session_import_impulse_response(
+        &self,
+        source_path: &str,
+        display_name: &str,
+        creator: &str,
+        source_url: &str,
+        attribution: &str,
+        rights_kind: &str,
+        spdx_expression: &str,
+        license_url: &str,
+    ) -> Result<ffi::ImpulseResponseWire, String> {
+        self.import_impulse_response(
+            source_path,
+            display_name,
+            creator,
+            source_url,
+            attribution,
+            rights_kind,
+            spdx_expression,
+            license_url,
+        )
+        .map_err(|error| error.to_string())
     }
 
     /// Returns the waveform artifact for an asset, building and caching it

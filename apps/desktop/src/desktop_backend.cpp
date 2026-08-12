@@ -15,6 +15,65 @@
 
 namespace {
 
+QVariantMap impulseResponseForQml(const echo::desktop::ImpulseResponseWire& wire) {
+    QVariantMap value;
+    value.insert(
+        QStringLiteral("importId"),
+        QString::fromUtf8(wire.import_id.data(), wire.import_id.size())
+    );
+    value.insert(
+        QStringLiteral("sourceHash"),
+        QString::fromUtf8(wire.source_hash.data(), wire.source_hash.size())
+    );
+    value.insert(
+        QStringLiteral("preparedHash"),
+        QString::fromUtf8(wire.prepared_hash.data(), wire.prepared_hash.size())
+    );
+    value.insert(
+        QStringLiteral("preparedPath"),
+        QString::fromUtf8(wire.prepared_path.data(), wire.prepared_path.size())
+    );
+    value.insert(
+        QStringLiteral("displayName"),
+        QString::fromUtf8(wire.display_name.data(), wire.display_name.size())
+    );
+    value.insert(
+        QStringLiteral("creator"),
+        QString::fromUtf8(wire.creator.data(), wire.creator.size())
+    );
+    value.insert(
+        QStringLiteral("sourceUrl"),
+        QString::fromUtf8(wire.source_url.data(), wire.source_url.size())
+    );
+    value.insert(
+        QStringLiteral("attribution"),
+        QString::fromUtf8(wire.attribution.data(), wire.attribution.size())
+    );
+    value.insert(
+        QStringLiteral("rightsKind"),
+        QString::fromUtf8(wire.rights_kind.data(), wire.rights_kind.size())
+    );
+    value.insert(
+        QStringLiteral("spdxExpression"),
+        QString::fromUtf8(wire.spdx_expression.data(), wire.spdx_expression.size())
+    );
+    value.insert(
+        QStringLiteral("licenseUrl"),
+        QString::fromUtf8(wire.license_url.data(), wire.license_url.size())
+    );
+    value.insert(
+        QStringLiteral("importedAtMillis"),
+        static_cast<qlonglong>(wire.imported_at_millis)
+    );
+    value.insert(QStringLiteral("sourceSampleRate"), static_cast<int>(wire.source_sample_rate));
+    value.insert(QStringLiteral("channelCount"), static_cast<int>(wire.channel_count));
+    value.insert(
+        QStringLiteral("preparedFrameCount"),
+        static_cast<qlonglong>(wire.prepared_frame_count)
+    );
+    return value;
+}
+
 QVariantMap creativeVfxForQml(const rust::String& encoded) {
     const auto adjustment = CreativeVfxProjection::fromJson(
         QByteArray(encoded.data(), static_cast<qsizetype>(encoded.size()))
@@ -572,6 +631,41 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("reverbHighCutHertz"),
             static_cast<int>(asset.reverb_high_cut_hertz)
         );
+        const QString impulse_import_id = QString::fromUtf8(
+            asset.impulse_response_import_id.data(),
+            asset.impulse_response_import_id.size()
+        );
+        entry.insert(QStringLiteral("spaceMode"), static_cast<int>(asset.space_mode));
+        entry.insert(QStringLiteral("impulseResponseImportId"), impulse_import_id);
+        entry.insert(
+            QStringLiteral("impulseResponseSourceHash"),
+            QString::fromUtf8(
+                asset.impulse_response_source_hash.data(),
+                asset.impulse_response_source_hash.size()
+            )
+        );
+        entry.insert(
+            QStringLiteral("impulseResponsePreparedHash"),
+            QString::fromUtf8(
+                asset.impulse_response_prepared_hash.data(),
+                asset.impulse_response_prepared_hash.size()
+            )
+        );
+        entry.insert(
+            QStringLiteral("impulseResponsePreparedPath"),
+            QString::fromUtf8(
+                asset.impulse_response_prepared_path.data(),
+                asset.impulse_response_prepared_path.size()
+            )
+        );
+        entry.insert(
+            QStringLiteral("convolutionMixPercent"),
+            static_cast<int>(asset.convolution_mix_percent)
+        );
+        entry.insert(
+            QStringLiteral("convolutionWetGainCentibels"),
+            static_cast<int>(asset.convolution_wet_gain_centibels)
+        );
         entry.insert(QStringLiteral("creativeVfx"), creativeVfxForQml(asset.creative_vfx_json));
         entry.insert(QStringLiteral("limiterEnabled"), asset.limiter_enabled);
         entry.insert(
@@ -611,6 +705,46 @@ QVariantList DesktopBackend::listAssets() const {
         list.append(entry);
     }
     return list;
+}
+
+QVariantList DesktopBackend::listImpulseResponses() const {
+    QVariantList result;
+    try {
+        for (const auto& wire : session_->session_impulse_responses()) {
+            result.append(impulseResponseForQml(wire));
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list impulse responses: %s", error.what());
+    }
+    return result;
+}
+
+QVariantMap DesktopBackend::importImpulseResponse(
+    const QString& sourcePath,
+    const QString& displayName,
+    const QString& creator,
+    const QString& sourceUrl,
+    const QString& attribution,
+    const QString& rightsKind,
+    const QString& spdxExpression,
+    const QString& licenseUrl
+) const {
+    try {
+        const auto wire = session_->session_import_impulse_response(
+            sourcePath.toStdString(),
+            displayName.toStdString(),
+            creator.toStdString(),
+            sourceUrl.toStdString(),
+            attribution.toStdString(),
+            rightsKind.toStdString(),
+            spdxExpression.toStdString(),
+            licenseUrl.toStdString()
+        );
+        return impulseResponseForQml(wire);
+    } catch (const rust::Error& error) {
+        qWarning("cannot import impulse response: %s", error.what());
+        return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
+    }
 }
 
 QVariantList DesktopBackend::listKeywordFacets() const {
@@ -1301,6 +1435,7 @@ bool DesktopBackend::setAssetAdjustment(
         effectChain,
         editSegments,
         effectMasks,
+        {},
         {}
     );
 }
@@ -1367,8 +1502,19 @@ bool DesktopBackend::setAssetAdjustment(
     const QVariantList& effectChain,
     const QVariantList& editSegments,
     const QVariantList& effectMasks,
-    const QVariantMap& creativeVfx
+    const QVariantMap& creativeVfx,
+    const QVariantMap& space
 ) {
+    const int space_mode = space.value(QStringLiteral("mode"), 0).toInt();
+    const int convolution_mix = space.value(QStringLiteral("convolutionMixPercent"), 35).toInt();
+    const int convolution_wet_gain =
+        space.value(QStringLiteral("convolutionWetGainCentibels"), 0).toInt();
+    const QString impulse_import_id =
+        space.value(QStringLiteral("impulseResponseImportId")).toString();
+    const QString impulse_source_hash =
+        space.value(QStringLiteral("impulseResponseSourceHash")).toString();
+    const QString impulse_prepared_hash =
+        space.value(QStringLiteral("impulseResponsePreparedHash")).toString();
     if (trimStartMillis < 0 || trimEndMillis < 0 || fadeInMillis < 0 || fadeOutMillis < 0
         || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0 || fadeOutCurve > 2
         || gainCentibels < -2400 || gainCentibels > 1200
@@ -1394,13 +1540,18 @@ bool DesktopBackend::setAssetAdjustment(
         || compressorRatioTenths > 200 || compressorAttackMillis < 1 || compressorAttackMillis > 200
         || compressorReleaseMillis < 20 || compressorReleaseMillis > 2000
         || compressorMakeupCentibels < 0 || compressorMakeupCentibels > 2400 || reverbCharacter < 0
-        || reverbCharacter > 2 || limiterCeilingCentibels < -600 || limiterCeilingCentibels > 0
+        || reverbCharacter > 3 || limiterCeilingCentibels < -600 || limiterCeilingCentibels > 0
         || limiterReleaseMillis < 20 || limiterReleaseMillis > 1000 || reverbMixPercent < 0
         || reverbMixPercent > 100 || reverbPreDelayMillis < 0 || reverbPreDelayMillis > 200
         || reverbDecayMillis < 100 || reverbDecayMillis > 12000 || reverbSizePercent < 10
         || reverbSizePercent > 100 || reverbDampingPercent < 0 || reverbDampingPercent > 100
         || reverbLowCutHertz < 20 || reverbLowCutHertz > 1000 || reverbHighCutHertz < 1000
-        || reverbHighCutHertz > 20000 || reverbLowCutHertz >= reverbHighCutHertz) {
+        || reverbHighCutHertz > 20000 || reverbLowCutHertz >= reverbHighCutHertz || space_mode < 0
+        || space_mode > 1 || convolution_mix < 0 || convolution_mix > 100
+        || convolution_wet_gain < -2400 || convolution_wet_gain > 1200
+        || (space_mode == 1
+            && (impulse_import_id.isEmpty() || impulse_source_hash.isEmpty()
+                || impulse_prepared_hash.isEmpty()))) {
         qWarning("sound adjustment is outside the supported range");
         return false;
     }
@@ -1479,6 +1630,12 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.reverb_damping_percent = static_cast<std::uint8_t>(reverbDampingPercent);
         adjustment.reverb_low_cut_hertz = static_cast<std::uint16_t>(reverbLowCutHertz);
         adjustment.reverb_high_cut_hertz = static_cast<std::uint16_t>(reverbHighCutHertz);
+        adjustment.space_mode = static_cast<std::uint8_t>(space_mode);
+        adjustment.impulse_response_import_id = impulse_import_id.toStdString();
+        adjustment.impulse_response_source_hash = impulse_source_hash.toStdString();
+        adjustment.impulse_response_prepared_hash = impulse_prepared_hash.toStdString();
+        adjustment.convolution_mix_percent = static_cast<std::uint8_t>(convolution_mix);
+        adjustment.convolution_wet_gain_centibels = static_cast<std::int16_t>(convolution_wet_gain);
         adjustment.creative_vfx_json = CreativeVfxProjection::toJson(*creative_vfx).toStdString();
         adjustment.limiter_enabled = limiterEnabled;
         adjustment.limiter_ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels);

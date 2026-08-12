@@ -39,7 +39,9 @@ fn native_sources() -> Vec<std::path::PathBuf> {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    stack.push(path);
+                    if !is_third_party_path(&path) {
+                        stack.push(path);
+                    }
                 } else if path
                     .extension()
                     .and_then(|extension| extension.to_str())
@@ -55,6 +57,11 @@ fn native_sources() -> Vec<std::path::PathBuf> {
     sources
 }
 
+fn is_third_party_path(path: &std::path::Path) -> bool {
+    path.components()
+        .any(|component| component.as_os_str() == "third_party")
+}
+
 fn which_clang_format() -> Option<std::path::PathBuf> {
     for candidate in ["clang-format", "clang-format-19", "clang-format-18"] {
         if Command::new(candidate)
@@ -67,3 +74,6 @@ fn which_clang_format() -> Option<std::path::PathBuf> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests;

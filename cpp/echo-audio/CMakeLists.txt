@@ -44,6 +44,7 @@ add_library(
     src/scene_vfx_processor.cpp
     src/source_edit_plan.cpp
     src/spring_space_reverb.cpp
+    src/space_processor.cpp
     src/transform_vfx_processor.cpp
     src/tremolo_vfx.cpp
     src/waveform.cpp
@@ -160,6 +161,11 @@ if(BUILD_TESTING)
         NAME echo-convolution-space-processor-test
         COMMAND echo-convolution-space-processor-test
     )
+
+    add_executable(echo-space-processor-test tests/space_processor_test.cpp)
+    target_link_libraries(echo-space-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-space-processor-test)
+    add_test(NAME echo-space-processor-test COMMAND echo-space-processor-test)
 
     add_executable(echo-rotary-vfx-processor-test tests/rotary_vfx_processor_test.cpp)
     target_link_libraries(echo-rotary-vfx-processor-test PRIVATE Echo::Audio)

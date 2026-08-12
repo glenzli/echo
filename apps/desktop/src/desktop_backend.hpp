@@ -27,6 +27,17 @@ class DesktopBackend : public QObject {
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE QVariantList listAssets() const;
+    Q_INVOKABLE QVariantList listImpulseResponses() const;
+    [[nodiscard]] QVariantMap importImpulseResponse(
+        const QString& sourcePath,
+        const QString& displayName,
+        const QString& creator,
+        const QString& sourceUrl,
+        const QString& attribution,
+        const QString& rightsKind,
+        const QString& spdxExpression,
+        const QString& licenseUrl
+    ) const;
     Q_INVOKABLE QVariantList listKeywordFacets() const;
     Q_INVOKABLE QVariantList listSmartAlbums() const;
     Q_INVOKABLE QVariantList listUserAlbums() const;
@@ -192,7 +203,8 @@ class DesktopBackend : public QObject {
         const QVariantList& effectChain,
         const QVariantList& editSegments,
         const QVariantList& effectMasks,
-        const QVariantMap& creativeVfx
+        const QVariantMap& creativeVfx,
+        const QVariantMap& space
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;
@@ -235,6 +247,7 @@ class DesktopBackend : public QObject {
         qlonglong lastListenedAtMillis,
         qlonglong resumePositionMillis
     );
+    void impulseResponsesChanged();
 
   private:
     rust::Box<echo::desktop::LibrarySession> session_;

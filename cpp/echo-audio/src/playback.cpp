@@ -292,12 +292,6 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
-        effect_chain_ = std::make_unique<EffectProcessingChain>(
-            *adjustment_,
-            kCanonicalSampleRate,
-            channel_count_,
-            effect_mask_plan_.get()
-        );
         output_limiter_ =
             std::make_unique<OutputLimiter>(adjustment_->limiter(), kCanonicalSampleRate);
         output_guard_ = std::make_unique<OutputGuard>(kCanonicalSampleRate);
@@ -313,9 +307,6 @@ class PlaybackSession::Impl {
         frame_.reset(av_frame_alloc());
         if (packet_ == nullptr || frame_ == nullptr) {
             fail("cannot allocate decode buffers");
-        }
-        if (!perform_seek(adjustment_->trim_start_millis())) {
-            fail("cannot seek to the prepared trim start");
         }
     }
 
@@ -487,6 +478,16 @@ class PlaybackSession::Impl {
             std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_reverb_ = adjustment;
             reverb_update_pending_ = true;
+        }
+        control_cv_.notify_one();
+    }
+
+    void update_space(const SpaceAdjustment& adjustment) {
+        EffectProcessingChain::validate_space(adjustment, kCanonicalSampleRate, channel_count_);
+        {
+            std::lock_guard<std::mutex> lock(effect_mutex_);
+            pending_space_ = adjustment;
+            space_update_pending_ = true;
         }
         control_cv_.notify_one();
     }
@@ -702,6 +703,16 @@ class PlaybackSession::Impl {
         if (reverb_update_pending_) {
             effect_chain_->update_reverb(pending_reverb_);
             reverb_update_pending_ = false;
+        }
+        if (space_update_pending_) {
+            try {
+                effect_chain_->update_space(pending_space_);
+            } catch (...) {
+                // Keep the currently audible bank when a replacement cannot
+                // be built; the UI retains the authored selection and can
+                // retry after the local artifact is repaired.
+            }
+            space_update_pending_ = false;
         }
         if (creative_vfx_update_pending_) {
             effect_chain_->update_scene_vfx(pending_creative_vfx_.scene);
@@ -965,6 +976,21 @@ class PlaybackSession::Impl {
     }
 
     void producer_loop() {
+        try {
+            effect_chain_ = std::make_unique<EffectProcessingChain>(
+                *adjustment_,
+                kCanonicalSampleRate,
+                channel_count_,
+                effect_mask_plan_.get()
+            );
+            if (!perform_seek(adjustment_->trim_start_millis())) {
+                stopped_.store(true, std::memory_order_release);
+                return;
+            }
+        } catch (...) {
+            stopped_.store(true, std::memory_order_release);
+            return;
+        }
         std::vector<float> scratch(4096 * channel_count_);
         std::vector<std::uint64_t> source_frames(4096, kNoSourceFrame);
         while (true) {
@@ -1077,6 +1103,8 @@ class PlaybackSession::Impl {
     bool compressor_update_pending_ = false;
     ReverbAdjustment pending_reverb_;
     bool reverb_update_pending_ = false;
+    SpaceAdjustment pending_space_;
+    bool space_update_pending_ = false;
     CreativeVfxAdjustment pending_creative_vfx_;
     bool creative_vfx_update_pending_ = false;
     LimiterAdjustment pending_limiter_;
@@ -1148,6 +1176,9 @@ void PlaybackSession::update_compressor(CompressorAdjustment adjustment) {
 }
 void PlaybackSession::update_reverb(ReverbAdjustment adjustment) {
     impl_->update_reverb(adjustment);
+}
+void PlaybackSession::update_space(const SpaceAdjustment& adjustment) {
+    impl_->update_space(adjustment);
 }
 void PlaybackSession::update_creative_vfx(CreativeVfxAdjustment adjustment) {
     impl_->update_creative_vfx(adjustment);

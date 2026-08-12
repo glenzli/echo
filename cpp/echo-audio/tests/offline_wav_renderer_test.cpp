@@ -9,6 +9,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <span>
 #include <string>
 #include <thread>
@@ -337,6 +338,45 @@ int main() {
     for (std::size_t index = 0; index < live_spring_space.size(); ++index) {
         assert(
             std::abs(live_spring_space[index] - pcm24(spring_space_sink.bytes(), index)) < 2.0E-6F
+        );
+    }
+
+    auto convolution_space = full_source;
+    auto impulse = std::make_shared<echo::audio::LoadedPreparedImpulseResponse>();
+    impulse->preparation_version = 1;
+    impulse->left.assign(1'200, 0.0F);
+    impulse->right.assign(1'200, 0.0F);
+    impulse->left[0] = 0.85F;
+    impulse->left[731] = 0.2F;
+    impulse->right[0] = 0.8F;
+    impulse->right[947] = -0.15F;
+    convolution_space.space = {
+        .mode = echo::audio::SpaceMode::Convolution,
+        .convolution = {
+            .import_id = "018f5f1a-ff90-7c71-9ec4-66d36516664c",
+            .source_hash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            .prepared_hash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            .adjustment = {.enabled = true, .mix_percent = 48, .wet_gain_centibels = -175},
+            .impulse = std::move(impulse),
+        },
+    };
+    convolution_space.effect_chain = spring_space.effect_chain;
+    convolution_space.effect_chain_count = spring_space.effect_chain_count;
+    const auto live_convolution_space = render_playback(source, convolution_space);
+    MemorySink convolution_space_sink;
+    const auto convolution_space_result = echo::audio::OfflineWavRenderer::render(
+        source.string(),
+        convolution_space,
+        convolution_space_sink
+    );
+    assert(
+        convolution_space_result.frame_count * convolution_space_result.channel_count
+        == live_convolution_space.size()
+    );
+    for (std::size_t index = 0; index < live_convolution_space.size(); ++index) {
+        assert(
+            std::abs(live_convolution_space[index] - pcm24(convolution_space_sink.bytes(), index))
+            < 2.0E-6F
         );
     }
 

@@ -350,6 +350,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -392,8 +393,10 @@ dependencies = [
  "echo-catalog",
  "echo-core",
  "echo-domain",
+ "echo-ir",
  "serde_json",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]

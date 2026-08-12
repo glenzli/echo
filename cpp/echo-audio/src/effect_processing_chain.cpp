@@ -15,6 +15,7 @@
 #include "echo/audio/parametric_equalizer.hpp"
 #include "echo/audio/rotary_vfx_processor.hpp"
 #include "echo/audio/scene_vfx_processor.hpp"
+#include "echo/audio/space_processor.hpp"
 #include "echo/audio/transform_vfx_processor.hpp"
 
 #include <algorithm>
@@ -67,7 +68,8 @@ class EffectProcessingChain::Impl {
         channel_repair_(adjustment.channel_repair(), sample_rate, channel_count),
         equalizer_(adjustment.equalizer(), sample_rate, channel_count),
         dynamics_(adjustment.compressor(), sample_rate),
-        reverb_(adjustment.reverb(), sample_rate, channel_count),
+        space_(adjustment.space(), sample_rate, channel_count),
+        space_adjustment_(adjustment.space()),
         scene_vfx_(adjustment.creative_vfx().scene, sample_rate, channel_count),
         delay_vfx_(adjustment.creative_vfx().delay, sample_rate, channel_count),
         modulation_vfx_(adjustment.creative_vfx().modulation, sample_rate, channel_count),
@@ -165,7 +167,7 @@ class EffectProcessingChain::Impl {
         channel_repair_.reset();
         equalizer_.reset();
         dynamics_.reset();
-        reverb_.reset();
+        space_.reset();
         scene_vfx_.reset();
         delay_vfx_.reset();
         modulation_vfx_.reset();
@@ -215,7 +217,13 @@ class EffectProcessingChain::Impl {
     }
 
     void update_reverb(ReverbAdjustment adjustment) {
-        reverb_.update(adjustment);
+        space_adjustment_.algorithmic = adjustment;
+        space_.update(space_adjustment_);
+    }
+
+    void update_space(const SpaceAdjustment& adjustment) {
+        space_adjustment_ = adjustment;
+        space_.update(space_adjustment_);
     }
 
     void update_scene_vfx(SceneVfxAdjustment adjustment) {
@@ -335,7 +343,7 @@ class EffectProcessingChain::Impl {
                 dynamics_.process_interleaved(samples, frame_count, channel_count_);
                 break;
             case EffectNodeKind::Space:
-                reverb_.process_interleaved(samples, frame_count, channel_count_);
+                space_.process_interleaved(samples, frame_count, channel_count_);
                 break;
             case EffectNodeKind::SceneVfx:
                 scene_vfx_.process_interleaved(samples, frame_count, channel_count_);
@@ -444,7 +452,8 @@ class EffectProcessingChain::Impl {
     ChannelRepairProcessor channel_repair_;
     ParametricEqualizer equalizer_;
     DynamicsProcessor dynamics_;
-    AlgorithmicReverb reverb_;
+    SpaceProcessor space_;
+    SpaceAdjustment space_adjustment_;
     SceneVfxProcessor scene_vfx_;
     DelayVfxProcessor delay_vfx_;
     ModulationVfxProcessor modulation_vfx_;
@@ -538,6 +547,10 @@ void EffectProcessingChain::update_compressor(CompressorAdjustment adjustment) {
 
 void EffectProcessingChain::update_reverb(ReverbAdjustment adjustment) {
     impl_->update_reverb(adjustment);
+}
+
+void EffectProcessingChain::update_space(const SpaceAdjustment& adjustment) {
+    impl_->update_space(adjustment);
 }
 
 void EffectProcessingChain::update_scene_vfx(SceneVfxAdjustment adjustment) {
@@ -646,6 +659,25 @@ void EffectProcessingChain::validate_reverb(
     std::size_t channel_count
 ) {
     [[maybe_unused]] const AlgorithmicReverb reverb(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_space(
+    const SpaceAdjustment& adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    if (sample_rate != 48000 || channel_count == 0 || channel_count > 2
+        || adjustment.convolution.adjustment.mix_percent > 100
+        || adjustment.convolution.adjustment.wet_gain_centibels < -2400
+        || adjustment.convolution.adjustment.wet_gain_centibels > 1200
+        || (adjustment.mode == SpaceMode::Convolution
+            && (adjustment.convolution.import_id.empty()
+                || adjustment.convolution.source_hash.empty()
+                || adjustment.convolution.prepared_hash.empty()
+                || (adjustment.convolution.prepared_path.empty()
+                    && adjustment.convolution.impulse == nullptr)))) {
+        throw std::invalid_argument("space adjustment is outside the supported range");
+    }
 }
 
 void EffectProcessingChain::validate_scene_vfx(

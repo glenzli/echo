@@ -15,9 +15,9 @@ use echo_domain::AssetId;
 
 use crate::ffi::{
     AnalysisStatusWire, AssetListeningStateWire, AssetSummaryWire, EditSegmentWire, EffectMaskWire,
-    EqualizerBandWire, JobStatsWire, KeywordFacetWire, LongAudioChapterWire, RevisitSnapshotWire,
-    ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire,
-    UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
+    EqualizerBandWire, ImpulseResponseWire, JobStatsWire, KeywordFacetWire, LongAudioChapterWire,
+    RevisitSnapshotWire, ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire,
+    TranscriptWire, UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 pub(crate) fn now_millis() -> i64 {
@@ -126,6 +126,12 @@ struct AdjustmentWireFields {
     reverb_damping_percent: u8,
     reverb_low_cut_hertz: u16,
     reverb_high_cut_hertz: u16,
+    space_mode: u8,
+    impulse_response_import_id: String,
+    impulse_response_source_hash: String,
+    impulse_response_prepared_hash: String,
+    convolution_mix_percent: u8,
+    convolution_wet_gain_centibels: i16,
     creative_vfx_json: String,
     limiter_enabled: bool,
     limiter_ceiling_centibels: i16,
@@ -373,6 +379,48 @@ fn channel_repair_from_wire(
     }
 }
 
+fn space_settings_from_wire(
+    adjustment: &crate::ffi::AssetAdjustmentWire,
+) -> Result<echo_domain::SpaceSettings, SessionError> {
+    let impulse_response = if adjustment.impulse_response_import_id.is_empty()
+        && adjustment.impulse_response_source_hash.is_empty()
+        && adjustment.impulse_response_prepared_hash.is_empty()
+    {
+        None
+    } else {
+        Some(echo_domain::ImpulseResponseSelection {
+            import_id: uuid::Uuid::parse_str(&adjustment.impulse_response_import_id).map_err(
+                |error| SessionError {
+                    message: format!("invalid impulse response import id: {error}"),
+                },
+            )?,
+            source_hash: echo_domain::ContentHash::from_str(
+                &adjustment.impulse_response_source_hash,
+            )
+            .map_err(|error| SessionError {
+                message: format!("invalid impulse response source hash: {error}"),
+            })?,
+            prepared_hash: echo_domain::ContentHash::from_str(
+                &adjustment.impulse_response_prepared_hash,
+            )
+            .map_err(|error| SessionError {
+                message: format!("invalid prepared impulse response hash: {error}"),
+            })?,
+        })
+    };
+
+    Ok(echo_domain::SpaceSettings {
+        mode: echo_domain::SpaceMode::from_wire_value(adjustment.space_mode).map_err(|error| {
+            SessionError {
+                message: error.to_string(),
+            }
+        })?,
+        impulse_response,
+        convolution_mix_percent: adjustment.convolution_mix_percent,
+        convolution_wet_gain_centibels: adjustment.convolution_wet_gain_centibels,
+    })
+}
+
 fn adjustment_graph_from_wire(
     duration: u64,
     adjustment: &crate::ffi::AssetAdjustmentWire,
@@ -459,6 +507,7 @@ fn adjustment_graph_from_wire(
             low_cut_hertz: adjustment.reverb_low_cut_hertz,
             high_cut_hertz: adjustment.reverb_high_cut_hertz,
         })
+        .with_space(space_settings_from_wire(adjustment)?)
         .with_creative_vfx(creative_vfx_from_wire(&adjustment.creative_vfx_json)?)
         .with_limiter(echo_domain::LimiterSettings {
             enabled: adjustment.limiter_enabled,
@@ -546,6 +595,12 @@ fn adjustment_wire_fields(
             reverb_damping_percent: 45,
             reverb_low_cut_hertz: 120,
             reverb_high_cut_hertz: 10_000,
+            space_mode: echo_domain::SpaceMode::Algorithmic.wire_value(),
+            impulse_response_import_id: String::new(),
+            impulse_response_source_hash: String::new(),
+            impulse_response_prepared_hash: String::new(),
+            convolution_mix_percent: 35,
+            convolution_wet_gain_centibels: 0,
             creative_vfx_json: serde_json::to_string(&echo_domain::CreativeVfxSettings::default())
                 .expect("default creative VFX settings encode"),
             limiter_enabled: false,
@@ -650,6 +705,24 @@ fn adjustment_wire_fields(
             reverb_damping_percent: revision.graph.reverb().damping_percent,
             reverb_low_cut_hertz: revision.graph.reverb().low_cut_hertz,
             reverb_high_cut_hertz: revision.graph.reverb().high_cut_hertz,
+            space_mode: revision.graph.space().mode.wire_value(),
+            impulse_response_import_id: revision
+                .graph
+                .space()
+                .impulse_response
+                .map_or_else(String::new, |selection| selection.import_id.to_string()),
+            impulse_response_source_hash: revision
+                .graph
+                .space()
+                .impulse_response
+                .map_or_else(String::new, |selection| selection.source_hash.to_string()),
+            impulse_response_prepared_hash: revision
+                .graph
+                .space()
+                .impulse_response
+                .map_or_else(String::new, |selection| selection.prepared_hash.to_string()),
+            convolution_mix_percent: revision.graph.space().convolution_mix_percent,
+            convolution_wet_gain_centibels: revision.graph.space().convolution_wet_gain_centibels,
             creative_vfx_json: serde_json::to_string(&revision.graph.creative_vfx())
                 .expect("validated creative VFX settings encode"),
             limiter_enabled: revision.graph.limiter().enabled,
@@ -741,8 +814,17 @@ fn analysis_wire_fields(status: Option<&echo_catalog::AssetAnalysisStatus>) -> A
 fn asset_summary_wire(
     asset: echo_catalog::AudioSpaceAsset,
     analysis: Option<&echo_catalog::AssetAnalysisStatus>,
+    cache_root: &Path,
 ) -> AssetSummaryWire {
     let adjustment = adjustment_wire_fields(asset.adjustment, asset.duration_millis);
+    let impulse_response_prepared_path =
+        echo_domain::ContentHash::from_str(&adjustment.impulse_response_prepared_hash)
+            .map(|hash| {
+                echo_cache::blob_path(cache_root, &hash)
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .unwrap_or_default();
     let (sound_caption, summary) = contextual_preview(asset.contextual.as_ref());
     let text_preview = transcript_preview(asset.transcript.as_ref());
     let language = transcript_language(asset.transcript.as_ref());
@@ -829,6 +911,13 @@ fn asset_summary_wire(
         reverb_damping_percent: adjustment.reverb_damping_percent,
         reverb_low_cut_hertz: adjustment.reverb_low_cut_hertz,
         reverb_high_cut_hertz: adjustment.reverb_high_cut_hertz,
+        space_mode: adjustment.space_mode,
+        impulse_response_import_id: adjustment.impulse_response_import_id,
+        impulse_response_source_hash: adjustment.impulse_response_source_hash,
+        impulse_response_prepared_hash: adjustment.impulse_response_prepared_hash,
+        impulse_response_prepared_path,
+        convolution_mix_percent: adjustment.convolution_mix_percent,
+        convolution_wet_gain_centibels: adjustment.convolution_wet_gain_centibels,
         creative_vfx_json: adjustment.creative_vfx_json,
         limiter_enabled: adjustment.limiter_enabled,
         limiter_ceiling_centibels: adjustment.limiter_ceiling_centibels,
@@ -852,6 +941,7 @@ pub struct LibrarySession {
     catalog: std::sync::Arc<Catalog>,
     catalog_path: PathBuf,
     cache_root: PathBuf,
+    ir_source_root: PathBuf,
     workers: std::sync::Mutex<Option<echo_core::WorkerPool>>,
 }
 
@@ -881,10 +971,16 @@ pub fn open_session(path: &str, cache_root: &str) -> Result<LibrarySession, Sess
     let catalog = open_catalog(&catalog_path).map_err(|error| SessionError {
         message: error.to_string(),
     })?;
+    let ir_source_root = catalog_path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+        .join("impulse-responses");
     Ok(LibrarySession {
         catalog: std::sync::Arc::new(catalog),
         catalog_path,
         cache_root: PathBuf::from(cache_root),
+        ir_source_root,
         workers: std::sync::Mutex::new(None),
     })
 }
@@ -898,6 +994,183 @@ impl Drop for LibrarySession {
 }
 
 impl LibrarySession {
+    fn ir_pipeline(&self) -> Result<echo_ir::IrImportPipeline, SessionError> {
+        echo_ir::IrImportPipeline::open(&self.ir_source_root, &self.cache_root).map_err(|error| {
+            SessionError {
+                message: error.to_string(),
+            }
+        })
+    }
+
+    fn prepared_ir_path(
+        &self,
+        record: &echo_catalog::ImpulseResponseRecord,
+    ) -> Result<PathBuf, SessionError> {
+        let store =
+            echo_cache::open_blob_store(&self.cache_root).map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        if let Ok(path) =
+            echo_cache::verify_blob(&store, record.prepared_hash, record.prepared_size_bytes)
+        {
+            return Ok(path);
+        }
+        let pipeline = self.ir_pipeline()?;
+        let rebuilt = pipeline
+            .prepare_owned_source(&echo_ir::StoredIrSource {
+                source_hash: record.source_hash,
+                source_size_bytes: record.source_size_bytes,
+                outcome: echo_ir::ImportOutcome::AlreadyPresent,
+            })
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        if rebuilt.prepared_hash != record.prepared_hash
+            || rebuilt.preparation_version != record.preparation_version
+        {
+            return Err(SessionError {
+                message: "rebuilt impulse response does not match its Catalog evidence".to_owned(),
+            });
+        }
+        Ok(rebuilt.cache_path)
+    }
+
+    fn impulse_response_wire(
+        &self,
+        record: echo_catalog::ImpulseResponseRecord,
+    ) -> Result<ImpulseResponseWire, SessionError> {
+        let prepared_path = self.prepared_ir_path(&record)?;
+        let (rights_kind, spdx_expression, license_url) = match record.rights {
+            echo_catalog::ImpulseResponseRights::Spdx {
+                expression,
+                license_url,
+            } => (
+                "spdx".to_owned(),
+                expression,
+                license_url.unwrap_or_default(),
+            ),
+            echo_catalog::ImpulseResponseRights::UserOwnedNoRedistribution => (
+                "user_owned_no_redistribution".to_owned(),
+                String::new(),
+                String::new(),
+            ),
+        };
+        Ok(ImpulseResponseWire {
+            import_id: record.import_id.to_string(),
+            source_hash: record.source_hash.to_string(),
+            prepared_hash: record.prepared_hash.to_string(),
+            prepared_path: prepared_path.to_string_lossy().into_owned(),
+            display_name: record.display_name,
+            creator: record.creator.unwrap_or_default(),
+            source_url: record.source_url.unwrap_or_default(),
+            attribution: record.attribution.unwrap_or_default(),
+            rights_kind,
+            spdx_expression,
+            license_url,
+            imported_at_millis: record.imported_at_millis,
+            source_sample_rate: record.source_sample_rate,
+            channel_count: record.channel_count,
+            prepared_frame_count: record.prepared_frame_count,
+        })
+    }
+
+    pub fn impulse_responses(&self) -> Result<Vec<ImpulseResponseWire>, SessionError> {
+        let records = self
+            .catalog
+            .with_transaction(echo_catalog::list_impulse_responses)
+            .map_err(SessionError::from)?;
+        records
+            .into_iter()
+            .map(|record| self.impulse_response_wire(record))
+            .collect()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn import_impulse_response(
+        &self,
+        source_path: &str,
+        display_name: &str,
+        creator: &str,
+        source_url: &str,
+        attribution: &str,
+        rights_kind: &str,
+        spdx_expression: &str,
+        license_url: &str,
+    ) -> Result<ImpulseResponseWire, SessionError> {
+        let optional = |value: &str| {
+            let trimmed = value.trim();
+            (!trimmed.is_empty()).then(|| trimmed.to_owned())
+        };
+        let rights = match rights_kind {
+            "spdx" => echo_ir::IrRightsDeclaration::Spdx {
+                expression: spdx_expression.trim().to_owned(),
+                license_url: optional(license_url),
+            },
+            "user_owned_no_redistribution" => {
+                echo_ir::IrRightsDeclaration::UserOwnedNoRedistribution
+            }
+            _ => {
+                return Err(SessionError {
+                    message: "impulse response rights declaration is invalid".to_owned(),
+                });
+            }
+        };
+        let imported = self
+            .ir_pipeline()?
+            .import_local_wav(
+                Path::new(source_path),
+                echo_ir::IrImportProvenance {
+                    display_name: display_name.trim().to_owned(),
+                    creator: optional(creator),
+                    source_url: optional(source_url),
+                    attribution: optional(attribution),
+                    rights,
+                },
+            )
+            .map_err(|error| SessionError {
+                message: error.to_string(),
+            })?;
+        let rights = match imported.record.provenance.rights {
+            echo_ir::IrRightsDeclaration::Spdx {
+                expression,
+                license_url,
+            } => echo_catalog::ImpulseResponseRights::Spdx {
+                expression,
+                license_url,
+            },
+            echo_ir::IrRightsDeclaration::UserOwnedNoRedistribution => {
+                echo_catalog::ImpulseResponseRights::UserOwnedNoRedistribution
+            }
+        };
+        let record = echo_catalog::ImpulseResponseRecord {
+            import_id: imported.record.import_id,
+            source_hash: imported.record.source_hash,
+            source_size_bytes: imported.record.source_size_bytes,
+            prepared_hash: imported.preparation.prepared_hash,
+            prepared_size_bytes: imported.preparation.size_bytes,
+            preparation_version: imported.preparation.preparation_version,
+            source_sample_rate: imported.preparation.source_sample_rate,
+            channel_count: imported.preparation.channel_count,
+            source_frame_count: imported.preparation.source_frame_count,
+            prepared_frame_count: imported.preparation.prepared_frame_count,
+            avcodec_version: imported.preparation.avcodec_version,
+            swresample_version: imported.preparation.swresample_version,
+            imported_at_millis: imported.record.imported_at_millis,
+            original_path: imported.record.original_path,
+            display_name: imported.record.provenance.display_name,
+            creator: imported.record.provenance.creator,
+            source_url: imported.record.provenance.source_url,
+            attribution: imported.record.provenance.attribution,
+            rights,
+        };
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::record_impulse_response(transaction, &record)
+            })
+            .map_err(SessionError::from)?;
+        self.impulse_response_wire(record)
+    }
+
     /// Lists registered assets, newest import first.
     ///
     /// # Errors
@@ -926,7 +1199,7 @@ impl LibrarySession {
             .into_iter()
             .map(|asset| {
                 let status = statuses.remove(&asset.id);
-                asset_summary_wire(asset, status.as_ref())
+                asset_summary_wire(asset, status.as_ref(), &self.cache_root)
             })
             .collect())
     }

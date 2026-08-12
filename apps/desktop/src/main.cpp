@@ -3,6 +3,7 @@
 
 #include "batch_export_controller.hpp"
 #include "desktop_backend.hpp"
+#include "impulse_response_controller.hpp"
 #include "inference_preferences.hpp"
 #include "loudness_analysis_controller.hpp"
 #include "playback_controller.hpp"
@@ -73,6 +74,7 @@ int main(int argc, char* argv[]) {
         LoudnessAnalysisController loudness_analyzer;
         RenderExportController render_exporter(backend);
         BatchExportController batch_exporter(backend);
+        ImpulseResponseController impulse_response_controller(backend);
         UiPreferences ui_prefs(application);
         InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
         SemanticSearchController semantic_search(
@@ -104,6 +106,10 @@ int main(int argc, char* argv[]) {
             &render_exporter
         );
         engine.rootContext()->setContextProperty(QStringLiteral("batchExporter"), &batch_exporter);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("impulseResponseController"),
+            &impulse_response_controller
+        );
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
         engine.rootContext()->setContextProperty(
             QStringLiteral("inferencePrefs"),

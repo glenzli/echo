@@ -325,6 +325,19 @@ PreparedAdjustment::PreparedAdjustment(
         || reverb.low_cut_hertz >= reverb.high_cut_hertz) {
         throw std::invalid_argument("adjustment reverb is outside the supported range");
     }
+    if (authored.space.mode == SpaceMode::Convolution
+        && (authored.space.convolution.import_id.empty()
+            || authored.space.convolution.source_hash.empty()
+            || authored.space.convolution.prepared_hash.empty()
+            || (authored.space.convolution.prepared_path.empty()
+                && authored.space.convolution.impulse == nullptr))) {
+        throw std::invalid_argument("convolution space requires a prepared impulse response");
+    }
+    if (authored.space.convolution.adjustment.mix_percent > 100
+        || authored.space.convolution.adjustment.wet_gain_centibels < -2400
+        || authored.space.convolution.adjustment.wet_gain_centibels > 1200) {
+        throw std::invalid_argument("convolution space is outside the supported range");
+    }
     if (!valid_creative_vfx(authored.creative_vfx)) {
         throw std::invalid_argument("adjustment creative VFX is outside the supported range");
     }
@@ -346,6 +359,8 @@ PreparedAdjustment::PreparedAdjustment(
     equalizer_ = authored.equalizer;
     compressor_ = authored.compressor;
     reverb_ = authored.reverb;
+    space_ = authored.space;
+    space_.algorithmic = authored.reverb;
     creative_vfx_ = authored.creative_vfx;
     limiter_ = authored.limiter;
     effect_chain_ = authored.effect_chain;
@@ -398,6 +413,10 @@ CompressorAdjustment PreparedAdjustment::compressor() const {
 
 ReverbAdjustment PreparedAdjustment::reverb() const {
     return reverb_;
+}
+
+const SpaceAdjustment& PreparedAdjustment::space() const {
+    return space_;
 }
 
 CreativeVfxAdjustment PreparedAdjustment::creative_vfx() const {

@@ -428,6 +428,12 @@ fn adjustment(duration_millis: u64) -> AssetAdjustmentWire {
         reverb_damping_percent: 45,
         reverb_low_cut_hertz: 120,
         reverb_high_cut_hertz: 10_000,
+        space_mode: 0,
+        impulse_response_import_id: String::new(),
+        impulse_response_source_hash: String::new(),
+        impulse_response_prepared_hash: String::new(),
+        convolution_mix_percent: 35,
+        convolution_wet_gain_centibels: 0,
         creative_vfx_json: serde_json::to_string(&echo_domain::CreativeVfxSettings::default())
             .expect("default creative VFX encodes"),
         limiter_enabled: false,

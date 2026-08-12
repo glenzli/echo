@@ -22,6 +22,7 @@ mod catalog;
 mod contextual_facets;
 mod derived_artifact;
 mod error;
+mod impulse_response;
 mod inference_run;
 mod job_queue;
 mod listening_state;
@@ -72,6 +73,9 @@ pub use derived_artifact::{
 };
 pub use error::CatalogError;
 pub use error::CatalogErrorKind;
+pub use impulse_response::{
+    ImpulseResponseRecord, ImpulseResponseRights, list_impulse_responses, record_impulse_response,
+};
 pub use inference_run::{
     InferenceRun, InferenceRunState, UpsertInferenceRun, inference_run, upsert_inference_run,
 };

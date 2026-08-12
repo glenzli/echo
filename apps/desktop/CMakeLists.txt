@@ -107,6 +107,8 @@ qt_add_executable(
     src/main.cpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
+    src/impulse_response_controller.cpp
+    src/impulse_response_controller.hpp
     src/batch_export_controller.cpp
     src/batch_export_controller.hpp
     src/playback_controller.cpp
@@ -116,6 +118,7 @@ qt_add_executable(
     src/parametric_equalizer_projection.cpp
     src/parametric_equalizer_projection.hpp
     src/playback_adjustment_projection.cpp
+    src/space_projection.cpp
     src/playback_adjustment_projection.hpp
     src/render_export_controller.cpp
     src/render_export_controller.hpp
@@ -208,6 +211,7 @@ qt_add_qml_module(
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
         qml/SpaceReverbPanel.qml
+        qml/ImpulseResponseImportDialog.qml
         qml/SoundEditorTimeline.qml
         qml/SourceEditTimeline.qml
         qml/EffectMaskEditor.qml

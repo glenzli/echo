@@ -4097,12 +4097,37 @@
     </message>
 </context>
 <context>
+    <name>ImpulseResponseImportDialog</name>
+    <message><source>Import impulse response</source><translation>导入脉冲响应</translation></message>
+    <message><source>Choose a local WAV impulse response</source><translation>选择本地 WAV 脉冲响应</translation></message>
+    <message><source>WAV audio (*.wav)</source><translation>WAV 音频 (*.wav)</translation></message>
+    <message><source>Echo preserves the original WAV, a canonical prepared copy, and the rights declaration as separate evidence.</source><translation>Echo 会分别保存原始 WAV、规范化处理副本与权利声明，作为独立证据。</translation></message>
+    <message><source>Local WAV file</source><translation>本地 WAV 文件</translation></message>
+    <message><source>Display name</source><translation>显示名称</translation></message>
+    <message><source>Creator (optional)</source><translation>创作者（可选）</translation></message>
+    <message><source>Source URL (optional)</source><translation>来源网址（可选）</translation></message>
+    <message><source>Attribution (optional)</source><translation>署名信息（可选）</translation></message>
+    <message><source>SPDX or public licence</source><translation>SPDX 或公共许可证</translation></message>
+    <message><source>My recording · no redistribution</source><translation>我的录音 · 禁止再分发</translation></message>
+    <message><source>SPDX expression, for example CC0-1.0</source><translation>SPDX 表达式，例如 CC0-1.0</translation></message>
+    <message><source>Choose another file</source><translation>重新选择文件</translation></message>
+    <message><source>Importing…</source><translation>正在导入…</translation></message>
+    <message><source>Import</source><translation>导入</translation></message>
+</context>
+<context>
     <name>SpaceReverbPanel</name>
     <message>
         <location filename="../qml/SpaceReverbPanel.qml" line="43"/>
-        <source>Algorithmic space</source>
-        <translation>算法空间</translation>
+        <source>Space</source>
+        <translation>空间</translation>
     </message>
+    <message><source>Algorithmic</source><translation>算法</translation></message>
+    <message><source>Convolution</source><translation>卷积</translation></message>
+    <message><source>Choose an imported impulse response</source><translation>选择已导入的脉冲响应</translation></message>
+    <message><source>Import WAV…</source><translation>导入 WAV…</translation></message>
+    <message><source>Wet gain</source><translation>湿声增益</translation></message>
+    <message><source>Stereo IRs use parallel L→L and R→R processing. Echo does not label this true stereo.</source><translation>立体声 IR 采用 L→L、R→R 并行处理；Echo 不会将其标为真立体声。</translation></message>
+    <message><source>User-owned · no redistribution</source><translation>用户自有 · 禁止再分发</translation></message>
     <message>
         <location filename="../qml/SpaceReverbPanel.qml" line="58"/>
         <source>LIVE</source>

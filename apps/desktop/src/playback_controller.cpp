@@ -16,6 +16,7 @@
 #include "playback_adjustment_projection.hpp"
 #include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
+#include "space_projection.hpp"
 
 PlaybackController::PlaybackController(QObject* parent) : QObject(parent) {
     position_timer_.setInterval(100);
@@ -233,11 +234,13 @@ bool PlaybackController::updateChannelRepair(const QVariantMap& channelRepairVal
 bool PlaybackController::updateReverb(const QVariantMap& reverbValue) {
     const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
     const auto reverb = ReverbProjection::fromQml(reverbValue);
-    if (session == nullptr || !reverb.has_value()) {
+    const auto space =
+        reverb.has_value() ? SpaceProjection::fromQml(reverbValue, *reverb) : std::nullopt;
+    if (session == nullptr || !space.has_value()) {
         return false;
     }
     try {
-        session->update_reverb(*reverb);
+        session->update_space(*space);
     } catch (const std::exception& error) {
         qWarning("cannot update playback reverb: %s", error.what());
         return false;

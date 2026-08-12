@@ -603,10 +603,30 @@ InferenceBackend
     基础设施延迟并支持 Original 时间遮罩。旧 Catalog revision 缺少新 Creative 字段时确定性恢复
     为 disabled，既有 Room／Hall／Plate wire、旧 Creative 听感、链 active count 与 Original 均不变；
     试听实时更新、共享 effect-chain、整段分析、离线导出与处理方案使用同一合同，专属控件由 UI
-    owner 接入。卷积仍是下一独立确定性里程碑：它必须先交付 owned source store、BLAKE3 source／
-    prepared identity、append-only IR provenance／license、离线 48 kHz preparation、可验证的无分配
-    runtime bank 与明确失败语义；不得只增加一个 IR 路径控件，也不得把 2ch dual-mono 宣称为
-    true-stereo。Freeze／Granular 因静音后持续生成内容和尾音边界不同，不纳入本输入驱动切片。
+    owner 接入。卷积由下一独立确定性里程碑先交付 owned source store、BLAKE3 source／prepared
+    identity、append-only IR provenance／license、离线 48 kHz preparation、可验证的无分配 runtime
+    bank 与明确失败语义；不得只增加一个 IR 路径控件，也不得把 2ch dual-mono 宣称为 true-stereo。
+    Freeze／Granular 因静音后持续生成内容和尾音边界不同，不纳入本输入驱动切片。
+  - 卷积空间底层资产与执行切片（2026-08-13）：新增独立 `echo-ir` 生命周期 owner，将 exact source
+    WAV 以 BLAKE3 内容地址保存到不可逐出的 durable store；同一 source 只存一份，每次导入仍追加
+    独立的标题、作者、出处与用户声明 license 记录。发布顺序固定为 source object → canonical
+    preparation cache → provenance event，失败最多留下可延后 GC 的孤儿对象，不留下指向缺失 source
+    的记录。离线 preparer 仅接受 classic RIFF/WAVE 的 PCM16／24／32 或 float32、mono／stereo、
+    8--192 kHz，以及声道掩码明确的常见 WAVE_FORMAT_EXTENSIBLE；RF64、压缩 WAV、歧义 layout、
+    non-finite、数字静音、超过五秒或超过 32 MiB 的输入 fail closed。结果保留幅度、前导静音和
+    accepted tail，以带 preparation／avcodec／swresample identity 的 portable header 与 planar
+    float32@48 kHz 写入可重建 cache；cache 删除后可从 owned source 重建为相同 prepared hash。
+    runtime 使用固定 pin 的 MIT `FFTConvolver` core 与 MIT Signalsmith FFT adapter，未复制其
+    Ooura-derived AudioFFT；构造阶段完成分区 FFT 与全部分配，process／update／reset 零分配、
+    零锁、零基础设施延迟。v1 支持 mono IR 驱动 L／R 或 2ch stereo-parallel L→L／R→R，明确不称
+    true-stereo；稳定旁路停止 FFT 并清空 history，重新启用从空 bank 淡入。Catalog `20260813.2`
+    保存 immutable import identity、source／prepared hash、append-only rights/provenance 与 authored
+    Algorithmic／Convolution Space mode；桌面以异步本地 WAV 导入完成 source → preparation → provenance
+    闭环，用户必须显式声明 SPDX 或“本人拥有且不再分发”，失败只展示有界错误而不发布半成品。
+    worker 构造并验证完整 ready bank，音频块边界发布；IR identity 切换显式采用旧 wet fade-out →
+    history reset → 新 wet fade-in，不假称保留切换前卷积历史。实时播放、整段响度分析、单次与批量
+    离线导出消费同一 Space 参数和 validated artifact，导出仍沿用 authored frame count 并截断尾音。
+    true-stereo、云端 IR 浏览、bundled 第三方 IR 与 include-effect-tail 均不在本切片。
   - 驱动与旋转扬声器切片（2026-08-13）：Catalog `20260813.1` 在 Creative map 与 authored
     chain 尾部追加默认关闭的 Drive 和 Rotary 两个独立 singleton。Drive 提供 Soft Clip／
     Overdrive／Fuzz、干湿比、驱动量、音色与输出增益；独立处理器以二倍过采样和固定 FIR 抑制
@@ -648,7 +668,7 @@ InferenceBackend
     人物身份合并、地理邻近聚类、规则持续同步、共享相册或跨设备同步。
 - **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 
-### 当前状态校准（2026-08-12）
+### 当前状态校准（2026-08-13）
 
 Echo 处于 **M0 已收口、M1 Runtime 音频证据链与长录音分层理解完成、M2 声音墙已具备
 用户相册、可解释 AI 聚合和首个 provisional 自然语言检索、M3 已形成可试听、可测量、可保存版本并可离线导出的基础非破坏性处理

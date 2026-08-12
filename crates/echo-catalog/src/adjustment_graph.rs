@@ -5,6 +5,7 @@ use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, AssetId, ChannelRepairSettings, CompressorSettings,
     CreativeVfxSettings, DeClickSettings, DeHumSettings, EditTimeline, EffectChain, EffectMask,
     FadeCurve, LimiterSettings, ParametricEqualizer, RestorationSettings, ReverbSettings,
+    SpaceSettings,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
@@ -36,6 +37,7 @@ struct StoredAdjustment {
     compressor_release: i64,
     compressor_makeup: i64,
     reverb_json: String,
+    space_json: String,
     restoration_json: String,
     de_hum_json: String,
     de_click_json: String,
@@ -70,7 +72,7 @@ pub fn latest_adjustment_graph(
              low_cut_hertz, parametric_equalizer_json, compressor_enabled, \
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
-             compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
+             compressor_makeup_centibels, reverb_json, space_json, restoration_json, de_hum_json, \
              de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
@@ -111,7 +113,7 @@ pub fn adjustment_graph_at_revision(
              low_cut_hertz, parametric_equalizer_json, compressor_enabled, \
              compressor_threshold_centibels, compressor_ratio_tenths, \
              compressor_attack_millis, compressor_release_millis, \
-             compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
+             compressor_makeup_centibels, reverb_json, space_json, restoration_json, de_hum_json, \
              de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 AND id = ?2",
@@ -164,18 +166,19 @@ fn stored_adjustment_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Store
         compressor_release: row.get(14)?,
         compressor_makeup: row.get(15)?,
         reverb_json: row.get(16)?,
-        restoration_json: row.get(17)?,
-        de_hum_json: row.get(18)?,
-        de_click_json: row.get(19)?,
-        channel_repair_json: row.get(20)?,
-        effect_chain_json: row.get(21)?,
-        edit_timeline_json: row.get(22)?,
-        effect_masks_json: row.get(23)?,
-        limiter_enabled: row.get(24)?,
-        limiter_ceiling: row.get(25)?,
-        limiter_release: row.get(26)?,
-        creative_vfx_json: row.get(27)?,
-        created_at: row.get(28)?,
+        space_json: row.get(17)?,
+        restoration_json: row.get(18)?,
+        de_hum_json: row.get(19)?,
+        de_click_json: row.get(20)?,
+        channel_repair_json: row.get(21)?,
+        effect_chain_json: row.get(22)?,
+        edit_timeline_json: row.get(23)?,
+        effect_masks_json: row.get(24)?,
+        limiter_enabled: row.get(25)?,
+        limiter_ceiling: row.get(26)?,
+        limiter_release: row.get(27)?,
+        creative_vfx_json: row.get(28)?,
+        created_at: row.get(29)?,
     })
 }
 
@@ -221,6 +224,7 @@ fn restore_adjustment_graph(
             makeup_centibels: stored_centibels(stored.compressor_makeup, "compressor makeup")?,
         })
         .with_reverb(stored_reverb(&stored.reverb_json)?)
+        .with_space(stored_space(&stored.space_json)?)
         .with_creative_vfx(stored_creative_vfx(&stored.creative_vfx_json)?)
         .with_effect_chain(stored_effect_chain(&stored.effect_chain_json)?)
         .with_edit_timeline(stored_edit_timeline(
@@ -249,6 +253,7 @@ fn restore_adjustment_graph(
 ///
 /// Returns a catalog failure when the asset is missing, has no known
 /// duration, the graph exceeds that duration, or the write cannot be applied.
+#[allow(clippy::too_many_lines)] // One atomic revision projection keeps every authored field visible.
 pub fn record_adjustment_graph(
     transaction: &Transaction<'_>,
     asset_id: AssetId,
@@ -284,13 +289,13 @@ pub fn record_adjustment_graph(
          compressor_enabled, \
          compressor_threshold_centibels, compressor_ratio_tenths, \
          compressor_attack_millis, compressor_release_millis, \
-         compressor_makeup_centibels, reverb_json, restoration_json, de_hum_json, \
+         compressor_makeup_centibels, reverb_json, space_json, restoration_json, de_hum_json, \
          de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, \
          limiter_enabled, limiter_ceiling_centibels, \
          limiter_release_millis, creative_vfx_json, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
                  ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, \
-                 ?27, ?28, ?29, ?30, ?31, ?32)",
+                 ?27, ?28, ?29, ?30, ?31, ?32, ?33)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -317,6 +322,10 @@ pub fn record_adjustment_graph(
             serde_json::to_string(&validated.reverb()).map_err(|error| CatalogError::new(
                 CatalogErrorKind::Other,
                 format!("cannot encode reverb: {error}"),
+            ))?,
+            serde_json::to_string(&validated.space()).map_err(|error| CatalogError::new(
+                CatalogErrorKind::Other,
+                format!("cannot encode space settings: {error}"),
             ))?,
             serde_json::to_string(&validated.restoration()).map_err(|error| CatalogError::new(
                 CatalogErrorKind::Other,
@@ -388,6 +397,7 @@ fn validated_adjustment_graph(
         .with_channel_repair(graph.channel_repair())
         .with_compressor(graph.compressor())
         .with_reverb(graph.reverb())
+        .with_space(graph.space())
         .with_creative_vfx(graph.creative_vfx())
         .with_limiter(graph.limiter())
         .with_effect_chain(graph.effect_chain())
@@ -417,6 +427,15 @@ fn stored_reverb(value: &str) -> Result<ReverbSettings, CatalogError> {
         CatalogError::new(
             CatalogErrorKind::Other,
             format!("stored reverb is invalid: {error}"),
+        )
+    })
+}
+
+fn stored_space(value: &str) -> Result<SpaceSettings, CatalogError> {
+    serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored space settings are invalid: {error}"),
         )
     })
 }

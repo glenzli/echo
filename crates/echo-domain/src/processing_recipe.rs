@@ -13,7 +13,7 @@ use crate::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, ChannelRepairSettings,
     CompressorSettings, CreativeVfxSettings, DeClickSettings, DeHumSettings, EffectChain,
     EffectNodeKind, FadeCurves, LimiterSettings, ParametricEqualizer, ProcessingRecipeId,
-    ProcessingRecipeRevisionId, RestorationSettings, ReverbSettings,
+    ProcessingRecipeRevisionId, RestorationSettings, ReverbSettings, SpaceSettings,
 };
 
 /// Stable selectable processing component identity.
@@ -148,6 +148,8 @@ pub struct AdjustmentPatch {
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     reverb: ReverbSettings,
+    #[serde(default)]
+    space: SpaceSettings,
     creative_vfx: CreativeVfxSettings,
     limiter: LimiterSettings,
     effect_chain: EffectChain,
@@ -165,6 +167,8 @@ struct StoredAdjustmentPatch {
     equalizer: ParametricEqualizer,
     compressor: CompressorSettings,
     reverb: ReverbSettings,
+    #[serde(default)]
+    space: SpaceSettings,
     #[serde(default)]
     creative_vfx: CreativeVfxSettings,
     limiter: LimiterSettings,
@@ -187,6 +191,7 @@ impl<'de> Deserialize<'de> for AdjustmentPatch {
             equalizer: stored.equalizer,
             compressor: stored.compressor,
             reverb: stored.reverb,
+            space: stored.space,
             creative_vfx: stored.creative_vfx,
             limiter: stored.limiter,
             effect_chain: stored.effect_chain,
@@ -218,6 +223,7 @@ impl AdjustmentPatch {
             equalizer: graph.equalizer(),
             compressor: graph.compressor(),
             reverb: graph.reverb(),
+            space: graph.space(),
             creative_vfx: graph.creative_vfx(),
             limiter: graph.limiter(),
             effect_chain: graph.effect_chain(),
@@ -280,6 +286,7 @@ impl AdjustmentPatch {
         }
         if self.contains(ProcessingComponent::Space) {
             effects.reverb = self.reverb;
+            effects.space = self.space;
         }
         if self.contains(ProcessingComponent::SceneVfx) {
             effects.creative_vfx.scene = self.creative_vfx.scene;
@@ -354,6 +361,7 @@ impl AdjustmentPatch {
                 .with_equalizer(self.equalizer)
                 .with_compressor(self.compressor)
                 .with_reverb(self.reverb)
+                .with_space(self.space)
                 .with_creative_vfx(self.creative_vfx)
                 .with_limiter(self.limiter)
                 .with_effect_chain(self.effect_chain),
@@ -429,6 +437,7 @@ fn processing_from_graph(graph: &AdjustmentGraph) -> AdjustmentEffects {
     .with_equalizer(graph.equalizer())
     .with_compressor(graph.compressor())
     .with_reverb(graph.reverb())
+    .with_space(graph.space())
     .with_creative_vfx(graph.creative_vfx())
     .with_limiter(graph.limiter())
     .with_effect_chain(graph.effect_chain())

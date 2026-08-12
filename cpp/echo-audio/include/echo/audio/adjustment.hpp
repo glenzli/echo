@@ -1,10 +1,14 @@
 #pragma once
 
+#include "echo/audio/convolution_space_processor.hpp"
 #include "echo/audio/creative_vfx.hpp"
+#include "echo/audio/prepared_impulse_response.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <string>
 #include <vector>
 
 namespace echo::audio {
@@ -190,6 +194,33 @@ struct ReverbAdjustment {
     std::uint16_t high_cut_hertz = 10000;
 };
 
+enum class SpaceMode : std::uint8_t {
+    Algorithmic = 0,
+    Convolution = 1,
+};
+
+/// Runtime-resolved convolution intent for the single Space insert. Stable
+/// identities cross persistence; the prepared samples are validated from the
+/// cache before this value reaches the audio engine.
+struct ConvolutionSpaceRuntime {
+    std::string import_id;
+    std::string source_hash;
+    std::string prepared_hash;
+    std::string prepared_path;
+    ConvolutionSpaceAdjustment adjustment{
+        .enabled = false,
+        .mix_percent = 35,
+        .wet_gain_centibels = 0,
+    };
+    std::shared_ptr<const LoadedPreparedImpulseResponse> impulse;
+};
+
+struct SpaceAdjustment {
+    SpaceMode mode = SpaceMode::Algorithmic;
+    ReverbAdjustment algorithmic;
+    ConvolutionSpaceRuntime convolution;
+};
+
 /// Authored non-destructive playback adjustments. Milliseconds, centibels,
 /// and hertz are explicit so the cross-language boundary never relies on
 /// floating-point UI units. A zero `trim_end_millis` means source end.
@@ -210,6 +241,7 @@ struct PlaybackAdjustment {
     ParametricEqualizerAdjustment equalizer;
     CompressorAdjustment compressor;
     ReverbAdjustment reverb;
+    SpaceAdjustment space;
     CreativeVfxAdjustment creative_vfx;
     LimiterAdjustment limiter;
     std::array<EffectNodeKind, kEffectNodeCount> effect_chain{{
@@ -258,6 +290,7 @@ class PreparedAdjustment {
     [[nodiscard]] ParametricEqualizerAdjustment equalizer() const;
     [[nodiscard]] CompressorAdjustment compressor() const;
     [[nodiscard]] ReverbAdjustment reverb() const;
+    [[nodiscard]] const SpaceAdjustment& space() const;
     [[nodiscard]] CreativeVfxAdjustment creative_vfx() const;
     [[nodiscard]] LimiterAdjustment limiter() const;
     [[nodiscard]] std::array<EffectNodeKind, kEffectNodeCount> effect_chain() const;
@@ -285,6 +318,7 @@ class PreparedAdjustment {
     ParametricEqualizerAdjustment equalizer_;
     CompressorAdjustment compressor_;
     ReverbAdjustment reverb_;
+    SpaceAdjustment space_;
     CreativeVfxAdjustment creative_vfx_;
     LimiterAdjustment limiter_;
     std::array<EffectNodeKind, kEffectNodeCount> effect_chain_;
