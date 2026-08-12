@@ -62,7 +62,7 @@ pub(crate) enum Command {
         catalog: std::path::PathBuf,
         /// Recording file to transcribe.
         source: std::path::PathBuf,
-        /// Infer Runtime endpoint (default: env override, Discovery, then local 8787).
+        /// Explicit development endpoint override (default: env override, then Discovery).
         #[arg(long)]
         endpoint: Option<String>,
     },
@@ -85,7 +85,7 @@ pub(crate) enum Command {
         /// Cache root (default: `ECHO_CACHE` or `cache`).
         #[arg(long)]
         cache: Option<std::path::PathBuf>,
-        /// Infer Runtime endpoint (default: env override, Discovery, then local 8787).
+        /// Explicit development endpoint override (default: env override, then Discovery).
         #[arg(long)]
         endpoint: Option<String>,
         /// Worker threads (default 2).
@@ -113,7 +113,7 @@ pub(crate) enum Command {
         catalog: std::path::PathBuf,
         /// Natural-language query. It is embedded ephemerally and not persisted.
         query: String,
-        /// Infer Runtime endpoint (default: env override, Discovery, then local 8787).
+        /// Explicit development endpoint override (default: env override, then Discovery).
         #[arg(long)]
         endpoint: Option<String>,
         /// Maximum hits (default 20).

@@ -192,9 +192,12 @@ fn obsolete_runtime_vectors_are_removed_without_touching_current_documents() {
         .expect("assets register");
     catalog
         .with_transaction(|transaction| {
-            for (index, contract) in ["0.1.0-candidate.4", "0.1.0-obsolete"]
-                .into_iter()
-                .enumerate()
+            for (index, contract) in [
+                "infer-runtime.consumer-core@20260813.1",
+                "infer-runtime.consumer-core@20260812.1",
+            ]
+            .into_iter()
+            .enumerate()
             {
                 let source = SemanticSource {
                     asset_id: assets[index].id,
@@ -220,7 +223,10 @@ fn obsolete_runtime_vectors_are_removed_without_touching_current_documents() {
 
     let removed = catalog
         .with_transaction(|transaction| {
-            remove_semantic_documents_outside_contract(transaction, "0.1.0-candidate.4")
+            remove_semantic_documents_outside_contract(
+                transaction,
+                "infer-runtime.consumer-core@20260813.1",
+            )
         })
         .expect("obsolete vectors remove");
     assert_eq!(removed, 1);

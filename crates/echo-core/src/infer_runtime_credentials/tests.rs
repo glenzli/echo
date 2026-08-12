@@ -20,7 +20,7 @@ fn imports_and_loads_an_owner_only_credential() {
 
     assert_eq!(destination, store.credential_path());
     assert_eq!(format!("{loaded:?}"), "InferRuntimeCredential([REDACTED])");
-    assert_eq!(loaded.into_bearer_token(), "test-consumer-token");
+    assert_eq!(loaded.as_bytes(), b"test-consumer-token");
     assert_owner_only(&destination);
     assert_owner_only(destination.parent().expect("credential directory"));
 }

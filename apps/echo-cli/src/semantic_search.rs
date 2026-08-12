@@ -4,7 +4,7 @@ use std::path::Path;
 
 use anyhow::Context;
 use echo_catalog::open_catalog;
-use echo_core::{InferRuntimeConfig, load_infer_runtime_credential};
+use echo_core::{InferRuntimeConfig, infer_runtime_credential_path};
 
 pub(crate) fn run_search(
     catalog_path: &Path,
@@ -14,13 +14,13 @@ pub(crate) fn run_search(
 ) -> anyhow::Result<()> {
     let catalog = open_catalog(catalog_path)
         .with_context(|| format!("cannot open catalog at {}", catalog_path.display()))?;
-    let credential = load_infer_runtime_credential()
-        .context("Echo has no usable Infer Runtime consumer credential")?;
+    let credential_path = infer_runtime_credential_path()
+        .context("Echo cannot resolve its Infer Runtime consumer credential path")?;
     let hits = echo_core::semantic_search(
         &catalog,
         &InferRuntimeConfig {
             base_url: runtime_endpoint.to_owned(),
-            bearer_token: credential.into_bearer_token(),
+            credential_path,
         },
         query,
         limit,

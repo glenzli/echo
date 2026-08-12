@@ -1,227 +1,47 @@
-use std::{
-    io::{Read, Write},
-    net::TcpListener,
-    thread,
-};
+use infer_runtime_client::TextEmbeddingResponse;
+use serde_json::json;
 
-use serde_json::{Value, json};
-
-use super::super::{CONSUMER_CONTRACT_HEADER, EXPECTED_CONTRACT_VERSION};
 use super::*;
+use crate::infer_runtime::tests::{FakeTransport, sdk_job_fixture};
 
 #[test]
-fn text_embedding_requires_local_constraints_and_matching_provenance() {
-    let (base_url, server) = serve(vec![
-        candidate4_contract(),
-        json_response(&embedding_response("space-v1", 768)),
-        json_response(&job_snapshot()),
-    ]);
-    let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-    let intent = TextEmbeddingIntent::new("source-revision-1");
-
-    let payload = client
-        .embed_text("fixture semantic document", &intent)
-        .expect("text embedding is accepted");
-
-    assert_eq!(payload.space, "space-v1");
-    assert_eq!(payload.values.len(), TEXT_EMBEDDING_DIMENSIONS);
-    assert_eq!(payload.provider.job_id, "embed_echo_1");
-    assert_eq!(payload.runtime.job.app_id, "echo");
-    assert_eq!(payload.runtime.job.intent, TEXT_EMBEDDING_INTENT);
-    assert_eq!(payload.runtime.job.capability_level, "foundational");
-    assert_eq!(payload.runtime.job.evaluation_status, "provisional");
-
-    let requests = server.join().expect("server exits");
-    let request: Value = serde_json::from_slice(&requests[1]).expect("request JSON decodes");
-    assert_eq!(request["model"], TEXT_EMBEDDING_INTENT);
-    assert_eq!(request["text"], "fixture semantic document");
-    assert_eq!(request["query_revision"], "source-revision-1");
-    assert_eq!(request["metadata"]["infer.policy"], "local-first");
-    assert_eq!(request["metadata"]["infer.priority"], "background");
-    assert_eq!(request["metadata"]["infer.placement"], "local_only");
-    assert_eq!(request["metadata"]["infer.prefer"], "local");
-    assert_eq!(request["metadata"]["infer.offline_required"], "true");
-    assert_eq!(
-        request["metadata"]["infer.capability_floor"],
-        "foundational"
-    );
-    assert_eq!(request["metadata"]["infer.fallback"], "none");
-    assert_eq!(request["metadata"]["infer.max_cost_usd"], "0");
-    assert_eq!(request["metadata"].as_object().unwrap().len(), 9);
-}
-
-#[test]
-fn text_embedding_rejects_a_wrong_vector_contract() {
-    let (base_url, server) = serve(vec![
-        candidate4_contract(),
-        json_response(&embedding_response("space-v1", 767)),
-    ]);
-    let client = InferRuntimeClient::new(super::super::InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let error = client
-        .embed_text(
-            "fixture semantic document",
-            &TextEmbeddingIntent::new("source-revision-1"),
-        )
-        .expect_err("wrong dimensions are rejected");
-
-    assert_eq!(error.kind, InferRuntimeErrorKind::Protocol);
-    assert_eq!(error.code, "invalid_text_embedding_payload");
-    server.join().expect("server exits");
-}
-
-fn candidate4_contract() -> String {
-    json_response(
-        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-candidate.4"],"capability_scale_version":"20260811.1"}"#,
-    )
-}
-
-fn embedding_response(space: &str, dimensions: usize) -> String {
-    let mut values = vec![0.0_f32; dimensions];
+fn fake_sdk_embedding_preserves_space_and_redacted_provenance() {
+    let mut values = vec![0.0_f32; TEXT_EMBEDDING_DIMENSIONS];
     values[0] = 1.0;
-    json!({
-        "id": "embed_echo_1",
-        "object": "vision.text_embedding",
-        "status": "completed",
-        "query_revision": "source-revision-1",
-        "embedding": {
-            "values": values,
-            "dimensions": dimensions,
-            "normalized": true,
-            "distance_metric": "cosine",
-            "space": space
-        },
-        "provenance": {
-            "job_id": "embed_echo_1",
-            "provider": "onnx-local",
-            "deployment": "siglip2-text",
-            "model_build": "siglip2-build",
-            "artifact_sha256": "fixture-sha256",
-            "preprocessing_identity": "lowercase64",
-            "postprocessing_identity": "l2_768_fp32",
-            "tokenizer": null,
-            "runtime": "onnxruntime",
-            "requested_execution_provider": "CoreMLExecutionProvider",
-            "actual_execution_provider": "CoreMLExecutionProvider",
-            "execution_provider_fallback_reason": null,
-            "precision": "fp32"
-        }
-    })
-    .to_string()
+    let response: TextEmbeddingResponse = serde_json::from_value(json!({
+        "id":"embed-1","object":"vision.text_embedding","created_at":1_786_212_000,
+        "status":"completed","query_revision":"query-1","language":"zh",
+        "embedding":{"values":values,"dimensions":768,"normalized":true,
+        "distance_metric":"cosine","space":"siglip2-so400m-text@v1"},
+        "provenance":{"job_id":"embed-1","provider":"local-example",
+        "deployment":"example-small","model_build":"example-build-v1",
+        "artifact_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "preprocessing_identity":"tokenizer-v1","postprocessing_identity":"l2-v1",
+        "runtime":"onnxruntime","requested_execution_provider":"CoreMLExecutionProvider",
+        "actual_execution_provider":"CoreMLExecutionProvider",
+        "execution_provider_fallback_reason":null,"precision":"fp32",
+        "tokenizer":{"id":"fixture"}}
+    }))
+    .unwrap();
+    let job = sdk_job_fixture(TEXT_EMBEDDING_INTENT, TEXT_EMBEDDING_CAPABILITY);
+    let client = InferRuntimeClient::with_transport(FakeTransport::embedding(response, job));
+    let result = client
+        .embed_text("雨声", &TextEmbeddingIntent::new("query-1"))
+        .unwrap();
+    assert_eq!(result.space, "siglip2-so400m-text@v1");
+    assert_eq!(result.values.len(), TEXT_EMBEDDING_DIMENSIONS);
+    assert_eq!(result.provider.tokenizer, Some(json!({"id":"fixture"})));
+    assert_eq!(
+        result.runtime.job.capability_contract.as_deref(),
+        Some(TEXT_EMBEDDING_CAPABILITY)
+    );
 }
 
-fn job_snapshot() -> String {
-    json!({
-        "id": "embed_echo_1",
-        "consumer_contract_version": EXPECTED_CONTRACT_VERSION,
-        "app_id": "echo",
-        "intent": TEXT_EMBEDDING_INTENT,
-        "provider": "onnx-local",
-        "deployment": "siglip2-text",
-        "model_profile": "siglip2_text",
-        "model_build": "siglip2-build",
-        "physical_model": "siglip2-base-patch16-224",
-        "placement": "local",
-        "capability_level": "foundational",
-        "evaluation_status": "provisional",
-        "resource_class": "light",
-        "state": "succeeded",
-        "policy": "local-first",
-        "priority": "background",
-        "constraints": {
-            "policy": "local-first",
-            "priority": "background",
-            "placement": "local_only",
-            "prefer": "local",
-            "offline_required": true,
-            "capability_floor": "foundational",
-            "latency": "throughput",
-            "max_cost_usd": 0.0,
-            "fallback": "none",
-            "deadline_ms": null
-        },
-        "routing": {
-            "capability_floor": "foundational",
-            "candidates": [{
-                "deployment": "siglip2-text",
-                "provider": "onnx-local",
-                "status": "eligible",
-                "rank": 0,
-                "reason_codes": []
-            }]
-        },
-        "attempts": [{
-            "number": 1,
-            "provider": "onnx-local",
-            "deployment": "siglip2-text",
-            "outcome": "succeeded",
-            "trigger": "initial",
-            "error_kind": null
-        }]
-    })
-    .to_string()
-}
-
-fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<Vec<Vec<u8>>>) {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("test listener binds");
-    let address = listener.local_addr().expect("address is known");
-    let handle = thread::spawn(move || {
-        let mut requests = Vec::new();
-        for response in responses {
-            let (mut stream, _) = listener.accept().expect("request arrives");
-            requests.push(read_request(&mut stream));
-            stream
-                .write_all(response.as_bytes())
-                .expect("response writes");
-        }
-        requests
-    });
-    (format!("http://{address}"), handle)
-}
-
-fn read_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
-    let mut bytes = Vec::new();
-    let mut buffer = [0_u8; 4096];
-    let header_end = loop {
-        let read = stream.read(&mut buffer).expect("request reads");
-        assert!(read > 0, "request includes headers");
-        bytes.extend_from_slice(&buffer[..read]);
-        if let Some(index) = bytes.windows(4).position(|window| window == b"\r\n\r\n") {
-            break index + 4;
-        }
-    };
-    let headers = String::from_utf8_lossy(&bytes[..header_end]);
-    assert!(headers.lines().any(|line| {
-        line.split_once(':').is_some_and(|(name, value)| {
-            name.eq_ignore_ascii_case(CONSUMER_CONTRACT_HEADER)
-                && value.trim() == EXPECTED_CONTRACT_VERSION
-        })
-    }));
-    let content_length = headers
-        .lines()
-        .find_map(|line| {
-            line.strip_prefix("content-length: ")
-                .or_else(|| line.strip_prefix("Content-Length: "))
-        })
-        .and_then(|value| value.trim().parse::<usize>().ok())
-        .unwrap_or(0);
-    while bytes.len() - header_end < content_length {
-        let read = stream.read(&mut buffer).expect("request body reads");
-        assert!(read > 0, "request body is complete");
-        bytes.extend_from_slice(&buffer[..read]);
-    }
-    bytes[header_end..header_end + content_length].to_vec()
-}
-
-fn json_response(body: &str) -> String {
-    format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        body.len()
-    )
+#[test]
+fn empty_embedding_input_fails_before_transport() {
+    let client = InferRuntimeClient::with_transport(std::sync::Arc::new(FakeTransport::default()));
+    let error = client
+        .embed_text(" ", &TextEmbeddingIntent::new("query-1"))
+        .unwrap_err();
+    assert_eq!(error.code, "text_embedding_input_size");
 }

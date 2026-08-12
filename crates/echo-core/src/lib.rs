@@ -15,7 +15,6 @@ mod error;
 mod import;
 mod infer_runtime;
 mod infer_runtime_credentials;
-mod infer_runtime_discovery;
 mod long_audio;
 mod metadata_queue;
 mod scanner;
@@ -49,8 +48,8 @@ pub use infer_runtime::{
     TextEmbeddingProviderProvenance, TranscriptionIntent,
 };
 pub use infer_runtime_credentials::{
-    InferRuntimeCredential, InferRuntimeCredentialError, InferRuntimeCredentialStore,
-    infer_runtime_credential_available, load_infer_runtime_credential,
+    InferRuntimeCredentialError, InferRuntimeCredentialStore, infer_runtime_credential_available,
+    infer_runtime_credential_path,
 };
 pub use long_audio::LONG_AUDIO_PLAN_VERSION;
 pub use scanner::{

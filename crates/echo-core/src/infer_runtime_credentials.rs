@@ -18,16 +18,10 @@ const CREDENTIAL_FILE: &str = "infer-runtime.token";
 const MAX_CREDENTIAL_BYTES: u64 = 8 * 1024;
 static TEMP_FILE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-/// A validated bearer credential whose debug representation is always redacted.
-pub struct InferRuntimeCredential(String);
+/// A validated bearer credential used only by Echo's administrative store.
+struct InferRuntimeCredential(String);
 
 impl InferRuntimeCredential {
-    /// Transfers the bearer value to the Runtime transport configuration.
-    #[must_use]
-    pub fn into_bearer_token(self) -> String {
-        self.0
-    }
-
     fn as_bytes(&self) -> &[u8] {
         self.0.as_bytes()
     }
@@ -111,14 +105,7 @@ impl InferRuntimeCredentialStore {
         self.directory.join(CREDENTIAL_FILE)
     }
 
-    /// Reads and validates Echo's stored consumer credential.
-    ///
-    /// # Errors
-    ///
-    /// Returns a safe, content-free error when the credential is missing,
-    /// structurally invalid, too permissive, unreadable, or unsuitable for an
-    /// HTTP bearer header.
-    pub fn load(&self) -> Result<InferRuntimeCredential, InferRuntimeCredentialError> {
+    fn load(&self) -> Result<InferRuntimeCredential, InferRuntimeCredentialError> {
         validate_private_directory(&self.directory)?;
         read_credential(&self.credential_path())
     }
@@ -144,15 +131,17 @@ impl InferRuntimeCredentialStore {
     }
 }
 
-/// Loads the current user's Echo-owned Infer Runtime consumer credential.
+/// Returns Echo's existing managed credential path without reading the token.
+///
+/// The official Infer Runtime SDK owns permission validation and token loading
+/// at request time. Echo continues to own only the administrative import path.
 ///
 /// # Errors
 ///
-/// Returns a content-free credential-store error when no safe credential is
-/// available.
-pub fn load_infer_runtime_credential() -> Result<InferRuntimeCredential, InferRuntimeCredentialError>
-{
-    InferRuntimeCredentialStore::for_current_user()?.load()
+/// Returns a data-directory error when the current user's Echo store cannot be
+/// resolved.
+pub fn infer_runtime_credential_path() -> Result<PathBuf, InferRuntimeCredentialError> {
+    Ok(InferRuntimeCredentialStore::for_current_user()?.credential_path())
 }
 
 /// Reports whether the current user has a valid Echo-owned Runtime credential.

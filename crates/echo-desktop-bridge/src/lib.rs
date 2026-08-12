@@ -693,14 +693,13 @@ fn semantic_search_catalog(
 ) -> Result<Vec<ffi::SemanticSearchHitWire>, String> {
     let catalog = echo_catalog::open_catalog(std::path::Path::new(catalog_path))
         .map_err(|error| error.to_string())?;
-    let bearer_token = echo_core::load_infer_runtime_credential()
-        .map_err(|error| error.to_string())?
-        .into_bearer_token();
+    let credential_path =
+        echo_core::infer_runtime_credential_path().map_err(|error| error.to_string())?;
     echo_core::semantic_search(
         &catalog,
         &echo_core::InferRuntimeConfig {
             base_url: runtime_endpoint.to_owned(),
-            bearer_token,
+            credential_path,
         },
         query,
         limit,

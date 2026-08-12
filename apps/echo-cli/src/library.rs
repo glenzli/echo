@@ -49,15 +49,13 @@ pub(crate) fn run_scan(
     );
     let queued = echo_core::queue_scans_for_enabled_roots(&catalog, now_millis())?;
     println!("queued {queued} scan job(s), processing...");
-    let bearer_token = echo_core::load_infer_runtime_credential().map_or_else(
-        |_| String::new(),
-        echo_core::InferRuntimeCredential::into_bearer_token,
-    );
+    let credential_path = echo_core::infer_runtime_credential_path()
+        .context("Echo cannot resolve its Infer Runtime consumer credential path")?;
     let config = echo_core::WorkerConfig {
         cache_root: cache_root.to_owned(),
         infer_runtime: echo_core::InferRuntimeConfig {
             base_url: runtime_endpoint.to_owned(),
-            bearer_token,
+            credential_path,
         },
     };
     let pool = echo_core::WorkerPool::start(&catalog, &config, workers)?;

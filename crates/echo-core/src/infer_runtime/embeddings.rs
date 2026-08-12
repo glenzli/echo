@@ -1,24 +1,23 @@
-//! Typed local text embeddings for Echo-owned semantic retrieval.
-//!
-//! Runtime owns physical execution. Echo validates the exact shared space,
-//! App-scoped Job, local-only constraints, and stale query/source revision.
+//! Echo semantic-search validation over the official text-embedding SDK.
 
-use std::{collections::BTreeMap, time::Duration};
+use std::collections::BTreeMap;
 
+use infer_runtime_client::TextEmbeddingRequest;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use super::{
-    InferRuntimeClient, InferRuntimeError, InferRuntimeErrorKind, RuntimeJobSnapshot,
-    RuntimeProvenance, RuntimeSession, checked_json_response, default_background_constraints,
-    validate_succeeded_job,
+    InferRuntimeClient, InferRuntimeError, RuntimeProvenance, default_background_constraints,
+    protocol, rejected, validate_local_only_job, validate_succeeded_job,
 };
 
 pub const TEXT_EMBEDDING_INTENT: &str = "semantic.embed_text";
 pub const TEXT_EMBEDDING_DIMENSIONS: usize = 768;
+
+const TEXT_EMBEDDING_CAPABILITY: &str = "infer.vision.text-embedding@20260811.1";
 const MAX_TEXT_BYTES: usize = 4_096;
 const MAX_REVISION_BYTES: usize = 256;
 
-/// Product request for a bounded text document or natural-language query.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextEmbeddingIntent {
     pub model: String,
@@ -39,7 +38,6 @@ impl TextEmbeddingIntent {
     }
 }
 
-/// Stable typed-provider provenance returned with a semantic vector.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextEmbeddingProviderProvenance {
     pub job_id: String,
@@ -49,7 +47,7 @@ pub struct TextEmbeddingProviderProvenance {
     pub artifact_sha256: String,
     pub preprocessing_identity: String,
     pub postprocessing_identity: String,
-    pub tokenizer: Option<serde_json::Value>,
+    pub tokenizer: Option<Value>,
     pub runtime: String,
     pub requested_execution_provider: String,
     pub actual_execution_provider: String,
@@ -57,7 +55,6 @@ pub struct TextEmbeddingProviderProvenance {
     pub precision: String,
 }
 
-/// Validated normalized vector plus Runtime and provider evidence.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextEmbeddingPayload {
     pub values: Vec<f32>,
@@ -66,41 +63,12 @@ pub struct TextEmbeddingPayload {
     pub runtime: RuntimeProvenance,
 }
 
-#[derive(Serialize)]
-struct TextEmbeddingRequest<'a> {
-    model: &'a str,
-    text: &'a str,
-    query_revision: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    language: Option<&'a str>,
-    metadata: &'a BTreeMap<String, String>,
-}
-
-#[derive(Deserialize)]
-struct TextEmbeddingResponse {
-    id: String,
-    object: String,
-    status: String,
-    query_revision: String,
-    embedding: EmbeddingVector,
-    provenance: TextEmbeddingProviderProvenance,
-}
-
-#[derive(Deserialize)]
-struct EmbeddingVector {
-    values: Vec<f32>,
-    dimensions: usize,
-    normalized: bool,
-    distance_metric: String,
-    space: String,
-}
-
 impl InferRuntimeClient {
-    /// Embeds one bounded text value and validates complete local provenance.
+    /// Embeds one bounded text value and validates Echo's local-only policy.
     ///
     /// # Errors
     ///
-    /// Returns a classified validation, transport, Runtime, or provenance failure.
+    /// Returns an input, SDK, Runtime, vector or provenance validation failure.
     pub fn embed_text(
         &self,
         text: &str,
@@ -108,42 +76,17 @@ impl InferRuntimeClient {
     ) -> Result<TextEmbeddingPayload, InferRuntimeError> {
         let text = text.trim();
         validate_request(text, intent)?;
-        self.validate_token()?;
-        let session = self.begin_session()?;
         let request = TextEmbeddingRequest {
-            model: &intent.model,
-            text,
-            query_revision: &intent.revision,
-            language: intent.language.as_deref(),
-            metadata: &intent.metadata,
+            model: intent.model.clone(),
+            text: text.to_owned(),
+            query_revision: intent.revision.clone(),
+            language: intent.language.clone(),
+            metadata: intent.metadata.clone(),
         };
-        let url = session.url("/infer/v1/vision/text-embeddings");
-        let response = ureq::post(&url)
-            .header("Authorization", self.authorization())
-            .header(
-                super::CONSUMER_CONTRACT_HEADER,
-                RuntimeSession::contract_version(),
-            )
-            .config()
-            .timeout_global(Some(Duration::from_mins(5)))
-            .proxy(None)
-            .max_redirects(0)
-            .http_status_as_error(false)
-            .build()
-            .send_json(&request)
-            .map_err(|error| self.transport_error(error))?;
-        let (_, body) = checked_json_response(response)?;
-        let response: TextEmbeddingResponse = serde_json::from_str(&body).map_err(|_| {
-            InferRuntimeError::new(
-                InferRuntimeErrorKind::Protocol,
-                "invalid_text_embedding_response",
-                Some(200),
-            )
-        })?;
+        let (response, job) = self.transport()?.embed_text(&request)?;
         validate_response(&response, intent)?;
-        let job = self.job_snapshot(&session, &response.id)?;
-        validate_succeeded_job(&job, TEXT_EMBEDDING_INTENT)?;
-        validate_constraints(&job)?;
+        let job = validate_succeeded_job(job, TEXT_EMBEDDING_INTENT, TEXT_EMBEDDING_CAPABILITY)?;
+        validate_local_only_job(&job, "inconsistent_text_embedding_constraints")?;
         if response.provenance.job_id != response.id
             || response.provenance.provider != job.provider
             || response.provenance.deployment != job.deployment
@@ -151,12 +94,30 @@ impl InferRuntimeClient {
         {
             return Err(protocol("inconsistent_text_embedding_provenance"));
         }
+        let extra = &response.provenance.extra;
+        let provider = TextEmbeddingProviderProvenance {
+            job_id: response.provenance.job_id,
+            provider: response.provenance.provider,
+            deployment: response.provenance.deployment,
+            model_build: response.provenance.model_build,
+            artifact_sha256: response.provenance.artifact_sha256,
+            preprocessing_identity: response.provenance.preprocessing_identity,
+            postprocessing_identity: response.provenance.postprocessing_identity,
+            tokenizer: extra.get("tokenizer").cloned(),
+            runtime: response.provenance.runtime,
+            requested_execution_provider: response.provenance.requested_execution_provider,
+            actual_execution_provider: response.provenance.actual_execution_provider,
+            execution_provider_fallback_reason: response
+                .provenance
+                .execution_provider_fallback_reason,
+            precision: response.provenance.precision,
+        };
         Ok(TextEmbeddingPayload {
             values: response.embedding.values,
             space: response.embedding.space,
-            provider: response.provenance,
+            provider,
             runtime: RuntimeProvenance {
-                contract_version: RuntimeSession::contract_version().to_owned(),
+                contract_version: super::EXPECTED_CONTRACT_VERSION.to_owned(),
                 job,
             },
         })
@@ -177,7 +138,7 @@ fn validate_request(text: &str, intent: &TextEmbeddingIntent) -> Result<(), Infe
 }
 
 fn validate_response(
-    response: &TextEmbeddingResponse,
+    response: &infer_runtime_client::TextEmbeddingResponse,
     intent: &TextEmbeddingIntent,
 ) -> Result<(), InferRuntimeError> {
     let vector = &response.embedding;
@@ -203,40 +164,6 @@ fn validate_response(
         return Err(protocol("unnormalized_text_embedding"));
     }
     Ok(())
-}
-
-fn validate_constraints(job: &RuntimeJobSnapshot) -> Result<(), InferRuntimeError> {
-    let constraints = &job.constraints;
-    let valid = job.policy == "local-first"
-        && job.priority == "background"
-        && job.placement == "local"
-        && job.capability_level == "foundational"
-        && constraints.policy.as_deref() == Some("local-first")
-        && constraints.priority.as_deref() == Some("background")
-        && constraints.placement.as_deref() == Some("local_only")
-        && constraints.prefer.as_deref() == Some("local")
-        && constraints.offline_required == Some(true)
-        && constraints.capability_floor.as_deref() == Some("foundational")
-        && constraints.latency.as_deref() == Some("throughput")
-        && constraints.fallback.as_deref() == Some("none")
-        && constraints.max_cost_usd == Some(0.0)
-        && job
-            .attempts
-            .iter()
-            .all(|attempt| attempt.trigger != "fallback");
-    if valid {
-        Ok(())
-    } else {
-        Err(protocol("inconsistent_text_embedding_constraints"))
-    }
-}
-
-fn rejected(code: &'static str) -> InferRuntimeError {
-    InferRuntimeError::new(InferRuntimeErrorKind::Rejected, code, None)
-}
-
-fn protocol(code: &'static str) -> InferRuntimeError {
-    InferRuntimeError::new(InferRuntimeErrorKind::Protocol, code, Some(200))
 }
 
 #[cfg(test)]

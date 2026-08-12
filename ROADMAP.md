@@ -100,22 +100,31 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 物理模型路由、下载器或驻留进程管理。正式接入采用 Infer Build 已有的
 `audio.transcribe` / `audio.align` 任务接口，不预建没有消费方的第二套调度机制。
 
-正式 consumer 固定使用 Infer Runtime `0.1.0-candidate.4` 合同，以独立、非资源管理员的 Echo
-App 身份调用。endpoint 选择顺序固定为显式 `ECHO_INFER_ENDPOINT`／产品设置 override、
-`infra.discovery.registration@20260812.1` 中精确匹配的 `infer-runtime.consumer` loopback offer。
-合同探测与每个 Consumer 请求都显式发送 `Infer-Consumer-Contract`；Runtime 返回精确 c4
-身份后才建立会话，HTTP 426 与 Job 中显式出现的其他协商版本都失败关闭。c4 新增的具名
-Deployment／Model Profile 路由不自动启用，Echo 继续只提交稳定 Intent 与既有本地约束，
-不借协议升级扩大 App ACL、fallback 或 Provider 可见性。
-没有合法 Discovery 且未显式 override 时必须失败，不猜测固定端口。稳定 manifest 不含心跳或
-存活时间戳；Echo 只把
-它视为连接候选，在 generation／offer 变化或连接失败后重新发现，且不修改或删除 Provider manifest。
-所有 Consumer HTTP 请求禁用 proxy 与 automatic redirect，且只接受 canonical numeric loopback
-origin。Echo 只从自身的 owner-only 安全存储读取 bearer token；明文不跨 Rust/C++/QML
-边界，也不写入设置、通用日志或命令行参数。Runtime consumer 独立拥有合同探测、严格
-multipart、HTTP status／`error.code` 分类和 Job snapshot 解码；
-Echo 的后台 worker 只提交产品 Intent、记录本地任务状态并把 Runtime 的 Job／Attempt／
-模型构建证据写入 Catalog。Runtime 不可用不得阻断扫描、波形、播放或 Library 浏览。
+正式 consumer 固定使用官方 `infer-runtime-client`，Git revision 为
+`8588a945047cedaea62035969e479e7fb7ff795c`；Core 身份固定为
+`infer-runtime.consumer-core@20260813.1`，能力目录固定为
+`infer-runtime.capability-catalog@20260813.1`。Echo 仍以独立、非资源管理员的 `app_id=echo`
+调用，既有 managed credential 路径与 ACL 不变。endpoint 只允许显式
+`ECHO_INFER_ENDPOINT`／产品设置 development override，或由 SDK 从
+`infra.discovery.registration@20260812.1` 发现；没有合法 Discovery 时失败关闭，不猜测固定端口。
+
+SDK 是 Discovery、generation、canonical numeric loopback 校验、proxy／redirect 禁止、Core／
+Capability header、credential file loading、HTTP／`error.code` 分类和 Job snapshot 解码的唯一 owner。
+Echo 不再持有这些协议基础实现，也不把 bearer token 物化到 Rust/C++/QML 产品边界、设置、日志或
+命令行参数。SDK 发现的 manifest 只是连接候选，连接才建立存活事实；Echo 不修改或删除 Provider
+manifest。Echo 的后台 worker 只提交稳定 Intent、核验产品约束、记录本地任务状态，并把已净化的
+Runtime Job／Attempt／模型构建证据写入 Catalog。四条已迁移路径分别要求精确 capability：
+`audio.transcribe` → `infer.audio.transcription@20260811.1`、`audio.align` →
+`infer.audio.alignment@20260811.1`、`text.summarize` → `infer.responses@20260812.1`、
+`semantic.embed_text` → `infer.vision.text-embedding@20260811.1`。具名 Deployment／Model Profile
+路由不自动启用，协议升级也不扩大 App ACL、fallback 或 Provider 可见性。Runtime 不可用不得
+阻断扫描、波形、播放或 Library 浏览。
+
+2026-08-13 hard migration 的合同测试只使用官方 SDK fixture／fake transport，不把仍运行旧预发布
+草案的 daemon 当作新合同成败依据；真实 E2E 必须等 Runtime 切换到上述 Core／Catalog 后执行。
+冻结 Catalog 尚未发布 `audio.detect_events` 的 typed capability，因此 Echo 已删除其私有 HTTP
+旁路并对该 Intent 显式 `capability_contract_unsupported` 失败关闭；恢复声音事件分析必须先由
+Runtime 正式发布并由 SDK typed API 消费，不能在 Echo 内复制协议。
 
 文本理解沿用同一个受管 Consumer 身份，但由独立的 Responses 协议 owner 负责。首个产品动作
 固定映射到 `text.summarize`：`audio.align` 成功后，Echo 的后台队列提交有界文字与产品指令，
@@ -127,7 +136,7 @@ local-first／local_only／background／no fallback 约束，再写入分析证�
 自然语言检索继续沿用同一 Echo Consumer 身份，但只增加 `semantic.embed_text` 最小 Intent 权限，
 不获得图片、人脸或资源管理能力。Echo 通过 typed
 `POST /infer/v1/vision/text-embeddings` 获取 768 维、L2 normalized 的文本向量，严格核验
-`0.1.0-candidate.4`、App-scoped Job、local-first／local_only／background／offline／
+精确 Core／Capability 身份、App-scoped Job、local-first／local_only／background／offline／
 no fallback／零成本约束，以及 provider/deployment/model build 和精确 embedding-space 身份。
 当前能力来自 SigLIP2 的文本塔：它适合在同一跨模态空间内提供 provisional 的文本证据近邻，
 但不是专为通用 text-text 检索优化的 encoder，也不能冒充尚未接入的 CLAP 音频向量。
@@ -286,23 +295,27 @@ InferenceBackend
 - **M1 Understand**：Qwen3-ASR + forced alignment + SenseVoice，waveform ↔ transcript 双向同步。
   - 已验证（概念阶段）：本地 MLX ASR 子进程契约；`echo-cli transcribe` 的
     导入→转写→证据入库；分段时间戳；桌面端手动分析入口。
-  - 已完成（正式 Runtime 切片，2026-08-09；Discovery 与声音事件迁移 2026-08-11；c4 合同迁移
-    2026-08-12）：Echo 以独立
-    非管理员 App 身份消费 `0.1.0-candidate.4`，并通过 owner-only 稳定 registration 发现本机
-    Consumer endpoint；后台队列提交 `audio.transcribe`，非空文字继续 `audio.align`，有效空文字
-    改走 `audio.detect_events`。每条路径都读取 App-scoped Job/Attempt，并把合同版本、
+  - 已完成（正式 Runtime 切片，2026-08-09；Discovery 与声音事件迁移 2026-08-11；官方 SDK
+    hard migration 2026-08-13）：Echo 以独立非管理员 App 身份消费
+    `infer-runtime.consumer-core@20260813.1`／`infer-runtime.capability-catalog@20260813.1`，并由
+    revision `8588a945047cedaea62035969e479e7fb7ff795c` 的官方 SDK 通过 owner-only 稳定
+    registration 发现本机 Consumer endpoint；后台队列提交 `audio.transcribe`，非空文字继续
+    `audio.align`。四条受支持路径都读取 App-scoped Job/Attempt，并把 Core／Capability 身份、
     provider/deployment、physical model/build 与稳定错误码写入 Catalog。桌面读取层以最新对齐
-    证据细化段落时间，无法可靠匹配时保留原转写时间。
+    证据细化段落时间，无法可靠匹配时保留原转写时间。固定 `8787` fallback、candidate 合同分支和
+    Echo 私有 Discovery／wire／header／error 实现已删除；当前旧 daemon 不参与新合同验收。
   - 默认分析策略（2026-08-09 校准）：新录音完成注册后持久入队 waveform 与
     `audio.transcribe`；应用启动时为已有但缺少 transcript 证据的在线录音做幂等回填。
     结构性扫描、导入和 waveform 优先于 ASR；ASR 失败不得影响 Original、播放或浏览。
     手动分析只作为失败重试/调试入口，不是正常产品路径。非空文字完成 `audio.align` 后，
-    继续以最低队列优先级提交 `text.summarize` contextual 元数据；有效空文字提交本地-only
-    `audio.detect_events`，但 ASR 失败、未分析或空文字本身都不得反向断言“无人声”。Runtime 的
+    继续以最低队列优先级提交 `text.summarize` contextual 元数据；有效空文字会尝试本地-only
+    `audio.detect_events`，但冻结 Catalog 尚无该 typed capability，当前必须稳定失败关闭且不得
+    写入事件证据。ASR 失败、未分析或空文字本身都不得反向断言“无人声”。Runtime 的
     `speech_presence` 只有完整覆盖且低于版本化阈值时才可为 `absent`。该默认仍不扩张到
     SenseVoice、diarization 或 TTS。M2 已在合格 contextual 证据之后追加独立、可重建的
     text-evidence embedding，不改变 M1 的音频分析 admission。
-  - 声音事件合同（2026-08-11）：`audio.detect_events` 以 YAMNet／AudioSet 形成有界、多标签、
+  - 声音事件目标合同（2026-08-11；等待官方 Catalog／SDK 发布）：`audio.detect_events` 以
+    YAMNet／AudioSet 形成有界、多标签、
     带时间区间的 `AudioEvents` 证据。Echo 以 AudioSet MID `class_id` 作为稳定身份，完整保留
     coverage、ontology、阈值／平滑 policy、模型与解码 provenance；英文 label 仅为展示文字。
     Echo 从每个稳定 class id 的最高分观察确定性派生短声音速写、关键词和事件 facet，复用现有

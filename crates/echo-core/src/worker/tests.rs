@@ -20,7 +20,7 @@ fn worker_state_revision_advances_when_a_job_reaches_terminal_state() {
             cache_root: root.join("cache"),
             infer_runtime: crate::InferRuntimeConfig {
                 base_url: "http://127.0.0.1:1".to_owned(),
-                bearer_token: String::new(),
+                credential_path: root.join("missing-infer-runtime.token"),
             },
         },
         1,
@@ -96,7 +96,8 @@ fn runtime_completion_links_the_local_job_to_sanitized_provenance() {
         contract_version: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
         job: crate::RuntimeJobSnapshot {
             id: "runtime-job-1".to_owned(),
-            consumer_contract_version: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
+            consumer_core_contract: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
+            capability_contract: Some("infer.audio.transcription@20260811.1".to_owned()),
             app_id: "echo".to_owned(),
             intent: crate::TRANSCRIPTION_INTENT.to_owned(),
             provider: "mlx-audio-local".to_owned(),
@@ -133,7 +134,7 @@ fn runtime_completion_links_the_local_job_to_sanitized_provenance() {
 }
 
 #[test]
-fn audio_event_job_runs_the_runtime_and_publishes_browse_evidence() {
+fn unpublished_audio_event_capability_fails_without_publishing_evidence() {
     let root =
         std::env::temp_dir().join(format!("echo-worker-audio-events-{}", std::process::id()));
     let source = crate::infer_runtime::tests::audio_fixture();
@@ -179,15 +180,6 @@ fn audio_event_job_runs_the_runtime_and_publishes_browse_evidence() {
             Ok(asset_id)
         })
         .expect("fixture writes");
-    let (base_url, server) = crate::infer_runtime::tests::serve(vec![
-        crate::infer_runtime::tests::candidate4_contract_response(),
-        crate::infer_runtime::tests::json_response(
-            &crate::infer_runtime::tests::audio_event_detection_response("absent", 0.02),
-        ),
-        crate::infer_runtime::tests::json_response(
-            &crate::infer_runtime::tests::audio_event_job_snapshot(),
-        ),
-    ]);
     let job = ClaimedJob {
         id: "detect-audio-events-worker".to_owned(),
         kind: JobKind::DetectAudioEvents,
@@ -196,12 +188,13 @@ fn audio_event_job_runs_the_runtime_and_publishes_browse_evidence() {
     let config = WorkerConfig {
         cache_root: root.join("cache"),
         infer_runtime: crate::InferRuntimeConfig {
-            base_url,
-            bearer_token: "test-consumer-token".to_owned(),
+            base_url: String::new(),
+            credential_path: root.join("missing-infer-runtime.token"),
         },
     };
 
-    dispatch_analysis(&catalog, &config, &job).expect("event job succeeds");
+    let error = dispatch_analysis(&catalog, &config, &job).expect_err("capability fails closed");
+    assert_eq!(error.kind, crate::CoreErrorKind::InferenceRejected);
 
     let records = catalog
         .with_transaction(|transaction| {
@@ -213,28 +206,22 @@ fn audio_event_job_runs_the_runtime_and_publishes_browse_evidence() {
             })
         })
         .expect("analysis reads");
-    assert!(
-        records
-            .iter()
-            .any(|record| record.kind == AnalysisKind::AudioEvents)
-    );
-    assert!(
-        records
-            .iter()
-            .any(|record| record.kind == AnalysisKind::Contextual)
-    );
+    assert!(!records.iter().any(|record| matches!(
+        record.kind,
+        AnalysisKind::AudioEvents | AnalysisKind::Contextual
+    )));
     let run = catalog
         .with_transaction(|transaction| inference_run(transaction, &job.id))
         .expect("inference run reads")
         .expect("inference run exists");
-    assert_eq!(run.state, InferenceRunState::Succeeded);
+    assert_eq!(run.state, InferenceRunState::Failed);
     assert_eq!(run.intent, crate::AUDIO_EVENT_DETECTION_INTENT);
     assert_eq!(
-        run.snapshot.unwrap()["deployment"],
-        "yamnet_audio_events_tfhub_v1"
+        run.error_code.as_deref(),
+        Some("capability_contract_unsupported")
     );
+    assert!(run.snapshot.is_none());
 
-    server.join().expect("server exits");
     std::fs::remove_file(source).expect("source removes");
     let _ = std::fs::remove_dir_all(root);
 }

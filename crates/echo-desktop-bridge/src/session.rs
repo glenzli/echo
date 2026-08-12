@@ -1684,18 +1684,17 @@ impl LibrarySession {
         if workers.is_some() {
             return Ok(());
         }
-        // Missing or unsafe credentials must not prevent structural Library
-        // jobs from running. Inference then fails through its sanitized
-        // authentication path while scanning and waveform work continues.
-        let bearer_token = echo_core::load_infer_runtime_credential().map_or_else(
-            |_| String::new(),
-            echo_core::InferRuntimeCredential::into_bearer_token,
-        );
+        // Resolving or loading a credential must not prevent structural
+        // Library jobs from running. The SDK loads the managed file only when
+        // an authenticated inference request is sent; a missing path then
+        // fails through its sanitized authentication path while scanning and
+        // waveform work continue.
+        let credential_path = echo_core::infer_runtime_credential_path().unwrap_or_default();
         let config = echo_core::WorkerConfig {
             cache_root: self.cache_root.clone(),
             infer_runtime: echo_core::InferRuntimeConfig {
                 base_url: runtime_endpoint.to_owned(),
-                bearer_token,
+                credential_path,
             },
         };
         let pool = echo_core::WorkerPool::start(&self.catalog, &config, 2).map_err(|error| {

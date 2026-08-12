@@ -1,430 +1,306 @@
 use std::{
-    io::{Read, Write},
-    net::TcpListener,
-    path::PathBuf,
-    thread,
+    collections::{BTreeMap, VecDeque},
+    path::{Path, PathBuf},
+    sync::Mutex,
 };
 
+use infer_runtime_client::{
+    AlignmentResponse as SdkAlignmentResponse, JobSnapshot as SdkJobSnapshot, ResponsesRequest,
+    ResponsesResult, TextEmbeddingRequest, TextEmbeddingResponse,
+    TranscriptionResponse as SdkTranscriptionResponse,
+};
 use serde_json::json;
 
 use super::*;
 
-#[test]
-fn transcription_requires_contract_and_job_provenance() {
-    let (base_url, server) = serve(vec![
-        candidate4_contract_response(),
-        json_response(
-            r#"{"id":"job-echo-1","model":"audio.transcribe","language":"zh","text":"你好","segments":[{"text":"你好","start_time":0.1,"end_time":0.8,"words":[{"text":"你好","start_time":0.1,"end_time":0.8}]}]}"#,
-        ),
-        json_response(
-            r#"{"id":"job-echo-1","consumer_contract_version":"0.1.0-candidate.4","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
-        ),
-    ]);
-    let source = audio_fixture();
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let payload = client
-        .transcribe(&source, &TranscriptionIntent::default())
-        .expect("Runtime result is accepted");
-
-    assert_eq!(payload.text, "你好");
-    assert!((payload.segments[0].start - 0.1).abs() < f64::EPSILON);
-    assert!((payload.segments[0].words.as_ref().unwrap()[0].end - 0.8).abs() < f64::EPSILON);
-    let provenance = payload.runtime.expect("provenance is attached");
-    assert_eq!(provenance.contract_version, EXPECTED_CONTRACT_VERSION);
-    assert_eq!(provenance.job.physical_model, "Qwen3-ASR-1.7B");
-    assert_eq!(provenance.job.attempts.len(), 1);
-
-    std::fs::remove_file(source).expect("fixture removes");
-    server.join().expect("server exits");
+/// Fake at Echo's product/SDK seam. It returns the official SDK's public
+/// response types and Job fixture shape without opening a daemon or socket.
+#[derive(Debug, Default)]
+pub(crate) struct FakeTransport {
+    transcriptions:
+        Mutex<VecDeque<Result<(SdkTranscriptionResponse, SdkJobSnapshot), InferRuntimeError>>>,
+    alignments: Mutex<VecDeque<Result<(SdkAlignmentResponse, SdkJobSnapshot), InferRuntimeError>>>,
+    contextual: Mutex<VecDeque<Result<(ResponsesResult, SdkJobSnapshot), InferRuntimeError>>>,
+    embeddings: Mutex<VecDeque<Result<(TextEmbeddingResponse, SdkJobSnapshot), InferRuntimeError>>>,
 }
 
-#[test]
-fn transcription_accepts_null_segments_from_early_candidate4_runtime() {
-    let (base_url, server) = serve(vec![
-        candidate4_contract_response(),
-        json_response(
-            r#"{"id":"job-echo-null-segments","model":"audio.transcribe","language":"zh","text":"fixture text","segments":null,"usage":{"total_tokens":1}}"#,
-        ),
-        json_response(
-            r#"{"id":"job-echo-null-segments","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
-        ),
-    ]);
-    let source = audio_fixture();
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let payload = client
-        .transcribe(&source, &TranscriptionIntent::default())
-        .expect("Runtime result with null segments is accepted");
-
-    assert_eq!(payload.text, "fixture text");
-    assert!(payload.segments.is_empty());
-    assert_eq!(
-        payload.runtime.expect("provenance is attached").job.id,
-        "job-echo-null-segments"
-    );
-
-    std::fs::remove_file(source).expect("fixture removes");
-    server.join().expect("server exits");
-}
-
-#[test]
-fn transcription_keeps_recognized_items_from_openapi_extensions() {
-    let (base_url, server) = serve(vec![
-        candidate4_contract_response(),
-        json_response(
-            r#"{"id":"job-echo-extension","model":"audio.transcribe","language":{"label":"Chinese"},"text":"fixture text","segments":[{"text":"provider-specific untimed item"},{"text":"timed fixture","start":0.2,"end":0.9}],"usage":{"total_tokens":1}}"#,
-        ),
-        json_response(
-            r#"{"id":"job-echo-extension","consumer_contract_version":"0.1.0-candidate.4","app_id":"echo","intent":"audio.transcribe","provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","model_profile":"qwen3-asr","model_build":"build-20260809","physical_model":"Qwen3-ASR-1.7B","placement":"local","state":"succeeded","policy":"local-first","priority":"background","attempts":[{"number":1,"provider":"mlx-audio-local","deployment":"qwen3-asr-mlx","outcome":"succeeded","trigger":"initial","error_kind":null}]}"#,
-        ),
-    ]);
-    let source = audio_fixture();
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let payload = client
-        .transcribe(&source, &TranscriptionIntent::default())
-        .expect("recognized Runtime extensions are projected");
-
-    assert_eq!(payload.language, None);
-    assert_eq!(payload.segments.len(), 1);
-    assert_eq!(payload.segments[0].text, "timed fixture");
-
-    std::fs::remove_file(source).expect("fixture removes");
-    server.join().expect("server exits");
-}
-
-#[test]
-fn stable_runtime_error_ignores_provider_message() {
-    let (base_url, server) = serve(vec![
-        candidate4_contract_response(),
-        response(
-            "503 Service Unavailable",
-            r#"{"error":{"code":"provider_unavailable","message":"sensitive provider detail"}}"#,
-        ),
-    ]);
-    let source = audio_fixture();
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let error = client
-        .transcribe(&source, &TranscriptionIntent::default())
-        .expect_err("capacity failure is classified");
-
-    assert_eq!(error.kind, InferRuntimeErrorKind::Capacity);
-    assert_eq!(error.code, "provider_unavailable");
-    assert!(!error.to_string().contains("sensitive"));
-    assert!(error.retryable());
-
-    std::fs::remove_file(source).expect("fixture removes");
-    server.join().expect("server exits");
-}
-
-#[test]
-fn contract_redirect_is_not_followed() {
-    let (base_url, server) = serve(vec![response_with_headers(
-        "302 Found",
-        "Location: /redirected\r\n",
-        r#"{"error":{"code":"moved","message":"must not follow"}}"#,
-    )]);
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let error = client
-        .contract_version()
-        .expect_err("redirect is returned to the consumer");
-
-    assert_eq!(error.kind, InferRuntimeErrorKind::Rejected);
-    assert_eq!(error.code, "moved");
-    server.join().expect("server exits after one request");
-}
-
-#[test]
-fn candidate4_requires_the_frozen_capability_scale() {
-    let (base_url, server) = serve(vec![json_response(
-        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-candidate.4"]}"#,
-    )]);
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let error = client
-        .contract_version()
-        .expect_err("candidate4 without its capability scale is rejected");
-
-    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
-    assert_eq!(error.code, "capability_scale_mismatch");
-    server.join().expect("server exits after one request");
-}
-
-#[test]
-fn candidate4_accepts_an_exact_negotiation_without_the_optional_supported_set() {
-    let (base_url, server) = serve(vec![json_response(
-        r#"{"contract_version":"0.1.0-candidate.4","capability_scale_version":"20260811.1"}"#,
-    )]);
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    assert_eq!(
-        client.contract_version().as_deref(),
-        Ok(EXPECTED_CONTRACT_VERSION)
-    );
-    server.join().expect("server exits after one request");
-}
-
-#[test]
-fn candidate4_requires_the_negotiated_version_in_the_supported_set() {
-    let (base_url, server) = serve(vec![json_response(
-        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-obsolete"],"capability_scale_version":"20260811.1"}"#,
-    )]);
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let error = client
-        .contract_version()
-        .expect_err("the negotiated version must be advertised exactly once");
-
-    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
-    assert_eq!(error.code, "contract_support_mismatch");
-    server.join().expect("server exits after one request");
-}
-
-#[test]
-fn unsupported_consumer_contract_is_a_contract_mismatch() {
-    let (base_url, server) = serve(vec![response(
-        "426 Upgrade Required",
-        r#"{"error":{"code":"consumer_contract_unsupported","message":"unsupported"}}"#,
-    )]);
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let error = client
-        .contract_version()
-        .expect_err("unsupported negotiation fails closed");
-
-    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
-    assert_eq!(error.code, "consumer_contract_unsupported");
-    server.join().expect("server exits after one request");
-}
-
-#[test]
-fn client_rejects_any_other_contract_version() {
-    let (base_url, server) = serve(vec![json_response(
-        r#"{"contract_version":"0.1.0-obsolete","capability_scale_version":"20260811.1"}"#,
-    )]);
-    let client = InferRuntimeClient::new(InferRuntimeConfig {
-        base_url,
-        bearer_token: "test-consumer-token".to_owned(),
-    });
-
-    let error = client
-        .contract_version()
-        .expect_err("only the frozen contract is accepted");
-
-    assert_eq!(error.kind, InferRuntimeErrorKind::ContractMismatch);
-    assert_eq!(error.code, "contract_mismatch");
-    server.join().expect("server exits after one request");
-}
-
-pub(crate) fn serve(responses: Vec<String>) -> (String, thread::JoinHandle<()>) {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("test listener binds");
-    let address = listener.local_addr().expect("address is known");
-    let handle = thread::spawn(move || {
-        for response in responses {
-            let (mut stream, _) = listener.accept().expect("request arrives");
-            read_request(&mut stream);
-            stream
-                .write_all(response.as_bytes())
-                .expect("response writes");
-        }
-    });
-    (format!("http://{address}"), handle)
-}
-
-fn read_request(stream: &mut std::net::TcpStream) {
-    let mut bytes = Vec::new();
-    let mut buffer = [0_u8; 4096];
-    let header_end = loop {
-        let read = stream.read(&mut buffer).expect("request reads");
-        assert!(read > 0, "request includes headers");
-        bytes.extend_from_slice(&buffer[..read]);
-        if let Some(index) = bytes.windows(4).position(|window| window == b"\r\n\r\n") {
-            break index + 4;
-        }
-    };
-    let headers = String::from_utf8_lossy(&bytes[..header_end]);
-    assert!(headers.lines().any(|line| {
-        line.split_once(':').is_some_and(|(name, value)| {
-            name.eq_ignore_ascii_case(CONSUMER_CONTRACT_HEADER)
-                && value.trim() == EXPECTED_CONTRACT_VERSION
+impl FakeTransport {
+    pub(crate) fn transcription(
+        response: SdkTranscriptionResponse,
+        job: SdkJobSnapshot,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            transcriptions: Mutex::new(VecDeque::from([Ok((response, job))])),
+            ..Self::default()
         })
-    }));
-    let content_length = headers
-        .lines()
-        .find_map(|line| {
-            line.strip_prefix("content-length: ")
-                .or_else(|| line.strip_prefix("Content-Length: "))
+    }
+
+    pub(crate) fn alignment(response: SdkAlignmentResponse, job: SdkJobSnapshot) -> Arc<Self> {
+        Arc::new(Self {
+            alignments: Mutex::new(VecDeque::from([Ok((response, job))])),
+            ..Self::default()
         })
-        .and_then(|value| value.trim().parse::<usize>().ok())
-        .unwrap_or(0);
-    while bytes.len() - header_end < content_length {
-        let read = stream.read(&mut buffer).expect("request body reads");
-        assert!(read > 0, "request body is complete");
-        bytes.extend_from_slice(&buffer[..read]);
+    }
+
+    pub(crate) fn contextual(response: ResponsesResult, job: SdkJobSnapshot) -> Arc<Self> {
+        Arc::new(Self {
+            contextual: Mutex::new(VecDeque::from([Ok((response, job))])),
+            ..Self::default()
+        })
+    }
+
+    pub(crate) fn embedding(response: TextEmbeddingResponse, job: SdkJobSnapshot) -> Arc<Self> {
+        Arc::new(Self {
+            embeddings: Mutex::new(VecDeque::from([Ok((response, job))])),
+            ..Self::default()
+        })
     }
 }
 
-pub(crate) fn json_response(body: &str) -> String {
-    response("200 OK", body)
+impl RuntimeTransport for FakeTransport {
+    fn contract(&self) -> Result<(), InferRuntimeError> {
+        Ok(())
+    }
+
+    fn transcribe(
+        &self,
+        _source: &Path,
+        _language: Option<&str>,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(SdkTranscriptionResponse, SdkJobSnapshot), InferRuntimeError> {
+        assert_echo_constraints(metadata);
+        pop(&self.transcriptions)
+    }
+
+    fn align(
+        &self,
+        _source: &Path,
+        text: &str,
+        _language: Option<&str>,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(SdkAlignmentResponse, SdkJobSnapshot), InferRuntimeError> {
+        assert!(!text.is_empty());
+        assert_echo_constraints(metadata);
+        pop(&self.alignments)
+    }
+
+    fn contextualize(
+        &self,
+        request: &ResponsesRequest,
+    ) -> Result<(ResponsesResult, SdkJobSnapshot), InferRuntimeError> {
+        assert_eq!(request.model, CONTEXTUAL_INTENT);
+        assert!(!request.stream);
+        assert!(!request.background);
+        assert_echo_constraints(&request.metadata);
+        pop(&self.contextual)
+    }
+
+    fn embed_text(
+        &self,
+        request: &TextEmbeddingRequest,
+    ) -> Result<(TextEmbeddingResponse, SdkJobSnapshot), InferRuntimeError> {
+        assert_eq!(request.model, TEXT_EMBEDDING_INTENT);
+        assert_echo_constraints(&request.metadata);
+        pop(&self.embeddings)
+    }
 }
 
-pub(crate) fn candidate4_contract_response() -> String {
-    json_response(
-        r#"{"contract_version":"0.1.0-candidate.4","supported_contract_versions":["0.1.0-candidate.4"],"capability_scale_version":"20260811.1"}"#,
+fn pop<T>(queue: &Mutex<VecDeque<Result<T, InferRuntimeError>>>) -> Result<T, InferRuntimeError> {
+    queue
+        .lock()
+        .expect("fake queue lock")
+        .pop_front()
+        .unwrap_or_else(|| Err(protocol("unexpected_fake_transport_call")))
+}
+
+fn assert_echo_constraints(metadata: &BTreeMap<String, String>) {
+    assert_eq!(
+        metadata.get("infer.policy").map(String::as_str),
+        Some("local-first")
+    );
+    assert_eq!(
+        metadata.get("infer.priority").map(String::as_str),
+        Some("background")
+    );
+    assert_eq!(
+        metadata.get("infer.placement").map(String::as_str),
+        Some("local_only")
+    );
+    assert_eq!(
+        metadata.get("infer.offline_required").map(String::as_str),
+        Some("true")
+    );
+    assert_eq!(
+        metadata.get("infer.fallback").map(String::as_str),
+        Some("none")
+    );
+    assert_eq!(
+        metadata.get("infer.max_cost_usd").map(String::as_str),
+        Some("0")
+    );
+}
+
+pub(crate) fn sdk_job_fixture(intent: &str, capability: &str) -> SdkJobSnapshot {
+    // Shape copied verbatim from the frozen SDK Core fixture, then scoped to
+    // Echo and the capability exercised by the product test.
+    let mut value: serde_json::Value = serde_json::from_str(
+        r#"{
+          "id":"resp_example","app_id":"sample-app","intent":"text.summarize",
+          "consumer_core_contract":"infer-runtime.consumer-core@20260813.1",
+          "capability_contract":"infer.responses@20260812.1","provider":"local-example",
+          "deployment":"example-small","model_profile":"example-text-small",
+          "model_build":"example-build-v1","physical_model":"example/model:small",
+          "placement":"local","capability_level":"foundational",
+          "evaluation_status":"provisional","resource_class":"light","state":"succeeded",
+          "policy":"local-first","priority":"normal",
+          "constraints":{"policy":"local-first","priority":"normal","provider_access_class":"standard",
+          "placement":"local_only","prefer":"local","offline_required":true,
+          "capability_floor":"foundational","latency":"balanced","max_cost_usd":0.0,
+          "fallback":"none","deadline_ms":null,"named_route":null},
+          "routing":{"capability_floor":"foundational","named_route":null,"candidates":[{
+          "deployment":"example-small","provider":"local-example","status":"eligible","rank":0,
+          "reason_codes":[]}]},"attempts":[{"number":1,"provider":"local-example",
+          "deployment":"example-small","outcome":"succeeded","trigger":"initial"}],"error":null
+        }"#,
     )
-}
-
-fn response(status: &str, body: &str) -> String {
-    response_with_headers(status, "", body)
-}
-
-fn response_with_headers(status: &str, headers: &str, body: &str) -> String {
-    format!(
-        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        body.len()
-    )
+    .expect("official SDK Job fixture parses");
+    value["app_id"] = json!(EXPECTED_APP_ID);
+    value["intent"] = json!(intent);
+    value["capability_contract"] = json!(capability);
+    value["priority"] = json!("background");
+    value["constraints"]["priority"] = json!("background");
+    value["constraints"]["latency"] = json!("throughput");
+    serde_json::from_value(value).expect("Echo-scoped SDK Job fixture parses")
 }
 
 pub(crate) fn audio_fixture() -> PathBuf {
     let path = std::env::temp_dir().join(format!(
-        "echo-runtime-test-{}-{}.wav",
+        "echo-sdk-audio-fixture-{}-{}.wav",
         std::process::id(),
-        std::thread::current().name().unwrap_or("worker")
+        std::thread::current().name().unwrap_or("test")
     ));
-    std::fs::write(&path, b"RIFF test audio").expect("fixture writes");
+    std::fs::write(&path, b"RIFFecho-sdk-fixture").expect("write audio fixture");
     path
 }
 
-pub(crate) fn audio_event_detection_response(speech_status: &str, speech_score: f64) -> String {
-    json!({
-        "id": "audio_echo_1",
-        "model": AUDIO_EVENT_DETECTION_INTENT,
-        "object": "audio.event_detection",
-        "events": [{
-            "class_id": "/m/015p6",
-            "label": "Bird",
-            "start_seconds": 0.0,
-            "end_seconds": 1.44,
-            "score": 0.82
-        }, {
-            "class_id": "/m/07r04",
-            "label": "Truck",
-            "start_seconds": 0.48,
-            "end_seconds": 2.0,
-            "score": 0.61
-        }],
-        "speech_presence": {"status": speech_status, "max_score": speech_score},
-        "coverage": {
-            "status": "full",
-            "input_duration_seconds": 2.0,
-            "analyzed_start_seconds": 0.0,
-            "analyzed_end_seconds": 2.0,
-            "analyzed_seconds": 2.0,
-            "ratio": 1.0,
-            "window_count": 4,
-            "window_seconds": 0.96,
-            "hop_seconds": 0.48
-        },
-        "ontology": {
-            "id": "audioset",
-            "revision": "yamnet-class-map@cdf24d193e19",
-            "class_id_namespace": "audioset_mid",
-            "class_count": 521,
-            "artifact_sha256": "cdf24d193e196d9e95912a2667051ae203e92a2ba09449218ccb40ef787c6df2",
-            "license_spdx": "CC-BY-SA-4.0"
-        },
-        "policy": {
-            "revision": "yamnet-audioset-event-policy-v1",
-            "score_kind": "raw_sigmoid",
-            "event_score_threshold": 0.1,
-            "smoothing": {"method": "centered_median_edge_padded", "window_frames": 3},
-            "max_classes_per_window": 12,
-            "speech_present_threshold": 0.3,
-            "speech_absent_threshold": 0.05
-        },
-        "provenance": {
-            "model": "google/yamnet/1",
-            "model_archive_sha256": "b80da2a1a56926fb0767205051a200dd7b3beaf3ea1ea126c42a53943996e5e0",
-            "model_license_spdx": "Apache-2.0",
-            "training_data_license_spdx": "CC-BY-4.0",
-            "runtime": "tensorflow-saved-model",
-            "runtime_version": "2.20.0",
-            "decoder": "ffmpeg",
-            "decoder_version": "ffmpeg 8.1.2",
-            "preprocessing_identity": "ffmpeg_decode_mono_f32le_16khz_then_tfhub_yamnet_waveform_v1"
-        }
-    })
-    .to_string()
+#[test]
+fn frozen_sdk_identities_replace_candidate_headers() {
+    assert_eq!(
+        EXPECTED_CONTRACT_VERSION,
+        "infer-runtime.consumer-core@20260813.1"
+    );
+    assert_eq!(
+        infer_runtime_client::CONSUMER_CORE_HEADER,
+        "Infer-Consumer-Contract"
+    );
+    assert_eq!(
+        infer_runtime_client::CAPABILITY_CONTRACT_HEADER,
+        "Infer-Capability-Contract"
+    );
+    assert_eq!(
+        infer_runtime_client::CAPABILITY_CATALOG_VERSION,
+        "20260813.1"
+    );
 }
 
-pub(crate) fn audio_event_job_snapshot() -> String {
-    json!({
-        "id": "audio_echo_1",
-        "consumer_contract_version": EXPECTED_CONTRACT_VERSION,
-        "app_id": "echo",
-        "intent": AUDIO_EVENT_DETECTION_INTENT,
-        "provider": "yamnet-local",
-        "deployment": "yamnet_audio_events_tfhub_v1",
-        "model_profile": "yamnet_tfhub_v1",
-        "model_build": "yamnet_tfhub_v1_tensorflow_2_20",
-        "physical_model": "google/yamnet/1",
-        "placement": "local",
-        "capability_level": "foundational",
-        "evaluation_status": "provisional",
-        "resource_class": "standard",
-        "state": "succeeded",
-        "policy": "local-first",
-        "priority": "background",
-        "constraints": {
-            "policy": "local-first",
-            "priority": "background",
-            "placement": "local_only",
-            "prefer": "local",
-            "offline_required": true,
-            "capability_floor": "foundational",
-            "latency": "throughput",
-            "max_cost_usd": 0.0,
-            "fallback": "none"
-        },
-        "routing": {"capability_floor": "foundational", "candidates": []},
-        "attempts": [{
-            "number": 1,
-            "provider": "yamnet-local",
-            "deployment": "yamnet_audio_events_tfhub_v1",
-            "outcome": "succeeded",
-            "trigger": "initial",
-            "error_kind": null
-        }]
-    })
-    .to_string()
+#[test]
+fn legacy_job_field_is_read_only_compatible_and_serializes_as_core_contract() {
+    let mapped = validate_succeeded_job(
+        sdk_job_fixture(TRANSCRIPTION_INTENT, TRANSCRIPTION_CAPABILITY),
+        TRANSCRIPTION_INTENT,
+        TRANSCRIPTION_CAPABILITY,
+    )
+    .unwrap();
+    let mut value = serde_json::to_value(mapped).unwrap();
+    let object = value.as_object_mut().unwrap();
+    let core_contract = object.remove("consumer_core_contract").unwrap();
+    object.insert("consumer_contract_version".to_owned(), core_contract);
+    object.remove("capability_contract");
+    let legacy: RuntimeJobSnapshot = serde_json::from_value(value).unwrap();
+    assert_eq!(legacy.capability_contract, None);
+    let encoded = serde_json::to_value(legacy).unwrap();
+    assert!(encoded.get("consumer_core_contract").is_some());
+    assert!(encoded.get("consumer_contract_version").is_none());
+}
+
+#[test]
+fn fake_sdk_transcription_preserves_echo_provenance() {
+    let response: SdkTranscriptionResponse = serde_json::from_value(json!({
+        "id":"transcribe-1","text":"你好","language":"zh",
+        "segments":[{"text":"你好","start":0.1,"end":0.8}],"usage":{}
+    }))
+    .unwrap();
+    let job = sdk_job_fixture(TRANSCRIPTION_INTENT, TRANSCRIPTION_CAPABILITY);
+    let client = InferRuntimeClient::with_transport(FakeTransport::transcription(response, job));
+    let payload = client
+        .transcribe(&audio_fixture(), &TranscriptionIntent::default())
+        .unwrap();
+    assert_eq!(payload.text, "你好");
+    assert_eq!(payload.segments.len(), 1);
+    let runtime = payload.runtime.unwrap();
+    assert_eq!(runtime.contract_version, EXPECTED_CONTRACT_VERSION);
+    assert_eq!(
+        runtime.job.capability_contract.as_deref(),
+        Some(TRANSCRIPTION_CAPABILITY)
+    );
+}
+
+#[test]
+fn transcription_rejects_runtime_fallback_evidence() {
+    let response: SdkTranscriptionResponse = serde_json::from_value(json!({
+        "id":"transcribe-fallback","text":"你好","language":"zh",
+        "segments":[],"usage":{}
+    }))
+    .unwrap();
+    let mut job = sdk_job_fixture(TRANSCRIPTION_INTENT, TRANSCRIPTION_CAPABILITY);
+    job.constraints["fallback"] = json!("provider");
+    let client = InferRuntimeClient::with_transport(FakeTransport::transcription(response, job));
+    let error = client
+        .transcribe(&audio_fixture(), &TranscriptionIntent::default())
+        .unwrap_err();
+    assert_eq!(error.kind, InferRuntimeErrorKind::Protocol);
+    assert_eq!(error.code, "inconsistent_transcription_constraints");
+}
+
+#[test]
+fn fake_sdk_alignment_preserves_typed_items() {
+    let response: SdkAlignmentResponse = serde_json::from_value(json!({
+        "id":"align-1","text":"你好","language":"zh",
+        "items":[{"text":"你好","start":0.1,"end":0.8}]
+    }))
+    .unwrap();
+    let job = sdk_job_fixture(ALIGNMENT_INTENT, ALIGNMENT_CAPABILITY);
+    let client = InferRuntimeClient::with_transport(FakeTransport::alignment(response, job));
+    let payload = client
+        .align(&audio_fixture(), "你好", &AlignmentIntent::default())
+        .unwrap();
+    assert_eq!(payload.items[0].text, "你好");
+    assert_eq!(
+        payload.runtime.job.consumer_core_contract,
+        EXPECTED_CONTRACT_VERSION
+    );
+}
+
+#[test]
+fn oversized_audio_fails_before_sdk_transport() {
+    let path = std::env::temp_dir().join(format!("echo-sdk-large-{}", std::process::id()));
+    let file = std::fs::File::create(&path).unwrap();
+    file.set_len(MAX_AUDIO_UPLOAD_BYTES + 1).unwrap();
+    let client = InferRuntimeClient::with_transport(Arc::new(FakeTransport::default()));
+    let error = client
+        .transcribe(&path, &TranscriptionIntent::default())
+        .unwrap_err();
+    assert_eq!(error.kind, InferRuntimeErrorKind::SourceTooLarge);
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn debug_output_never_contains_credential_contents() {
+    let config = InferRuntimeConfig {
+        base_url: String::new(),
+        credential_path: PathBuf::from("/private/echo/infer-runtime.token"),
+    };
+    let debug = format!("{config:?}");
+    assert!(debug.contains("infer-runtime.token"));
+    assert!(!debug.contains("Bearer"));
 }

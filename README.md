@@ -29,17 +29,20 @@ AI model selection, and milestone plan.
 
 ## Infer Runtime consumer contract
 
-Echo's production inference client uses the canonical Infer Runtime
-`0.1.0-candidate.3` vocabulary. Discovery must advertise exactly that Consumer protocol version;
-Echo emits `semantic.embed_text` with `infer.capability_floor=foundational` and fails closed for
-any other Runtime contract.
+Echo uses the official `infer-runtime-client` SDK pinned to revision
+`8588a945047cedaea62035969e479e7fb7ff795c`. The SDK owns strict
+`infra.discovery.registration@20260812.1` selection, exact
+`infer-runtime.consumer-core@20260813.1` negotiation, the
+`infer-runtime.capability-catalog@20260813.1` intersection, managed credential loading, common
+headers, loopback transport, redirects/proxies and error envelopes. There is no legacy candidate
+or fixed-port fallback.
 
 Job evidence is validated as `capability_level`, `evaluation_status`, and
 `routing.capability_floor` before it reaches Echo's product workflows. Endpoint paths, the
-`echo` App identity, its existing managed credential, and local-only/offline/no-fallback policy do
-not change. See the upstream
-[candidate.3 migration guide](https://github.com/glenzli/infer-runtime/blob/main/docs/MIGRATION-0.1.0-candidate.3.md)
-for the complete contract mapping.
+`echo` App identity, its existing managed credential path, and
+local-first/local-only/background/offline/no-fallback/zero-cost policy do not change. Echo still
+owns evidence validation, product persistence and stale-result rejection. Explicit development
+endpoint overrides remain available; normal product use requires Discovery.
 
 ## Developer commands
 

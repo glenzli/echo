@@ -7,7 +7,7 @@ use anyhow::Context;
 use echo_catalog::open_catalog;
 use echo_core::{
     AlignmentIntent, ImportOutcome, InferRuntimeClient, InferRuntimeConfig, TranscriptionIntent,
-    import_asset, load_infer_runtime_credential, record_alignment, record_runtime_transcript,
+    import_asset, infer_runtime_credential_path, record_alignment, record_runtime_transcript,
 };
 
 pub(crate) fn run_transcribe(
@@ -20,11 +20,11 @@ pub(crate) fn run_transcribe(
     };
     println!("asset {} ready, transcribing...", asset.id);
 
-    let credential = load_infer_runtime_credential()
-        .context("Echo has no usable Infer Runtime consumer credential")?;
+    let credential_path = infer_runtime_credential_path()
+        .context("Echo cannot resolve its Infer Runtime consumer credential path")?;
     let client = InferRuntimeClient::new(InferRuntimeConfig {
         base_url: runtime_endpoint.to_owned(),
-        bearer_token: credential.into_bearer_token(),
+        credential_path,
     });
     let payload = client
         .transcribe(&asset.original.path, &TranscriptionIntent::default())
