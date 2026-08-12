@@ -39,6 +39,7 @@ add_library(
     src/playback.cpp
     src/parametric_equalizer.cpp
     src/phaser_vfx.cpp
+    src/prepared_impulse_response.cpp
     src/rotary_vfx_processor.cpp
     src/scene_vfx_processor.cpp
     src/source_edit_plan.cpp
@@ -235,6 +236,17 @@ if(BUILD_TESTING)
     add_test(
         NAME echo-impulse-response-preparer-test
         COMMAND echo-impulse-response-preparer-test
+    )
+
+    add_executable(
+        echo-prepared-impulse-response-test
+        tests/prepared_impulse_response_test.cpp
+    )
+    target_link_libraries(echo-prepared-impulse-response-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-prepared-impulse-response-test)
+    add_test(
+        NAME echo-prepared-impulse-response-test
+        COMMAND echo-prepared-impulse-response-test
     )
 
     add_executable(
