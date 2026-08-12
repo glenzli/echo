@@ -5,7 +5,7 @@
 //! (`小火车` -> `小 火 车`); queries go through the same segmentation and are
 //! matched as exact phrases, which makes short queries (`火车`) work too.
 
-use rusqlite::Transaction;
+use rusqlite::{OptionalExtension, Transaction};
 
 use crate::error::CatalogError;
 
@@ -62,11 +62,23 @@ pub fn index_transcript(
     asset_id: &str,
     text: &str,
 ) -> Result<(), CatalogError> {
+    let calibrated_text = transaction
+        .query_row(
+            "SELECT transcript_text FROM metadata_calibration_revisions \
+             WHERE asset_id = ?1 ORDER BY id DESC LIMIT 1",
+            [asset_id],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()?
+        .flatten();
+    let effective_text = calibrated_text.as_deref().unwrap_or(text);
     transaction.execute("DELETE FROM transcript_fts WHERE asset_id = ?1", [asset_id])?;
-    transaction.execute(
-        "INSERT INTO transcript_fts (asset_id, text) VALUES (?1, ?2)",
-        rusqlite::params![asset_id, segment_cjk(text)],
-    )?;
+    if !effective_text.is_empty() {
+        transaction.execute(
+            "INSERT INTO transcript_fts (asset_id, text) VALUES (?1, ?2)",
+            rusqlite::params![asset_id, segment_cjk(effective_text)],
+        )?;
+    }
     Ok(())
 }
 
