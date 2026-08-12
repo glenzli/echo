@@ -2,6 +2,7 @@
 
 #include <echo/audio/analysis_proxy.hpp>
 #include <echo/audio/decode.hpp>
+#include <echo/audio/impulse_response_preparer.hpp>
 #include <echo/audio/waveform.hpp>
 
 #include <stdexcept>
@@ -69,6 +70,22 @@ FfiAnalysisProxy build_analysis_proxy_bridge(
         .sample_rate = result.sample_rate,
         .channel_count = result.channel_count,
         .frame_count = result.frame_count,
+        .size_bytes = result.size_bytes,
+    };
+}
+
+FfiPreparedImpulseResponse
+prepare_impulse_response_bridge(rust::Str source_path, rust::Str output_path) {
+    const audio::PreparedImpulseResponseResult result =
+        audio::prepare_impulse_response(std::string(source_path), std::string(output_path));
+    return FfiPreparedImpulseResponse{
+        .preparation_version = result.preparation_version,
+        .source_sample_rate = result.source_sample_rate,
+        .channel_count = result.channel_count,
+        .source_frame_count = result.source_frame_count,
+        .prepared_frame_count = result.prepared_frame_count,
+        .avcodec_version = result.avcodec_version,
+        .swresample_version = result.swresample_version,
         .size_bytes = result.size_bytes,
     };
 }

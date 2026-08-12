@@ -50,6 +50,17 @@ mod ffi {
         size_bytes: u64,
     }
 
+    struct FfiPreparedImpulseResponse {
+        preparation_version: u32,
+        source_sample_rate: u32,
+        channel_count: u32,
+        source_frame_count: u64,
+        prepared_frame_count: u64,
+        avcodec_version: u32,
+        swresample_version: u32,
+        size_bytes: u64,
+    }
+
     unsafe extern "C++" {
         include!("src/bridge/cxx_bridge.hpp");
 
@@ -61,7 +72,53 @@ mod ffi {
             start_millis: u64,
             end_millis: u64,
         ) -> Result<FfiAnalysisProxy>;
+        fn prepare_impulse_response_bridge(
+            source_path: &str,
+            output_path: &str,
+        ) -> Result<FfiPreparedImpulseResponse>;
     }
+}
+
+/// Evidence for one canonical 48 kHz impulse-response artifact.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreparedImpulseResponse {
+    pub preparation_version: u32,
+    pub source_sample_rate: u32,
+    pub channel_count: u32,
+    pub source_frame_count: u64,
+    pub prepared_frame_count: u64,
+    pub avcodec_version: u32,
+    pub swresample_version: u32,
+    pub size_bytes: u64,
+}
+
+/// Validates a bounded local WAV and writes canonical planar float32 at 48 kHz.
+///
+/// The output is a versioned portable preparation artifact, not a runtime FFT
+/// bank. The caller supplies a temporary output path and publishes it only
+/// after hashing and source-identity checks succeed.
+///
+/// # Errors
+///
+/// Returns [`BridgeErrorKind::EngineRejected`] for unsupported WAV structure,
+/// sample layout, duration, non-finite/silent content, or I/O failures.
+pub fn prepare_impulse_response(
+    source: &Path,
+    output: &Path,
+) -> Result<PreparedImpulseResponse, BridgeError> {
+    let source = native_path(source)?;
+    let output = native_path(output)?;
+    let wire = ffi::prepare_impulse_response_bridge(&source, &output)?;
+    Ok(PreparedImpulseResponse {
+        preparation_version: wire.preparation_version,
+        source_sample_rate: wire.source_sample_rate,
+        channel_count: wire.channel_count,
+        source_frame_count: wire.source_frame_count,
+        prepared_frame_count: wire.prepared_frame_count,
+        avcodec_version: wire.avcodec_version,
+        swresample_version: wire.swresample_version,
+        size_bytes: wire.size_bytes,
+    })
 }
 
 /// Metadata of one bounded analysis proxy written by the audio engine.

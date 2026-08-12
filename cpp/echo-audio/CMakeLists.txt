@@ -23,6 +23,7 @@ add_library(
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
     src/effect_mask_plan.cpp
+    src/impulse_response_preparer.cpp
     src/k_weighting_filter.cpp
     src/low_cut_filter.cpp
     src/loudness_gain_advisor.cpp
@@ -224,6 +225,17 @@ if(BUILD_TESTING)
     target_link_libraries(echo-effect-mask-plan-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-effect-mask-plan-test)
     add_test(NAME echo-effect-mask-plan-test COMMAND echo-effect-mask-plan-test)
+
+    add_executable(
+        echo-impulse-response-preparer-test
+        tests/impulse_response_preparer_test.cpp
+    )
+    target_link_libraries(echo-impulse-response-preparer-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-impulse-response-preparer-test)
+    add_test(
+        NAME echo-impulse-response-preparer-test
+        COMMAND echo-impulse-response-preparer-test
+    )
 
     add_executable(
         echo-source-edit-plan-test
