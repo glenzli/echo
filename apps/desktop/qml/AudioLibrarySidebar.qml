@@ -13,6 +13,7 @@ Rectangle {
     required property var userAlbums
     required property var suggestedAlbums
     required property string selectedFilter
+    required property int revisitCount
     property string albumError: ""
 
     signal filterRequested(string key)
@@ -46,6 +47,8 @@ Rectangle {
     }
 
     function countFor(key: string): int {
+        if (key === "revisit")
+            return revisitCount;
         let count = 0;
         const now = Date.now();
         for (let index = 0; index < assets.length; ++index) {
@@ -99,6 +102,11 @@ Rectangle {
 
         Repeater {
             model: [
+                {
+                    key: "revisit",
+                    label: qsTr("Revisit"),
+                    iconSource: "qrc:/EchoDesktop/icons/history.svg"
+                },
                 {
                     key: "all",
                     label: qsTr("All sounds"),

@@ -158,6 +158,11 @@
 <context>
     <name>AudioLibrarySidebar</name>
     <message>
+        <location filename="../qml/AudioLibrarySidebar.qml" line="104"/>
+        <source>Revisit</source>
+        <translation>重温</translation>
+    </message>
+    <message>
         <location filename="../qml/AudioLibrarySidebar.qml" line="45"/>
         <source>Related by AI</source>
         <translation>AI 关联</translation>
@@ -626,6 +631,11 @@
 </context>
 <context>
     <name>AudioSpaceWorkspace</name>
+    <message>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="258"/>
+        <source>Revisit</source>
+        <translation>重温</translation>
+    </message>
     <message>
         <location filename="../qml/AudioSpaceWorkspace.qml" line="198"/>
         <source>%1 updated · %2 unchanged · %3 failed</source>
@@ -3345,6 +3355,16 @@
 <context>
     <name>SoundPresentationToolbar</name>
     <message>
+        <location filename="../qml/SoundPresentationToolbar.qml" line="68"/>
+        <source>%1 memories</source>
+        <translation>%1 段记忆</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundPresentationToolbar.qml" line="154"/>
+        <source>Revisit home</source>
+        <translation>重温首页</translation>
+    </message>
+    <message>
         <location filename="../qml/SoundPresentationToolbar.qml" line="111"/>
         <source>Apply processing recipe</source>
         <translation>应用处理方案</translation>
@@ -3993,6 +4013,87 @@
         <location filename="../qml/TransformVfxPanel.qml" line="64"/>
         <source>Creates an exaggerated character. It does not clone a person or preserve a natural speaking identity.</source>
         <translation>塑造夸张的声音角色，不会克隆人物，也不以保留自然说话身份为目标。</translation>
+    </message>
+</context>
+<context>
+    <name>RevisitAlbumCard</name>
+    <message>
+        <location filename="../qml/RevisitAlbumCard.qml" line="72"/>
+        <source>%1 sounds</source>
+        <translation>%1 个声音</translation>
+    </message>
+</context>
+<context>
+    <name>RevisitDashboard</name>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="89"/>
+        <source>Listen again</source>
+        <translation>再听听</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="96"/>
+        <source>Continue listening and return to moments already in your library.</source>
+        <translation>继续聆听，回到资料库中已经发生过的声音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="111"/>
+        <source>Continue listening</source>
+        <translation>继续聆听</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="112"/>
+        <source>Resume from the source-time position where you stopped.</source>
+        <translation>从上次停下的原始时间位置继续。</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="124"/>
+        <source>Your albums</source>
+        <translation>你的声音相册</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="125"/>
+        <source>Collections you chose to keep stay stable as analysis changes.</source>
+        <translation>你确认保留的集合不会随分析结果变化。</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="169"/>
+        <source>On this day</source>
+        <translation>往年今日</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="170"/>
+        <source>Recordings from this date in earlier years.</source>
+        <translation>往年同一天留下的录音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="181"/>
+        <source>Recently listened</source>
+        <translation>最近聆听</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="182"/>
+        <source>Completed sounds and moments without a pending resume point.</source>
+        <translation>已经听完或当前没有续听位置的声音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="193"/>
+        <source>New in your library</source>
+        <translation>资料库新内容</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="194"/>
+        <source>A bounded view of the newest available originals.</source>
+        <translation>有界展示最近加入且原始文件可用的声音。</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="221"/>
+        <source>Your listening memories will gather here</source>
+        <translation>你的聆听记忆会汇聚在这里</translation>
+    </message>
+    <message>
+        <location filename="../qml/RevisitDashboard.qml" line="229"/>
+        <source>Listen to a sound or create an album. Echo will keep the original source and your place in it.</source>
+        <translation>聆听声音或创建相册后，Echo 会保留原始来源和你的聆听位置。</translation>
     </message>
 </context>
 </TS>

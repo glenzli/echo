@@ -16,6 +16,7 @@ ToolBar {
     required property real cardWidth
     required property string searchText
     required property bool semanticSearching
+    required property bool revisitMode
 
     signal searchRequested(string text)
     signal viewModeRequested(string mode)
@@ -64,7 +65,7 @@ ToolBar {
             Text {
                 id: visibleCountText
                 anchors.centerIn: parent
-                text: qsTr("%1 visible").arg(toolbar.visibleCount)
+                text: toolbar.revisitMode ? qsTr("%1 memories").arg(toolbar.visibleCount) : qsTr("%1 visible").arg(toolbar.visibleCount)
                 color: Theme.textMuted
                 font.pixelSize: 9
                 font.bold: true
@@ -95,6 +96,7 @@ ToolBar {
         }
 
         Rectangle {
+            visible: !toolbar.revisitMode
             Layout.preferredWidth: processingActions.implicitWidth + 6
             Layout.preferredHeight: 32
             radius: 8
@@ -147,6 +149,7 @@ ToolBar {
         }
 
         Rectangle {
+            visible: !toolbar.revisitMode
             Layout.preferredWidth: viewActions.implicitWidth + 6
             Layout.preferredHeight: 32
             radius: 8
@@ -180,7 +183,7 @@ ToolBar {
         }
 
         Item {
-            visible: toolbar.viewMode === "grid"
+            visible: toolbar.viewMode === "grid" && !toolbar.revisitMode
             Layout.preferredWidth: 154
             Layout.preferredHeight: 28
 
@@ -241,6 +244,28 @@ ToolBar {
                         }
                     }
                 }
+            }
+        }
+
+        Rectangle {
+            visible: toolbar.revisitMode
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            radius: 8
+            color: Theme.surfaceSelected
+
+            EchoIcon {
+                anchors.centerIn: parent
+                source: "qrc:/EchoDesktop/icons/history.svg"
+                size: 16
+                color: Theme.accent
+            }
+
+            ToolTip.visible: revisitHover.hovered
+            ToolTip.text: qsTr("Revisit home")
+
+            HoverHandler {
+                id: revisitHover
             }
         }
     }

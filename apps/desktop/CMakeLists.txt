@@ -193,6 +193,10 @@ qt_add_qml_module(
         qml/ProcessingRecipeManagerDialog.qml
         qml/ProcessingRecipePicker.qml
         qml/ProcessingRecipeSaveDialog.qml
+        qml/RevisitAlbumCard.qml
+        qml/RevisitDashboard.qml
+        qml/RevisitSoundStrip.qml
+        qml/RevisitState.qml
         qml/RestorationPanel.qml
         qml/BatchExportDialog.qml
         qml/SoundAdvancedFilterPopup.qml

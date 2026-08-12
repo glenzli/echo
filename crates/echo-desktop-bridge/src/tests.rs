@@ -3,6 +3,7 @@
 mod listening_state_contract;
 mod long_audio_contract;
 mod processing_recipe_contract;
+mod revisit_contract;
 mod smart_album_contract;
 mod user_album_contract;
 

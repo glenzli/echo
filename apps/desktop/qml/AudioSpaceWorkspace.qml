@@ -11,7 +11,7 @@ Item {
     id: workspace
 
     property var selectedAsset: null
-    property string selectedFilter: "all"
+    property string selectedFilter: "revisit"
     property string searchText: ""
     property string sortMode: "date"
     property string viewMode: "grid"
@@ -35,7 +35,8 @@ Item {
             failed: 0
         })
 
-    readonly property int visibleAssetCount: filteredAssets.length
+    readonly property bool revisitActive: selectedFilter === "revisit" && viewMode === "grid" && normalizedSearchText().length === 0
+    readonly property int visibleAssetCount: revisitActive ? revisitState.visibleAssetCount : filteredAssets.length
     readonly property string cardDensity: preferredCardWidth <= 205 ? "overview" : preferredCardWidth <= 330 ? "browse" : "rich"
     readonly property int incompleteAnalysisCount: allAssets.filter(asset => asset.analysisState !== "done").length
     readonly property int failedAnalysisCount: allAssets.filter(asset => asset.analysisState === "failed" || asset.analysisState === "cancelled").length
@@ -51,6 +52,13 @@ Item {
     SoundAlbumState {
         id: albumState
         catalogBackend: backend
+    }
+
+    RevisitState {
+        id: revisitState
+        catalogBackend: backend
+        assets: workspace.allAssets
+        userAlbums: albumState.userAlbums
     }
 
     SoundMultiSelectionState {
@@ -78,6 +86,7 @@ Item {
         const assets = backend.listAssets();
         allAssets = assets;
         albumState.refresh();
+        revisitState.refresh();
         reconcileAlbumFilter();
         refilter();
         soundSelection.reconcile();
@@ -238,6 +247,8 @@ Item {
     }
 
     function collectionTitle(): string {
+        if (selectedFilter === "revisit")
+            return qsTr("Revisit");
         if (selectedFilter === "recent")
             return qsTr("Recently added");
         if (selectedFilter === "listened")
@@ -264,7 +275,7 @@ Item {
     }
 
     function matchesCollection(asset: var): bool {
-        if (selectedFilter === "all") {
+        if (selectedFilter === "all" || selectedFilter === "revisit") {
             return true;
         }
         if (selectedFilter === "recent") {
@@ -380,6 +391,11 @@ Item {
 
     function selectFilter(key: string): void {
         selectedFilter = key;
+        viewMode = "grid";
+        if (key === "revisit" && normalizedSearchText().length > 0) {
+            searchText = "";
+            semanticSearch.clear();
+        }
         refilter();
     }
 
@@ -389,6 +405,7 @@ Item {
                 resumePositionMillis: resumePositionMillis
             }) : asset;
         allAssets = allAssets.map(update);
+        revisitState.refresh();
         if (selectedFilter === "listened")
             refilter();
         else
@@ -397,6 +414,8 @@ Item {
 
     function setSearchText(text: string): void {
         searchText = text;
+        if (normalizedSearchText().length > 0 && selectedFilter === "revisit")
+            selectedFilter = "all";
         refilter();
         semanticSearchTimer.restart();
     }
@@ -576,6 +595,7 @@ Item {
         target: albumState
         function onAlbumsRefreshed(): void {
             workspace.reconcileAlbumFilter();
+            revisitState.refresh();
             workspace.refilter();
         }
     }
@@ -599,6 +619,7 @@ Item {
                 userAlbums: albumState.userAlbums
                 suggestedAlbums: albumState.suggestedAlbums
                 selectedFilter: workspace.selectedFilter
+                revisitCount: revisitState.visibleAssetCount
                 albumError: albumState.errorMessage
                 onFilterRequested: key => workspace.selectFilter(key)
                 onManageLibraryRequested: workspace.openLibraryRequested()
@@ -628,6 +649,7 @@ Item {
                     cardWidth: workspace.preferredCardWidth
                     searchText: workspace.searchText
                     semanticSearching: semanticSearch.running
+                    revisitMode: workspace.revisitActive
                     onSearchRequested: text => workspace.setSearchText(text)
                     onViewModeRequested: mode => workspace.viewMode = mode
                     onCardWidthRequested: width => workspace.setPreferredCardWidth(width)
@@ -640,7 +662,21 @@ Item {
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    currentIndex: workspace.viewMode === "grid" ? 0 : 1
+                    currentIndex: workspace.revisitActive ? 0 : workspace.viewMode === "grid" ? 1 : 2
+
+                    RevisitDashboard {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        revisitState: revisitState
+                        selectedAsset: workspace.selectedAsset
+                        onAssetSelected: function (asset, modifiers) {
+                            workspace.activateAsset(asset, modifiers);
+                        }
+                        onAssetOpened: asset => workspace.openAsset(asset)
+                        onAlbumOpened: function (album) {
+                            workspace.selectFilter("user-album:" + album.id);
+                        }
+                    }
 
                     SoundWall {
                         Layout.fillWidth: true
@@ -703,6 +739,7 @@ Item {
 
         SoundWallBottomBar {
             Layout.fillWidth: true
+            visible: !workspace.revisitActive
             sortMode: workspace.sortMode
             likedOnly: workspace.likedOnly
             minimumRating: workspace.minimumRating

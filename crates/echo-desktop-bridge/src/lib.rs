@@ -260,6 +260,15 @@ mod ffi {
         updated_at_millis: i64,
     }
 
+    /// Bounded asset identities for the source-anchored Revisit home.
+    #[derive(Debug)]
+    struct RevisitSnapshotWire {
+        continue_listening: Vec<String>,
+        recently_listened: Vec<String>,
+        on_this_day: Vec<String>,
+        recently_added: Vec<String>,
+    }
+
     /// One named reusable processing recipe projected for Qt.
     #[derive(Debug)]
     struct ProcessingRecipeWire {
@@ -450,6 +459,11 @@ mod ffi {
         fn session_smart_albums(self: &LibrarySession) -> Result<Vec<SmartAlbumWire>>;
         /// Lists user-authored albums and explicit membership.
         fn session_user_albums(self: &LibrarySession) -> Result<Vec<UserAlbumWire>>;
+        /// Projects bounded Revisit collections at the supplied wall time.
+        fn session_revisit_snapshot(
+            self: &LibrarySession,
+            now_millis: i64,
+        ) -> Result<RevisitSnapshotWire>;
         /// Lists named reusable processing recipes at their current revision.
         fn session_processing_recipes(self: &LibrarySession) -> Result<Vec<ProcessingRecipeWire>>;
         /// Lists bounded newest-first processing application history.
@@ -666,6 +680,15 @@ impl LibrarySession {
     /// Lists user-authored albums.
     fn session_user_albums(&self) -> Result<Vec<ffi::UserAlbumWire>, String> {
         self.user_albums().map_err(|error| error.message)
+    }
+
+    /// Projects bounded source-anchored collections for Revisit.
+    fn session_revisit_snapshot(
+        &self,
+        now_millis: i64,
+    ) -> Result<ffi::RevisitSnapshotWire, String> {
+        self.revisit_snapshot(now_millis)
+            .map_err(|error| error.message)
     }
 
     /// Lists current named processing recipe revisions.

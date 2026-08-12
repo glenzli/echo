@@ -28,6 +28,7 @@ mod listening_state;
 mod long_audio;
 mod processing_recipe;
 mod render_export;
+mod revisit;
 mod scan_journal;
 mod scan_root;
 mod schema;
@@ -104,6 +105,7 @@ pub use render_export::{
     RecordRenderExport, RenderExportFormat, RenderExportRecord, list_render_exports,
     record_render_export,
 };
+pub use revisit::{RevisitSnapshot, revisit_snapshot};
 pub use scan_journal::{journal_fingerprint, upsert_journal};
 pub use scan_root::{ScanRoot, add_scan_root, list_scan_roots, remove_scan_root};
 pub use schema::{CatalogSchemaRevision, CatalogSchemaRevisionParseError};

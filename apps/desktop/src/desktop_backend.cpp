@@ -1,5 +1,6 @@
 #include "desktop_backend.hpp"
 
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
@@ -698,6 +699,35 @@ QVariantList DesktopBackend::listUserAlbums() const {
         qWarning("cannot list user albums: %s", error.what());
     }
     return list;
+}
+
+QVariantMap DesktopBackend::revisitSnapshot() const {
+    QVariantMap result;
+    const auto idsForQml = [](const rust::Vec<rust::String>& values) {
+        QVariantList ids;
+        ids.reserve(static_cast<qsizetype>(values.size()));
+        for (const auto& value : values) {
+            ids.append(QString::fromUtf8(value.data(), value.size()));
+        }
+        return ids;
+    };
+    try {
+        const auto snapshot =
+            session_->session_revisit_snapshot(QDateTime::currentMSecsSinceEpoch());
+        result.insert(
+            QStringLiteral("continueListeningAssetIds"),
+            idsForQml(snapshot.continue_listening)
+        );
+        result.insert(
+            QStringLiteral("recentlyListenedAssetIds"),
+            idsForQml(snapshot.recently_listened)
+        );
+        result.insert(QStringLiteral("onThisDayAssetIds"), idsForQml(snapshot.on_this_day));
+        result.insert(QStringLiteral("recentlyAddedAssetIds"), idsForQml(snapshot.recently_added));
+    } catch (const rust::Error& error) {
+        qWarning("cannot project Revisit home: %s", error.what());
+    }
+    return result;
 }
 
 QVariantList DesktopBackend::listProcessingRecipes() const {

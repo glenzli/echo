@@ -15,9 +15,9 @@ use echo_domain::AssetId;
 
 use crate::ffi::{
     AnalysisStatusWire, AssetListeningStateWire, AssetSummaryWire, EditSegmentWire, EffectMaskWire,
-    EqualizerBandWire, JobStatsWire, KeywordFacetWire, LongAudioChapterWire, ScanRootWire,
-    SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire, UserAlbumWire,
-    WaveformArtifactWire, WaveformLevelWire,
+    EqualizerBandWire, JobStatsWire, KeywordFacetWire, LongAudioChapterWire, RevisitSnapshotWire,
+    ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire,
+    UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 pub(crate) fn now_millis() -> i64 {
@@ -26,6 +26,13 @@ pub(crate) fn now_millis() -> i64 {
         .map_or(0, |duration| {
             i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
         })
+}
+
+fn encode_asset_ids(asset_ids: Vec<AssetId>) -> Vec<String> {
+    asset_ids
+        .into_iter()
+        .map(|asset_id| asset_id.to_string())
+        .collect()
 }
 
 fn metadata_entry(entries: &[echo_catalog::SourceMetadataEntry], keys: &[&str]) -> String {
@@ -1001,6 +1008,25 @@ impl LibrarySession {
                 updated_at_millis: album.updated_at_millis,
             })
             .collect())
+    }
+
+    /// Projects bounded Revisit sections without exposing listening policy to
+    /// QML or loading unbounded history into the home surface.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the Catalog projection fails.
+    pub fn revisit_snapshot(&self, now_millis: i64) -> Result<RevisitSnapshotWire, SessionError> {
+        let snapshot = self
+            .catalog
+            .with_transaction(|transaction| echo_catalog::revisit_snapshot(transaction, now_millis))
+            .map_err(SessionError::from)?;
+        Ok(RevisitSnapshotWire {
+            continue_listening: encode_asset_ids(snapshot.continue_listening_asset_ids),
+            recently_listened: encode_asset_ids(snapshot.recently_listened_asset_ids),
+            on_this_day: encode_asset_ids(snapshot.on_this_day_asset_ids),
+            recently_added: encode_asset_ids(snapshot.recently_added_asset_ids),
+        })
     }
 
     /// Creates an empty user album or atomically snapshots suggested members.
