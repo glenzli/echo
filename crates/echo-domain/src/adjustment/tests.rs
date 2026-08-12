@@ -149,13 +149,14 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     assert_eq!(EffectNodeKind::DelayVfx.wire_value(), 9);
     assert_eq!(EffectNodeKind::ModulationVfx.wire_value(), 10);
     assert_eq!(EffectNodeKind::TransformVfx.wire_value(), 11);
-    assert_eq!(EFFECT_NODE_COUNT, 12);
+    assert_eq!(EffectNodeKind::DigitalDegradeVfx.wire_value(), 12);
+    assert_eq!(EFFECT_NODE_COUNT, 13);
     assert_eq!(
         EffectNodeKind::from_wire_value(3),
         Ok(EffectNodeKind::Space)
     );
     assert_eq!(
-        EffectNodeKind::from_wire_value(12),
+        EffectNodeKind::from_wire_value(13),
         Err(EffectNodeKindValueError)
     );
 
@@ -197,7 +198,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
     let encoded_value: serde_json::Value =
         serde_json::from_str(&encoded).expect("encoded chain is JSON");
-    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(12));
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(13));
     assert_eq!(encoded_value["active_count"], 3);
     let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
     assert_eq!(decoded, reduced);
@@ -221,7 +222,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]
     );
     let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(12));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(13));
     assert_eq!(normalized["active_count"], 3);
 
     assert_eq!(
@@ -234,6 +235,19 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
             EffectNodeKind::Master,
         ]
     );
+}
+
+#[test]
+fn twelve_node_chain_json_migrates_with_disabled_digital_degrade_tail() {
+    let mut stored = serde_json::to_value(EffectChain::standard()).expect("chain encodes");
+    let nodes = stored
+        .get_mut("nodes")
+        .and_then(serde_json::Value::as_array_mut)
+        .expect("nodes array");
+    assert_eq!(nodes.pop(), Some(serde_json::json!("digital_degrade_vfx")));
+    let restored: EffectChain = serde_json::from_value(stored).expect("legacy chain decodes");
+    assert!(restored.is_valid());
+    assert_eq!(restored.nodes(), EffectChain::standard().nodes());
 }
 
 #[test]
@@ -253,12 +267,13 @@ fn reverb_character_has_stable_wire_values() {
     assert_eq!(ReverbCharacter::Room.wire_value(), 0);
     assert_eq!(ReverbCharacter::Hall.wire_value(), 1);
     assert_eq!(ReverbCharacter::Plate.wire_value(), 2);
+    assert_eq!(ReverbCharacter::Spring.wire_value(), 3);
     assert_eq!(
         ReverbCharacter::from_wire_value(1),
         Ok(ReverbCharacter::Hall)
     );
     assert_eq!(
-        ReverbCharacter::from_wire_value(3),
+        ReverbCharacter::from_wire_value(4),
         Err(ReverbCharacterValueError)
     );
 }
@@ -610,6 +625,27 @@ fn graph_bounds_effect_masks_to_trim_and_active_supported_inserts() {
         ),
         Err(AdjustmentGraphError::InvalidEffectMasks)
     );
+}
+
+#[test]
+fn graph_accepts_digital_degrade_effect_mask() {
+    let mask = EffectMask::new(100, 900, 10, vec![EffectNodeKind::DigitalDegradeVfx])
+        .expect("zero-latency Digital Degrade mask validates");
+    let graph = AdjustmentGraph::new(
+        1_000,
+        0,
+        1_000,
+        0,
+        0,
+        AdjustmentEffects::default()
+            .with_effect_chain(
+                EffectChain::new([EffectNodeKind::DigitalDegradeVfx, EffectNodeKind::Master])
+                    .expect("digital mask chain validates"),
+            )
+            .with_effect_masks(vec![mask.clone()]),
+    )
+    .expect("Digital Degrade is a maskable zero-latency insert");
+    assert_eq!(graph.effect_masks(), &[mask]);
 }
 
 #[test]

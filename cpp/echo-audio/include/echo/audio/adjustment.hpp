@@ -18,7 +18,7 @@ enum class FadeCurve : std::uint8_t {
 };
 
 inline constexpr std::size_t kParametricEqualizerBandCount = 6;
-inline constexpr std::size_t kEffectNodeCount = 12;
+inline constexpr std::size_t kEffectNodeCount = 13;
 
 enum class EffectNodeKind : std::uint8_t {
     Restoration = 0,
@@ -33,6 +33,7 @@ enum class EffectNodeKind : std::uint8_t {
     DelayVfx = 9,
     ModulationVfx = 10,
     TransformVfx = 11,
+    DigitalDegradeVfx = 12,
 };
 
 enum class EditSegmentState : std::uint8_t {
@@ -171,6 +172,7 @@ enum class ReverbCharacter : std::uint8_t {
     Room = 0,
     Hall = 1,
     Plate = 2,
+    Spring = 3,
 };
 
 /// Algorithmic space controls in stable integer units.
@@ -221,6 +223,7 @@ struct PlaybackAdjustment {
         EffectNodeKind::DelayVfx,
         EffectNodeKind::ModulationVfx,
         EffectNodeKind::TransformVfx,
+        EffectNodeKind::DigitalDegradeVfx,
     }};
     std::uint8_t effect_chain_count = 5;
     std::vector<EditSegment> edit_segments;

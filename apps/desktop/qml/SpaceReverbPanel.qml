@@ -69,9 +69,9 @@ Rectangle {
 
             EchoSegmentedControl {
                 objectName: "spaceCharacterSelector"
-                Layout.preferredWidth: 198
+                Layout.preferredWidth: 248
                 Layout.preferredHeight: 28
-                model: [qsTr("Room"), qsTr("Hall"), qsTr("Plate")]
+                model: [qsTr("Room"), qsTr("Hall"), qsTr("Plate"), qsTr("Spring")]
                 currentIndex: panel.draft.reverbCharacter
                 onActivated: index => panel.draft.setReverbCharacter(index)
             }

@@ -29,6 +29,7 @@ echo::audio::PlaybackAdjustment master_only() {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     adjustment.effect_chain_count = 1;
     return adjustment;
@@ -49,6 +50,7 @@ echo::audio::PlaybackAdjustment bypassed_de_click() {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     adjustment.effect_chain_count = 3;
     return adjustment;
@@ -69,6 +71,7 @@ echo::audio::PlaybackAdjustment reordered_bypassed_de_click() {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     return adjustment;
 }
@@ -94,6 +97,7 @@ echo::audio::PlaybackAdjustment channel_repair_only() {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     adjustment.effect_chain_count = 2;
     return adjustment;
@@ -125,6 +129,7 @@ echo::audio::PlaybackAdjustment space_character(echo::audio::ReverbCharacter cha
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     adjustment.effect_chain_count = 2;
     return adjustment;
@@ -161,6 +166,11 @@ echo::audio::PlaybackAdjustment creative_only(echo::audio::EffectNodeKind node) 
         adjustment.creative_vfx.transform.enabled = true;
         adjustment.creative_vfx.transform.character = echo::audio::TransformVfxCharacter::Robot;
         break;
+    case echo::audio::EffectNodeKind::DigitalDegradeVfx:
+        adjustment.creative_vfx.digital_degrade.enabled = true;
+        adjustment.creative_vfx.digital_degrade.character =
+            echo::audio::DigitalDegradeVfxCharacter::LoFi;
+        break;
     case echo::audio::EffectNodeKind::Restoration:
     case echo::audio::EffectNodeKind::Equalizer:
     case echo::audio::EffectNodeKind::Dynamics:
@@ -192,6 +202,7 @@ echo::audio::PlaybackAdjustment two_latency_nodes(bool transform_first) {
         echo::audio::EffectNodeKind::SceneVfx,
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     adjustment.effect_chain_count = 3;
     return adjustment;
@@ -273,21 +284,30 @@ int main() {
             1000,
             kSampleRate
         );
+        const echo::audio::PreparedAdjustment spring_prepared(
+            space_character(echo::audio::ReverbCharacter::Spring),
+            1000,
+            kSampleRate
+        );
         echo::audio::EffectProcessingChain hall_sampled(hall_prepared, kSampleRate, kChannels);
         echo::audio::EffectProcessingChain hall_blocked(hall_prepared, kSampleRate, kChannels);
         echo::audio::EffectProcessingChain plate(plate_prepared, kSampleRate, kChannels);
+        echo::audio::EffectProcessingChain spring(spring_prepared, kSampleRate, kChannels);
         assert(hall_sampled.latency_frames() == 0);
         assert(plate.latency_frames() == 0);
+        assert(spring.latency_frames() == 0);
         const auto hall_one = process_in_chunks(hall_sampled, input, 1);
         const auto hall_257 = process_in_chunks(hall_blocked, input, 257);
         const auto plate_64 = process_in_chunks(plate, input, 64);
+        const auto spring_64 = process_in_chunks(spring, input, 64);
         assert_near(hall_one, hall_257);
         bool hall_changed = false;
         bool characters_differ = false;
         for (std::size_t index = 0; index < input.size(); ++index) {
             hall_changed = hall_changed || std::abs(hall_one[index] - input[index]) > 1.0E-6F;
-            characters_differ =
-                characters_differ || std::abs(hall_one[index] - plate_64[index]) > 1.0E-6F;
+            characters_differ = characters_differ
+                                || (std::abs(hall_one[index] - plate_64[index]) > 1.0E-6F
+                                    && std::abs(plate_64[index] - spring_64[index]) > 1.0E-6F);
         }
         assert(hall_changed);
         assert(characters_differ);
@@ -300,6 +320,7 @@ int main() {
             echo::audio::EffectNodeKind::DelayVfx,
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
+            echo::audio::EffectNodeKind::DigitalDegradeVfx,
         };
         for (const auto node : creative_nodes) {
             const echo::audio::PreparedAdjustment prepared(creative_only(node), 1000, kSampleRate);
@@ -387,6 +408,7 @@ int main() {
             echo::audio::EffectNodeKind::DelayVfx,
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
+            echo::audio::EffectNodeKind::DigitalDegradeVfx,
         };
         adjustment.effect_chain_count = 2;
         adjustment.equalizer.bands[0].gain_centibels = 1200;

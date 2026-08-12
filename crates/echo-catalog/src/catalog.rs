@@ -17,7 +17,7 @@ use crate::{
         EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
         EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
         INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL,
-        LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
+        LISTENING_STATE_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
         OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
         PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
@@ -96,17 +96,24 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         Some(version)
             if version
                 .parse::<CatalogSchemaRevision>()
-                .is_ok_and(|revision| revision == CREATIVE_VFX_SCHEMA_VERSION) =>
-        {
-            migrate_listening_state_schema(connection)?;
-        }
-        Some(version)
-            if version
-                .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == SCHEMA_VERSION) =>
         {
             connection.execute_batch(SCHEMA_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == LISTENING_STATE_SCHEMA_VERSION) =>
+        {
+            migrate_deterministic_vfx_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == CREATIVE_VFX_SCHEMA_VERSION) =>
+        {
+            migrate_listening_state_and_deterministic_vfx_schema(connection)?;
         }
         Some(version)
             if version
@@ -241,9 +248,24 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     Ok(())
 }
 
-fn migrate_listening_state_schema(connection: &Connection) -> Result<(), CatalogError> {
+fn migrate_listening_state_and_deterministic_vfx_schema(
+    connection: &Connection,
+) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     apply_listening_state_migration(&transaction)?;
+    // Spring, Digital Degrade, and the thirteenth effect node are backward-readable
+    // JSON additions, so the physical Listening migration can advance directly to
+    // the current dated boundary without rewriting authored adjustment bytes.
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn migrate_deterministic_vfx_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    // The new Spring enum, Digital Degrade settings, and thirteenth effect
+    // node are backward-readable JSON changes. Keep historical bytes intact
+    // while advancing the dated boundary so older binaries reject new intent.
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())

@@ -311,6 +311,7 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::Master,
                     echo::audio::EffectNodeKind::DeHum,
                     echo::audio::EffectNodeKind::DeClick,
+                    echo::audio::EffectNodeKind::DigitalDegradeVfx,
                 },
             .effect_chain_count = 10,
         };
@@ -376,11 +377,20 @@ int main(int argc, char* argv[]) {
             .mix_percent = 80,
             .amount_percent = 55,
         };
+        first_creative_update.digital_degrade = {
+            .character = echo::audio::DigitalDegradeVfxCharacter::Bitcrusher,
+            .enabled = true,
+            .mix_percent = 75,
+            .bitcrusher = {.bit_depth = 9},
+        };
         auto latest_creative_update = first_creative_update;
         latest_creative_update.scene.character = echo::audio::SceneVfxCharacter::Underwater;
         latest_creative_update.delay.character = echo::audio::DelayVfxCharacter::Echo;
         latest_creative_update.modulation.character = echo::audio::ModulationVfxCharacter::Phaser;
         latest_creative_update.transform.character = echo::audio::TransformVfxCharacter::Ghost;
+        latest_creative_update.digital_degrade.character =
+            echo::audio::DigitalDegradeVfxCharacter::LoFi;
+        latest_creative_update.digital_degrade.sample_rate_reduction.target_rate_hertz = 11'025;
         const std::uint64_t position_before_creative_update = adjusted.position_millis();
         adjusted.update_creative_vfx(first_creative_update);
         adjusted.update_creative_vfx(latest_creative_update);
@@ -406,7 +416,7 @@ int main(int argc, char* argv[]) {
         bool creative_rejected_update = false;
         try {
             auto invalid_creative_update = latest_creative_update;
-            invalid_creative_update.scene.mix_percent = 101;
+            invalid_creative_update.digital_degrade.bitcrusher.bit_depth = 1;
             adjusted.update_creative_vfx(invalid_creative_update);
         } catch (const std::invalid_argument&) {
             creative_rejected_update = true;
@@ -519,7 +529,8 @@ int main(int argc, char* argv[]) {
                  echo::audio::EffectNodeKind::SceneVfx,
                  echo::audio::EffectNodeKind::DelayVfx,
                  echo::audio::EffectNodeKind::ModulationVfx,
-                 echo::audio::EffectNodeKind::TransformVfx},
+                 echo::audio::EffectNodeKind::TransformVfx,
+                 echo::audio::EffectNodeKind::DigitalDegradeVfx},
             .effect_chain_count = 5,
         };
         auto space_then_dynamics = dynamics_then_space;
@@ -536,6 +547,7 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::DelayVfx,
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
+            echo::audio::EffectNodeKind::DigitalDegradeVfx,
         };
 
         echo::audio::PlaybackSession first_order(path.string(), dynamics_then_space);
@@ -588,6 +600,7 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::DelayVfx,
                     echo::audio::EffectNodeKind::ModulationVfx,
                     echo::audio::EffectNodeKind::TransformVfx,
+                    echo::audio::EffectNodeKind::DigitalDegradeVfx,
                 },
             .effect_chain_count = 3,
         };
@@ -627,6 +640,7 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::DelayVfx,
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
+            echo::audio::EffectNodeKind::DigitalDegradeVfx,
         };
         edited.effect_chain_count = 3;
         edited.effect_masks = {{
@@ -690,6 +704,7 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::DelayVfx,
             echo::audio::EffectNodeKind::ModulationVfx,
             echo::audio::EffectNodeKind::TransformVfx,
+            echo::audio::EffectNodeKind::DigitalDegradeVfx,
         };
         hidden_gap.effect_chain_count = 1;
         hidden_gap.edit_segments = {{

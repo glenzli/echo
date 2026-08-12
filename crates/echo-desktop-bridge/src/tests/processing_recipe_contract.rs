@@ -35,6 +35,7 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
                 echo_domain::ProcessingComponent::Dynamics.wire_value(),
                 echo_domain::ProcessingComponent::SceneVfx.wire_value(),
                 echo_domain::ProcessingComponent::TransformVfx.wire_value(),
+                echo_domain::ProcessingComponent::DigitalDegradeVfx.wire_value(),
             ],
         )
         .expect("recipe creates");
@@ -42,7 +43,7 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(recipes.len(), 1);
     assert_eq!(recipes[0].id, recipe_id);
     assert_eq!(recipes[0].name, "Dialogue cleanup");
-    assert_eq!(recipes[0].components, vec![0, 5, 9, 12]);
+    assert_eq!(recipes[0].components, vec![0, 5, 9, 12, 13]);
 
     let receipt = session
         .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
@@ -72,6 +73,17 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
         echo_domain::TransformVfxCharacter::Ghost
     );
     assert!(applied.creative_vfx().transform.enabled);
+    assert_eq!(
+        applied.creative_vfx().digital_degrade.character,
+        echo_domain::DigitalDegradeVfxCharacter::LoFi
+    );
+    assert!(applied.creative_vfx().digital_degrade.enabled);
+    assert!(
+        applied
+            .effect_chain()
+            .nodes()
+            .contains(&echo_domain::EffectNodeKind::DigitalDegradeVfx)
+    );
 
     let repeated = session
         .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
@@ -108,9 +120,11 @@ fn recipe_source_adjustment() -> AssetAdjustmentWire {
     creative_vfx.scene.character = echo_domain::SceneVfxCharacter::Underwater;
     creative_vfx.transform.enabled = true;
     creative_vfx.transform.character = echo_domain::TransformVfxCharacter::Ghost;
+    creative_vfx.digital_degrade.enabled = true;
+    creative_vfx.digital_degrade.character = echo_domain::DigitalDegradeVfxCharacter::LoFi;
     source.creative_vfx_json =
         serde_json::to_string(&creative_vfx).expect("source creative VFX encodes");
-    source.effect_chain = vec![0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 4];
+    source.effect_chain = vec![0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 4];
     source.edit_segments = vec![crate::ffi::EditSegmentWire {
         source_start_millis: 500,
         source_end_millis: 9_500,

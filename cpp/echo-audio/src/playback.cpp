@@ -512,6 +512,11 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        EffectProcessingChain::validate_digital_degrade_vfx(
+            adjustment.digital_degrade,
+            kCanonicalSampleRate,
+            channel_count_
+        );
         {
             std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_creative_vfx_ = adjustment;
@@ -693,6 +698,7 @@ class PlaybackSession::Impl {
             effect_chain_->update_delay_vfx(pending_creative_vfx_.delay);
             effect_chain_->update_modulation_vfx(pending_creative_vfx_.modulation);
             effect_chain_->update_transform_vfx(pending_creative_vfx_.transform);
+            effect_chain_->update_digital_degrade_vfx(pending_creative_vfx_.digital_degrade);
             creative_vfx_update_pending_ = false;
         }
     }

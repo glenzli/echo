@@ -81,7 +81,7 @@ QtObject {
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canUndo: _historyIndex > 0
     readonly property bool canRedo: _historyIndex >= 0 && _historyIndex < _history.length - 1
-    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
+    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks, var creativeVfx)
@@ -142,13 +142,13 @@ QtObject {
     }
 
     function copyEffectChain(values: var): var {
-        if (!values || values.length < 1 || values.length > 12)
+        if (!values || values.length < 1 || values.length > 13)
             return defaultEffectChain();
         const result = [];
-        const seen = [false, false, false, false, false, false, false, false, false, false, false, false];
+        const seen = [false, false, false, false, false, false, false, false, false, false, false, false, false];
         for (let index = 0; index < values.length; ++index) {
             const node = Math.round(Number(values[index]));
-            if (node < 0 || node > 11 || seen[node])
+            if (node < 0 || node > 12 || seen[node])
                 return defaultEffectChain();
             seen[node] = true;
             result.push(node);
@@ -195,7 +195,7 @@ QtObject {
 
     function creativeVfxForOriginal(): var {
         const value = copyCreativeVfx(creativeVfx);
-        const families = ["scene", "delay", "modulation", "transform"];
+        const families = ["scene", "delay", "modulation", "transform", "digitalDegrade"];
         for (let index = 0; index < families.length; ++index) {
             const family = families[index];
             if (value[family])
@@ -205,7 +205,7 @@ QtObject {
     }
 
     function setCreativeVfxFamily(name: string, value: var): void {
-        if (["scene", "delay", "modulation", "transform"].indexOf(name) < 0 || !value)
+        if (["scene", "delay", "modulation", "transform", "digitalDegrade"].indexOf(name) < 0 || !value)
             return;
         const next = copyCreativeVfx(creativeVfx);
         next[name] = copyCreativeVfx(value);
@@ -635,7 +635,7 @@ QtObject {
             compressorAttackMillis: clamp(Number(asset.compressorAttackMillis ?? 10), 1, 200),
             compressorReleaseMillis: clamp(Number(asset.compressorReleaseMillis ?? 120), 20, 2000),
             compressorMakeupCentibels: clamp(Number(asset.compressorMakeupCentibels ?? 0), 0, 2400),
-            reverbCharacter: clamp(Number(asset.reverbCharacter ?? 0), 0, 2),
+            reverbCharacter: clamp(Number(asset.reverbCharacter ?? 0), 0, 3),
             reverbEnabled: Boolean(asset.reverbEnabled),
             reverbMixPercent: clamp(Number(asset.reverbMixPercent ?? 18), 0, 100),
             reverbPreDelayMillis: clamp(Number(asset.reverbPreDelayMillis ?? 20), 0, 200),
@@ -1077,6 +1077,8 @@ QtObject {
             return creativeVfxFamilyEnabled("modulation");
         if (kind === 11)
             return creativeVfxFamilyEnabled("transform");
+        if (kind === 12)
+            return creativeVfxFamilyEnabled("digitalDegrade");
         return false;
     }
 
@@ -1109,8 +1111,10 @@ QtObject {
         } else if (kind === 11) {
             setCreativeVfxFamilyEnabled("transform", enabled);
             return;
-        }
-        else
+        } else if (kind === 12) {
+            setCreativeVfxFamilyEnabled("digitalDegrade", enabled);
+            return;
+        } else
             return;
         pushCurrent();
     }
@@ -1132,7 +1136,7 @@ QtObject {
     }
 
     function addEffectNode(kind: int): void {
-        if (kind < 0 || kind > 11 || kind === 4 || containsEffectNode(kind))
+        if (kind < 0 || kind > 12 || kind === 4 || containsEffectNode(kind))
             return;
         const next = copyEffectChain(effectChain);
         next.splice(next.length - 1, 0, kind);
@@ -1159,11 +1163,13 @@ QtObject {
             setCreativeVfxFamilyEnabled("modulation", true);
         else if (kind === 11)
             setCreativeVfxFamilyEnabled("transform", true);
+        else if (kind === 12)
+            setCreativeVfxFamilyEnabled("digitalDegrade", true);
         pushCurrent();
     }
 
     function removeEffectNode(kind: int): void {
-        if (kind < 0 || kind > 11 || kind === 4)
+        if (kind < 0 || kind > 12 || kind === 4)
             return;
         const next = copyEffectChain(effectChain);
         const index = next.indexOf(kind);
@@ -1394,7 +1400,7 @@ QtObject {
     }
 
     function setReverbCharacter(character: int): void {
-        reverbCharacter = Math.round(clamp(character, 0, 2));
+        reverbCharacter = Math.round(clamp(character, 0, 3));
         pushCurrent();
     }
 

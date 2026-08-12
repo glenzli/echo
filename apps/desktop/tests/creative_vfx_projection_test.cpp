@@ -38,6 +38,13 @@ int main() {
         .mix_percent = 84,
         .amount_percent = 71,
     };
+    authored.digital_degrade = {
+        .character = echo::audio::DigitalDegradeVfxCharacter::LoFi,
+        .enabled = true,
+        .mix_percent = 73,
+        .bitcrusher = {.bit_depth = 7},
+        .sample_rate_reduction = {.target_rate_hertz = 11025},
+    };
 
     const QVariantMap qml = CreativeVfxProjection::toQml(authored);
     const auto from_qml = CreativeVfxProjection::fromQml(qml);
@@ -46,6 +53,7 @@ int main() {
     assert(from_qml->delay.echo.feedback_percent == 44);
     assert(from_qml->modulation.phaser.feedback_percent == -18);
     assert(from_qml->transform.character == echo::audio::TransformVfxCharacter::Ghost);
+    assert(from_qml->digital_degrade.character == echo::audio::DigitalDegradeVfxCharacter::LoFi);
 
     const QByteArray encoded = CreativeVfxProjection::toJson(authored);
     const QJsonObject json = QJsonDocument::fromJson(encoded).object();
@@ -70,4 +78,5 @@ int main() {
     assert(!defaults->delay.enabled);
     assert(!defaults->modulation.enabled);
     assert(!defaults->transform.enabled);
+    assert(!defaults->digital_degrade.enabled);
 }

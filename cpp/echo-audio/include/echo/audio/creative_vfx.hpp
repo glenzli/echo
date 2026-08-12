@@ -108,12 +108,35 @@ struct TransformVfxAdjustment {
     std::uint8_t amount_percent = 50;
 };
 
-/// Complete prepared input state for the four independent Creative VFX nodes.
+enum class DigitalDegradeVfxCharacter : std::uint8_t {
+    Bitcrusher = 0,
+    SampleRateReduction = 1,
+    LoFi = 2,
+};
+
+struct BitcrusherAdjustment {
+    std::uint8_t bit_depth = 8;
+};
+
+struct SampleRateReductionAdjustment {
+    std::uint16_t target_rate_hertz = 8000;
+};
+
+struct DigitalDegradeVfxAdjustment {
+    DigitalDegradeVfxCharacter character = DigitalDegradeVfxCharacter::Bitcrusher;
+    bool enabled = false;
+    std::uint8_t mix_percent = 100;
+    BitcrusherAdjustment bitcrusher;
+    SampleRateReductionAdjustment sample_rate_reduction;
+};
+
+/// Complete prepared input state for the independent Creative VFX nodes.
 struct CreativeVfxAdjustment {
     SceneVfxAdjustment scene;
     DelayVfxAdjustment delay;
     ModulationVfxAdjustment modulation;
     TransformVfxAdjustment transform;
+    DigitalDegradeVfxAdjustment digital_degrade;
 };
 
 } // namespace echo::audio

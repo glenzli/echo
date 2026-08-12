@@ -87,7 +87,7 @@ fn listening_continuity_revision_preserves_user_and_adjustment_state() {
             ))
         })
         .expect("migrated listening state reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(
         affinity,
         crate::AssetAffinity {
@@ -98,6 +98,145 @@ fn listening_continuity_revision_preserves_user_and_adjustment_state() {
     assert_eq!(listening, crate::AssetListeningState::default());
     assert_eq!(restored_json, creative_json);
     assert_eq!(restored_revision, revision_id);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // One migration contract protects both predecessor domains.
+fn deterministic_vfx_revision_preserves_listening_state_and_legacy_json() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-deterministic-vfx-migration-{}",
+        std::process::id()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    let identity =
+        echo_domain::AdjustmentGraph::identity(1_000).expect("identity adjustment validates");
+    let mut legacy_creative =
+        serde_json::to_value(identity.creative_vfx()).expect("creative VFX encodes");
+    legacy_creative
+        .as_object_mut()
+        .expect("creative VFX object")
+        .remove("digital_degrade");
+    let legacy_creative =
+        serde_json::to_string(&legacy_creative).expect("legacy creative VFX encodes");
+    let mut legacy_chain =
+        serde_json::to_value(identity.effect_chain()).expect("effect chain encodes");
+    legacy_chain["nodes"]
+        .as_array_mut()
+        .expect("effect nodes array")
+        .pop();
+    let legacy_chain = serde_json::to_string(&legacy_chain).expect("legacy chain encodes");
+    let (asset_id, revision_id) = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            let registered = crate::register_asset(
+                transaction,
+                &crate::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([71; 32]),
+                    path: std::path::Path::new("/voice/legacy-deterministic-vfx.wav"),
+                    size_bytes: 1,
+                    codec: Some("pcm"),
+                    duration_millis: Some(1_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )?;
+            let asset_id = match registered {
+                crate::RegisterAsset::Created(asset) | crate::RegisterAsset::Existed(asset) => {
+                    asset.id
+                }
+            };
+            transaction.execute(
+                "INSERT INTO asset_user_state
+                     (asset_id, liked, rating, last_listened_at_millis,
+                      resume_position_millis, updated_at_millis)
+                 VALUES (?1, 1, 4, 987654321, 640, 987654322)",
+                [asset_id.to_string()],
+            )?;
+            let revision = crate::record_adjustment_graph(transaction, asset_id, identity, 2)?;
+            transaction.execute(
+                "UPDATE asset_adjustment_revisions SET creative_vfx_json = ?1, \
+                 effect_chain_json = ?2 WHERE id = ?3",
+                rusqlite::params![legacy_creative, legacy_chain, revision.revision_id],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260812.3' WHERE key = 'schema_version'",
+                [],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = 'echo-catalog-20260812.3-listening-continuity'
+                 WHERE key = 'schema_identity'",
+                [],
+            )?;
+            Ok((asset_id, revision.revision_id))
+        })
+        .expect("Listening revision fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("deterministic VFX revision migrates");
+    let (
+        version,
+        identity,
+        listening_columns,
+        listening_values,
+        stored_creative,
+        stored_chain,
+        restored,
+    ) = migrated
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok((
+                transaction.query_row(
+                    "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT value FROM catalog_meta WHERE key = 'schema_identity'",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('asset_user_state')
+                     WHERE name IN ('last_listened_at_millis', 'resume_position_millis')",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT last_listened_at_millis, resume_position_millis
+                     FROM asset_user_state WHERE asset_id = ?1",
+                    [asset_id.to_string()],
+                    |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+                )?,
+                transaction.query_row(
+                    "SELECT creative_vfx_json FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision_id],
+                    |row| row.get::<_, String>(0),
+                )?,
+                transaction.query_row(
+                    "SELECT effect_chain_json FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision_id],
+                    |row| row.get::<_, String>(0),
+                )?,
+                crate::latest_adjustment_graph(transaction, asset_id)?
+                    .expect("legacy adjustment remains"),
+            ))
+        })
+        .expect("migrated deterministic VFX reads");
+    assert_eq!(version, "20260812.4");
+    assert_eq!(identity, "echo-catalog-20260812.4-deterministic-vfx");
+    assert_eq!(listening_columns, 2);
+    assert_eq!(listening_values, (987_654_321, 640));
+    assert_eq!(stored_creative, legacy_creative);
+    assert_eq!(stored_chain, legacy_chain);
+    assert!(!restored.graph.creative_vfx().digital_degrade.enabled);
+    let normalized =
+        serde_json::to_value(restored.graph.effect_chain()).expect("normalized chain encodes");
+    let nodes = normalized["nodes"].as_array().expect("effect nodes array");
+    assert_eq!(nodes.len(), 13);
+    assert_eq!(
+        nodes.last().and_then(serde_json::Value::as_str),
+        Some("digital_degrade_vfx")
+    );
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -168,7 +307,7 @@ fn space_character_revision_preserves_legacy_reverb_json_as_room() {
             ))
         })
         .expect("migrated room reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(stored_json, legacy_json);
     assert_eq!(restored.revision_id, revision_id);
     assert_eq!(
@@ -265,7 +404,7 @@ fn creative_vfx_revision_defaults_legacy_history_to_disabled_without_rewriting_i
             ))
         })
         .expect("migrated creative VFX reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(stored_reverb, legacy_reverb);
     assert_eq!(stored_chain, legacy_chain);
     assert!(default_expression.contains("telephone"));
@@ -377,7 +516,7 @@ fn channel_repair_revision_adds_identity_without_rewriting_existing_history() {
             ))
         })
         .expect("migrated channel history reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(channel_column_count, 1);
     assert_eq!(stored_chain, legacy_chain);
     assert_eq!(stored_patch, legacy_patch);
@@ -460,7 +599,7 @@ fn de_plosive_revision_preserves_legacy_restoration_json_and_defaults_disabled()
             ))
         })
         .expect("migrated restoration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(stored_json, legacy_json);
     assert_eq!(restored.revision_id, revision_id);
     assert_eq!(
@@ -585,7 +724,7 @@ fn source_edit_revision_adds_columns_without_rewriting_adjustments_recipes_or_re
             ))
         })
         .expect("migrated evidence reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(source_edit_columns, 2);
     assert_eq!(adjustment_ids, vec![adjustment_revision_id]);
     assert_eq!(stored_patch_json, patch_json);
@@ -704,7 +843,7 @@ fn immediately_previous_revision_adds_recipe_management_without_rewriting_histor
             },
         )
         .expect("migration schema reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(archived_column_count, 1);
     assert_eq!(revert_table_count, 2);
     assert_eq!(revision_count, 1);
@@ -804,7 +943,7 @@ fn processing_recipe_revision_adds_recipes_without_rewriting_assets() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(table_count, 4);
     assert_eq!(asset_count, 1);
     assert_eq!(stored_revision_id, revision_id);
@@ -891,7 +1030,7 @@ fn restorative_effects_revision_adds_settings_without_rewriting_history() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(column_count, 2);
     assert!(!legacy_json.contains("active_count"));
     assert!(!legacy_json.contains("de_hum"));
@@ -999,7 +1138,7 @@ fn fixed_chain_revision_adds_authored_effect_chain_column() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert!(default_expression.contains("restoration"));
     assert!(default_expression.contains("master"));
     let _ = std::fs::remove_dir_all(root);
@@ -1043,7 +1182,7 @@ fn immediately_previous_revision_adds_delivery_formats() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert!(table_sql.contains("wav_pcm16"));
     assert!(table_sql.contains("flac24"));
     let _ = std::fs::remove_dir_all(root);
@@ -1090,7 +1229,7 @@ fn immediately_previous_revision_adds_restoration_chain() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(restoration_column_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1158,7 +1297,7 @@ fn previous_catalog_revision_adds_render_exports_without_losing_assets() {
                 ))
             })
             .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(asset_count, 1);
     assert_eq!(render_table_count, 1);
     assert_eq!(album_table_count, 1);
@@ -1206,7 +1345,7 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(album_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1273,7 +1412,7 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(render_table_count, 1);
     assert_eq!(reverb_column_count, 1);
     assert_eq!(album_table_count, 1);
@@ -1319,7 +1458,7 @@ fn immediately_previous_revision_adds_long_audio_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(segment_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1369,7 +1508,7 @@ fn immediately_previous_revision_adds_semantic_search_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260812.3");
+    assert_eq!(version, "20260812.4");
     assert_eq!(document_count, 1);
     assert_eq!(fts_count, 1);
     let _ = std::fs::remove_dir_all(root);

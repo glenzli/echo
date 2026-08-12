@@ -32,6 +32,7 @@ std::optional<EffectChainProjection> effectChainFromQml(const QVariantList& valu
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result = standard;
     std::array<bool, echo::audio::kEffectNodeCount> seen{};

@@ -1,6 +1,7 @@
 #include "echo/audio/algorithmic_reverb.hpp"
 
 #include "echo/audio/diffuse_space_reverb.hpp"
+#include "echo/audio/spring_space_reverb.hpp"
 
 #include <algorithm>
 #include <array>
@@ -67,9 +68,14 @@ struct AlgorithmicReverb::Engine {
     std::array<float, 2> highpass_state{};
     std::array<float, 2> highpass_input{};
     std::unique_ptr<DiffuseSpaceReverb> diffuse;
+    std::unique_ptr<SpringSpaceReverb> spring;
 
-    Engine(ReverbAdjustment authored, std::uint32_t rate) :
+    Engine(ReverbAdjustment authored, std::uint32_t rate, std::size_t channel_count) :
         adjustment(authored), sample_rate(rate) {
+        if (adjustment.character == ReverbCharacter::Spring) {
+            spring = std::make_unique<SpringSpaceReverb>(adjustment, sample_rate, channel_count);
+            return;
+        }
         if (adjustment.character != ReverbCharacter::Room) {
             diffuse = std::make_unique<DiffuseSpaceReverb>(adjustment, sample_rate);
             return;
@@ -132,6 +138,9 @@ struct AlgorithmicReverb::Engine {
     }
 
     [[nodiscard]] std::array<float, 2> process(float left, float right) {
+        if (spring != nullptr) {
+            return spring->process_frame(left, right);
+        }
         if (diffuse != nullptr) {
             return diffuse->process_frame(left, right);
         }
@@ -183,6 +192,10 @@ struct AlgorithmicReverb::Engine {
     }
 
     void reset() {
+        if (spring != nullptr) {
+            spring->reset();
+            return;
+        }
         if (diffuse != nullptr) {
             diffuse->reset();
             return;
@@ -206,7 +219,7 @@ AlgorithmicReverb::AlgorithmicReverb(
 ) : sample_rate_(sample_rate), channel_count_(channel_count) {
     validate(adjustment, sample_rate, channel_count);
     transition_frames_ = std::max<std::size_t>(1, sample_rate / 20U);
-    active_ = std::make_unique<Engine>(adjustment, sample_rate);
+    active_ = std::make_unique<Engine>(adjustment, sample_rate, channel_count);
 }
 
 AlgorithmicReverb::~AlgorithmicReverb() = default;
@@ -218,7 +231,8 @@ void AlgorithmicReverb::validate(
 ) {
     const bool character_valid = adjustment.character == ReverbCharacter::Room
                                  || adjustment.character == ReverbCharacter::Hall
-                                 || adjustment.character == ReverbCharacter::Plate;
+                                 || adjustment.character == ReverbCharacter::Plate
+                                 || adjustment.character == ReverbCharacter::Spring;
     if (!character_valid || sample_rate < 8000 || channel_count == 0 || channel_count > 2
         || adjustment.mix_percent > 100 || adjustment.pre_delay_millis > 200
         || adjustment.decay_millis < 100 || adjustment.decay_millis > 12000
@@ -242,7 +256,7 @@ bool AlgorithmicReverb::same(ReverbAdjustment left, ReverbAdjustment right) {
 }
 
 void AlgorithmicReverb::begin_transition(ReverbAdjustment adjustment) {
-    next_ = std::make_unique<Engine>(adjustment, sample_rate_);
+    next_ = std::make_unique<Engine>(adjustment, sample_rate_, channel_count_);
     transition_frame_ = 0;
 }
 

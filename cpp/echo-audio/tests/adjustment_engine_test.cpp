@@ -101,7 +101,8 @@ int main() {
               echo::audio::EffectNodeKind::SceneVfx,
               echo::audio::EffectNodeKind::DelayVfx,
               echo::audio::EffectNodeKind::ModulationVfx,
-              echo::audio::EffectNodeKind::TransformVfx},
+              echo::audio::EffectNodeKind::TransformVfx,
+              echo::audio::EffectNodeKind::DigitalDegradeVfx},
          .effect_chain_count = 3},
         10'000,
         48'000
@@ -159,7 +160,8 @@ int main() {
                   echo::audio::EffectNodeKind::SceneVfx,
                   echo::audio::EffectNodeKind::DelayVfx,
                   echo::audio::EffectNodeKind::ModulationVfx,
-                  echo::audio::EffectNodeKind::TransformVfx}},
+                  echo::audio::EffectNodeKind::TransformVfx,
+                  echo::audio::EffectNodeKind::DigitalDegradeVfx}},
             10'000,
             48'000
         );

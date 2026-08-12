@@ -212,6 +212,7 @@ int main() {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     latency_compensated.effect_chain_count = 3;
     const auto compensated = echo::audio::OfflineWavRenderer::render(
@@ -270,6 +271,7 @@ int main() {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
     channel_repaired.effect_chain_count = 4;
     const auto live_channel_repaired = render_playback(source, channel_repaired);
@@ -290,9 +292,9 @@ int main() {
         );
     }
 
-    auto plate_space = full_source;
-    plate_space.reverb = {
-        .character = echo::audio::ReverbCharacter::Plate,
+    auto spring_space = full_source;
+    spring_space.reverb = {
+        .character = echo::audio::ReverbCharacter::Spring,
         .enabled = true,
         .mix_percent = 55,
         .pre_delay_millis = 8,
@@ -302,7 +304,7 @@ int main() {
         .low_cut_hertz = 120,
         .high_cut_hertz = 10'000,
     };
-    plate_space.effect_chain = {
+    spring_space.effect_chain = {
         echo::audio::EffectNodeKind::Restoration,
         echo::audio::EffectNodeKind::Space,
         echo::audio::EffectNodeKind::Master,
@@ -315,18 +317,20 @@ int main() {
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
     };
-    plate_space.effect_chain_count = 3;
-    const auto live_plate_space = render_playback(source, plate_space);
-    MemorySink plate_space_sink;
-    const auto plate_space_result =
-        echo::audio::OfflineWavRenderer::render(source.string(), plate_space, plate_space_sink);
+    spring_space.effect_chain_count = 3;
+    const auto live_spring_space = render_playback(source, spring_space);
+    MemorySink spring_space_sink;
+    const auto spring_space_result =
+        echo::audio::OfflineWavRenderer::render(source.string(), spring_space, spring_space_sink);
     assert(
-        plate_space_result.frame_count * plate_space_result.channel_count == live_plate_space.size()
+        spring_space_result.frame_count * spring_space_result.channel_count
+        == live_spring_space.size()
     );
-    for (std::size_t index = 0; index < live_plate_space.size(); ++index) {
+    for (std::size_t index = 0; index < live_spring_space.size(); ++index) {
         assert(
-            std::abs(live_plate_space[index] - pcm24(plate_space_sink.bytes(), index)) < 2.0E-6F
+            std::abs(live_spring_space[index] - pcm24(spring_space_sink.bytes(), index)) < 2.0E-6F
         );
     }
 
@@ -339,11 +343,15 @@ int main() {
     creative_vfx.creative_vfx.modulation.character = echo::audio::ModulationVfxCharacter::Chorus;
     creative_vfx.creative_vfx.transform.enabled = true;
     creative_vfx.creative_vfx.transform.character = echo::audio::TransformVfxCharacter::Robot;
+    creative_vfx.creative_vfx.digital_degrade.enabled = true;
+    creative_vfx.creative_vfx.digital_degrade.character =
+        echo::audio::DigitalDegradeVfxCharacter::LoFi;
     creative_vfx.effect_chain = {
         echo::audio::EffectNodeKind::SceneVfx,
         echo::audio::EffectNodeKind::DelayVfx,
         echo::audio::EffectNodeKind::ModulationVfx,
         echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
         echo::audio::EffectNodeKind::Master,
         echo::audio::EffectNodeKind::Restoration,
         echo::audio::EffectNodeKind::Equalizer,
@@ -353,7 +361,7 @@ int main() {
         echo::audio::EffectNodeKind::DeClick,
         echo::audio::EffectNodeKind::ChannelRepair,
     };
-    creative_vfx.effect_chain_count = 5;
+    creative_vfx.effect_chain_count = 6;
     const auto live_creative_vfx = render_playback(source, creative_vfx);
     MemorySink creative_vfx_sink;
     const auto creative_vfx_result =

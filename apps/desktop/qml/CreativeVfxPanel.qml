@@ -1,4 +1,4 @@
-//! Composition shell for the four independent Creative VFX families. Each
+//! Composition shell for the independent Creative VFX families. Each
 //! family keeps its own semantic panel; this owner only projects navigation.
 
 pragma ComponentBehavior: Bound
@@ -17,8 +17,8 @@ Item {
 
     readonly property var availableFamilies: {
         const choices = [];
-        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform")];
-        for (let kind = 8; kind <= 11; ++kind) {
+        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade")];
+        for (let kind = 8; kind <= 12; ++kind) {
             if (draft.effectChain.indexOf(kind) >= 0) {
                 choices.push({
                     kind: kind,
@@ -140,6 +140,12 @@ Item {
             TransformVfxPanel {
                 anchors.fill: parent
                 visible: panel.familyKind === 11
+                draft: panel.draft
+            }
+
+            DigitalDegradeVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 12
                 draft: panel.draft
             }
         }

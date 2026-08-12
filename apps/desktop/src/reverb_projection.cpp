@@ -9,7 +9,7 @@ std::optional<echo::audio::ReverbAdjustment> ReverbProjection::fromQml(const QVa
     const int damping = value.value(QStringLiteral("dampingPercent"), 45).toInt();
     const int low_cut = value.value(QStringLiteral("lowCutHertz"), 120).toInt();
     const int high_cut = value.value(QStringLiteral("highCutHertz"), 10000).toInt();
-    if (character < 0 || character > 2 || mix < 0 || mix > 100 || pre_delay < 0 || pre_delay > 200
+    if (character < 0 || character > 3 || mix < 0 || mix > 100 || pre_delay < 0 || pre_delay > 200
         || decay < 100 || decay > 12000 || size < 10 || size > 100 || damping < 0 || damping > 100
         || low_cut < 20 || low_cut > 1000 || high_cut < 1000 || high_cut > 20000
         || low_cut >= high_cut) {

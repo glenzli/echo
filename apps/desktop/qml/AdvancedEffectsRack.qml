@@ -54,6 +54,8 @@ Item {
             return qsTr("Modulation VFX");
         if (kind === 11)
             return qsTr("Transform VFX");
+        if (kind === 12)
+            return qsTr("Digital Degrade");
         return qsTr("Master");
     }
 
@@ -65,7 +67,7 @@ Item {
         if (kind === 2)
             return qsTr("Stereo compressor");
         if (kind === 3)
-            return qsTr("Room · Hall · Plate");
+            return qsTr("Room · Hall · Plate · Spring");
         if (kind === 5)
             return qsTr("Mains hum and harmonics");
         if (kind === 6)
@@ -80,6 +82,8 @@ Item {
             return qsTr("Chorus · Flanger · Phaser · Tremolo");
         if (kind === 11)
             return qsTr("Robot · Monster · Tiny · Giant · Ghost");
+        if (kind === 12)
+            return qsTr("Bitcrusher · Sample-rate reduction · Lo-Fi");
         return qsTr("Limiter · Loudness");
     }
 
@@ -104,11 +108,11 @@ Item {
     }
 
     function effectId(kind: int): string {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx"][kind];
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade"][kind];
     }
 
     function effectKind(effectId: string): int {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx"].indexOf(effectId);
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade"].indexOf(effectId);
     }
 
     function buildChainModel(chain: var): var {
@@ -228,6 +232,15 @@ Item {
                 categoryTitle: qsTr("Creative"),
                 iconSource: nodeIcon(11),
                 available: chain.indexOf(11) < 0
+            },
+            {
+                effectId: "digitalDegrade",
+                title: nodeTitle(12),
+                summary: nodeSummary(12),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(12),
+                available: chain.indexOf(12) < 0
             }
         ];
     }
@@ -409,7 +422,7 @@ Item {
 
                 CreativeVfxPanel {
                     anchors.fill: parent
-                    visible: rack.currentKind >= 8 && rack.currentKind <= 11
+                    visible: rack.currentKind >= 8 && rack.currentKind <= 12
                     draft: rack.draft
                     familyKind: rack.currentKind
                     onFamilySelected: kind => rack.selectedNodeId = rack.effectId(kind)

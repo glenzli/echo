@@ -120,6 +120,38 @@ pub enum TransformVfxCharacter {
     Ghost = 4,
 }
 
+/// Stable digital-resolution effect identity.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[repr(u8)]
+pub enum DigitalDegradeVfxCharacter {
+    #[default]
+    Bitcrusher = 0,
+    SampleRateReduction = 1,
+    LoFi = 2,
+}
+
+impl DigitalDegradeVfxCharacter {
+    #[must_use]
+    pub const fn wire_value(self) -> u8 {
+        self as u8
+    }
+
+    /// Restores the stable desktop ABI value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CreativeVfxValueError`] for an unknown value.
+    pub const fn from_wire_value(value: u8) -> Result<Self, CreativeVfxValueError> {
+        match value {
+            0 => Ok(Self::Bitcrusher),
+            1 => Ok(Self::SampleRateReduction),
+            2 => Ok(Self::LoFi),
+            _ => Err(CreativeVfxValueError),
+        }
+    }
+}
+
 impl TransformVfxCharacter {
     #[must_use]
     pub const fn wire_value(self) -> u8 {
@@ -333,6 +365,53 @@ impl Default for TransformVfxSettings {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BitcrusherSettings {
+    pub bit_depth: u8,
+}
+
+impl Default for BitcrusherSettings {
+    fn default() -> Self {
+        Self { bit_depth: 8 }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SampleRateReductionSettings {
+    pub target_rate_hertz: u16,
+}
+
+impl Default for SampleRateReductionSettings {
+    fn default() -> Self {
+        Self {
+            target_rate_hertz: 8_000,
+        }
+    }
+}
+
+/// Input-driven digital resolution degradation. No dither or independent
+/// noise source is part of this authored contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DigitalDegradeVfxSettings {
+    pub character: DigitalDegradeVfxCharacter,
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub bitcrusher: BitcrusherSettings,
+    pub sample_rate_reduction: SampleRateReductionSettings,
+}
+
+impl Default for DigitalDegradeVfxSettings {
+    fn default() -> Self {
+        Self {
+            character: DigitalDegradeVfxCharacter::Bitcrusher,
+            enabled: false,
+            mix_percent: 100,
+            bitcrusher: BitcrusherSettings::default(),
+            sample_rate_reduction: SampleRateReductionSettings::default(),
+        }
+    }
+}
+
 /// Complete bounded Creative VFX state persisted with one adjustment revision.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreativeVfxSettings {
@@ -344,6 +423,8 @@ pub struct CreativeVfxSettings {
     pub modulation: ModulationVfxSettings,
     #[serde(default)]
     pub transform: TransformVfxSettings,
+    #[serde(default)]
+    pub digital_degrade: DigitalDegradeVfxSettings,
 }
 
 impl CreativeVfxSettings {
@@ -409,6 +490,15 @@ impl CreativeVfxSettings {
                 enabled: false,
                 mix_percent: 100,
                 amount_percent: 50,
+            },
+            digital_degrade: DigitalDegradeVfxSettings {
+                character: DigitalDegradeVfxCharacter::Bitcrusher,
+                enabled: false,
+                mix_percent: 100,
+                bitcrusher: BitcrusherSettings { bit_depth: 8 },
+                sample_rate_reduction: SampleRateReductionSettings {
+                    target_rate_hertz: 8_000,
+                },
             },
         }
     }
@@ -481,6 +571,14 @@ impl CreativeVfxSettings {
         if self.transform.mix_percent > 100 || self.transform.amount_percent > 100 {
             return Err(CreativeVfxSettingsError::Transform);
         }
+        if self.digital_degrade.mix_percent > 100
+            || self.digital_degrade.bitcrusher.bit_depth < 2
+            || self.digital_degrade.bitcrusher.bit_depth > 16
+            || self.digital_degrade.sample_rate_reduction.target_rate_hertz < 1_000
+            || self.digital_degrade.sample_rate_reduction.target_rate_hertz > 24_000
+        {
+            return Err(CreativeVfxSettingsError::DigitalDegrade);
+        }
         Ok(())
     }
 }
@@ -491,6 +589,7 @@ pub enum CreativeVfxSettingsError {
     Delay,
     Modulation,
     Transform,
+    DigitalDegrade,
 }
 
 impl std::fmt::Display for CreativeVfxSettingsError {
@@ -500,6 +599,7 @@ impl std::fmt::Display for CreativeVfxSettingsError {
             Self::Delay => "delay",
             Self::Modulation => "modulation",
             Self::Transform => "transform",
+            Self::DigitalDegrade => "digital degrade",
         };
         write!(
             formatter,

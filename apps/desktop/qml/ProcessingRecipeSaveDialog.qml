@@ -106,6 +106,12 @@ Popup {
                 included: false
             },
             {
+                componentId: "digitalDegradeVfx",
+                title: qsTr("Digital Degrade"),
+                summary: qsTr("Bit depth and sample-rate character"),
+                included: false
+            },
+            {
                 componentId: "master",
                 title: qsTr("Master output"),
                 summary: qsTr("Limiter and output policy"),
@@ -137,7 +143,7 @@ Popup {
             if (componentId.length === 0)
                 continue;
             const available = entry.available === undefined ? true : Boolean(entry.available);
-            const included = entry.included === undefined ? ["space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx"].indexOf(componentId) < 0 : Boolean(entry.included);
+            const included = entry.included === undefined ? ["space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegradeVfx"].indexOf(componentId) < 0 : Boolean(entry.included);
             componentProjection.append({
                 componentId: componentId,
                 title: String(entry.title || componentId),

@@ -87,6 +87,7 @@ int main() {
                     echo::audio::EffectNodeKind::SceneVfx,
                     echo::audio::EffectNodeKind::DelayVfx,
                     echo::audio::EffectNodeKind::ModulationVfx,
+                    echo::audio::EffectNodeKind::DigitalDegradeVfx,
                 };
                 invalid.effect_chain_count = 2;
             }

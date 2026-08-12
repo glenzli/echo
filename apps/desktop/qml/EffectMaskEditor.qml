@@ -47,6 +47,8 @@ Popup {
             return qsTr("Delay VFX");
         if (kind === 10)
             return qsTr("Modulation VFX");
+        if (kind === 12)
+            return qsTr("Digital Degrade");
         return qsTr("Effect");
     }
 

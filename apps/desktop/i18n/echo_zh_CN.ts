@@ -67,8 +67,8 @@
     </message>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="68"/>
-        <source>Room · Hall · Plate</source>
-        <translation>房间 · 大厅 · 板式</translation>
+        <source>Room · Hall · Plate · Spring</source>
+        <translation>房间 · 大厅 · 板式 · 弹簧</translation>
     </message>
     <message>
         <location filename="../qml/AdvancedEffectsRack.qml" line="76"/>
@@ -145,6 +145,14 @@
         <location filename="../qml/AdvancedEffectsRack.qml" line="74"/>
         <source>Polarity · Routing · Balance · Mono</source>
         <translation>极性 · 路由 · 平衡 · 单声道</translation>
+    </message>
+    <message>
+        <source>Digital Degrade</source>
+        <translation>数字降质</translation>
+    </message>
+    <message>
+        <source>Bitcrusher · Sample-rate reduction · Lo-Fi</source>
+        <translation>位深破碎 · 降采样率 · 低保真</translation>
     </message>
 </context>
 <context>
@@ -1080,6 +1088,10 @@
         <source>Stylized, non-destructive effects</source>
         <translation>风格化、非破坏性效果</translation>
     </message>
+    <message>
+        <source>Degrade</source>
+        <translation>降质</translation>
+    </message>
 </context>
 <context>
     <name>DeClickPanel</name>
@@ -1462,6 +1474,45 @@
     </message>
 </context>
 <context>
+    <name>DigitalDegradeVfxPanel</name>
+    <message>
+        <source>Digital Degrade</source>
+        <translation>数字降质</translation>
+    </message>
+    <message>
+        <source>Resolution and sample-rate character</source>
+        <translation>数字分辨率与采样率质感</translation>
+    </message>
+    <message>
+        <source>Bitcrusher</source>
+        <translation>位深破碎</translation>
+    </message>
+    <message>
+        <source>Sample-rate reduction</source>
+        <translation>降采样率</translation>
+    </message>
+    <message>
+        <source>Lo-Fi</source>
+        <translation>低保真</translation>
+    </message>
+    <message>
+        <source>Mix</source>
+        <translation>混合</translation>
+    </message>
+    <message>
+        <source>Bit depth</source>
+        <translation>位深</translation>
+    </message>
+    <message>
+        <source>Target rate</source>
+        <translation>目标采样率</translation>
+    </message>
+    <message>
+        <source>Reduces digital resolution using the source signal only. It does not add hiss or generated ambience.</source>
+        <translation>仅使用源信号降低数字分辨率，不会加入嘶声或生成的环境声。</translation>
+    </message>
+</context>
+<context>
     <name>EffectMaskEditor</name>
     <message>
         <location filename="../qml/EffectMaskEditor.qml" line="43"/>
@@ -1562,6 +1613,10 @@
         <location filename="../qml/EffectMaskEditor.qml" line="257"/>
         <source>Add</source>
         <translation>添加</translation>
+    </message>
+    <message>
+        <source>Digital Degrade</source>
+        <translation>数字降质</translation>
     </message>
 </context>
 <context>
@@ -2179,6 +2234,10 @@
         <source>Version %1</source>
         <translation>版本 %1</translation>
     </message>
+    <message>
+        <source>Digital Degrade</source>
+        <translation>数字降质</translation>
+    </message>
 </context>
 <context>
     <name>ProcessingRecipePicker</name>
@@ -2281,6 +2340,10 @@
         <location filename="../qml/ProcessingRecipePicker.qml" line="107"/>
         <source>Version %1</source>
         <translation>版本 %1</translation>
+    </message>
+    <message>
+        <source>Digital Degrade</source>
+        <translation>数字降质</translation>
     </message>
 </context>
 <context>
@@ -2474,6 +2537,14 @@
         <location filename="../qml/ProcessingRecipeSaveDialog.qml" line="320"/>
         <source>Trim, fades, and clip gain stay with each sound and are never saved in a processing recipe.</source>
         <translation>裁切、淡化与片段增益始终属于各自声音，不会保存到处理方案中。</translation>
+    </message>
+    <message>
+        <source>Digital Degrade</source>
+        <translation>数字降质</translation>
+    </message>
+    <message>
+        <source>Bit depth and sample-rate character</source>
+        <translation>位深与采样率质感</translation>
     </message>
 </context>
 <context>
@@ -3800,6 +3871,10 @@
         <location filename="../qml/SpaceReverbPanel.qml" line="217"/>
         <source>Insert effect · before fade and master</source>
         <translation>插入效果 · 位于淡化与母线之前</translation>
+    </message>
+    <message>
+        <source>Spring</source>
+        <translation>弹簧</translation>
     </message>
 </context>
 <context>

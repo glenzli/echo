@@ -15,6 +15,7 @@ add_library(
     src/de_hum_filter.cpp
     src/de_plosive_processor.cpp
     src/delay_vfx_processor.cpp
+    src/digital_degrade_vfx_processor.cpp
     src/diffuse_space_reverb.cpp
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
@@ -36,6 +37,7 @@ add_library(
     src/phaser_vfx.cpp
     src/scene_vfx_processor.cpp
     src/source_edit_plan.cpp
+    src/spring_space_reverb.cpp
     src/transform_vfx_processor.cpp
     src/tremolo_vfx.cpp
     src/waveform.cpp
@@ -124,6 +126,17 @@ if(BUILD_TESTING)
     add_test(NAME echo-delay-vfx-processor-test COMMAND echo-delay-vfx-processor-test)
 
     add_executable(
+        echo-digital-degrade-vfx-processor-test
+        tests/digital_degrade_vfx_processor_test.cpp
+    )
+    target_link_libraries(echo-digital-degrade-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-digital-degrade-vfx-processor-test)
+    add_test(
+        NAME echo-digital-degrade-vfx-processor-test
+        COMMAND echo-digital-degrade-vfx-processor-test
+    )
+
+    add_executable(
         echo-analysis-proxy-test
         tests/analysis_proxy_test.cpp
     )
@@ -146,6 +159,11 @@ if(BUILD_TESTING)
     target_link_libraries(echo-diffuse-space-reverb-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-diffuse-space-reverb-test)
     add_test(NAME echo-diffuse-space-reverb-test COMMAND echo-diffuse-space-reverb-test)
+
+    add_executable(echo-spring-space-reverb-test tests/spring_space_reverb_test.cpp)
+    target_link_libraries(echo-spring-space-reverb-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-spring-space-reverb-test)
+    add_test(NAME echo-spring-space-reverb-test COMMAND echo-spring-space-reverb-test)
 
     add_executable(
         echo-adjustment-engine-test

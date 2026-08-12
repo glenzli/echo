@@ -215,13 +215,15 @@ QString processingComponentId(std::uint8_t value) {
         return QStringLiteral("modulationVfx");
     case 12:
         return QStringLiteral("transformVfx");
+    case 13:
+        return QStringLiteral("digitalDegradeVfx");
     default:
         return {};
     }
 }
 
 bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8_t>& destination) {
-    std::array<bool, 13> seen{};
+    std::array<bool, 14> seen{};
     for (const QVariant& item : values) {
         const QString componentId = item.toString();
         int value = -1;
@@ -251,6 +253,8 @@ bool appendProcessingComponents(const QVariantList& values, rust::Vec<std::uint8
             value = 11;
         } else if (componentId == QStringLiteral("transformVfx")) {
             value = 12;
+        } else if (componentId == QStringLiteral("digitalDegradeVfx")) {
+            value = 13;
         }
         if (value < 0 || seen[static_cast<std::size_t>(value)]) {
             return false;

@@ -5,13 +5,13 @@ use crate::{CatalogError, CatalogErrorKind, open_catalog};
 
 #[test]
 fn revision_round_trips_in_date_dot_sequence_form() {
-    assert_eq!(SCHEMA_VERSION.to_string(), "20260812.3");
+    assert_eq!(SCHEMA_VERSION.to_string(), "20260812.4");
     assert_eq!(
-        CatalogSchemaRevision::from_str("20260812.3"),
+        CatalogSchemaRevision::from_str("20260812.4"),
         Ok(SCHEMA_VERSION)
     );
     assert_eq!(SCHEMA_VERSION.date(), 20_260_812);
-    assert_eq!(SCHEMA_VERSION.daily_sequence(), 3);
+    assert_eq!(SCHEMA_VERSION.daily_sequence(), 4);
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn catalog_persists_only_the_canonical_revision_text() {
                 .map_err(CatalogError::from)
         })
         .expect("revision reads");
-    assert_eq!(stored, "20260812.3");
+    assert_eq!(stored, "20260812.4");
 
     catalog
         .with_transaction(|transaction| -> Result<(), CatalogError> {

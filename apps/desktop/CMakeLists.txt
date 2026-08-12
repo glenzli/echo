@@ -164,6 +164,7 @@ qt_add_qml_module(
         qml/CreativeVfxPanel.qml
         qml/SceneVfxPanel.qml
         qml/DelayVfxPanel.qml
+        qml/DigitalDegradeVfxPanel.qml
         qml/ModulationVfxPanel.qml
         qml/TransformVfxPanel.qml
         qml/DeClickPanel.qml

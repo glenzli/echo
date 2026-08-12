@@ -3,10 +3,10 @@ use std::path::Path;
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, ChannelRepairSettings, CompressorSettings, ContentHash,
     CreativeVfxSettings, DeClickSettings, DeEsserSettings, DeHumSettings, DePlosiveSettings,
-    DelayVfxCharacter, EditSegment, EditSegmentState, EditTimeline, EffectChain, EffectMask,
-    EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings, ModulationVfxCharacter,
-    NoiseReductionSettings, RestorationSettings, ReverbCharacter, ReverbSettings,
-    SceneVfxCharacter, TransformVfxCharacter,
+    DelayVfxCharacter, DigitalDegradeVfxCharacter, EditSegment, EditSegmentState, EditTimeline,
+    EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings,
+    ModulationVfxCharacter, NoiseReductionSettings, RestorationSettings, ReverbCharacter,
+    ReverbSettings, SceneVfxCharacter, TransformVfxCharacter,
 };
 
 use super::*;
@@ -292,6 +292,9 @@ fn fully_configured_graph() -> AdjustmentGraph {
     creative_vfx.transform.enabled = true;
     creative_vfx.transform.character = TransformVfxCharacter::Ghost;
     creative_vfx.transform.amount_percent = 68;
+    creative_vfx.digital_degrade.enabled = true;
+    creative_vfx.digital_degrade.character = DigitalDegradeVfxCharacter::LoFi;
+    creative_vfx.digital_degrade.bitcrusher.bit_depth = 7;
     AdjustmentGraph::new(
         10_000,
         1_000,
@@ -358,7 +361,7 @@ fn fully_configured_graph() -> AdjustmentGraph {
             makeup_centibels: 250,
         })
         .with_reverb(ReverbSettings {
-            character: ReverbCharacter::Plate,
+            character: ReverbCharacter::Spring,
             enabled: true,
             mix_percent: 24,
             pre_delay_millis: 28,

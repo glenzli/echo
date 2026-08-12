@@ -591,6 +591,22 @@ InferenceBackend
     目录、排序、旁路、草稿历史、处理方案和专属参数页，并保持一次家族调参只生成一个 Undo 手势；
     Original 试听只旁路 Creative，不丢弃已选角色和参数。本切片为 Echo clean-room 实现，不引入 JUCE／Dragonfly／
     DaisySP ReverbSc／Soundpipe RevSC／Signalsmith Stretch，也不进入 Restoration、AI 或 Runtime。
+  - 确定性空间与数字劣化切片（2026-08-12）：Catalog `20260812.4` 在 Listening continuity
+    `20260812.3` 之后为既有单实例 Space
+    character 追加稳定 wire 值 `3` 的 Spring；它不复用 Hall／Plate FDN，而由独立
+    `SpringSpaceReverb` 以三路色散波导、稳定全通
+    节、回程高频损耗与正交双声道编解码形成真实弹簧听感。它复用 Space 的 Mix／Pre-delay／Decay／
+    Size／Damping／wet cuts 意图，报告零基础设施延迟，传播时间只属于湿声内容；构造时准备固定
+    工作区，实时 process／update 不分配，结构变化以完整状态交叉过渡。Creative JSON 同时追加
+    默认关闭的独立 Digital Degrade singleton：Bitcrusher、Sample-rate reduction 与显式同时消费
+    两组 typed settings 的 Lo-Fi；处理仅由输入驱动，不加 dither、hiss 或其他独立声源，报告零
+    基础设施延迟并支持 Original 时间遮罩。旧 Catalog revision 缺少新 Creative 字段时确定性恢复
+    为 disabled，既有 Room／Hall／Plate wire、旧 Creative 听感、链 active count 与 Original 均不变；
+    试听实时更新、共享 effect-chain、整段分析、离线导出与处理方案使用同一合同，专属控件由 UI
+    owner 接入。卷积仍是下一独立确定性里程碑：它必须先交付 owned source store、BLAKE3 source／
+    prepared identity、append-only IR provenance／license、离线 48 kHz preparation、可验证的无分配
+    runtime bank 与明确失败语义；不得只增加一个 IR 路径控件，也不得把 2ch dual-mono 宣称为
+    true-stereo。Freeze／Granular 因静音后持续生成内容和尾音边界不同，不纳入本输入驱动切片。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，

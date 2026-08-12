@@ -81,7 +81,7 @@ pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
 pub const MIN_CHANNEL_BALANCE_PERCENT: i8 = -100;
 pub const MAX_CHANNEL_BALANCE_PERCENT: i8 = 100;
 /// Echo's authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 12;
+pub const EFFECT_NODE_COUNT: usize = 13;
 const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
@@ -105,6 +105,7 @@ pub enum EffectNodeKind {
     DelayVfx = 9,
     ModulationVfx = 10,
     TransformVfx = 11,
+    DigitalDegradeVfx = 12,
 }
 
 impl EffectNodeKind {
@@ -132,6 +133,7 @@ impl EffectNodeKind {
             9 => Ok(Self::DelayVfx),
             10 => Ok(Self::ModulationVfx),
             11 => Ok(Self::TransformVfx),
+            12 => Ok(Self::DigitalDegradeVfx),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -172,9 +174,9 @@ impl<'de> Deserialize<'de> for EffectChain {
     {
         let stored = StoredEffectChain::deserialize(deserializer)?;
         let legacy_node_count = stored.nodes.len();
-        if !matches!(legacy_node_count, 5 | 7 | 8 | EFFECT_NODE_COUNT) {
+        if !matches!(legacy_node_count, 5 | 7 | 8 | 12 | EFFECT_NODE_COUNT) {
             return Err(D::Error::custom(
-                "effect chain must contain five, seven, eight, or twelve stable nodes",
+                "effect chain must contain five, seven, eight, twelve, or thirteen stable nodes",
             ));
         }
         let active_count = stored.active_count.unwrap_or(STANDARD_EFFECT_NODE_COUNT);
@@ -214,6 +216,7 @@ impl EffectChain {
                 EffectNodeKind::DelayVfx,
                 EffectNodeKind::ModulationVfx,
                 EffectNodeKind::TransformVfx,
+                EffectNodeKind::DigitalDegradeVfx,
             ],
             active_count: STANDARD_EFFECT_NODE_COUNT,
         }
@@ -583,6 +586,7 @@ pub enum ReverbCharacter {
     Room,
     Hall,
     Plate,
+    Spring,
 }
 
 impl ReverbCharacter {
@@ -592,6 +596,7 @@ impl ReverbCharacter {
             Self::Room => 0,
             Self::Hall => 1,
             Self::Plate => 2,
+            Self::Spring => 3,
         }
     }
 
@@ -605,6 +610,7 @@ impl ReverbCharacter {
             0 => Ok(Self::Room),
             1 => Ok(Self::Hall),
             2 => Ok(Self::Plate),
+            3 => Ok(Self::Spring),
             _ => Err(ReverbCharacterValueError),
         }
     }
@@ -615,7 +621,7 @@ pub struct ReverbCharacterValueError;
 
 impl std::fmt::Display for ReverbCharacterValueError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("reverb character must be room, hall, or plate")
+        formatter.write_str("reverb character must be room, hall, plate, or spring")
     }
 }
 

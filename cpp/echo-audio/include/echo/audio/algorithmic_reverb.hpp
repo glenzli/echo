@@ -12,8 +12,9 @@ namespace echo::audio {
 /// Portable stereo algorithmic space effect with click-free authored updates.
 ///
 /// Room preserves Echo's original four-line engine. Hall and Plate dispatch to
-/// the separately owned diffuse FDN. Parameter changes crossfade complete
-/// engines so topology, Size, or Pre-delay edits cannot expose discontinuities.
+/// the separately owned diffuse FDN; Spring dispatches to a dispersive waveguide
+/// owner. Parameter changes crossfade complete engines so topology, Size, or
+/// Pre-delay edits cannot expose discontinuities.
 class AlgorithmicReverb {
   public:
     AlgorithmicReverb(

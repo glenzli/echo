@@ -77,6 +77,19 @@ int main() {
         return std::isfinite(sample) && std::abs(sample) < 4.0F;
     }));
 
+    room.character = echo::audio::ReverbCharacter::Spring;
+    room.decay_millis = 2400;
+    room.size_percent = 62;
+    std::vector<float> spring_impulse(12000 * 2, 0.0F);
+    spring_impulse[0] = 1.0F;
+    spring_impulse[1] = 1.0F;
+    echo::audio::AlgorithmicReverb spring(room, kSampleRate, 2);
+    spring.process_interleaved(spring_impulse.data(), 12000, 2);
+    assert(tail_energy(spring_impulse, 1) > 0.001F);
+    assert(std::all_of(spring_impulse.begin(), spring_impulse.end(), [](float sample) {
+        return std::isfinite(sample) && std::abs(sample) < 4.0F;
+    }));
+
     reverb.reset();
     std::vector<float> silence(4096 * 2, 0.0F);
     reverb.process_interleaved(silence.data(), 4096, 2);

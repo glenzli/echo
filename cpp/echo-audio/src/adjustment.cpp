@@ -101,6 +101,16 @@ bool valid_transform_character(TransformVfxCharacter character) {
     return false;
 }
 
+bool valid_digital_degrade_character(DigitalDegradeVfxCharacter character) {
+    switch (character) {
+    case DigitalDegradeVfxCharacter::Bitcrusher:
+    case DigitalDegradeVfxCharacter::SampleRateReduction:
+    case DigitalDegradeVfxCharacter::LoFi:
+        return true;
+    }
+    return false;
+}
+
 bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
     const SceneVfxAdjustment& scene = creative.scene;
     if (!valid_scene_character(scene.character) || scene.mix_percent > 100
@@ -148,8 +158,13 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
         return false;
     }
 
+    const DigitalDegradeVfxAdjustment& digital = creative.digital_degrade;
     return valid_transform_character(creative.transform.character)
-           && creative.transform.mix_percent <= 100 && creative.transform.amount_percent <= 100;
+           && creative.transform.mix_percent <= 100 && creative.transform.amount_percent <= 100
+           && valid_digital_degrade_character(digital.character) && digital.mix_percent <= 100
+           && digital.bitcrusher.bit_depth >= 2 && digital.bitcrusher.bit_depth <= 16
+           && digital.sample_rate_reduction.target_rate_hertz >= 1000
+           && digital.sample_rate_reduction.target_rate_hertz <= 24000;
 }
 
 float evaluate_curve(float progress, FadeCurve curve) {

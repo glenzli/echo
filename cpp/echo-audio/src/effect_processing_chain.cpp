@@ -8,6 +8,7 @@
 #include "echo/audio/de_hum_filter.hpp"
 #include "echo/audio/de_plosive_processor.hpp"
 #include "echo/audio/delay_vfx_processor.hpp"
+#include "echo/audio/digital_degrade_vfx_processor.hpp"
 #include "echo/audio/dynamics_processor.hpp"
 #include "echo/audio/modulation_vfx_processor.hpp"
 #include "echo/audio/parametric_equalizer.hpp"
@@ -69,6 +70,7 @@ class EffectProcessingChain::Impl {
         delay_vfx_(adjustment.creative_vfx().delay, sample_rate, channel_count),
         modulation_vfx_(adjustment.creative_vfx().modulation, sample_rate, channel_count),
         transform_vfx_(adjustment.creative_vfx().transform, sample_rate, channel_count),
+        digital_degrade_vfx_(adjustment.creative_vfx().digital_degrade, sample_rate, channel_count),
         restoration_enabled_(adjustment.restoration().enabled), mask_plan_(mask_plan),
         dry_samples_(kMaximumProcessingFrames * channel_count, 0.0F) {
         if (sample_rate_ == 0 || channel_count_ == 0) {
@@ -164,6 +166,7 @@ class EffectProcessingChain::Impl {
         delay_vfx_.reset();
         modulation_vfx_.reset();
         transform_vfx_.reset();
+        digital_degrade_vfx_.reset();
         reset_compensation();
     }
 
@@ -225,6 +228,10 @@ class EffectProcessingChain::Impl {
         transform_vfx_.update(adjustment);
     }
 
+    void update_digital_degrade_vfx(DigitalDegradeVfxAdjustment adjustment) {
+        digital_degrade_vfx_.update(adjustment);
+    }
+
     [[nodiscard]] std::size_t latency_frames() const {
         return latency_frames_;
     }
@@ -254,6 +261,7 @@ class EffectProcessingChain::Impl {
         case EffectNodeKind::SceneVfx:
         case EffectNodeKind::DelayVfx:
         case EffectNodeKind::ModulationVfx:
+        case EffectNodeKind::DigitalDegradeVfx:
             return 0;
         }
         return 0;
@@ -324,6 +332,9 @@ class EffectProcessingChain::Impl {
             case EffectNodeKind::TransformVfx:
                 transform_vfx_.process_interleaved(samples, frame_count, channel_count_);
                 delay_source_anchors(node, source_frames, frame_count);
+                break;
+            case EffectNodeKind::DigitalDegradeVfx:
+                digital_degrade_vfx_.process_interleaved(samples, frame_count, channel_count_);
                 break;
             case EffectNodeKind::Master:
                 break;
@@ -414,6 +425,7 @@ class EffectProcessingChain::Impl {
     DelayVfxProcessor delay_vfx_;
     ModulationVfxProcessor modulation_vfx_;
     TransformVfxProcessor transform_vfx_;
+    DigitalDegradeVfxProcessor digital_degrade_vfx_;
     bool restoration_enabled_ = true;
     const EffectMaskPlan* mask_plan_ = nullptr;
     bool has_local_masks_ = false;
@@ -516,6 +528,10 @@ void EffectProcessingChain::update_modulation_vfx(ModulationVfxAdjustment adjust
 
 void EffectProcessingChain::update_transform_vfx(TransformVfxAdjustment adjustment) {
     impl_->update_transform_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_digital_degrade_vfx(DigitalDegradeVfxAdjustment adjustment) {
+    impl_->update_digital_degrade_vfx(adjustment);
 }
 
 void EffectProcessingChain::validate_restoration(
@@ -628,6 +644,18 @@ void EffectProcessingChain::validate_transform_vfx(
     std::size_t channel_count
 ) {
     [[maybe_unused]] const TransformVfxProcessor processor(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_digital_degrade_vfx(
+    DigitalDegradeVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const DigitalDegradeVfxProcessor processor(
+        adjustment,
+        sample_rate,
+        channel_count
+    );
 }
 
 std::size_t EffectProcessingChain::latency_frames() const {

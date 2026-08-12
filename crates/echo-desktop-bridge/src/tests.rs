@@ -197,6 +197,9 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     creative_vfx.transform.enabled = true;
     creative_vfx.transform.character = echo_domain::TransformVfxCharacter::Ghost;
     creative_vfx.transform.amount_percent = 68;
+    creative_vfx.digital_degrade.enabled = true;
+    creative_vfx.digital_degrade.character = echo_domain::DigitalDegradeVfxCharacter::LoFi;
+    creative_vfx.digital_degrade.bitcrusher.bit_depth = 7;
     let mut adjustment = crate::ffi::AssetAdjustmentWire {
         trim_start_millis: 1_000,
         trim_end_millis: 9_000,
@@ -243,7 +246,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         compressor_attack_millis: 12,
         compressor_release_millis: 160,
         compressor_makeup_centibels: 225,
-        reverb_character: echo_domain::ReverbCharacter::Hall.wire_value(),
+        reverb_character: echo_domain::ReverbCharacter::Spring.wire_value(),
         reverb_enabled: true,
         reverb_mix_percent: 24,
         reverb_pre_delay_millis: 28,
@@ -256,7 +259,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,
-        effect_chain: vec![5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 2, 4],
+        effect_chain: vec![5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 12, 2, 4],
         edit_segments: vec![
             crate::ffi::EditSegmentWire {
                 source_start_millis: 1_000,
@@ -303,7 +306,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert!(stored.graph.channel_repair().enabled);
     assert_eq!(
         stored.graph.reverb().character,
-        echo_domain::ReverbCharacter::Hall
+        echo_domain::ReverbCharacter::Spring
     );
     assert_eq!(stored.graph.creative_vfx(), creative_vfx);
     let projected = session.list_assets().expect("assets project");
@@ -360,7 +363,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].compressor_makeup_centibels, 225);
     assert_eq!(
         projected[0].reverb_character,
-        echo_domain::ReverbCharacter::Hall.wire_value()
+        echo_domain::ReverbCharacter::Spring.wire_value()
     );
     assert!(projected[0].reverb_enabled);
     assert_eq!(projected[0].reverb_mix_percent, 24);
@@ -380,7 +383,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
     assert_eq!(projected[0].limiter_release_millis, 160);
     assert_eq!(
         projected[0].effect_chain,
-        [5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 2, 4]
+        [5, 7, 3, 0, 6, 1, 8, 9, 10, 11, 12, 2, 4]
     );
     assert_eq!(projected[0].edit_segments.len(), 2);
     assert_eq!(projected[0].edit_segments[0].source_start_millis, 1_000);
@@ -394,7 +397,7 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         .expect_err("unknown reverb character must fail closed");
     assert_eq!(
         error.message,
-        "reverb character must be room, hall, or plate"
+        "reverb character must be room, hall, plate, or spring"
     );
     adjustment.reverb_character = echo_domain::ReverbCharacter::Room.wire_value();
     creative_vfx.transform.amount_percent = 101;

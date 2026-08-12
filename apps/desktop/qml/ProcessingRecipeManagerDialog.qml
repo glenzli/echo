@@ -95,6 +95,8 @@ Popup {
             return qsTr("Modulation VFX");
         if (componentId === "transformVfx")
             return qsTr("Transform VFX");
+        if (componentId === "digitalDegradeVfx")
+            return qsTr("Digital Degrade");
         if (componentId === "master")
             return qsTr("Master output");
         return componentId;
@@ -121,7 +123,7 @@ Popup {
         const current = dialog.recipeComponents();
         for (let index = 0; index < current.length; ++index)
             selected[String(current[index])] = true;
-        const orderedIds = ["lowCut", "restoration", "deHum", "deClick", "channelRepair", "equalizer", "dynamics", "space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "master"];
+        const orderedIds = ["lowCut", "restoration", "deHum", "deClick", "channelRepair", "equalizer", "dynamics", "space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegradeVfx", "master"];
         updateComponents.clear();
         for (let index = 0; index < orderedIds.length; ++index) {
             const componentId = orderedIds[index];

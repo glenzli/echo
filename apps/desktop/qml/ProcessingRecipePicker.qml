@@ -68,6 +68,8 @@ Rectangle {
             return qsTr("Modulation VFX");
         if (componentId === "transformVfx")
             return qsTr("Transform VFX");
+        if (componentId === "digitalDegradeVfx")
+            return qsTr("Digital Degrade");
         if (componentId === "master")
             return qsTr("Master output");
         return componentId;

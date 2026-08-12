@@ -109,6 +109,23 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
     const int transform_mix = field(transform, "mixPercent", "mix_percent", 100).toInt();
     const int transform_amount = field(transform, "amountPercent", "amount_percent", 50).toInt();
 
+    const QVariantMap digital_degrade = nested(value, "digital_degrade").isEmpty()
+                                            ? nested(value, "digitalDegrade")
+                                            : nested(value, "digital_degrade");
+    const auto digital_degrade_character = character(
+        digital_degrade.value(QStringLiteral("character"), 0),
+        {"bitcrusher", "sample_rate_reduction", "lo_fi"}
+    );
+    const int digital_mix = field(digital_degrade, "mixPercent", "mix_percent", 100).toInt();
+    const QVariantMap bitcrusher = nested(digital_degrade, "bitcrusher");
+    const int bit_depth = field(bitcrusher, "bitDepth", "bit_depth", 8).toInt();
+    const QVariantMap sample_rate_reduction =
+        nested(digital_degrade, "sample_rate_reduction").isEmpty()
+            ? nested(digital_degrade, "sampleRateReduction")
+            : nested(digital_degrade, "sample_rate_reduction");
+    const int target_rate =
+        field(sample_rate_reduction, "targetRateHertz", "target_rate_hertz", 8000).toInt();
+
     if (!scene_character || scene_mix < 0 || scene_mix > 100 || scene_intensity < 0
         || scene_intensity > 100 || !delay_character || slapback_time < 30 || slapback_time > 180
         || slapback_mix < 0 || slapback_mix > 100 || slapback_cut < 1000 || slapback_cut > 20000
@@ -127,7 +144,9 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
         || phaser_feedback > 90 || phaser_phase < 0 || phaser_phase > 180 || tremolo_rate < 100
         || tremolo_rate > 20000 || tremolo_depth < 0 || tremolo_depth > 100 || tremolo_phase < 0
         || tremolo_phase > 180 || !transform_character || transform_mix < 0 || transform_mix > 100
-        || transform_amount < 0 || transform_amount > 100) {
+        || transform_amount < 0 || transform_amount > 100 || !digital_degrade_character
+        || digital_mix < 0 || digital_mix > 100 || bit_depth < 2 || bit_depth > 16
+        || target_rate < 1000 || target_rate > 24000) {
         return std::nullopt;
     }
 
@@ -196,11 +215,22 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
                         .stereo_phase_degrees = static_cast<std::uint16_t>(tremolo_phase),
                     },
             },
-        .transform = {
-            .character = static_cast<echo::audio::TransformVfxCharacter>(*transform_character),
-            .enabled = transform.value(QStringLiteral("enabled"), false).toBool(),
-            .mix_percent = static_cast<std::uint8_t>(transform_mix),
-            .amount_percent = static_cast<std::uint8_t>(transform_amount),
+        .transform =
+            {
+                .character = static_cast<echo::audio::TransformVfxCharacter>(*transform_character),
+                .enabled = transform.value(QStringLiteral("enabled"), false).toBool(),
+                .mix_percent = static_cast<std::uint8_t>(transform_mix),
+                .amount_percent = static_cast<std::uint8_t>(transform_amount),
+            },
+        .digital_degrade = {
+            .character =
+                static_cast<echo::audio::DigitalDegradeVfxCharacter>(*digital_degrade_character),
+            .enabled = digital_degrade.value(QStringLiteral("enabled"), false).toBool(),
+            .mix_percent = static_cast<std::uint8_t>(digital_mix),
+            .bitcrusher = {.bit_depth = static_cast<std::uint8_t>(bit_depth)},
+            .sample_rate_reduction = {
+                .target_rate_hertz = static_cast<std::uint16_t>(target_rate),
+            },
         },
     };
 }
@@ -296,11 +326,28 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
     );
     transform.insert(QStringLiteral("mixPercent"), adjustment.transform.mix_percent);
     transform.insert(QStringLiteral("amountPercent"), adjustment.transform.amount_percent);
+    QVariantMap digital_degrade = familyHeader(
+        static_cast<int>(adjustment.digital_degrade.character),
+        adjustment.digital_degrade.enabled
+    );
+    digital_degrade.insert(QStringLiteral("mixPercent"), adjustment.digital_degrade.mix_percent);
+    digital_degrade.insert(
+        QStringLiteral("bitcrusher"),
+        QVariantMap{{QStringLiteral("bitDepth"), adjustment.digital_degrade.bitcrusher.bit_depth}}
+    );
+    digital_degrade.insert(
+        QStringLiteral("sampleRateReduction"),
+        QVariantMap{
+            {QStringLiteral("targetRateHertz"),
+             adjustment.digital_degrade.sample_rate_reduction.target_rate_hertz}
+        }
+    );
     return {
         {QStringLiteral("scene"), scene},
         {QStringLiteral("delay"), delay},
         {QStringLiteral("modulation"), modulation},
         {QStringLiteral("transform"), transform},
+        {QStringLiteral("digitalDegrade"), digital_degrade},
     };
 }
 
@@ -324,6 +371,11 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
     transform[QStringLiteral("character")] = enum_name(
         transform.value(QStringLiteral("character")).toInt(),
         {"robot", "monster", "tiny", "giant", "ghost"}
+    );
+    QVariantMap digital_degrade = nested(qml, "digitalDegrade");
+    digital_degrade[QStringLiteral("character")] = enum_name(
+        digital_degrade.value(QStringLiteral("character")).toInt(),
+        {"bitcrusher", "sample_rate_reduction", "lo_fi"}
     );
     auto snake = [](QVariantMap map, const QString& camel, const QString& snake_name) {
         map.insert(snake_name, map.take(camel));
@@ -370,12 +422,21 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
     modulation[QStringLiteral("tremolo")] = tremolo;
     transform = snake(transform, "mixPercent", "mix_percent");
     transform = snake(transform, "amountPercent", "amount_percent");
+    digital_degrade = snake(digital_degrade, "mixPercent", "mix_percent");
+    QVariantMap digital_bitcrusher = nested(digital_degrade, "bitcrusher");
+    digital_bitcrusher = snake(digital_bitcrusher, "bitDepth", "bit_depth");
+    QVariantMap digital_rate = nested(digital_degrade, "sampleRateReduction");
+    digital_rate = snake(digital_rate, "targetRateHertz", "target_rate_hertz");
+    digital_degrade[QStringLiteral("bitcrusher")] = digital_bitcrusher;
+    digital_degrade.remove(QStringLiteral("sampleRateReduction"));
+    digital_degrade[QStringLiteral("sample_rate_reduction")] = digital_rate;
     return QJsonDocument::fromVariant(
                QVariantMap{
                    {QStringLiteral("scene"), scene},
                    {QStringLiteral("delay"), delay},
                    {QStringLiteral("modulation"), modulation},
                    {QStringLiteral("transform"), transform},
+                   {QStringLiteral("digital_degrade"), digital_degrade},
                }
     )
         .toJson(QJsonDocument::Compact);

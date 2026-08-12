@@ -123,6 +123,7 @@ CharacterTuning tuning_for(ReverbCharacter character) {
             .damping_range_hertz = 10'000.0,
         };
     case ReverbCharacter::Room:
+    case ReverbCharacter::Spring:
         break;
     }
     throw std::invalid_argument("diffuse space reverb only owns hall and plate characters");
