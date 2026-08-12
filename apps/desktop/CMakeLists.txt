@@ -192,6 +192,7 @@ qt_add_qml_module(
         qml/ListeningProgressTracker.qml
         qml/MainTitleBar.qml
         qml/MasterOutputPanel.qml
+        qml/MetadataCalibrationEditor.qml
         qml/ParametricEqGraph.qml
         qml/ProcessingHistoryDialog.qml
         qml/ProcessingRecipeApplyDialog.qml

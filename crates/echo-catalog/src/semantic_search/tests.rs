@@ -75,7 +75,7 @@ fn current_evidence_forms_a_bounded_revisioned_document() {
     assert!(
         sources[0]
             .revision
-            .starts_with("echo:semantic-document:v1:")
+            .starts_with("echo:semantic-document:v2:")
     );
     assert!(sources[0].text.contains("railway"));
     assert!(sources[0].text.contains("train arrival"));

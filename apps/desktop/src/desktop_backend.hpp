@@ -71,6 +71,17 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
     Q_INVOKABLE QVariantList longAudioChaptersForAsset(const QString& id) const;
     Q_INVOKABLE bool setAssetAffinity(const QString& id, bool liked, int rating);
+    Q_INVOKABLE QVariantMap calibrateAssetMetadata(
+        const QString& id,
+        const QString& soundCaption,
+        const QString& summary,
+        const QString& eventType,
+        const QString& mood,
+        const QVariantList& keywords,
+        const QString& transcriptText,
+        const QString& language,
+        const QVariantList& calibratedFields
+    );
     Q_INVOKABLE QVariantMap recordListeningProgress(
         const QString& id,
         qlonglong positionMillis,

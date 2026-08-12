@@ -11,6 +11,8 @@
 //! - `analysis` owns progressive analysis levels and evidence contracts
 //!   (`value + model + model_version + confidence + timestamp` — analysis is
 //!   never treated as fact);
+//! - `metadata_calibration` owns sparse user corrections over those model
+//!   projections without mutating the evidence itself;
 //! - `audio_asset` owns the aggregate root that composes them.
 //!
 //! Follow each entry module for its responsibility map; substantive behavior
@@ -21,6 +23,7 @@ mod analysis;
 mod audio_asset;
 mod creative_vfx;
 mod ids;
+mod metadata_calibration;
 mod original;
 mod processing_recipe;
 mod source_edit;
@@ -65,6 +68,11 @@ pub use creative_vfx::{
     SlapbackSettings, TransformVfxCharacter, TransformVfxSettings, TremoloSettings,
 };
 pub use ids::{AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId};
+pub use metadata_calibration::{
+    MAX_METADATA_CAPTION_CHARACTERS, MAX_METADATA_KEYWORDS, MAX_METADATA_LABEL_CHARACTERS,
+    MAX_METADATA_SUMMARY_CHARACTERS, MAX_METADATA_TEXT_CHARACTERS, MetadataCalibration,
+    MetadataCalibrationError, MetadataField, MetadataFields,
+};
 pub use original::{AssetPathStatus, ContentHash, ContentHashParseError, OriginalRef};
 pub use processing_recipe::{
     AdjustmentPatch, DEFAULT_PROCESSING_COMPONENTS, ProcessingComponent,

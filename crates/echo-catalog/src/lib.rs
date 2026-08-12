@@ -27,6 +27,7 @@ mod inference_run;
 mod job_queue;
 mod listening_state;
 mod long_audio;
+mod metadata_calibration;
 mod processing_recipe;
 mod render_export;
 mod revisit;
@@ -92,6 +93,9 @@ pub use long_audio::{
     LongAudioStage, ensure_long_audio_plan, list_long_audio_outline_nodes,
     list_long_audio_segments, record_long_audio_proxy, record_long_audio_stage,
     upsert_long_audio_outline_node,
+};
+pub use metadata_calibration::{
+    MetadataCalibrationRevision, calibrate_asset_metadata, latest_metadata_calibration,
 };
 pub use processing_recipe::{
     CreateProcessingRecipe, ProcessingRecipe, ProcessingRecipeApplicationHistoryEntry,

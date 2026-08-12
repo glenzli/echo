@@ -1,6 +1,7 @@
 //! Audio Space projection: assets joined with their newest contextual
 //! presentation and latest positive browse facets for the sound-album surface.
 
+use echo_domain::{AssetId, MetadataCalibration, MetadataFields};
 use rusqlite::Transaction;
 
 use crate::error::CatalogError;
@@ -34,6 +35,12 @@ pub struct AudioSpaceAsset {
     pub contextual_event_type: Option<String>,
     /// Latest model-extracted text payload JSON.
     pub transcript: Option<serde_json::Value>,
+    /// Model-only descriptive values before user calibration.
+    pub model_metadata: MetadataFields,
+    /// User-visible values after applying the newest calibration revision.
+    pub effective_metadata: MetadataFields,
+    /// Newest append-only user calibration revision, including an empty reset.
+    pub metadata_calibration: Option<crate::MetadataCalibrationRevision>,
     /// Metadata extracted from the immutable source container.
     pub source_metadata: Option<crate::SourceMetadata>,
 }
@@ -93,12 +100,19 @@ pub fn list_audio_space(
          adj.creative_vfx_json, \
          adj.created_at_millis, \
          COALESCE(u.last_listened_at_millis, 0), \
-         COALESCE(u.resume_position_millis, 0) \
+         COALESCE(u.resume_position_millis, 0), \
+         calibration.id, calibration.sound_caption, calibration.summary, \
+         calibration.event_type, calibration.mood, calibration.keywords_json, \
+         calibration.transcript_text, calibration.language, calibration.created_at_millis \
          FROM assets a LEFT JOIN asset_user_state u ON u.asset_id = a.id \
          LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
          LEFT JOIN asset_adjustment_revisions adj ON adj.id = (\
              SELECT id FROM asset_adjustment_revisions latest_adjustment \
              WHERE latest_adjustment.asset_id = a.id ORDER BY id DESC LIMIT 1\
+         ) \
+         LEFT JOIN metadata_calibration_revisions calibration ON calibration.id = (\
+             SELECT id FROM metadata_calibration_revisions latest_calibration \
+             WHERE latest_calibration.asset_id = a.id ORDER BY id DESC LIMIT 1\
          ) \
          ORDER BY a.imported_at_millis DESC, a.id DESC",
     )?;
@@ -111,12 +125,67 @@ pub fn list_audio_space(
 }
 
 fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AudioSpaceAsset> {
+    let id: String = row.get(0)?;
+    let asset_id = id.parse::<AssetId>().map_err(|error| {
+        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error))
+    })?;
     let duration_millis = row
         .get::<_, Option<i64>>(3)?
         .map(|millis| u64::try_from(millis).expect("stored duration is non-negative"));
     let adjustment = audio_space_adjustment_from_row(row, duration_millis)?;
+    let contextual = row
+        .get::<_, Option<String>>(8)?
+        .map(|json| serde_json::from_str(&json).expect("contextual payload parses"));
+    let contextual_keywords: Vec<String> =
+        serde_json::from_str(&row.get::<_, String>(9)?).expect("contextual keywords parse");
+    let contextual_mood: Option<String> = row.get(10)?;
+    let contextual_event_type: Option<String> = row.get(11)?;
+    let transcript = row
+        .get::<_, Option<String>>(12)?
+        .map(|json| serde_json::from_str(&json).expect("transcript payload parses"));
+    let model_metadata = crate::metadata_calibration::metadata_fields_from_projection(
+        contextual.as_ref(),
+        contextual_keywords.clone(),
+        contextual_mood.clone(),
+        contextual_event_type.clone(),
+        transcript.as_ref(),
+    );
+    let metadata_calibration = row
+        .get::<_, Option<i64>>(51)?
+        .map(|revision_id| {
+            let keywords_json = row.get::<_, Option<String>>(56)?;
+            Ok::<_, rusqlite::Error>(crate::MetadataCalibrationRevision {
+                revision_id,
+                asset_id,
+                calibration: MetadataCalibration {
+                    sound_caption: row.get(52)?,
+                    summary: row.get(53)?,
+                    event_type: row.get(54)?,
+                    mood: row.get(55)?,
+                    keywords: keywords_json
+                        .map(|encoded| {
+                            serde_json::from_str(&encoded).map_err(|error| {
+                                rusqlite::Error::FromSqlConversionFailure(
+                                    56,
+                                    rusqlite::types::Type::Text,
+                                    Box::new(error),
+                                )
+                            })
+                        })
+                        .transpose()?,
+                    transcript_text: row.get(57)?,
+                    language: row.get(58)?,
+                },
+                created_at_millis: row.get(59)?,
+            })
+        })
+        .transpose()?;
+    let effective_metadata = metadata_calibration.as_ref().map_or_else(
+        || model_metadata.clone(),
+        |revision| revision.calibration.apply_to(model_metadata.clone()),
+    );
     Ok(AudioSpaceAsset {
-        id: row.get(0)?,
+        id,
         path: row.get::<_, String>(1)?.into(),
         codec: row.get(2)?,
         duration_millis,
@@ -124,16 +193,14 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
         imported_at_millis: row.get(5)?,
         path_status: row.get(6)?,
         max_level: row.get(7)?,
-        contextual: row
-            .get::<_, Option<String>>(8)?
-            .map(|json| serde_json::from_str(&json).expect("contextual payload parses")),
-        contextual_keywords: serde_json::from_str(&row.get::<_, String>(9)?)
-            .expect("contextual keywords parse"),
-        contextual_mood: row.get(10)?,
-        contextual_event_type: row.get(11)?,
-        transcript: row
-            .get::<_, Option<String>>(12)?
-            .map(|json| serde_json::from_str(&json).expect("transcript payload parses")),
+        contextual,
+        contextual_keywords,
+        contextual_mood,
+        contextual_event_type,
+        transcript,
+        model_metadata,
+        effective_metadata,
+        metadata_calibration,
         liked: row.get::<_, i64>(13)? != 0,
         rating: u8::try_from(row.get::<_, i64>(14)?)
             .expect("stored rating is between zero and five"),

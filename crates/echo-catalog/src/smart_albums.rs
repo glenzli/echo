@@ -136,7 +136,13 @@ fn collect_contextual_groups(
              FROM contextual_browse_facets latest \
              WHERE latest.asset_id = f.asset_id \
                AND latest.facet_kind = f.facet_kind\
-         ) ORDER BY f.facet_kind, f.normalized_value, f.asset_id",
+         ) AND (f.facet_kind != 'event' OR NOT EXISTS (\
+             SELECT 1 FROM metadata_calibration_revisions calibration \
+             WHERE calibration.asset_id = f.asset_id AND calibration.event_type IS NOT NULL \
+               AND calibration.id = (SELECT MAX(latest_calibration.id) \
+                 FROM metadata_calibration_revisions latest_calibration \
+                 WHERE latest_calibration.asset_id = f.asset_id)\
+         )) ORDER BY f.facet_kind, f.normalized_value, f.asset_id",
     )?;
     let rows = statement.query_map([], |row| {
         Ok((

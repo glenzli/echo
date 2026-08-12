@@ -132,7 +132,19 @@ Rectangle {
         return minutes + ":" + (rest < 10 ? "0" : "") + rest.toFixed(1);
     }
 
+    function assetFieldCalibrated(field: string): bool {
+        if (!asset || !asset.calibratedFields)
+            return false;
+        for (const value of asset.calibratedFields) {
+            if (String(value) === field)
+                return true;
+        }
+        return false;
+    }
+
     function analysisHint(): string {
+        if (assetFieldCalibrated("transcript_text"))
+            return asset && asset.textPreview.length > 0 ? qsTr("User-calibrated text") : qsTr("Text cleared by user");
         if (analysisStatus.recovery === "automatic")
             return qsTr("Waiting for Infer Runtime; analysis will resume automatically");
         if (analysisStatus.recovery === "source")
@@ -172,7 +184,14 @@ Rectangle {
         analysisStatus = backend.analysisStatusForAsset(asset.id);
         waveformLevels = backend.waveformForAsset(asset.id);
         const records = backend.transcriptsForAsset(asset.id);
-        if (records.length > 0) {
+        if (assetFieldCalibrated("transcript_text") && asset.textPreview.length > 0) {
+            transcriptModel.append({
+                text: asset.textPreview,
+                start: 0,
+                end: Math.max(0.001, Number(asset.durationMillis) / 1000),
+                calibrated: true
+            });
+        } else if (!assetFieldCalibrated("transcript_text") && records.length > 0) {
             for (const segment of records[0].segments) {
                 transcriptModel.append(segment);
             }
@@ -467,7 +486,7 @@ Rectangle {
                 anchors.centerIn: parent
                 width: parent.width - 48
                 visible: transcriptModel.count === 0
-                text: preview.analysisStatus.recovery === "automatic" ? qsTr("Echo will resume when Infer Runtime is available.") : preview.analysisStatus.recovery === "source" ? qsTr("Reconnect the Original before analysis can continue.") : preview.analysisFailed ? qsTr("Background text extraction did not complete. You can retry this sound.") : preview.analysisStatus.stage === "sound_events" ? qsTr("No speech was detected. Echo is identifying audible events.") : preview.analysisStatus.stage === "complete" ? qsTr("No speech was detected in this sound.") : preview.analysisActive ? qsTr("Echo is extracting text from this sound through Infer Runtime.") : qsTr("Text is extracted automatically after import.")
+                text: preview.assetFieldCalibrated("transcript_text") ? qsTr("Text has been cleared by the user.") : preview.analysisStatus.recovery === "automatic" ? qsTr("Echo will resume when Infer Runtime is available.") : preview.analysisStatus.recovery === "source" ? qsTr("Reconnect the Original before analysis can continue.") : preview.analysisFailed ? qsTr("Background text extraction did not complete. You can retry this sound.") : preview.analysisStatus.stage === "sound_events" ? qsTr("No speech was detected. Echo is identifying audible events.") : preview.analysisStatus.stage === "complete" ? qsTr("No speech was detected in this sound.") : preview.analysisActive ? qsTr("Echo is extracting text from this sound through Infer Runtime.") : qsTr("Text is extracted automatically after import.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap

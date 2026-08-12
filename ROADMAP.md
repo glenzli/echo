@@ -145,6 +145,13 @@ Consumer 对其他方面合格的模型速写执行最终硬压缩；理解摘�
 Analysis 覆盖读取投影，不原地篡改历史证据。长录音仍必须先经过后续独立的代理／分段与聚合切片，
 当前有界输入不得静默截断，也不提前把尚无消费方的章节系统塞进 contextual owner。
 
+用户校准与 Analysis 必须是两条独立事实链：Catalog 以 append-only revision 保存用户对声音标题、
+摘要、事件、情绪、关键词、文字和语言的稀疏修订，模型原始输出及其 provenance 永不回写。展示、
+文字检索、语义文档与动态筛选读取“用户修订优先、未修订字段回落到最新模型证据”的有效投影；
+再次分析只能更新没有被用户校准的字段。清空字段也是显式修订，恢复模型值则追加一个新的空校准
+revision。时间戳片段仍属于模型对齐证据；用户改过完整文字后，UI 不得把旧片段时间假装成精确
+对应关系。Catalog `20260813.3` 是这一校准链与详情检查器原位编辑的首个有界切片。
+
 ## 4. 音频底层
 
 - 不自己重写 codec，直接用 FFmpeg / libavfilter。
@@ -156,7 +163,7 @@ Analysis 覆盖读取投影，不原地篡改历史证据。长录音仍必须�
 AudioAsset
 ├── Original        content hash / path / codec / timestamp / metadata（immutable）
 ├── Analysis        transcript / speakers / emotions / audio events / embeddings / segments
-├── UserState       liked / rating / album membership（用户事实）
+├── UserState       liked / rating / album membership / metadata calibration（用户事实）
 ├── AdjustmentGraph gain / eq / denoise / normalize / trim（非破坏性）
 ├── DerivedRenders  可重建
 ├── Publications    用户导出的文件与来源版本证据（不由缓存维护删除）

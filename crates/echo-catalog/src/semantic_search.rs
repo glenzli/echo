@@ -117,18 +117,26 @@ fn semantic_sources(
         ""
     };
     let sql = format!(
-        "SELECT a.id, contextual.id, COALESCE(transcript.id, 0), \
-         COALESCE(json_extract(contextual.value, '$.sound_caption'), ''), \
-         COALESCE(json_extract(contextual.value, '$.summary'), ''), \
-         COALESCE(json_extract(contextual.value, '$.keywords'), '[]'), \
-         COALESCE(json_extract(contextual.value, '$.mood'), ''), \
+        "SELECT a.id, COALESCE(contextual.id, 0), COALESCE(transcript.id, 0), \
+         COALESCE(calibration.id, 0), \
+         CASE WHEN calibration.sound_caption IS NOT NULL THEN calibration.sound_caption \
+              ELSE COALESCE(json_extract(contextual.value, '$.sound_caption'), '') END, \
+         CASE WHEN calibration.summary IS NOT NULL THEN calibration.summary \
+              ELSE COALESCE(json_extract(contextual.value, '$.summary'), '') END, \
+         CASE WHEN calibration.keywords_json IS NOT NULL THEN calibration.keywords_json \
+              ELSE COALESCE(json_extract(contextual.value, '$.keywords'), '[]') END, \
+         CASE WHEN calibration.mood IS NOT NULL THEN calibration.mood \
+              ELSE COALESCE(json_extract(contextual.value, '$.mood'), '') END, \
          COALESCE(json_extract(contextual.value, '$.place_hint'), ''), \
-         COALESCE(json_extract(contextual.value, '$.event_type'), ''), \
+         CASE WHEN calibration.event_type IS NOT NULL THEN calibration.event_type \
+              ELSE COALESCE(json_extract(contextual.value, '$.event_type'), '') END, \
          COALESCE(json_extract(contextual.value, '$.people_hints'), '[]'), \
-         COALESCE(substr(json_extract(transcript.value, '$.text'), 1, 2048), ''), \
+         CASE WHEN calibration.transcript_text IS NOT NULL \
+              THEN substr(calibration.transcript_text, 1, 2048) \
+              ELSE COALESCE(substr(json_extract(transcript.value, '$.text'), 1, 2048), '') END, \
          COALESCE(document.source_revision, '') \
          FROM assets a \
-         JOIN analysis_records contextual ON contextual.id = (\
+         LEFT JOIN analysis_records contextual ON contextual.id = (\
              SELECT candidate.id FROM analysis_records candidate \
              WHERE candidate.asset_id = a.id AND candidate.kind = 'contextual' \
              ORDER BY candidate.id DESC LIMIT 1\
@@ -138,9 +146,15 @@ fn semantic_sources(
              WHERE candidate.asset_id = a.id AND candidate.kind = 'transcript' \
              ORDER BY candidate.id DESC LIMIT 1\
          ) \
+         LEFT JOIN metadata_calibration_revisions calibration ON calibration.id = (\
+             SELECT candidate.id FROM metadata_calibration_revisions candidate \
+             WHERE candidate.asset_id = a.id ORDER BY candidate.id DESC LIMIT 1\
+         ) \
          LEFT JOIN semantic_documents document ON document.asset_id = a.id \
          WHERE a.path_status = 'present' \
-         AND TRIM(COALESCE(json_extract(contextual.value, '$.sound_caption'), '')) <> '' \
+         AND TRIM(CASE WHEN calibration.sound_caption IS NOT NULL \
+              THEN calibration.sound_caption \
+              ELSE COALESCE(json_extract(contextual.value, '$.sound_caption'), '') END) <> '' \
          {asset_filter} ORDER BY a.imported_at_millis, a.id"
     );
     let mut statement = transaction.prepare(&sql)?;
@@ -160,25 +174,27 @@ fn semantic_sources(
         })?;
         let contextual_id: i64 = row.get(1)?;
         let transcript_id: i64 = row.get(2)?;
-        let revision =
-            format!("echo:semantic-document:v1:{asset_id}:{contextual_id}:{transcript_id}");
-        let stored_revision: String = row.get(11)?;
+        let calibration_id: i64 = row.get(3)?;
+        let revision = format!(
+            "echo:semantic-document:v2:{asset_id}:{contextual_id}:{transcript_id}:{calibration_id}"
+        );
+        let stored_revision: String = row.get(12)?;
         if only_stale && stored_revision == revision {
             continue;
         }
-        let keywords_json = row.get::<_, String>(5)?;
-        let people_json = row.get::<_, String>(9)?;
+        let keywords_json = row.get::<_, String>(6)?;
+        let people_json = row.get::<_, String>(10)?;
         let keywords = json_strings(&keywords_json);
         let people = json_strings(&people_json);
         let text = bounded_document([
-            row.get::<_, String>(3)?,
             row.get::<_, String>(4)?,
+            row.get::<_, String>(5)?,
             keywords.join(" "),
-            row.get::<_, String>(6)?,
             row.get::<_, String>(7)?,
             row.get::<_, String>(8)?,
+            row.get::<_, String>(9)?,
             people.join(" "),
-            row.get::<_, String>(10)?,
+            row.get::<_, String>(11)?,
         ]);
         sources.push(SemanticSource {
             asset_id,

@@ -489,167 +489,182 @@
 <context>
     <name>AudioPlaybackWorkspace</name>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="145"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="157"/>
         <source>Understanding this sound in the background…</source>
         <translation>正在后台理解这个声音…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="447"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="466"/>
         <source>Retry sound understanding</source>
         <translation>重试声音理解</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="275"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="294"/>
         <source>Select a recording</source>
         <translation>选择一段录音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="137"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="147"/>
+        <source>User-calibrated text</source>
+        <translation>用户校准的文字</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="147"/>
+        <source>Text cleared by user</source>
+        <translation>用户已清空文字</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="149"/>
         <source>Waiting for Infer Runtime; analysis will resume automatically</source>
         <translation>正在等待 Infer Runtime；分析会自动续跑</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="139"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="151"/>
         <source>Reconnect the Original to continue analysis</source>
         <translation>重新连接原始文件后继续分析</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="143"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="155"/>
         <source>Identifying audible events in the background…</source>
         <translation>正在后台识别可听见的声音事件…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="150"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="162"/>
         <source>No speech was detected in this sound</source>
         <translation>这段声音中未检测到人声</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="284"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="303"/>
         <source>The waveform, playback controls, and extracted text stay together in this workspace.</source>
         <translation>波形、播放控制和提取的文字会始终集中在这个工作区中。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="333"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="352"/>
         <source>Missing</source>
         <translation>缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="333"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="352"/>
         <source>Original preserved</source>
         <translation>原始文件已保留</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="333"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="352"/>
         <source>Saved version</source>
         <translation>已保存版本</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="378"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="397"/>
         <source>Original file is unavailable</source>
         <translation>原始文件当前不可用</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="378"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="397"/>
         <source>Preparing waveform…</source>
         <translation>正在准备波形…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="390"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="409"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="390"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="409"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="405"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="424"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="413"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="432"/>
         <source>Continue at %1</source>
         <translation>从 %1 继续</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="434"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="453"/>
         <source>Text</source>
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="447"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="466"/>
         <source>Retry timing analysis</source>
         <translation>重试时间对齐</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="447"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="466"/>
         <source>Retry analysis</source>
         <translation>重试分析</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="470"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
         <source>Echo is extracting text from this sound through Infer Runtime.</source>
         <translation>Echo 正在通过 Infer Runtime 从这段声音中提取文字。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="470"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
         <source>Echo will resume when Infer Runtime is available.</source>
         <translation>Infer Runtime 恢复可用后，Echo 会继续分析。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="470"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
         <source>Reconnect the Original before analysis can continue.</source>
         <translation>重新连接原始文件后才能继续分析。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="470"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
         <source>No speech was detected. Echo is identifying audible events.</source>
         <translation>未检测到人声，Echo 正在识别可听见的声音事件。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="470"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
         <source>No speech was detected in this sound.</source>
         <translation>这段声音中未检测到人声。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="149"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
+        <source>Text has been cleared by the user.</source>
+        <translation>用户已清空这段声音的文字。</translation>
+    </message>
+    <message>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="161"/>
         <source>Extracting text in the background…</source>
         <translation>正在后台提取文字…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="150"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="162"/>
         <source>Text is extracted automatically</source>
         <translation>文字会自动提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="447"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="466"/>
         <source>Retry text extraction</source>
         <translation>重试文字提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="470"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
         <source>Background text extraction did not complete. You can retry this sound.</source>
         <translation>后台文字提取未完成，你可以重试这段声音。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="470"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="489"/>
         <source>Text is extracted automatically after import.</source>
         <translation>导入后会自动提取文字。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="147"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="159"/>
         <source>Click a segment to seek</source>
         <translation>点击片段即可定位</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="147"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="159"/>
         <source>Refining word timing in the background…</source>
         <translation>正在后台细化文字时间…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="141"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="153"/>
         <source>Background analysis needs attention</source>
         <translation>后台分析需要处理</translation>
     </message>
@@ -1737,6 +1752,84 @@
     </message>
 </context>
 <context>
+    <name>ImpulseResponseImportDialog</name>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="15"/>
+        <source>Import impulse response</source>
+        <translation>导入脉冲响应</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="32"/>
+        <source>Choose a local WAV impulse response</source>
+        <translation>选择本地 WAV 脉冲响应</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="34"/>
+        <source>WAV audio (*.wav)</source>
+        <translation>WAV 音频 (*.wav)</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="48"/>
+        <source>Echo preserves the original WAV, a canonical prepared copy, and the rights declaration as separate evidence.</source>
+        <translation>Echo 会分别保存原始 WAV、规范化处理副本与权利声明，作为独立证据。</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="58"/>
+        <source>Local WAV file</source>
+        <translation>本地 WAV 文件</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="63"/>
+        <source>Display name</source>
+        <translation>显示名称</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="68"/>
+        <source>Creator (optional)</source>
+        <translation>创作者（可选）</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="73"/>
+        <source>Source URL (optional)</source>
+        <translation>来源网址（可选）</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="78"/>
+        <source>Attribution (optional)</source>
+        <translation>署名信息（可选）</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="84"/>
+        <source>SPDX or public licence</source>
+        <translation>SPDX 或公共许可证</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="84"/>
+        <source>My recording · no redistribution</source>
+        <translation>我的录音 · 禁止再分发</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="91"/>
+        <source>SPDX expression, for example CC0-1.0</source>
+        <translation>SPDX 表达式，例如 CC0-1.0</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="107"/>
+        <source>Choose another file</source>
+        <translation>重新选择文件</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="112"/>
+        <source>Importing…</source>
+        <translation>正在导入…</translation>
+    </message>
+    <message>
+        <location filename="../qml/ImpulseResponseImportDialog.qml" line="112"/>
+        <source>Import</source>
+        <translation>导入</translation>
+    </message>
+</context>
+<context>
     <name>LoudnessTargetControl</name>
     <message>
         <location filename="../qml/LoudnessTargetControl.qml" line="40"/>
@@ -1896,6 +1989,145 @@
         <location filename="../qml/MasterOutputPanel.qml" line="215"/>
         <source>True peak estimate</source>
         <translation>真峰值估计</translation>
+    </message>
+</context>
+<context>
+    <name>MetadataCalibrationEditor</name>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="84"/>
+        <source>The summary must be 1,000 characters or fewer</source>
+        <translation>摘要不能超过 1,000 个字符</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="88"/>
+        <source>The text is too long to save as one sound record</source>
+        <translation>文字过长，无法保存为单条声音记录</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="92"/>
+        <source>Use no more than 32 keywords</source>
+        <translation>关键词不能超过 32 个</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="141"/>
+        <source>Calibrated</source>
+        <translation>已校准</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="150"/>
+        <source>Use model suggestion</source>
+        <translation>使用模型建议</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="162"/>
+        <source>Model suggestion: %1</source>
+        <translation>模型建议：%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="162"/>
+        <source>The model did not provide a value</source>
+        <translation>模型没有提供这一项</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="203"/>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="471"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="215"/>
+        <source>Calibrate information</source>
+        <translation>校准声音信息</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="222"/>
+        <source>The original model result remains available as evidence</source>
+        <translation>模型的原始结果仍会作为证据保留</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="231"/>
+        <source>Restore all model suggestions</source>
+        <translation>恢复全部模型建议</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="264"/>
+        <source>Sound title</source>
+        <translation>声音标题</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="276"/>
+        <source>A short, recognizable sound title</source>
+        <translation>简短、容易辨认的声音标题</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="289"/>
+        <source>Summary</source>
+        <translation>摘要</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="300"/>
+        <source>Briefly describe what can be heard</source>
+        <translation>简要描述可以听到的内容</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="321"/>
+        <source>Event</source>
+        <translation>事件</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="331"/>
+        <source>Sound event</source>
+        <translation>声音事件</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="343"/>
+        <source>Mood</source>
+        <translation>情绪</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="353"/>
+        <source>Mood or tone</source>
+        <translation>情绪或氛围</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="366"/>
+        <source>Language</source>
+        <translation>语言</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="376"/>
+        <source>Language, for example zh or en</source>
+        <translation>语言，例如 zh 或 en</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="389"/>
+        <source>Keywords</source>
+        <translation>关键词</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="400"/>
+        <source>Separate keywords with commas</source>
+        <translation>使用逗号分隔关键词</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="413"/>
+        <source>Text</source>
+        <translation>文字</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="424"/>
+        <source>Correct or add the words heard in this sound</source>
+        <translation>校正或补充这段声音中听到的文字</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="479"/>
+        <source>Saving…</source>
+        <translation>正在保存…</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataCalibrationEditor.qml" line="479"/>
+        <source>Save</source>
+        <translation>保存</translation>
     </message>
 </context>
 <context>
@@ -3400,207 +3632,224 @@
 <context>
     <name>SoundInspector</name>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="54"/>
+        <location filename="../qml/SoundInspector.qml" line="55"/>
         <source>Unknown length</source>
         <translation>未知时长</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="72"/>
+        <location filename="../qml/SoundInspector.qml" line="73"/>
         <source>Unknown</source>
         <translation>未知</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="183"/>
+        <location filename="../qml/SoundInspector.qml" line="205"/>
         <source>Select a sound</source>
         <translation>选择一段声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="280"/>
+        <location filename="../qml/SoundInspector.qml" line="311"/>
         <source>Rating</source>
         <translation>评分</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="351"/>
+        <location filename="../qml/SoundInspector.qml" line="382"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="351"/>
+        <location filename="../qml/SoundInspector.qml" line="382"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="372"/>
+        <location filename="../qml/SoundInspector.qml" line="403"/>
         <source>SOUND ATTRIBUTES</source>
         <translation>声音属性</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="382"/>
+        <location filename="../qml/SoundInspector.qml" line="424"/>
         <source>Event</source>
         <translation>事件</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="397"/>
+        <location filename="../qml/SoundInspector.qml" line="439"/>
         <source>Mood</source>
         <translation>情绪</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="192"/>
+        <location filename="../qml/SoundInspector.qml" line="214"/>
         <source>Its waveform, text, source metadata, and AI analysis will appear here.</source>
         <translation>它的波形、文字、来源元数据和 AI 分析会显示在这里。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="128"/>
+        <location filename="../qml/SoundInspector.qml" line="147"/>
         <source>Text extraction</source>
         <translation>提取文字</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="130"/>
+        <location filename="../qml/SoundInspector.qml" line="149"/>
         <source>Sound event detection</source>
         <translation>声音事件检测</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="132"/>
+        <location filename="../qml/SoundInspector.qml" line="151"/>
         <source>Speech alignment</source>
         <translation>语音对齐</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="134"/>
+        <location filename="../qml/SoundInspector.qml" line="153"/>
         <source>Context understanding</source>
         <translation>情境理解</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="136"/>
+        <location filename="../qml/SoundInspector.qml" line="155"/>
         <source>Long recording analysis</source>
         <translation>长录音分析</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="137"/>
+        <location filename="../qml/SoundInspector.qml" line="156"/>
         <source>Analysis complete</source>
         <translation>分析完成</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="144"/>
+        <location filename="../qml/SoundInspector.qml" line="163"/>
         <source>Reconnect the Original before retrying analysis.</source>
         <translation>请先重新连接原始文件，再重试分析。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="146"/>
+        <location filename="../qml/SoundInspector.qml" line="165"/>
         <source>Echo will resume this automatically when Infer Runtime is available.</source>
         <translation>Infer Runtime 恢复可用后，Echo 会自动从这里继续。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="148"/>
+        <location filename="../qml/SoundInspector.qml" line="167"/>
         <source>This stage requires a manual retry. Completed stages are preserved.</source>
         <translation>这个阶段需要人工重试，已完成的阶段会保留。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="150"/>
+        <location filename="../qml/SoundInspector.qml" line="169"/>
         <source>Echo is analyzing this sound in the background.</source>
         <translation>Echo 正在后台分析这段声音。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="152"/>
+        <location filename="../qml/SoundInspector.qml" line="171"/>
         <source>This sound is waiting in the background analysis queue.</source>
         <translation>这段声音正在后台分析队列中等待。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="154"/>
+        <location filename="../qml/SoundInspector.qml" line="173"/>
         <source>No speech was detected; Echo is identifying audible events.</source>
         <translation>未检测到人声；Echo 正在识别可听见的声音事件。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="155"/>
+        <location filename="../qml/SoundInspector.qml" line="174"/>
         <source>The current analysis pipeline is complete.</source>
         <translation>当前分析流程已完成。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="363"/>
+        <location filename="../qml/SoundInspector.qml" line="277"/>
+        <source>Edit sound information</source>
+        <translation>编辑声音信息</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundInspector.qml" line="394"/>
         <source>Continue at %1</source>
         <translation>从 %1 继续</translation>
     </message>
     <message>
         <location filename="../qml/SoundInspector.qml" line="411"/>
+        <location filename="../qml/SoundInspector.qml" line="479"/>
+        <location filename="../qml/SoundInspector.qml" line="646"/>
+        <source>User calibrated</source>
+        <translation>用户已校准</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundInspector.qml" line="453"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="428"/>
-        <source>AI KEYWORDS</source>
-        <translation>AI 关键词</translation>
+        <location filename="../qml/SoundInspector.qml" line="471"/>
+        <source>KEYWORDS</source>
+        <translation>关键词</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="459"/>
+        <location filename="../qml/SoundInspector.qml" line="768"/>
+        <source>The changes could not be saved</source>
+        <translation>无法保存这些修改</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundInspector.qml" line="514"/>
         <source>CHAPTERS</source>
         <translation>段落</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="531"/>
+        <location filename="../qml/SoundInspector.qml" line="586"/>
         <source>ANALYSIS</source>
         <translation>分析</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="573"/>
+        <location filename="../qml/SoundInspector.qml" line="628"/>
         <source>Retry analysis</source>
         <translation>重试分析</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="583"/>
+        <location filename="../qml/SoundInspector.qml" line="638"/>
         <source>TEXT</source>
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="587"/>
+        <location filename="../qml/SoundInspector.qml" line="653"/>
         <source>Echo is extracting text in the background…</source>
         <translation>Echo 正在后台提取文字…</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="587"/>
+        <location filename="../qml/SoundInspector.qml" line="653"/>
         <source>No text has been extracted from this sound yet.</source>
         <translation>这段声音还没有提取出文字。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="599"/>
+        <location filename="../qml/SoundInspector.qml" line="666"/>
         <source>SOURCE METADATA</source>
         <translation>来源元数据</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="608"/>
+        <location filename="../qml/SoundInspector.qml" line="675"/>
         <source>Recorded</source>
         <translation>录制时间</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="621"/>
+        <location filename="../qml/SoundInspector.qml" line="688"/>
         <source>Location</source>
         <translation>地点</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="627"/>
+        <location filename="../qml/SoundInspector.qml" line="694"/>
         <source>Not embedded</source>
         <translation>未写入文件</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="634"/>
+        <location filename="../qml/SoundInspector.qml" line="701"/>
         <source>Format</source>
         <translation>格式</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="647"/>
+        <location filename="../qml/SoundInspector.qml" line="714"/>
         <source>Audio</source>
         <translation>音频</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="653"/>
+        <location filename="../qml/SoundInspector.qml" line="720"/>
         <source>%1 Hz · %2 channel(s)</source>
         <translation>%1 Hz · %2 声道</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="653"/>
+        <location filename="../qml/SoundInspector.qml" line="720"/>
         <source>Technical metadata pending</source>
         <translation>技术元数据正在准备</translation>
     </message>
     <message>
-        <location filename="../qml/SoundInspector.qml" line="663"/>
+        <location filename="../qml/SoundInspector.qml" line="730"/>
         <source>ORIGINAL</source>
         <translation>原始文件</translation>
     </message>
@@ -4097,109 +4346,120 @@
     </message>
 </context>
 <context>
-    <name>ImpulseResponseImportDialog</name>
-    <message><source>Import impulse response</source><translation>导入脉冲响应</translation></message>
-    <message><source>Choose a local WAV impulse response</source><translation>选择本地 WAV 脉冲响应</translation></message>
-    <message><source>WAV audio (*.wav)</source><translation>WAV 音频 (*.wav)</translation></message>
-    <message><source>Echo preserves the original WAV, a canonical prepared copy, and the rights declaration as separate evidence.</source><translation>Echo 会分别保存原始 WAV、规范化处理副本与权利声明，作为独立证据。</translation></message>
-    <message><source>Local WAV file</source><translation>本地 WAV 文件</translation></message>
-    <message><source>Display name</source><translation>显示名称</translation></message>
-    <message><source>Creator (optional)</source><translation>创作者（可选）</translation></message>
-    <message><source>Source URL (optional)</source><translation>来源网址（可选）</translation></message>
-    <message><source>Attribution (optional)</source><translation>署名信息（可选）</translation></message>
-    <message><source>SPDX or public licence</source><translation>SPDX 或公共许可证</translation></message>
-    <message><source>My recording · no redistribution</source><translation>我的录音 · 禁止再分发</translation></message>
-    <message><source>SPDX expression, for example CC0-1.0</source><translation>SPDX 表达式，例如 CC0-1.0</translation></message>
-    <message><source>Choose another file</source><translation>重新选择文件</translation></message>
-    <message><source>Importing…</source><translation>正在导入…</translation></message>
-    <message><source>Import</source><translation>导入</translation></message>
-</context>
-<context>
     <name>SpaceReverbPanel</name>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="43"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="83"/>
         <source>Space</source>
         <translation>空间</translation>
     </message>
-    <message><source>Algorithmic</source><translation>算法</translation></message>
-    <message><source>Convolution</source><translation>卷积</translation></message>
-    <message><source>Choose an imported impulse response</source><translation>选择已导入的脉冲响应</translation></message>
-    <message><source>Import WAV…</source><translation>导入 WAV…</translation></message>
-    <message><source>Wet gain</source><translation>湿声增益</translation></message>
-    <message><source>Stereo IRs use parallel L→L and R→R processing. Echo does not label this true stereo.</source><translation>立体声 IR 采用 L→L、R→R 并行处理；Echo 不会将其标为真立体声。</translation></message>
-    <message><source>User-owned · no redistribution</source><translation>用户自有 · 禁止再分发</translation></message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="58"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="114"/>
+        <source>Algorithmic</source>
+        <translation>算法</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="114"/>
+        <source>Convolution</source>
+        <translation>卷积</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="300"/>
+        <source>Choose an imported impulse response</source>
+        <translation>选择已导入的脉冲响应</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="305"/>
+        <source>Import WAV…</source>
+        <translation>导入 WAV…</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="329"/>
+        <source>Wet gain</source>
+        <translation>湿声增益</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="347"/>
+        <source>Stereo IRs use parallel L→L and R→R processing. Echo does not label this true stereo.</source>
+        <translation>立体声 IR 采用 L→L、R→R 并行处理；Echo 不会将其标为真立体声。</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="360"/>
+        <source>User-owned · no redistribution</source>
+        <translation>用户自有 · 禁止再分发</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpaceReverbPanel.qml" line="98"/>
         <source>LIVE</source>
         <translation>实时</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="58"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="98"/>
         <source>BYPASS</source>
         <translation>旁路</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="81"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="131"/>
         <source>Reset space</source>
         <translation>重置空间效果</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="74"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="124"/>
         <source>Room</source>
         <translation>房间</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="74"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="124"/>
         <source>Hall</source>
         <translation>大厅</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="74"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="124"/>
         <source>Plate</source>
         <translation>板式</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="113"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="164"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="316"/>
         <source>Mix</source>
         <translation>混合</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="125"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="176"/>
         <source>Pre-delay</source>
         <translation>预延迟</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="137"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="188"/>
         <source>Decay</source>
         <translation>衰减</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="149"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="200"/>
         <source>Size</source>
         <translation>空间尺寸</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="176"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="227"/>
         <source>Damping</source>
         <translation>阻尼</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="188"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="239"/>
         <source>Low cut</source>
         <translation>低切</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="200"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="251"/>
         <source>High cut</source>
         <translation>高切</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="217"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="268"/>
         <source>Insert effect · before fade and master</source>
         <translation>插入效果 · 位于淡化与母线之前</translation>
     </message>
     <message>
-        <location filename="../qml/SpaceReverbPanel.qml" line="74"/>
+        <location filename="../qml/SpaceReverbPanel.qml" line="124"/>
         <source>Spring</source>
         <translation>弹簧</translation>
     </message>

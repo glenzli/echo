@@ -746,40 +746,6 @@ fn adjustment_wire_fields(
     )
 }
 
-fn contextual_preview(value: Option<&serde_json::Value>) -> (String, String) {
-    value
-        .and_then(|value| {
-            serde_json::from_value::<echo_core::ContextualPayload>(value.clone()).ok()
-        })
-        .map_or((String::new(), String::new()), |payload| {
-            (
-                if payload.is_current() {
-                    payload.sound_caption
-                } else {
-                    String::new()
-                },
-                payload.summary,
-            )
-        })
-}
-
-fn transcript_preview(value: Option<&serde_json::Value>) -> String {
-    value
-        .and_then(|value| {
-            serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
-        })
-        .map_or_else(String::new, |payload| payload.text)
-}
-
-fn transcript_language(value: Option<&serde_json::Value>) -> String {
-    value
-        .and_then(|value| {
-            serde_json::from_value::<echo_core::TranscriptPayload>(value.clone()).ok()
-        })
-        .and_then(|payload| payload.language)
-        .unwrap_or_default()
-}
-
 struct AnalysisWireFields {
     stage: String,
     state: String,
@@ -825,9 +791,24 @@ fn asset_summary_wire(
                     .into_owned()
             })
             .unwrap_or_default();
-    let (sound_caption, summary) = contextual_preview(asset.contextual.as_ref());
-    let text_preview = transcript_preview(asset.transcript.as_ref());
-    let language = transcript_language(asset.transcript.as_ref());
+    let model_metadata = asset.model_metadata;
+    let metadata = asset.effective_metadata;
+    let calibrated_fields = asset
+        .metadata_calibration
+        .as_ref()
+        .map(|revision| {
+            revision
+                .calibration
+                .calibrated_fields()
+                .into_iter()
+                .map(|field| field.as_str().to_owned())
+                .collect()
+        })
+        .unwrap_or_default();
+    let metadata_calibration_revision = asset
+        .metadata_calibration
+        .as_ref()
+        .map_or(0, |revision| revision.revision_id);
     let source_metadata = source_metadata_wire_fields(asset.source_metadata.as_ref());
     let analysis = analysis_wire_fields(analysis);
     AssetSummaryWire {
@@ -839,13 +820,22 @@ fn asset_summary_wire(
         imported_at_millis: asset.imported_at_millis,
         max_level: asset.max_level,
         path_status: asset.path_status,
-        sound_caption,
-        summary,
-        event_type: asset.contextual_event_type.unwrap_or_default(),
-        mood: asset.contextual_mood.unwrap_or_default(),
-        keywords: asset.contextual_keywords,
-        text_preview,
-        language,
+        sound_caption: metadata.sound_caption,
+        summary: metadata.summary,
+        event_type: metadata.event_type,
+        mood: metadata.mood,
+        keywords: metadata.keywords,
+        text_preview: metadata.transcript_text,
+        language: metadata.language,
+        model_sound_caption: model_metadata.sound_caption,
+        model_summary: model_metadata.summary,
+        model_event_type: model_metadata.event_type,
+        model_mood: model_metadata.mood,
+        model_keywords: model_metadata.keywords,
+        model_text_preview: model_metadata.transcript_text,
+        model_language: model_metadata.language,
+        calibrated_fields,
+        metadata_calibration_revision,
         analysis_stage: analysis.stage,
         analysis_state: analysis.state,
         analysis_recovery: analysis.recovery,
@@ -1409,6 +1399,67 @@ impl LibrarySession {
                     now_millis(),
                 )
             })
+            .map_err(SessionError::from)
+    }
+
+    /// Appends one user-authored descriptive metadata calibration revision.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] for an invalid identity, malformed keyword
+    /// payload, bounded metadata violation, or failed catalog write.
+    #[allow(clippy::too_many_arguments)]
+    pub fn calibrate_asset_metadata(
+        &self,
+        asset_id: &str,
+        sound_caption: &str,
+        summary: &str,
+        event_type: &str,
+        mood: &str,
+        keywords_json: &str,
+        transcript_text: &str,
+        language: &str,
+        calibrated_fields_json: &str,
+    ) -> Result<i64, SessionError> {
+        let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid metadata calibration asset id {asset_id}: {error}"),
+        })?;
+        let keywords =
+            serde_json::from_str::<Vec<String>>(keywords_json).map_err(|error| SessionError {
+                message: format!("invalid metadata calibration keywords: {error}"),
+            })?;
+        let calibrated_field_names = serde_json::from_str::<Vec<String>>(calibrated_fields_json)
+            .map_err(|error| SessionError {
+                message: format!("invalid metadata calibration field identities: {error}"),
+            })?;
+        let calibrated_fields = calibrated_field_names
+            .iter()
+            .map(|field| {
+                echo_domain::MetadataField::from_wire_name(field).ok_or_else(|| SessionError {
+                    message: format!("unknown metadata calibration field identity: {field}"),
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let desired = echo_domain::MetadataFields {
+            sound_caption: sound_caption.to_owned(),
+            summary: summary.to_owned(),
+            event_type: event_type.to_owned(),
+            mood: mood.to_owned(),
+            keywords,
+            transcript_text: transcript_text.to_owned(),
+            language: language.to_owned(),
+        };
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::calibrate_asset_metadata(
+                    transaction,
+                    asset_id,
+                    desired,
+                    &calibrated_fields,
+                    now_millis(),
+                )
+            })
+            .map(|revision| revision.revision_id)
             .map_err(SessionError::from)
     }
 

@@ -109,6 +109,37 @@ fn candidates_require_two_members_and_follow_newest_evidence() {
     let _ = std::fs::remove_dir_all(root);
 }
 
+#[test]
+fn a_user_event_correction_removes_the_superseded_ai_album_membership() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-smart-albums-calibrated-{}",
+        std::process::id()
+    ));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let (first, _) = seed_candidates(&catalog);
+    catalog
+        .with_transaction(|transaction| {
+            let mut desired =
+                crate::metadata_calibration::model_metadata_fields(transaction, first)?;
+            desired.event_type = "commute".to_owned();
+            crate::calibrate_asset_metadata(transaction, first, desired, &[], 50)?;
+            Ok::<_, CatalogError>(())
+        })
+        .expect("event correction writes");
+
+    let candidates = catalog
+        .with_transaction(list_smart_album_candidates)
+        .expect("candidates read");
+    assert!(
+        candidates
+            .iter()
+            .all(|candidate| candidate.key != "ai:event:family breakfast")
+    );
+
+    drop(catalog);
+    let _ = std::fs::remove_dir_all(root);
+}
+
 fn seed_candidates(catalog: &crate::Catalog) -> (echo_domain::AssetId, echo_domain::AssetId) {
     catalog
         .with_transaction(|transaction| -> Result<_, CatalogError> {

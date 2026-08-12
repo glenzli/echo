@@ -89,6 +89,15 @@ mod ffi {
         keywords: Vec<String>,
         text_preview: String,
         language: String,
+        model_sound_caption: String,
+        model_summary: String,
+        model_event_type: String,
+        model_mood: String,
+        model_keywords: Vec<String>,
+        model_text_preview: String,
+        model_language: String,
+        calibrated_fields: Vec<String>,
+        metadata_calibration_revision: i64,
         analysis_stage: String,
         analysis_state: String,
         analysis_recovery: String,
@@ -603,6 +612,20 @@ mod ffi {
             liked: bool,
             rating: u8,
         ) -> Result<()>;
+        /// Appends a user calibration over model-derived descriptive metadata.
+        #[allow(clippy::too_many_arguments)]
+        fn session_calibrate_asset_metadata(
+            self: &LibrarySession,
+            asset_id: &str,
+            sound_caption: &str,
+            summary: &str,
+            event_type: &str,
+            mood: &str,
+            keywords_json: &str,
+            transcript_text: &str,
+            language: &str,
+            calibrated_fields_json: &str,
+        ) -> Result<i64>;
         /// Records bounded source-anchored listening progress for one asset.
         fn session_record_listening_progress(
             self: &LibrarySession,
@@ -929,6 +952,33 @@ impl LibrarySession {
     ) -> Result<(), String> {
         self.set_asset_affinity(asset_id, liked, rating)
             .map_err(|error| error.message)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn session_calibrate_asset_metadata(
+        &self,
+        asset_id: &str,
+        sound_caption: &str,
+        summary: &str,
+        event_type: &str,
+        mood: &str,
+        keywords_json: &str,
+        transcript_text: &str,
+        language: &str,
+        calibrated_fields_json: &str,
+    ) -> Result<i64, String> {
+        self.calibrate_asset_metadata(
+            asset_id,
+            sound_caption,
+            summary,
+            event_type,
+            mood,
+            keywords_json,
+            transcript_text,
+            language,
+            calibrated_fields_json,
+        )
+        .map_err(|error| error.message)
     }
 
     /// Records one user-owned listening checkpoint.

@@ -94,15 +94,27 @@ pub fn list_contextual_keyword_facets(
     transaction: &Transaction<'_>,
 ) -> Result<Vec<ContextualKeywordFacet>, CatalogError> {
     let mut statement = transaction.prepare(
-        "SELECT f.normalized_value, MIN(f.display_value), COUNT(DISTINCT f.asset_id) \
-         FROM contextual_browse_facets f \
-         WHERE f.facet_kind = 'keyword' AND f.analysis_record_id = (\
-             SELECT MAX(latest.analysis_record_id) \
-             FROM contextual_browse_facets latest \
-             WHERE latest.asset_id = f.asset_id \
-               AND latest.facet_kind = f.facet_kind\
-         ) GROUP BY f.normalized_value \
-         ORDER BY COUNT(DISTINCT f.asset_id) DESC, f.normalized_value ASC",
+        "WITH latest_calibration AS (\
+             SELECT calibration.* FROM metadata_calibration_revisions calibration \
+             WHERE calibration.id = (SELECT MAX(latest.id) \
+                 FROM metadata_calibration_revisions latest \
+                 WHERE latest.asset_id = calibration.asset_id)\
+         ), effective_keywords AS (\
+             SELECT f.asset_id, f.normalized_value, f.display_value \
+             FROM contextual_browse_facets f \
+             LEFT JOIN latest_calibration calibration ON calibration.asset_id = f.asset_id \
+             WHERE f.facet_kind = 'keyword' AND calibration.keywords_json IS NULL \
+               AND f.analysis_record_id = (SELECT MAX(latest.analysis_record_id) \
+                   FROM contextual_browse_facets latest \
+                   WHERE latest.asset_id = f.asset_id AND latest.facet_kind = f.facet_kind) \
+             UNION ALL \
+             SELECT calibration.asset_id, lower(trim(keyword.value)), trim(keyword.value) \
+             FROM latest_calibration calibration, json_each(calibration.keywords_json) keyword \
+             WHERE calibration.keywords_json IS NOT NULL AND trim(keyword.value) <> ''\
+         ) \
+         SELECT normalized_value, MIN(display_value), COUNT(DISTINCT asset_id) \
+         FROM effective_keywords GROUP BY normalized_value \
+         ORDER BY COUNT(DISTINCT asset_id) DESC, normalized_value ASC",
     )?;
     let rows = statement.query_map([], |row| {
         Ok((

@@ -139,9 +139,28 @@ pub(crate) const DETERMINISTIC_VFX_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_812, 4);
 pub(crate) const DRIVE_ROTARY_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 2);
+pub(crate) const CONVOLUTION_SPACE_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_813, 2);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 3);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.2-convolution-space";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.3-metadata-calibration";
+pub(crate) const METADATA_CALIBRATION_MIGRATION_SQL: &str = r"
+CREATE TABLE IF NOT EXISTS metadata_calibration_revisions (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    sound_caption      TEXT,
+    summary            TEXT,
+    event_type         TEXT,
+    mood               TEXT,
+    keywords_json      TEXT CHECK (keywords_json IS NULL OR json_valid(keywords_json)),
+    transcript_text    TEXT,
+    language           TEXT,
+    created_at_millis  INTEGER NOT NULL CHECK (created_at_millis >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS metadata_calibration_revisions_asset
+    ON metadata_calibration_revisions (asset_id, id DESC);
+";
 pub(crate) const CONVOLUTION_SPACE_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
     ADD COLUMN space_json TEXT NOT NULL DEFAULT
@@ -518,6 +537,22 @@ CREATE INDEX IF NOT EXISTS contextual_browse_facets_lookup
 
 CREATE INDEX IF NOT EXISTS contextual_browse_facets_latest
     ON contextual_browse_facets (asset_id, analysis_record_id DESC);
+
+CREATE TABLE IF NOT EXISTS metadata_calibration_revisions (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    sound_caption      TEXT,
+    summary            TEXT,
+    event_type         TEXT,
+    mood               TEXT,
+    keywords_json      TEXT CHECK (keywords_json IS NULL OR json_valid(keywords_json)),
+    transcript_text    TEXT,
+    language           TEXT,
+    created_at_millis  INTEGER NOT NULL CHECK (created_at_millis >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS metadata_calibration_revisions_asset
+    ON metadata_calibration_revisions (asset_id, id DESC);
 
 CREATE TABLE IF NOT EXISTS asset_levels (
     asset_id   TEXT PRIMARY KEY REFERENCES assets(id),

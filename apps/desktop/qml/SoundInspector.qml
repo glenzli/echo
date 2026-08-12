@@ -14,6 +14,7 @@ Rectangle {
     property var waveformLevels: []
     property var longAudioChapters: []
     property string loadedPath: ""
+    property bool calibratingMetadata: false
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
     readonly property string analysisStage: hasAsset ? String(asset.analysisStage || "text") : "text"
@@ -121,6 +122,24 @@ Rectangle {
         return values;
     }
 
+    function isCalibrated(field: string): bool {
+        if (!asset || !asset.calibratedFields)
+            return false;
+        for (const value of asset.calibratedFields) {
+            if (String(value) === field)
+                return true;
+        }
+        return false;
+    }
+
+    function hasCalibratedFields(fields: var): bool {
+        for (const field of fields) {
+            if (isCalibrated(field))
+                return true;
+        }
+        return false;
+    }
+
     function analysisStageLabel(): string {
         if (!asset)
             return "";
@@ -155,7 +174,10 @@ Rectangle {
         return qsTr("The current analysis pipeline is complete.");
     }
 
-    onAssetChanged: Qt.callLater(refresh)
+    onAssetChanged: {
+        calibratingMetadata = false;
+        Qt.callLater(refresh);
+    }
 
     Connections {
         target: backend
@@ -247,6 +269,15 @@ Rectangle {
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideMiddle
                         }
+                    }
+
+                    EchoIconButton {
+                        source: "qrc:/EchoDesktop/icons/edit.svg"
+                        selected: inspector.hasAsset && inspector.asset.calibratedFields.length > 0
+                        toolTipText: qsTr("Edit sound information")
+                        buttonSize: 28
+                        iconSize: 15
+                        onClicked: inspector.calibratingMetadata = true
                     }
 
                     Button {
@@ -371,53 +402,65 @@ Rectangle {
                     visible: inspector.hasAsset && (SoundSemantics.eventLabel(inspector.asset.eventType).length > 0 || inspector.asset.mood.length > 0 || SoundSemantics.languageLabel(inspector.asset.language).length > 0)
                     title: qsTr("SOUND ATTRIBUTES")
 
-                    GridLayout {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        columns: 2
-                        columnSpacing: 9
-                        rowSpacing: 7
+                        spacing: 7
 
                         Text {
-                            visible: inspector.hasAsset && SoundSemantics.eventLabel(inspector.asset.eventType).length > 0
-                            text: qsTr("Event")
-                            color: Theme.textDisabled
+                            visible: inspector.hasCalibratedFields(["event_type", "mood", "language"])
+                            text: qsTr("User calibrated")
+                            color: Theme.accentSelectionText
                             font.pixelSize: Theme.fontMeta
                         }
-                        SoundSemanticTag {
-                            visible: inspector.hasAsset && SoundSemantics.eventLabel(inspector.asset.eventType).length > 0
+
+                        GridLayout {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset ? SoundSemantics.eventLabel(inspector.asset.eventType) : ""
-                            kind: "event"
-                            compact: false
-                            maximumWidth: 180
-                        }
+                            columns: 2
+                            columnSpacing: 9
+                            rowSpacing: 7
 
-                        Text {
-                            visible: inspector.hasAsset && inspector.asset.mood.length > 0
-                            text: qsTr("Mood")
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontMeta
-                        }
-                        SoundSemanticTag {
-                            visible: inspector.hasAsset && inspector.asset.mood.length > 0
-                            text: inspector.hasAsset ? inspector.asset.mood : ""
-                            kind: "mood"
-                            compact: false
-                            maximumWidth: 180
-                        }
+                            Text {
+                                visible: inspector.hasAsset && SoundSemantics.eventLabel(inspector.asset.eventType).length > 0
+                                text: qsTr("Event")
+                                color: Theme.textDisabled
+                                font.pixelSize: Theme.fontMeta
+                            }
+                            SoundSemanticTag {
+                                visible: inspector.hasAsset && SoundSemantics.eventLabel(inspector.asset.eventType).length > 0
+                                Layout.fillWidth: true
+                                text: inspector.hasAsset ? SoundSemantics.eventLabel(inspector.asset.eventType) : ""
+                                kind: "event"
+                                compact: false
+                                maximumWidth: 180
+                            }
 
-                        Text {
-                            visible: inspector.hasAsset && SoundSemantics.languageLabel(inspector.asset.language).length > 0
-                            text: qsTr("Language")
-                            color: Theme.textDisabled
-                            font.pixelSize: Theme.fontMeta
-                        }
-                        SoundSemanticTag {
-                            visible: inspector.hasAsset && SoundSemantics.languageLabel(inspector.asset.language).length > 0
-                            text: inspector.hasAsset ? SoundSemantics.languageLabel(inspector.asset.language) : ""
-                            kind: "language"
-                            compact: false
-                            maximumWidth: 180
+                            Text {
+                                visible: inspector.hasAsset && inspector.asset.mood.length > 0
+                                text: qsTr("Mood")
+                                color: Theme.textDisabled
+                                font.pixelSize: Theme.fontMeta
+                            }
+                            SoundSemanticTag {
+                                visible: inspector.hasAsset && inspector.asset.mood.length > 0
+                                text: inspector.hasAsset ? inspector.asset.mood : ""
+                                kind: "mood"
+                                compact: false
+                                maximumWidth: 180
+                            }
+
+                            Text {
+                                visible: inspector.hasAsset && SoundSemantics.languageLabel(inspector.asset.language).length > 0
+                                text: qsTr("Language")
+                                color: Theme.textDisabled
+                                font.pixelSize: Theme.fontMeta
+                            }
+                            SoundSemanticTag {
+                                visible: inspector.hasAsset && SoundSemantics.languageLabel(inspector.asset.language).length > 0
+                                text: inspector.hasAsset ? SoundSemantics.languageLabel(inspector.asset.language) : ""
+                                kind: "language"
+                                compact: false
+                                maximumWidth: 180
+                            }
                         }
                     }
                 }
@@ -425,28 +468,40 @@ Rectangle {
                 InspectorSection {
                     Layout.fillWidth: true
                     visible: inspector.hasAsset && inspector.asset.keywords.length > 0
-                    title: qsTr("AI KEYWORDS")
+                    title: qsTr("KEYWORDS")
 
-                    Flow {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 5
+                        spacing: 6
 
-                        Repeater {
-                            model: inspector.keywordTags()
+                        Text {
+                            visible: inspector.isCalibrated("keywords")
+                            text: qsTr("User calibrated")
+                            color: Theme.accentSelectionText
+                            font.pixelSize: Theme.fontMeta
+                        }
 
-                            delegate: Rectangle {
-                                required property var modelData
-                                width: keywordText.implicitWidth + 12
-                                height: 23
-                                radius: 6
-                                color: Theme.accentSurfaceQuiet
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 5
 
-                                Text {
-                                    id: keywordText
-                                    anchors.centerIn: parent
-                                    text: String(modelData)
-                                    color: Theme.accentSelectionText
-                                    font.pixelSize: Theme.fontMeta
+                            Repeater {
+                                model: inspector.keywordTags()
+
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: keywordText.implicitWidth + 12
+                                    height: 23
+                                    radius: 6
+                                    color: Theme.accentSurfaceQuiet
+
+                                    Text {
+                                        id: keywordText
+                                        anchors.centerIn: parent
+                                        text: String(modelData)
+                                        color: Theme.accentSelectionText
+                                        font.pixelSize: Theme.fontMeta
+                                    }
                                 }
                             }
                         }
@@ -582,15 +637,27 @@ Rectangle {
                     visible: inspector.hasAsset && (inspector.asset.textPreview.length > 0 || inspector.analysisStage === "text" && inspector.analysisState !== "done")
                     title: qsTr("TEXT")
 
-                    Text {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? inspector.asset.textPreview : inspector.analysisState === "pending" || inspector.analysisState === "running" ? qsTr("Echo is extracting text in the background…") : qsTr("No text has been extracted from this sound yet.")
-                        color: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? Theme.textPrimary : Theme.textDisabled
-                        font.pixelSize: Theme.fontBody
-                        lineHeight: 1.35
-                        wrapMode: Text.WordWrap
-                        maximumLineCount: 6
-                        elide: Text.ElideRight
+                        spacing: 6
+
+                        Text {
+                            visible: inspector.isCalibrated("transcript_text")
+                            text: qsTr("User calibrated")
+                            color: Theme.accentSelectionText
+                            font.pixelSize: Theme.fontMeta
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? inspector.asset.textPreview : inspector.analysisState === "pending" || inspector.analysisState === "running" ? qsTr("Echo is extracting text in the background…") : qsTr("No text has been extracted from this sound yet.")
+                            color: inspector.hasAsset && inspector.asset.textPreview.length > 0 ? Theme.textPrimary : Theme.textDisabled
+                            font.pixelSize: Theme.fontBody
+                            lineHeight: 1.35
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 6
+                            elide: Text.ElideRight
+                        }
                     }
                 }
 
@@ -676,6 +743,29 @@ Rectangle {
                 Item {
                     Layout.preferredHeight: 10
                 }
+            }
+        }
+    }
+
+    MetadataCalibrationEditor {
+        id: metadataEditor
+        anchors.fill: parent
+        z: 10
+        visible: inspector.hasAsset && inspector.calibratingMetadata
+        asset: inspector.asset
+
+        onCancelRequested: {
+            saving = false;
+            errorText = "";
+            inspector.calibratingMetadata = false;
+        }
+        onSaveRequested: function (values) {
+            const result = backend.calibrateAssetMetadata(inspector.asset.id, values.soundCaption, values.summary, values.eventType, values.mood, values.keywords, values.transcriptText, values.language, values.calibratedFields);
+            saving = false;
+            if (result.ok) {
+                inspector.calibratingMetadata = false;
+            } else {
+                errorText = qsTr("The changes could not be saved");
             }
         }
     }

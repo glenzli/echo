@@ -12,15 +12,16 @@ use crate::{
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION,
         CHANNEL_REPAIR_MIGRATION_SQL, CHANNEL_REPAIR_SCHEMA_VERSION,
-        CONVOLUTION_SPACE_MIGRATION_SQL, CREATIVE_VFX_MIGRATION_SQL, CREATIVE_VFX_SCHEMA_VERSION,
-        CatalogSchemaRevision, DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL,
-        DE_PLOSIVE_SCHEMA_VERSION, DELIVERY_FORMATS_MIGRATION_SQL,
-        DETERMINISTIC_VFX_SCHEMA_VERSION, DRIVE_ROTARY_SCHEMA_VERSION,
-        EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
-        EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
-        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL,
-        LISTENING_STATE_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
-        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
+        CONVOLUTION_SPACE_MIGRATION_SQL, CONVOLUTION_SPACE_SCHEMA_VERSION,
+        CREATIVE_VFX_MIGRATION_SQL, CREATIVE_VFX_SCHEMA_VERSION, CatalogSchemaRevision,
+        DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL, DE_PLOSIVE_SCHEMA_VERSION,
+        DELIVERY_FORMATS_MIGRATION_SQL, DETERMINISTIC_VFX_SCHEMA_VERSION,
+        DRIVE_ROTARY_SCHEMA_VERSION, EARLIEST_COMPATIBLE_SCHEMA_VERSION,
+        EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION, EFFECT_CHAIN_MIGRATION_SQL,
+        FIXED_EFFECT_CHAIN_SCHEMA_VERSION, INITIAL_COMPATIBLE_SCHEMA_VERSION,
+        LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL, LISTENING_STATE_SCHEMA_VERSION,
+        LONG_AUDIO_MIGRATION_SQL, METADATA_CALIBRATION_MIGRATION_SQL,
+        OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
         PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
         PROCESSING_RECIPES_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
@@ -94,6 +95,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1)",
                 [SCHEMA_IDENTITY.to_string()],
             )?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == CONVOLUTION_SPACE_SCHEMA_VERSION) =>
+        {
+            migrate_metadata_calibration_schema(connection)?;
         }
         Some(version)
             if version
@@ -261,6 +269,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_metadata_calibration_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 
@@ -485,6 +500,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
 }
 
 fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), CatalogError> {
+    transaction.execute_batch(METADATA_CALIBRATION_MIGRATION_SQL)?;
     apply_listening_state_migration(transaction)?;
     apply_creative_vfx_migration(transaction)?;
     apply_channel_repair_migration(transaction)?;

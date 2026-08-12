@@ -4,6 +4,8 @@
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QString>
 
 #include <array>
@@ -437,6 +439,44 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("language"),
             QString::fromUtf8(asset.language.data(), asset.language.size())
         );
+        entry.insert(
+            QStringLiteral("modelSoundCaption"),
+            QString::fromUtf8(asset.model_sound_caption.data(), asset.model_sound_caption.size())
+        );
+        entry.insert(
+            QStringLiteral("modelSummary"),
+            QString::fromUtf8(asset.model_summary.data(), asset.model_summary.size())
+        );
+        entry.insert(
+            QStringLiteral("modelEventType"),
+            QString::fromUtf8(asset.model_event_type.data(), asset.model_event_type.size())
+        );
+        entry.insert(
+            QStringLiteral("modelMood"),
+            QString::fromUtf8(asset.model_mood.data(), asset.model_mood.size())
+        );
+        entry.insert(
+            QStringLiteral("modelTextPreview"),
+            QString::fromUtf8(asset.model_text_preview.data(), asset.model_text_preview.size())
+        );
+        entry.insert(
+            QStringLiteral("modelLanguage"),
+            QString::fromUtf8(asset.model_language.data(), asset.model_language.size())
+        );
+        entry.insert(
+            QStringLiteral("metadataCalibrationRevision"),
+            static_cast<qlonglong>(asset.metadata_calibration_revision)
+        );
+        QVariantList modelKeywords;
+        for (const auto& keyword : asset.model_keywords) {
+            modelKeywords.append(QString::fromUtf8(keyword.data(), keyword.size()));
+        }
+        entry.insert(QStringLiteral("modelKeywords"), modelKeywords);
+        QVariantList calibratedFields;
+        for (const auto& field : asset.calibrated_fields) {
+            calibratedFields.append(QString::fromUtf8(field.data(), field.size()));
+        }
+        entry.insert(QStringLiteral("calibratedFields"), calibratedFields);
         entry.insert(
             QStringLiteral("analysisStage"),
             QString::fromUtf8(asset.analysis_stage.data(), asset.analysis_stage.size())
@@ -1268,6 +1308,56 @@ bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating)
     } catch (const rust::Error& error) {
         qWarning("cannot update affinity for %s: %s", qPrintable(id), error.what());
         return false;
+    }
+}
+
+QVariantMap DesktopBackend::calibrateAssetMetadata(
+    const QString& id,
+    const QString& soundCaption,
+    const QString& summary,
+    const QString& eventType,
+    const QString& mood,
+    const QVariantList& keywords,
+    const QString& transcriptText,
+    const QString& language,
+    const QVariantList& calibratedFields
+) {
+    QJsonArray encodedKeywords;
+    for (const auto& keyword : keywords) {
+        encodedKeywords.append(keyword.toString());
+    }
+    const auto keywordsJson = QJsonDocument(encodedKeywords).toJson(QJsonDocument::Compact);
+    QJsonArray encodedCalibratedFields;
+    for (const auto& field : calibratedFields) {
+        encodedCalibratedFields.append(field.toString());
+    }
+    const auto calibratedFieldsJson =
+        QJsonDocument(encodedCalibratedFields).toJson(QJsonDocument::Compact);
+    try {
+        const auto revision = session_->session_calibrate_asset_metadata(
+            id.toStdString(),
+            soundCaption.toStdString(),
+            summary.toStdString(),
+            eventType.toStdString(),
+            mood.toStdString(),
+            keywordsJson.toStdString(),
+            transcriptText.toStdString(),
+            language.toStdString(),
+            calibratedFieldsJson.toStdString()
+        );
+        emit assetsChanged();
+        return {
+            {QStringLiteral("ok"), true},
+            {QStringLiteral("revision"), static_cast<qlonglong>(revision)},
+            {QStringLiteral("error"), QString()},
+        };
+    } catch (const rust::Error& error) {
+        qWarning("metadata calibration failed for %s: %s", qPrintable(id), error.what());
+        return {
+            {QStringLiteral("ok"), false},
+            {QStringLiteral("revision"), 0},
+            {QStringLiteral("error"), QString::fromUtf8(error.what())},
+        };
     }
 }
 
