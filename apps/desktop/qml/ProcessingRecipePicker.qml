@@ -60,6 +60,14 @@ Rectangle {
             return qsTr("Dynamics");
         if (componentId === "space")
             return qsTr("Space");
+        if (componentId === "sceneVfx")
+            return qsTr("Scene VFX");
+        if (componentId === "delayVfx")
+            return qsTr("Delay VFX");
+        if (componentId === "modulationVfx")
+            return qsTr("Modulation VFX");
+        if (componentId === "transformVfx")
+            return qsTr("Transform VFX");
         if (componentId === "master")
             return qsTr("Master output");
         return componentId;

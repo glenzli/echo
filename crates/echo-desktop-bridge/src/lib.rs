@@ -44,6 +44,13 @@ mod ffi {
         effect_nodes: Vec<u8>,
     }
 
+    /// User-owned listening continuity returned after one bounded checkpoint.
+    #[derive(Debug)]
+    struct AssetListeningStateWire {
+        last_listened_at_millis: i64,
+        resume_position_millis: u64,
+    }
+
     /// Bounded presentation projection of one asset for the desktop shell.
     #[derive(Debug)]
     struct AssetSummaryWire {
@@ -70,6 +77,8 @@ mod ffi {
         analysis_attempts: u32,
         liked: bool,
         rating: u8,
+        last_listened_at_millis: i64,
+        resume_position_millis: u64,
         adjustment_revision: i64,
         trim_start_millis: u64,
         trim_end_millis: u64,
@@ -532,6 +541,14 @@ mod ffi {
             liked: bool,
             rating: u8,
         ) -> Result<()>;
+        /// Records bounded source-anchored listening progress for one asset.
+        fn session_record_listening_progress(
+            self: &LibrarySession,
+            asset_id: &str,
+            position_millis: u64,
+            playback_start_millis: u64,
+            playback_end_millis: u64,
+        ) -> Result<AssetListeningStateWire>;
         /// Appends a validated non-destructive adjustment revision.
         fn session_set_asset_adjustment(
             self: &LibrarySession,
@@ -812,6 +829,23 @@ impl LibrarySession {
     ) -> Result<(), String> {
         self.set_asset_affinity(asset_id, liked, rating)
             .map_err(|error| error.message)
+    }
+
+    /// Records one user-owned listening checkpoint.
+    fn session_record_listening_progress(
+        &self,
+        asset_id: &str,
+        position_millis: u64,
+        playback_start_millis: u64,
+        playback_end_millis: u64,
+    ) -> Result<ffi::AssetListeningStateWire, String> {
+        self.record_listening_progress(
+            asset_id,
+            position_millis,
+            playback_start_millis,
+            playback_end_millis,
+        )
+        .map_err(|error| error.message)
     }
 
     /// Appends one non-destructive adjustment revision.

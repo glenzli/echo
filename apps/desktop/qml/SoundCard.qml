@@ -293,7 +293,7 @@ Rectangle {
             normalize: true
             normalizationFloor: 0.28
             amplitudeExponent: 0.76
-            progress: 0
+            progress: card.entry.durationMillis > 0 ? Math.max(0, Math.min(1, Number(card.entry.resumePositionMillis || 0) / Number(card.entry.durationMillis))) : 0
         }
 
         Rectangle {

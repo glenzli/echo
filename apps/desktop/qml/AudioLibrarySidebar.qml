@@ -50,7 +50,7 @@ Rectangle {
         const now = Date.now();
         for (let index = 0; index < assets.length; ++index) {
             const asset = assets[index];
-            if (key === "all" || (key === "recent" && asset.importedAtMillis >= now - 7 * 86400000) || (key === "liked" && asset.liked) || (key === "five-star" && asset.rating === 5) || (key === "has-speech" && asset.textPreview.length > 0) || (key === "missing" && asset.pathStatus === "missing")) {
+            if (key === "all" || (key === "recent" && asset.importedAtMillis >= now - 7 * 86400000) || (key === "listened" && Number(asset.lastListenedAtMillis || 0) > 0) || (key === "liked" && asset.liked) || (key === "five-star" && asset.rating === 5) || (key === "has-speech" && asset.textPreview.length > 0) || (key === "missing" && asset.pathStatus === "missing")) {
                 count += 1;
             }
         }
@@ -108,6 +108,11 @@ Rectangle {
                     key: "recent",
                     label: qsTr("Recently added"),
                     iconSource: "qrc:/EchoDesktop/icons/clock.svg"
+                },
+                {
+                    key: "listened",
+                    label: qsTr("Recently listened"),
+                    iconSource: "qrc:/EchoDesktop/icons/history.svg"
                 },
                 {
                     key: "liked",

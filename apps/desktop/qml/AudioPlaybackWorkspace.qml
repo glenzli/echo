@@ -106,6 +106,7 @@ Rectangle {
     readonly property var effectChain: hasAsset ? asset.effectChain : [0, 1, 2, 3, 4]
     readonly property var editSegments: hasAsset ? asset.editSegments : []
     readonly property var effectMasks: hasAsset ? asset.effectMasks : []
+    readonly property var creativeVfx: hasAsset ? asset.creativeVfx : ({})
 
     color: Theme.panelRaised
     border.color: Theme.border
@@ -179,14 +180,14 @@ Rectangle {
     }
 
     function adjustmentKey(): string {
-        return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve + ":" + gainCentibels + ":" + lowCutHertz + ":" + JSON.stringify(restorationValue) + ":" + JSON.stringify(deHumValue) + ":" + JSON.stringify(deClickValue) + ":" + JSON.stringify(channelRepairValue) + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths + ":" + compressorAttackMillis + ":" + compressorReleaseMillis + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue) + ":" + limiterEnabled + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis + ":" + JSON.stringify(effectChain) + ":" + JSON.stringify(editSegments) + ":" + JSON.stringify(effectMasks);
+        return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve + ":" + gainCentibels + ":" + lowCutHertz + ":" + JSON.stringify(restorationValue) + ":" + JSON.stringify(deHumValue) + ":" + JSON.stringify(deClickValue) + ":" + JSON.stringify(channelRepairValue) + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths + ":" + compressorAttackMillis + ":" + compressorReleaseMillis + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue) + ":" + limiterEnabled + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis + ":" + JSON.stringify(effectChain) + ":" + JSON.stringify(editSegments) + ":" + JSON.stringify(effectMasks) + ":" + JSON.stringify(creativeVfx);
     }
 
     function playFrom(millis: int): void {
         if (!asset || asset.pathStatus === "missing") {
             return;
         }
-        player.playAdjusted(asset.path, trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationValue, deHumValue, deClickValue, channelRepairValue, equalizerEnabled, equalizerBands, compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbValue, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, effectChain, editSegments, effectMasks);
+        player.playAdjusted(asset.path, trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationValue, deHumValue, deClickValue, channelRepairValue, equalizerEnabled, equalizerBands, compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbValue, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, effectChain, editSegments, effectMasks, creativeVfx);
         loadedPath = asset.path;
         loadedAdjustmentKey = adjustmentKey();
         const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis));
@@ -195,8 +196,22 @@ Rectangle {
         }
     }
 
+    function defaultStartMillis(): int {
+        const resume = listeningProgress.resumePositionMillis;
+        return resume > trimStartMillis && resume < trimEndMillis ? resume : trimStartMillis;
+    }
+
     function ownsActivePlayback(): bool {
         return player.active && hasAsset && loadedPath === asset.path && loadedAdjustmentKey === adjustmentKey();
+    }
+
+    ListeningProgressTracker {
+        id: listeningProgress
+        asset: preview.asset
+        loadedPath: preview.loadedPath
+        playbackStartMillis: preview.trimStartMillis
+        playbackEndMillis: preview.trimEndMillis
+        active: preview.active
     }
 
     onAssetChanged: {
@@ -340,7 +355,11 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: 18
                 levels: preview.waveformLevels
-                progress: preview.ownsActivePlayback() && player.duration > 0 ? player.position / player.duration : 0
+                progress: {
+                    const span = Math.max(1, preview.trimEndMillis - preview.trimStartMillis);
+                    const position = preview.ownsActivePlayback() ? player.position : listeningProgress.resumePositionMillis;
+                    return Math.max(0, Math.min(1, (position - preview.trimStartMillis) / span));
+                }
             }
 
             MouseArea {
@@ -374,7 +393,7 @@ Rectangle {
                 iconSize: 19
                 onClicked: {
                     if (!preview.ownsActivePlayback()) {
-                        preview.playFrom(preview.trimStartMillis);
+                        preview.playFrom(preview.defaultStartMillis());
                     } else {
                         player.togglePause();
                     }
@@ -391,7 +410,7 @@ Rectangle {
             }
 
             Text {
-                text: preview.formatDuration(player.position) + " / " + preview.formatDuration(player.duration)
+                text: preview.ownsActivePlayback() ? preview.formatDuration(player.position) + " / " + preview.formatDuration(player.duration) : listeningProgress.resumePositionMillis > preview.trimStartMillis ? qsTr("Continue at %1").arg(preview.formatDuration(listeningProgress.resumePositionMillis)) : preview.formatDuration(preview.trimStartMillis) + " / " + preview.formatDuration(preview.trimEndMillis)
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
             }

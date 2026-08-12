@@ -82,6 +82,30 @@ Popup {
                 included: false
             },
             {
+                componentId: "sceneVfx",
+                title: qsTr("Scene VFX"),
+                summary: qsTr("Telephone, radio, intercom and scene filters"),
+                included: false
+            },
+            {
+                componentId: "delayVfx",
+                title: qsTr("Delay VFX"),
+                summary: qsTr("Slapback and echo"),
+                included: false
+            },
+            {
+                componentId: "modulationVfx",
+                title: qsTr("Modulation VFX"),
+                summary: qsTr("Chorus, flanger, phaser and tremolo"),
+                included: false
+            },
+            {
+                componentId: "transformVfx",
+                title: qsTr("Transform VFX"),
+                summary: qsTr("Stylized voice roles"),
+                included: false
+            },
+            {
                 componentId: "master",
                 title: qsTr("Master output"),
                 summary: qsTr("Limiter and output policy"),
@@ -113,7 +137,7 @@ Popup {
             if (componentId.length === 0)
                 continue;
             const available = entry.available === undefined ? true : Boolean(entry.available);
-            const included = entry.included === undefined ? componentId !== "space" : Boolean(entry.included);
+            const included = entry.included === undefined ? ["space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx"].indexOf(componentId) < 0 : Boolean(entry.included);
             componentProjection.append({
                 componentId: componentId,
                 title: String(entry.title || componentId),

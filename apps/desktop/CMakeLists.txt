@@ -161,6 +161,11 @@ qt_add_qml_module(
         qml/AudioSpaceWorkspace.qml
         qml/BasicAdjustmentPanel.qml
         qml/ChannelRepairPanel.qml
+        qml/CreativeVfxPanel.qml
+        qml/SceneVfxPanel.qml
+        qml/DelayVfxPanel.qml
+        qml/ModulationVfxPanel.qml
+        qml/TransformVfxPanel.qml
         qml/DeClickPanel.qml
         qml/DePlosivePanel.qml
         qml/DeHumPanel.qml
@@ -178,6 +183,7 @@ qt_add_qml_module(
         qml/EchoTextField.qml
         qml/InspectorSection.qml
         qml/LoudnessTargetControl.qml
+        qml/ListeningProgressTracker.qml
         qml/MainTitleBar.qml
         qml/MasterOutputPanel.qml
         qml/ParametricEqGraph.qml

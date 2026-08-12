@@ -18,6 +18,10 @@ pub struct AudioSpaceAsset {
     pub max_level: u8,
     pub liked: bool,
     pub rating: u8,
+    /// Newest meaningful user listening activity, or zero when unheard.
+    pub last_listened_at_millis: i64,
+    /// Original-time position eligible for explicit continue listening.
+    pub resume_position_millis: u64,
     /// Newest user-authored non-destructive adjustment revision.
     pub adjustment: Option<crate::AssetAdjustmentRevision>,
     /// Latest contextual payload JSON (absent when not analyzed yet).
@@ -87,7 +91,9 @@ pub fn list_audio_space(
          adj.limiter_enabled, adj.limiter_ceiling_centibels, \
          adj.limiter_release_millis, \
          adj.creative_vfx_json, \
-         adj.created_at_millis \
+         adj.created_at_millis, \
+         COALESCE(u.last_listened_at_millis, 0), \
+         COALESCE(u.resume_position_millis, 0) \
          FROM assets a LEFT JOIN asset_user_state u ON u.asset_id = a.id \
          LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
          LEFT JOIN asset_adjustment_revisions adj ON adj.id = (\
@@ -131,6 +137,9 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
         liked: row.get::<_, i64>(13)? != 0,
         rating: u8::try_from(row.get::<_, i64>(14)?)
             .expect("stored rating is between zero and five"),
+        last_listened_at_millis: row.get(48)?,
+        resume_position_millis: u64::try_from(row.get::<_, i64>(49)?)
+            .expect("stored resume position is non-negative"),
         adjustment,
         source_metadata: match row.get::<_, Option<String>>(15)? {
             Some(container_format) => Some(crate::SourceMetadata {

@@ -6,7 +6,8 @@ use super::*;
 use crate::{
     AppendAnalysisRecord, AppendContextualAnalysis, AssetAffinity, AssetRegistrationInput,
     RegisterAsset, open_catalog, record_adjustment_graph, record_analysis,
-    record_contextual_analysis, register_asset, set_asset_affinity,
+    record_asset_listening_progress, record_contextual_analysis, register_asset,
+    set_asset_affinity,
 };
 
 #[test]
@@ -23,7 +24,7 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
                     path: Path::new("/voices/memory.wav"),
                     size_bytes: 100,
                     codec: Some("pcm"),
-                    duration_millis: Some(1_000),
+                    duration_millis: Some(120_000),
                     recorded_at_millis: None,
                     imported_at_millis: 10,
                 },
@@ -53,11 +54,12 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
                 },
                 30,
             )?;
+            record_asset_listening_progress(transaction, asset_id, 70_000, 0, 120_000, 31)?;
             record_adjustment_graph(
                 transaction,
                 asset_id,
                 echo_domain::AdjustmentGraph::new(
-                    1_000,
+                    120_000,
                     100,
                     900,
                     50,
@@ -140,6 +142,8 @@ fn sound_wall_projection_keeps_text_and_user_affinity_distinct() {
         .expect("asset projects");
     assert!(projected.liked);
     assert_eq!(projected.rating, 5);
+    assert_eq!(projected.last_listened_at_millis, 31);
+    assert_eq!(projected.resume_position_millis, 70_000);
     let adjustment = projected.adjustment.expect("adjustment projects");
     assert_eq!(adjustment.graph.trim_start_millis(), 100);
     assert_eq!(adjustment.graph.trim_end_millis(), 900);

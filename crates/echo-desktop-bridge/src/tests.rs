@@ -1,5 +1,6 @@
 //! Session contract tests: transcripts query against a real catalog.
 
+mod listening_state_contract;
 mod long_audio_contract;
 mod processing_recipe_contract;
 mod smart_album_contract;

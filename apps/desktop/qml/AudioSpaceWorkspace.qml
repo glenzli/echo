@@ -240,6 +240,8 @@ Item {
     function collectionTitle(): string {
         if (selectedFilter === "recent")
             return qsTr("Recently added");
+        if (selectedFilter === "listened")
+            return qsTr("Recently listened");
         if (selectedFilter === "liked")
             return qsTr("Liked");
         if (selectedFilter === "five-star")
@@ -267,6 +269,9 @@ Item {
         }
         if (selectedFilter === "recent") {
             return asset.importedAtMillis >= Date.now() - 7 * 86400000;
+        }
+        if (selectedFilter === "listened") {
+            return Number(asset.lastListenedAtMillis || 0) > 0;
         }
         if (selectedFilter === "liked") {
             return asset.liked;
@@ -349,6 +354,9 @@ Item {
                 if (Math.abs(relevance) > 0.000001)
                     return relevance;
             }
+            if (selectedFilter === "listened") {
+                return Number(right.lastListenedAtMillis || 0) - Number(left.lastListenedAtMillis || 0);
+            }
             if (sortMode === "duration") {
                 return right.durationMillis - left.durationMillis;
             }
@@ -373,6 +381,18 @@ Item {
     function selectFilter(key: string): void {
         selectedFilter = key;
         refilter();
+    }
+
+    function updateListeningState(assetId: string, lastListenedAtMillis: double, resumePositionMillis: double): void {
+        const update = asset => asset.id === assetId ? Object.assign({}, asset, {
+                lastListenedAtMillis: lastListenedAtMillis,
+                resumePositionMillis: resumePositionMillis
+            }) : asset;
+        allAssets = allAssets.map(update);
+        if (selectedFilter === "listened")
+            refilter();
+        else
+            filteredAssets = filteredAssets.map(update);
     }
 
     function setSearchText(text: string): void {
@@ -517,6 +537,9 @@ Item {
         }
         function onProcessingRecipesChanged(): void {
             workspace.refreshProcessingRecipes();
+        }
+        function onListeningStateChanged(id: string, lastListenedAtMillis: double, resumePositionMillis: double): void {
+            workspace.updateListeningState(id, lastListenedAtMillis, resumePositionMillis);
         }
     }
 

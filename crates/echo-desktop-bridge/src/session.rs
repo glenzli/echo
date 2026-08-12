@@ -14,10 +14,10 @@ use echo_core::load_or_build_waveform;
 use echo_domain::AssetId;
 
 use crate::ffi::{
-    AnalysisStatusWire, AssetSummaryWire, EditSegmentWire, EffectMaskWire, EqualizerBandWire,
-    JobStatsWire, KeywordFacetWire, LongAudioChapterWire, ScanRootWire, SearchHitWire,
-    SmartAlbumWire, TranscriptSegmentWire, TranscriptWire, UserAlbumWire, WaveformArtifactWire,
-    WaveformLevelWire,
+    AnalysisStatusWire, AssetListeningStateWire, AssetSummaryWire, EditSegmentWire, EffectMaskWire,
+    EqualizerBandWire, JobStatsWire, KeywordFacetWire, LongAudioChapterWire, ScanRootWire,
+    SearchHitWire, SmartAlbumWire, TranscriptSegmentWire, TranscriptWire, UserAlbumWire,
+    WaveformArtifactWire, WaveformLevelWire,
 };
 
 pub(crate) fn now_millis() -> i64 {
@@ -728,6 +728,9 @@ fn analysis_wire_fields(status: Option<&echo_catalog::AssetAnalysisStatus>) -> A
     }
 }
 
+// The flat CXX summary is intentionally exhaustive: keeping every field in
+// one constructor makes projection omissions compile-time visible.
+#[allow(clippy::too_many_lines)]
 fn asset_summary_wire(
     asset: echo_catalog::AudioSpaceAsset,
     analysis: Option<&echo_catalog::AssetAnalysisStatus>,
@@ -762,6 +765,8 @@ fn asset_summary_wire(
         analysis_attempts: analysis.attempts,
         liked: asset.liked,
         rating: asset.rating,
+        last_listened_at_millis: asset.last_listened_at_millis,
+        resume_position_millis: asset.resume_position_millis,
         adjustment_revision: adjustment.revision,
         trim_start_millis: adjustment.trim_start_millis,
         trim_end_millis: adjustment.trim_end_millis,
@@ -1104,6 +1109,41 @@ impl LibrarySession {
                     echo_catalog::AssetAffinity { liked, rating },
                     now_millis(),
                 )
+            })
+            .map_err(SessionError::from)
+    }
+
+    /// Records one bounded listening checkpoint without touching affinity or
+    /// authored sound adjustments.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the asset identity, interval, position,
+    /// or catalog write is invalid.
+    pub fn record_listening_progress(
+        &self,
+        asset_id: &str,
+        position_millis: u64,
+        playback_start_millis: u64,
+        playback_end_millis: u64,
+    ) -> Result<AssetListeningStateWire, SessionError> {
+        let asset_id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid asset id {asset_id}: {error}"),
+        })?;
+        self.catalog
+            .with_transaction(|transaction| {
+                echo_catalog::record_asset_listening_progress(
+                    transaction,
+                    asset_id,
+                    position_millis,
+                    playback_start_millis,
+                    playback_end_millis,
+                    now_millis(),
+                )
+            })
+            .map(|state| AssetListeningStateWire {
+                last_listened_at_millis: state.last_listened_at_millis,
+                resume_position_millis: state.resume_position_millis,
             })
             .map_err(SessionError::from)
     }

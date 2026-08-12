@@ -59,6 +59,12 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
     Q_INVOKABLE QVariantList longAudioChaptersForAsset(const QString& id) const;
     Q_INVOKABLE bool setAssetAffinity(const QString& id, bool liked, int rating);
+    Q_INVOKABLE QVariantMap recordListeningProgress(
+        const QString& id,
+        qlonglong positionMillis,
+        qlonglong playbackStartMillis,
+        qlonglong playbackEndMillis
+    );
     // Preserves the existing QML save call until the Creative draft is connected.
     Q_INVOKABLE bool setAssetAdjustment(
         const QString& id,
@@ -223,6 +229,11 @@ class DesktopBackend : public QObject {
     void albumsChanged();
     void processingRecipesChanged();
     void jobsChanged();
+    void listeningStateChanged(
+        const QString& id,
+        qlonglong lastListenedAtMillis,
+        qlonglong resumePositionMillis
+    );
 
   private:
     rust::Box<echo::desktop::LibrarySession> session_;

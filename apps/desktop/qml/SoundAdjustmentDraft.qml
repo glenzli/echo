@@ -69,6 +69,7 @@ QtObject {
     property var effectChain: defaultEffectChain()
     property var editSegments: defaultEditSegments(0, 0)
     property var effectMasks: []
+    property var creativeVfx: ({})
 
     property var _savedSnapshot: ({})
     property var _history: []
@@ -80,10 +81,10 @@ QtObject {
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canUndo: _historyIndex > 0
     readonly property bool canRedo: _historyIndex >= 0 && _historyIndex < _history.length - 1
-    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
+    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
-    signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks)
+    signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks, var creativeVfx)
 
     function clamp(value: real, minimum: real, maximum: real): real {
         return Math.max(minimum, Math.min(maximum, value));
@@ -141,13 +142,13 @@ QtObject {
     }
 
     function copyEffectChain(values: var): var {
-        if (!values || values.length < 1 || values.length > 8)
+        if (!values || values.length < 1 || values.length > 12)
             return defaultEffectChain();
         const result = [];
-        const seen = [false, false, false, false, false, false, false, false];
+        const seen = [false, false, false, false, false, false, false, false, false, false, false, false];
         for (let index = 0; index < values.length; ++index) {
             const node = Math.round(Number(values[index]));
-            if (node < 0 || node > 7 || seen[node])
+            if (node < 0 || node > 11 || seen[node])
                 return defaultEffectChain();
             seen[node] = true;
             result.push(node);
@@ -167,6 +168,57 @@ QtObject {
 
     function containsEffectNode(kind: int): bool {
         return effectChain && effectChain.indexOf(kind) !== -1;
+    }
+
+    function copyCreativeVfx(value: var): var {
+        if (!value)
+            return {};
+        return JSON.parse(JSON.stringify(value));
+    }
+
+    function sameCreativeVfx(left: var, right: var): bool {
+        return JSON.stringify(copyCreativeVfx(left)) === JSON.stringify(copyCreativeVfx(right));
+    }
+
+    function creativeVfxValue(): var {
+        return copyCreativeVfx(creativeVfx);
+    }
+
+    function creativeVfxFamily(name: string): var {
+        const value = creativeVfx && creativeVfx[name] ? creativeVfx[name] : null;
+        return value ? copyCreativeVfx(value) : {};
+    }
+
+    function creativeVfxFamilyEnabled(name: string): bool {
+        return Boolean(creativeVfx && creativeVfx[name] && creativeVfx[name].enabled);
+    }
+
+    function creativeVfxForOriginal(): var {
+        const value = copyCreativeVfx(creativeVfx);
+        const families = ["scene", "delay", "modulation", "transform"];
+        for (let index = 0; index < families.length; ++index) {
+            const family = families[index];
+            if (value[family])
+                value[family].enabled = false;
+        }
+        return value;
+    }
+
+    function setCreativeVfxFamily(name: string, value: var): void {
+        if (["scene", "delay", "modulation", "transform"].indexOf(name) < 0 || !value)
+            return;
+        const next = copyCreativeVfx(creativeVfx);
+        next[name] = copyCreativeVfx(value);
+        creativeVfx = next;
+        pushCurrent();
+    }
+
+    function setCreativeVfxFamilyEnabled(name: string, enabled: bool): void {
+        const family = creativeVfxFamily(name);
+        if (Object.keys(family).length === 0)
+            return;
+        family.enabled = enabled;
+        setCreativeVfxFamily(name, family);
     }
 
     function defaultEditSegments(startMillis: int, endMillis: int): var {
@@ -253,7 +305,7 @@ QtObject {
             const nodes = [];
             for (let chainIndex = 0; chainIndex < order.length; ++chainIndex) {
                 const node = Number(order[chainIndex]);
-                if (node === 4 || node === 6 || value.effectNodes.indexOf(node) < 0)
+                if (node === 4 || node === 6 || node === 11 || value.effectNodes.indexOf(node) < 0)
                     continue;
                 nodes.push(node);
             }
@@ -393,7 +445,8 @@ QtObject {
             limiterReleaseMillis: limiterReleaseMillis,
             effectChain: copyEffectChain(effectChain),
             editSegments: copyEditSegments(editSegments, trimStartMillis, trimEndMillis),
-            effectMasks: copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis)
+            effectMasks: copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis),
+            creativeVfx: copyCreativeVfx(creativeVfx)
         };
     }
 
@@ -458,14 +511,15 @@ QtObject {
             limiterReleaseMillis: Number(value.limiterReleaseMillis),
             effectChain: copyEffectChain(value.effectChain),
             editSegments: copyEditSegments(value.editSegments, Number(value.trimStartMillis), Number(value.trimEndMillis)),
-            effectMasks: copyEffectMasks(value.effectMasks, value.effectChain, Number(value.trimStartMillis), Number(value.trimEndMillis))
+            effectMasks: copyEffectMasks(value.effectMasks, value.effectChain, Number(value.trimStartMillis), Number(value.trimEndMillis)),
+            creativeVfx: copyCreativeVfx(value.creativeVfx)
         };
     }
 
     function sameSnapshot(left: var, right: var): bool {
         if (!left || !right)
             return false;
-        return Number(left.trimStartMillis) === Number(right.trimStartMillis) && Number(left.trimEndMillis) === Number(right.trimEndMillis) && Number(left.fadeInMillis) === Number(right.fadeInMillis) && Number(left.fadeOutMillis) === Number(right.fadeOutMillis) && Number(left.fadeInCurve) === Number(right.fadeInCurve) && Number(left.fadeOutCurve) === Number(right.fadeOutCurve) && Number(left.gainCentibels) === Number(right.gainCentibels) && Number(left.lowCutHertz) === Number(right.lowCutHertz) && Boolean(left.restorationEnabled) === Boolean(right.restorationEnabled) && Boolean(left.dePlosiveEnabled) === Boolean(right.dePlosiveEnabled) && Number(left.dePlosiveFrequencyHertz) === Number(right.dePlosiveFrequencyHertz) && Number(left.dePlosiveSensitivityPercent) === Number(right.dePlosiveSensitivityPercent) && Number(left.dePlosiveReductionCentibels) === Number(right.dePlosiveReductionCentibels) && Number(left.dePlosiveReleaseMillis) === Number(right.dePlosiveReleaseMillis) && Boolean(left.noiseReductionEnabled) === Boolean(right.noiseReductionEnabled) && Number(left.noiseReductionCentibels) === Number(right.noiseReductionCentibels) && Number(left.noiseReductionSensitivityPercent) === Number(right.noiseReductionSensitivityPercent) && Number(left.noiseReductionSmoothingMillis) === Number(right.noiseReductionSmoothingMillis) && Boolean(left.deEsserEnabled) === Boolean(right.deEsserEnabled) && Number(left.deEsserFrequencyHertz) === Number(right.deEsserFrequencyHertz) && Number(left.deEsserThresholdCentibels) === Number(right.deEsserThresholdCentibels) && Number(left.deEsserReductionCentibels) === Number(right.deEsserReductionCentibels) && Boolean(left.deHumEnabled) === Boolean(right.deHumEnabled) && Number(left.deHumFundamentalHertz) === Number(right.deHumFundamentalHertz) && Number(left.deHumHarmonicCount) === Number(right.deHumHarmonicCount) && Number(left.deHumQualityTenths) === Number(right.deHumQualityTenths) && Number(left.deHumDepthCentibels) === Number(right.deHumDepthCentibels) && Boolean(left.deClickEnabled) === Boolean(right.deClickEnabled) && Number(left.deClickSensitivityPercent) === Number(right.deClickSensitivityPercent) && Number(left.deClickMaximumClickMicroseconds) === Number(right.deClickMaximumClickMicroseconds) && Number(left.deClickRepairPercent) === Number(right.deClickRepairPercent) && Boolean(left.channelRepairEnabled) === Boolean(right.channelRepairEnabled) && Boolean(left.channelRepairInvertLeft) === Boolean(right.channelRepairInvertLeft) && Boolean(left.channelRepairInvertRight) === Boolean(right.channelRepairInvertRight) && Boolean(left.channelRepairSwapChannels) === Boolean(right.channelRepairSwapChannels) && Boolean(left.channelRepairMonoFoldDown) === Boolean(right.channelRepairMonoFoldDown) && Number(left.channelRepairBalancePercent) === Number(right.channelRepairBalancePercent) && Boolean(left.equalizerEnabled) === Boolean(right.equalizerEnabled) && sameEqualizer(left.equalizerBands, right.equalizerBands) && Boolean(left.compressorEnabled) === Boolean(right.compressorEnabled) && Number(left.compressorThresholdCentibels) === Number(right.compressorThresholdCentibels) && Number(left.compressorRatioTenths) === Number(right.compressorRatioTenths) && Number(left.compressorAttackMillis) === Number(right.compressorAttackMillis) && Number(left.compressorReleaseMillis) === Number(right.compressorReleaseMillis) && Number(left.compressorMakeupCentibels) === Number(right.compressorMakeupCentibels) && Number(left.reverbCharacter) === Number(right.reverbCharacter) && Boolean(left.reverbEnabled) === Boolean(right.reverbEnabled) && Number(left.reverbMixPercent) === Number(right.reverbMixPercent) && Number(left.reverbPreDelayMillis) === Number(right.reverbPreDelayMillis) && Number(left.reverbDecayMillis) === Number(right.reverbDecayMillis) && Number(left.reverbSizePercent) === Number(right.reverbSizePercent) && Number(left.reverbDampingPercent) === Number(right.reverbDampingPercent) && Number(left.reverbLowCutHertz) === Number(right.reverbLowCutHertz) && Number(left.reverbHighCutHertz) === Number(right.reverbHighCutHertz) && Boolean(left.limiterEnabled) === Boolean(right.limiterEnabled) && Number(left.limiterCeilingCentibels) === Number(right.limiterCeilingCentibels) && Number(left.limiterReleaseMillis) === Number(right.limiterReleaseMillis) && sameEffectChain(left.effectChain, right.effectChain) && sameEditSegments(left.editSegments, right.editSegments) && sameEffectMasks(left.effectMasks, right.effectMasks);
+        return Number(left.trimStartMillis) === Number(right.trimStartMillis) && Number(left.trimEndMillis) === Number(right.trimEndMillis) && Number(left.fadeInMillis) === Number(right.fadeInMillis) && Number(left.fadeOutMillis) === Number(right.fadeOutMillis) && Number(left.fadeInCurve) === Number(right.fadeInCurve) && Number(left.fadeOutCurve) === Number(right.fadeOutCurve) && Number(left.gainCentibels) === Number(right.gainCentibels) && Number(left.lowCutHertz) === Number(right.lowCutHertz) && Boolean(left.restorationEnabled) === Boolean(right.restorationEnabled) && Boolean(left.dePlosiveEnabled) === Boolean(right.dePlosiveEnabled) && Number(left.dePlosiveFrequencyHertz) === Number(right.dePlosiveFrequencyHertz) && Number(left.dePlosiveSensitivityPercent) === Number(right.dePlosiveSensitivityPercent) && Number(left.dePlosiveReductionCentibels) === Number(right.dePlosiveReductionCentibels) && Number(left.dePlosiveReleaseMillis) === Number(right.dePlosiveReleaseMillis) && Boolean(left.noiseReductionEnabled) === Boolean(right.noiseReductionEnabled) && Number(left.noiseReductionCentibels) === Number(right.noiseReductionCentibels) && Number(left.noiseReductionSensitivityPercent) === Number(right.noiseReductionSensitivityPercent) && Number(left.noiseReductionSmoothingMillis) === Number(right.noiseReductionSmoothingMillis) && Boolean(left.deEsserEnabled) === Boolean(right.deEsserEnabled) && Number(left.deEsserFrequencyHertz) === Number(right.deEsserFrequencyHertz) && Number(left.deEsserThresholdCentibels) === Number(right.deEsserThresholdCentibels) && Number(left.deEsserReductionCentibels) === Number(right.deEsserReductionCentibels) && Boolean(left.deHumEnabled) === Boolean(right.deHumEnabled) && Number(left.deHumFundamentalHertz) === Number(right.deHumFundamentalHertz) && Number(left.deHumHarmonicCount) === Number(right.deHumHarmonicCount) && Number(left.deHumQualityTenths) === Number(right.deHumQualityTenths) && Number(left.deHumDepthCentibels) === Number(right.deHumDepthCentibels) && Boolean(left.deClickEnabled) === Boolean(right.deClickEnabled) && Number(left.deClickSensitivityPercent) === Number(right.deClickSensitivityPercent) && Number(left.deClickMaximumClickMicroseconds) === Number(right.deClickMaximumClickMicroseconds) && Number(left.deClickRepairPercent) === Number(right.deClickRepairPercent) && Boolean(left.channelRepairEnabled) === Boolean(right.channelRepairEnabled) && Boolean(left.channelRepairInvertLeft) === Boolean(right.channelRepairInvertLeft) && Boolean(left.channelRepairInvertRight) === Boolean(right.channelRepairInvertRight) && Boolean(left.channelRepairSwapChannels) === Boolean(right.channelRepairSwapChannels) && Boolean(left.channelRepairMonoFoldDown) === Boolean(right.channelRepairMonoFoldDown) && Number(left.channelRepairBalancePercent) === Number(right.channelRepairBalancePercent) && Boolean(left.equalizerEnabled) === Boolean(right.equalizerEnabled) && sameEqualizer(left.equalizerBands, right.equalizerBands) && Boolean(left.compressorEnabled) === Boolean(right.compressorEnabled) && Number(left.compressorThresholdCentibels) === Number(right.compressorThresholdCentibels) && Number(left.compressorRatioTenths) === Number(right.compressorRatioTenths) && Number(left.compressorAttackMillis) === Number(right.compressorAttackMillis) && Number(left.compressorReleaseMillis) === Number(right.compressorReleaseMillis) && Number(left.compressorMakeupCentibels) === Number(right.compressorMakeupCentibels) && Number(left.reverbCharacter) === Number(right.reverbCharacter) && Boolean(left.reverbEnabled) === Boolean(right.reverbEnabled) && Number(left.reverbMixPercent) === Number(right.reverbMixPercent) && Number(left.reverbPreDelayMillis) === Number(right.reverbPreDelayMillis) && Number(left.reverbDecayMillis) === Number(right.reverbDecayMillis) && Number(left.reverbSizePercent) === Number(right.reverbSizePercent) && Number(left.reverbDampingPercent) === Number(right.reverbDampingPercent) && Number(left.reverbLowCutHertz) === Number(right.reverbLowCutHertz) && Number(left.reverbHighCutHertz) === Number(right.reverbHighCutHertz) && Boolean(left.limiterEnabled) === Boolean(right.limiterEnabled) && Number(left.limiterCeilingCentibels) === Number(right.limiterCeilingCentibels) && Number(left.limiterReleaseMillis) === Number(right.limiterReleaseMillis) && sameEffectChain(left.effectChain, right.effectChain) && sameEditSegments(left.editSegments, right.editSegments) && sameEffectMasks(left.effectMasks, right.effectMasks) && sameCreativeVfx(left.creativeVfx, right.creativeVfx);
     }
 
     function assetSnapshot(): var {
@@ -530,7 +584,8 @@ QtObject {
                 limiterReleaseMillis: 100,
                 effectChain: defaultEffectChain(),
                 editSegments: [],
-                effectMasks: []
+                effectMasks: [],
+                creativeVfx: {}
             };
         }
         const duration = Math.max(0, Number(asset.durationMillis));
@@ -594,7 +649,8 @@ QtObject {
             limiterReleaseMillis: clamp(Number(asset.limiterReleaseMillis ?? 100), 20, 1000),
             effectChain: copyEffectChain(asset.effectChain),
             editSegments: copyEditSegments(asset.editSegments, Math.max(0, Number(asset.trimStartMillis)), Number(asset.trimEndMillis) > 0 ? Number(asset.trimEndMillis) : duration),
-            effectMasks: copyEffectMasks(asset.effectMasks, asset.effectChain, Math.max(0, Number(asset.trimStartMillis)), Number(asset.trimEndMillis) > 0 ? Number(asset.trimEndMillis) : duration)
+            effectMasks: copyEffectMasks(asset.effectMasks, asset.effectChain, Math.max(0, Number(asset.trimStartMillis)), Number(asset.trimEndMillis) > 0 ? Number(asset.trimEndMillis) : duration),
+            creativeVfx: copyCreativeVfx(asset.creativeVfx)
         };
     }
 
@@ -660,6 +716,7 @@ QtObject {
         effectChain = copyEffectChain(value.effectChain);
         editSegments = copyEditSegments(value.editSegments, trimStartMillis, trimEndMillis);
         effectMasks = copyEffectMasks(value.effectMasks, effectChain, trimStartMillis, trimEndMillis);
+        creativeVfx = copyCreativeVfx(value.creativeVfx);
         _restoring = false;
     }
 
@@ -1012,6 +1069,14 @@ QtObject {
             return deClickEnabled;
         if (kind === 7)
             return channelRepairEnabled;
+        if (kind === 8)
+            return creativeVfxFamilyEnabled("scene");
+        if (kind === 9)
+            return creativeVfxFamilyEnabled("delay");
+        if (kind === 10)
+            return creativeVfxFamilyEnabled("modulation");
+        if (kind === 11)
+            return creativeVfxFamilyEnabled("transform");
         return false;
     }
 
@@ -1032,6 +1097,19 @@ QtObject {
             deClickEnabled = enabled;
         else if (kind === 7)
             channelRepairEnabled = enabled;
+        else if (kind === 8) {
+            setCreativeVfxFamilyEnabled("scene", enabled);
+            return;
+        } else if (kind === 9) {
+            setCreativeVfxFamilyEnabled("delay", enabled);
+            return;
+        } else if (kind === 10) {
+            setCreativeVfxFamilyEnabled("modulation", enabled);
+            return;
+        } else if (kind === 11) {
+            setCreativeVfxFamilyEnabled("transform", enabled);
+            return;
+        }
         else
             return;
         pushCurrent();
@@ -1054,7 +1132,7 @@ QtObject {
     }
 
     function addEffectNode(kind: int): void {
-        if (kind < 0 || kind > 7 || kind === 4 || containsEffectNode(kind))
+        if (kind < 0 || kind > 11 || kind === 4 || containsEffectNode(kind))
             return;
         const next = copyEffectChain(effectChain);
         next.splice(next.length - 1, 0, kind);
@@ -1073,11 +1151,19 @@ QtObject {
             deClickEnabled = true;
         else if (kind === 7)
             channelRepairEnabled = true;
+        else if (kind === 8)
+            setCreativeVfxFamilyEnabled("scene", true);
+        else if (kind === 9)
+            setCreativeVfxFamilyEnabled("delay", true);
+        else if (kind === 10)
+            setCreativeVfxFamilyEnabled("modulation", true);
+        else if (kind === 11)
+            setCreativeVfxFamilyEnabled("transform", true);
         pushCurrent();
     }
 
     function removeEffectNode(kind: int): void {
-        if (kind < 0 || kind > 7 || kind === 4)
+        if (kind < 0 || kind > 11 || kind === 4)
             return;
         const next = copyEffectChain(effectChain);
         const index = next.indexOf(kind);
@@ -1435,7 +1521,8 @@ QtObject {
             limiterReleaseMillis: 100,
             effectChain: defaultEffectChain(),
             editSegments: defaultEditSegments(0, sourceDurationMillis),
-            effectMasks: []
+            effectMasks: [],
+            creativeVfx: creativeVfxForOriginal()
         });
         pushCurrent();
     }
@@ -1448,7 +1535,7 @@ QtObject {
     function save(): void {
         if (!asset || !dirty)
             return;
-        saveRequested(trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationEnabled, dePlosiveEnabled, dePlosiveFrequencyHertz, dePlosiveSensitivityPercent, dePlosiveReductionCentibels, dePlosiveReleaseMillis, noiseReductionEnabled, noiseReductionCentibels, noiseReductionSensitivityPercent, noiseReductionSmoothingMillis, deEsserEnabled, deEsserFrequencyHertz, deEsserThresholdCentibels, deEsserReductionCentibels, deHumEnabled, deHumFundamentalHertz, deHumHarmonicCount, deHumQualityTenths, deHumDepthCentibels, deClickEnabled, deClickSensitivityPercent, deClickMaximumClickMicroseconds, deClickRepairPercent, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalancePercent, equalizerEnabled, copyEqualizerBands(equalizerBands), compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbCharacter, reverbEnabled, reverbMixPercent, reverbPreDelayMillis, reverbDecayMillis, reverbSizePercent, reverbDampingPercent, reverbLowCutHertz, reverbHighCutHertz, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, copyEffectChain(effectChain), copyEditSegments(editSegments, trimStartMillis, trimEndMillis), copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis));
+        saveRequested(trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationEnabled, dePlosiveEnabled, dePlosiveFrequencyHertz, dePlosiveSensitivityPercent, dePlosiveReductionCentibels, dePlosiveReleaseMillis, noiseReductionEnabled, noiseReductionCentibels, noiseReductionSensitivityPercent, noiseReductionSmoothingMillis, deEsserEnabled, deEsserFrequencyHertz, deEsserThresholdCentibels, deEsserReductionCentibels, deHumEnabled, deHumFundamentalHertz, deHumHarmonicCount, deHumQualityTenths, deHumDepthCentibels, deClickEnabled, deClickSensitivityPercent, deClickMaximumClickMicroseconds, deClickRepairPercent, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalancePercent, equalizerEnabled, copyEqualizerBands(equalizerBands), compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbCharacter, reverbEnabled, reverbMixPercent, reverbPreDelayMillis, reverbDecayMillis, reverbSizePercent, reverbDampingPercent, reverbLowCutHertz, reverbHighCutHertz, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, copyEffectChain(effectChain), copyEditSegments(editSegments, trimStartMillis, trimEndMillis), copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis), copyCreativeVfx(creativeVfx));
     }
 
     function markSaved(): void {

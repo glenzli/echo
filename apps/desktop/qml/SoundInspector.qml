@@ -93,9 +93,21 @@ Rectangle {
         if (loadedPath !== asset.path) {
             player.play(asset.path);
             loadedPath = asset.path;
+            const resume = listeningProgress.resumePositionMillis;
+            if (resume > 0 && resume < Number(asset.durationMillis))
+                player.seek(resume);
         } else {
             player.togglePause();
         }
+    }
+
+    ListeningProgressTracker {
+        id: listeningProgress
+        asset: inspector.asset
+        loadedPath: inspector.loadedPath
+        playbackStartMillis: 0
+        playbackEndMillis: inspector.hasAsset ? Number(inspector.asset.durationMillis) : 0
+        active: inspector.visible
     }
 
     function keywordTags(): var {
@@ -327,7 +339,7 @@ Rectangle {
                         normalize: true
                         normalizationFloor: 0.24
                         amplitudeExponent: 0.8
-                        progress: inspector.hasAsset && player.duration > 0 && inspector.loadedPath === inspector.asset.path ? player.position / player.duration : 0
+                        progress: inspector.hasAsset && Number(inspector.asset.durationMillis) > 0 ? Math.max(0, Math.min(1, (inspector.loadedPath === inspector.asset.path ? player.position : listeningProgress.resumePositionMillis) / Number(inspector.asset.durationMillis))) : 0
                     }
 
                     EchoIconButton {
@@ -348,7 +360,7 @@ Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.rightMargin: 10
                         anchors.bottomMargin: 12
-                        text: inspector.hasAsset && inspector.loadedPath === inspector.asset.path ? inspector.formatDuration(player.position) + " / " + inspector.formatDuration(player.duration) : inspector.hasAsset ? inspector.formatDuration(inspector.asset.durationMillis) : "—"
+                        text: inspector.hasAsset && inspector.loadedPath === inspector.asset.path ? inspector.formatDuration(player.position) + " / " + inspector.formatDuration(player.duration) : listeningProgress.resumePositionMillis > 0 ? qsTr("Continue at %1").arg(inspector.formatDuration(listeningProgress.resumePositionMillis)) : inspector.hasAsset ? inspector.formatDuration(inspector.asset.durationMillis) : "—"
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontMeta
                     }

@@ -131,9 +131,20 @@ pub(crate) const INITIAL_COMPATIBLE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 1);
 pub(crate) const SPACE_CHARACTERS_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_812, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_812, 2);
+pub(crate) const CREATIVE_VFX_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_812, 2);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_812, 3);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260812.2-creative-vfx";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260812.3-listening-continuity";
+
+pub(crate) const LISTENING_STATE_MIGRATION_SQL: &str = r"
+ALTER TABLE asset_user_state
+    ADD COLUMN last_listened_at_millis INTEGER NOT NULL DEFAULT 0
+    CHECK (last_listened_at_millis >= 0);
+ALTER TABLE asset_user_state
+    ADD COLUMN resume_position_millis INTEGER NOT NULL DEFAULT 0
+    CHECK (resume_position_millis >= 0);
+";
 
 pub(crate) const CREATIVE_VFX_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -532,6 +543,10 @@ CREATE TABLE IF NOT EXISTS asset_user_state (
     asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
     liked              INTEGER NOT NULL DEFAULT 0 CHECK (liked IN (0, 1)),
     rating             INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+    last_listened_at_millis INTEGER NOT NULL DEFAULT 0
+                       CHECK (last_listened_at_millis >= 0),
+    resume_position_millis INTEGER NOT NULL DEFAULT 0
+                       CHECK (resume_position_millis >= 0),
     updated_at_millis  INTEGER NOT NULL
 );
 

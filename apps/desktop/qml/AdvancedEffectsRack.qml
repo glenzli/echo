@@ -22,8 +22,8 @@ Item {
 
     property string selectedNodeId: "clip"
     readonly property int currentKind: effectKind(selectedNodeId)
-    readonly property int preferredParameterWidth: selectedNodeId === "clip" ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 3 : currentKind === 0 ? Theme.editorControlTrackWidth * 3 - Theme.editorPanelGap * 2 : currentKind === 1 ? 800 : currentKind === 2 ? 740 : currentKind === 3 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 4 : currentKind === 4 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 2 : Theme.editorControlTrackWidth * 2 + Theme.editorPanelGap * 2
-    readonly property int preferredParameterHeight: currentKind === 1 ? 320 : currentKind === 4 ? 340 : 310
+    readonly property int preferredParameterWidth: selectedNodeId === "clip" ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 3 : currentKind === 0 ? Theme.editorControlTrackWidth * 3 - Theme.editorPanelGap * 2 : currentKind === 1 ? 800 : currentKind === 2 ? 740 : currentKind === 3 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 4 : currentKind === 4 ? Theme.editorSectionColumnWidth * 2 + Theme.editorPanelGap * 2 : currentKind >= 8 ? 780 : Theme.editorControlTrackWidth * 2 + Theme.editorPanelGap * 2
+    readonly property int preferredParameterHeight: currentKind >= 8 ? 342 : currentKind === 1 ? 320 : currentKind === 4 ? 340 : 310
 
     implicitHeight: 320
 
@@ -46,6 +46,14 @@ Item {
             return qsTr("De-click");
         if (kind === 7)
             return qsTr("Channel repair");
+        if (kind === 8)
+            return qsTr("Scene VFX");
+        if (kind === 9)
+            return qsTr("Delay VFX");
+        if (kind === 10)
+            return qsTr("Modulation VFX");
+        if (kind === 11)
+            return qsTr("Transform VFX");
         return qsTr("Master");
     }
 
@@ -64,6 +72,14 @@ Item {
             return qsTr("Short impulse repair");
         if (kind === 7)
             return qsTr("Polarity · Routing · Balance · Mono");
+        if (kind === 8)
+            return qsTr("Telephone · Radio · Intercom · Scene filters");
+        if (kind === 9)
+            return qsTr("Slapback · Echo");
+        if (kind === 10)
+            return qsTr("Chorus · Flanger · Phaser · Tremolo");
+        if (kind === 11)
+            return qsTr("Robot · Monster · Tiny · Giant · Ghost");
         return qsTr("Limiter · Loudness");
     }
 
@@ -82,19 +98,20 @@ Item {
             return "qrc:/EchoDesktop/icons/waveform.svg";
         if (kind === 7)
             return "qrc:/EchoDesktop/icons/tune.svg";
+        if (kind >= 8)
+            return "qrc:/EchoDesktop/icons/sparkles.svg";
         return "qrc:/EchoDesktop/icons/gain.svg";
     }
 
     function effectId(kind: int): string {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair"][kind];
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx"][kind];
     }
 
     function effectKind(effectId: string): int {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair"].indexOf(effectId);
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx"].indexOf(effectId);
     }
 
-    function buildChainModel(chain: var, restorationEnabled: bool, equalizerEnabled: bool, dynamicsEnabled: bool, spaceEnabled: bool, deHumEnabled: bool, deClickEnabled: bool, channelRepairEnabled: bool): var {
-        const enabled = [restorationEnabled, equalizerEnabled, dynamicsEnabled, spaceEnabled, true, deHumEnabled, deClickEnabled, channelRepairEnabled];
+    function buildChainModel(chain: var): var {
         const result = [];
         for (let index = 0; index < chain.length; ++index) {
             const kind = Number(chain[index]);
@@ -105,7 +122,7 @@ Item {
                 title: nodeTitle(kind),
                 summary: nodeSummary(kind),
                 iconSource: nodeIcon(kind),
-                enabled: enabled[kind]
+                enabled: draft.effectNodeEnabled(kind)
             });
         }
         return result;
@@ -175,6 +192,42 @@ Item {
                 categoryTitle: qsTr("Restoration"),
                 iconSource: nodeIcon(7),
                 available: chain.indexOf(7) < 0
+            },
+            {
+                effectId: "sceneVfx",
+                title: nodeTitle(8),
+                summary: nodeSummary(8),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(8),
+                available: chain.indexOf(8) < 0
+            },
+            {
+                effectId: "delayVfx",
+                title: nodeTitle(9),
+                summary: nodeSummary(9),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(9),
+                available: chain.indexOf(9) < 0
+            },
+            {
+                effectId: "modulationVfx",
+                title: nodeTitle(10),
+                summary: nodeSummary(10),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(10),
+                available: chain.indexOf(10) < 0
+            },
+            {
+                effectId: "transformVfx",
+                title: nodeTitle(11),
+                summary: nodeSummary(11),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(11),
+                available: chain.indexOf(11) < 0
             }
         ];
     }
@@ -187,7 +240,7 @@ Item {
             selectedNodeId = "clip";
     }
 
-    readonly property var chainModel: buildChainModel(draft.effectChain, draft.restorationEnabled, draft.equalizerEnabled, draft.compressorEnabled, draft.reverbEnabled, draft.deHumEnabled, draft.deClickEnabled, draft.channelRepairEnabled)
+    readonly property var chainModel: buildChainModel(draft.effectChain)
     readonly property var catalogModel: buildCatalogModel(draft.effectChain)
 
     onDraftChanged: ensureCurrentNode()
@@ -352,6 +405,14 @@ Item {
                     anchors.fill: parent
                     visible: rack.currentKind === 7
                     draft: rack.draft
+                }
+
+                CreativeVfxPanel {
+                    anchors.fill: parent
+                    visible: rack.currentKind >= 8 && rack.currentKind <= 11
+                    draft: rack.draft
+                    familyKind: rack.currentKind
+                    onFamilySelected: kind => rack.selectedNodeId = rack.effectId(kind)
                 }
             }
         }

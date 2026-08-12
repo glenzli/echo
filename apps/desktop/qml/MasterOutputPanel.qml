@@ -33,7 +33,7 @@ Rectangle {
             analyzer.cancel();
             return;
         }
-        analyzer.analyzeAdjusted(analysisKey, sourcePath, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.channelRepairValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks);
+        analyzer.analyzeAdjusted(analysisKey, sourcePath, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.channelRepairValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks, draft.creativeVfxValue());
     }
 
     ColumnLayout {

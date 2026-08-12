@@ -24,6 +24,7 @@ mod derived_artifact;
 mod error;
 mod inference_run;
 mod job_queue;
+mod listening_state;
 mod long_audio;
 mod processing_recipe;
 mod render_export;
@@ -77,6 +78,9 @@ pub use job_queue::{
     ClaimedJob, FileJobPayload, Job, JobKind, JobState, JobStats, ScanRootJobPayload,
     claim_next_job, complete_job, enqueue_job, fail_job, job_by_id, job_stats, list_failed_jobs,
     recover_interrupted_jobs, requeue_scan_job, retry_job, update_job_progress,
+};
+pub use listening_state::{
+    AssetListeningState, asset_listening_state, record_asset_listening_progress,
 };
 pub use long_audio::{
     LongAudioOutlineNode, LongAudioProxyRef, LongAudioSegment, LongAudioSegmentPlan,

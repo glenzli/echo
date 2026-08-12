@@ -113,7 +113,7 @@ Rectangle {
             dampingPercent: 45,
             lowCutHertz: 120,
             highCutHertz: 10000
-        } : adjustmentDraft.reverbValue()) + ":" + (auditionOriginal ? false : adjustmentDraft.limiterEnabled) + ":" + (auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels) + ":" + (auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis) + ":" + JSON.stringify(auditionOriginal ? adjustmentDraft.defaultEffectChain() : adjustmentDraft.effectChain) + ":" + JSON.stringify(auditionOriginal ? adjustmentDraft.defaultEditSegments(adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis) : adjustmentDraft.editSegments) + ":" + JSON.stringify(auditionOriginal ? [] : adjustmentDraft.effectMasks);
+        } : adjustmentDraft.reverbValue()) + ":" + (auditionOriginal ? false : adjustmentDraft.limiterEnabled) + ":" + (auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels) + ":" + (auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis) + ":" + JSON.stringify(auditionOriginal ? adjustmentDraft.defaultEffectChain() : adjustmentDraft.effectChain) + ":" + JSON.stringify(auditionOriginal ? adjustmentDraft.defaultEditSegments(adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis) : adjustmentDraft.editSegments) + ":" + JSON.stringify(auditionOriginal ? [] : adjustmentDraft.effectMasks) + ":" + JSON.stringify(auditionOriginal ? adjustmentDraft.creativeVfxForOriginal() : adjustmentDraft.creativeVfxValue());
     }
 
     function refreshAsset(): void {
@@ -168,7 +168,7 @@ Rectangle {
             dampingPercent: 45,
             lowCutHertz: 120,
             highCutHertz: 10000
-        } : adjustmentDraft.reverbValue(), auditionOriginal ? false : adjustmentDraft.limiterEnabled, auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels, auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis, auditionOriginal ? adjustmentDraft.defaultEffectChain() : adjustmentDraft.effectChain, auditionOriginal ? adjustmentDraft.defaultEditSegments(adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis) : adjustmentDraft.editSegments, auditionOriginal ? [] : adjustmentDraft.effectMasks);
+        } : adjustmentDraft.reverbValue(), auditionOriginal ? false : adjustmentDraft.limiterEnabled, auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels, auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis, auditionOriginal ? adjustmentDraft.defaultEffectChain() : adjustmentDraft.effectChain, auditionOriginal ? adjustmentDraft.defaultEditSegments(adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis) : adjustmentDraft.editSegments, auditionOriginal ? [] : adjustmentDraft.effectMasks, auditionOriginal ? adjustmentDraft.creativeVfxForOriginal() : adjustmentDraft.creativeVfxValue());
         loadedPath = asset.path;
         loadedBaseAdjustmentKey = playbackBaseAdjustmentKey();
         loadedAdjustmentKey = adjustmentKey();
@@ -360,8 +360,8 @@ Rectangle {
 
         asset: workspace.asset
 
-        onSaveRequested: function (startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks) {
-            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks)) {
+        onSaveRequested: function (startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx) {
+            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx)) {
                 adjustmentDraft.markSaved();
                 workspace.auditionOriginal = false;
                 workspace.loadedBaseAdjustmentKey = "";
@@ -524,6 +524,9 @@ Rectangle {
         function onLimiterReleaseMillisChanged(): void {
             workspace.scheduleEffectsPreview();
         }
+        function onCreativeVfxChanged(): void {
+            workspace.scheduleEffectsPreview();
+        }
         function onEffectChainChanged(): void {
             if (workspace.auditionOriginal || !player.active || !workspace.hasAsset || workspace.loadedPath !== workspace.asset.path)
                 return;
@@ -567,7 +570,8 @@ Rectangle {
             const compressorUpdated = player.updateCompressor(adjustmentDraft.compressorEnabled, adjustmentDraft.compressorThresholdCentibels, adjustmentDraft.compressorRatioTenths, adjustmentDraft.compressorAttackMillis, adjustmentDraft.compressorReleaseMillis, adjustmentDraft.compressorMakeupCentibels);
             const limiterUpdated = player.updateLimiter(adjustmentDraft.limiterEnabled, adjustmentDraft.limiterCeilingCentibels, adjustmentDraft.limiterReleaseMillis);
             const reverbUpdated = player.updateReverb(adjustmentDraft.reverbValue());
-            if (restorationUpdated && deHumUpdated && deClickUpdated && channelRepairUpdated && equalizerUpdated && compressorUpdated && reverbUpdated && limiterUpdated) {
+            const creativeVfxUpdated = player.updateCreativeVfx(adjustmentDraft.creativeVfxValue());
+            if (restorationUpdated && deHumUpdated && deClickUpdated && channelRepairUpdated && equalizerUpdated && compressorUpdated && reverbUpdated && limiterUpdated && creativeVfxUpdated) {
                 workspace.loadedAdjustmentKey = workspace.adjustmentKey();
             }
         }

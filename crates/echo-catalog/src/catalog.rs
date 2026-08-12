@@ -12,12 +12,13 @@ use crate::{
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION,
         CHANNEL_REPAIR_MIGRATION_SQL, CHANNEL_REPAIR_SCHEMA_VERSION, CREATIVE_VFX_MIGRATION_SQL,
-        CatalogSchemaRevision, DE_CLICK_MIGRATION_SQL, DE_HUM_MIGRATION_SQL,
-        DE_PLOSIVE_SCHEMA_VERSION, DELIVERY_FORMATS_MIGRATION_SQL,
+        CREATIVE_VFX_SCHEMA_VERSION, CatalogSchemaRevision, DE_CLICK_MIGRATION_SQL,
+        DE_HUM_MIGRATION_SQL, DE_PLOSIVE_SCHEMA_VERSION, DELIVERY_FORMATS_MIGRATION_SQL,
         EARLIEST_COMPATIBLE_SCHEMA_VERSION, EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION,
         EFFECT_CHAIN_MIGRATION_SQL, FIXED_EFFECT_CHAIN_SCHEMA_VERSION,
-        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
-        OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
+        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL,
+        LONG_AUDIO_MIGRATION_SQL, OLDER_COMPATIBLE_SCHEMA_VERSION,
+        OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
         PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
         PROCESSING_RECIPES_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
@@ -91,6 +92,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1)",
                 [SCHEMA_IDENTITY.to_string()],
             )?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == CREATIVE_VFX_SCHEMA_VERSION) =>
+        {
+            migrate_listening_state_schema(connection)?;
         }
         Some(version)
             if version
@@ -230,6 +238,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_listening_state_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_listening_state_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 
@@ -413,6 +429,7 @@ fn migrate_adjustment_effects_render_exports_user_albums_and_long_audio(
 }
 
 fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), CatalogError> {
+    apply_listening_state_migration(transaction)?;
     apply_creative_vfx_migration(transaction)?;
     apply_channel_repair_migration(transaction)?;
     apply_source_edit_migration(transaction)?;
@@ -427,6 +444,21 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_listening_state_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_user_state') \
+         WHERE name = 'last_listened_at_millis'",
+        [],
+        |row| row.get(0),
+    )?;
+    if column_count == 0 {
+        transaction.execute_batch(LISTENING_STATE_MIGRATION_SQL)?;
+    }
     Ok(())
 }
 

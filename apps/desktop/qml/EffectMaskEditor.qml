@@ -41,6 +41,12 @@ Popup {
             return qsTr("De-hum");
         if (kind === 7)
             return qsTr("Channel repair");
+        if (kind === 8)
+            return qsTr("Scene VFX");
+        if (kind === 9)
+            return qsTr("Delay VFX");
+        if (kind === 10)
+            return qsTr("Modulation VFX");
         return qsTr("Effect");
     }
 
@@ -62,7 +68,7 @@ Popup {
         effectModel.clear();
         for (let index = 0; index < draft.effectChain.length; ++index) {
             const kind = Number(draft.effectChain[index]);
-            if (kind === 4 || kind === 6)
+            if (kind === 4 || kind === 6 || kind === 11)
                 continue;
             effectModel.append({
                 kind: kind,

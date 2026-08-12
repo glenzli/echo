@@ -389,6 +389,14 @@ QVariantList DesktopBackend::listAssets() const {
         entry.insert(QStringLiteral("liked"), asset.liked);
         entry.insert(QStringLiteral("rating"), static_cast<int>(asset.rating));
         entry.insert(
+            QStringLiteral("lastListenedAtMillis"),
+            static_cast<qlonglong>(asset.last_listened_at_millis)
+        );
+        entry.insert(
+            QStringLiteral("resumePositionMillis"),
+            static_cast<qlonglong>(asset.resume_position_millis)
+        );
+        entry.insert(
             QStringLiteral("adjustmentRevision"),
             static_cast<qlonglong>(asset.adjustment_revision)
         );
@@ -1084,6 +1092,45 @@ bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating)
     } catch (const rust::Error& error) {
         qWarning("cannot update affinity for %s: %s", qPrintable(id), error.what());
         return false;
+    }
+}
+
+QVariantMap DesktopBackend::recordListeningProgress(
+    const QString& id,
+    qlonglong positionMillis,
+    qlonglong playbackStartMillis,
+    qlonglong playbackEndMillis
+) {
+    if (positionMillis < 0 || playbackStartMillis < 0 || playbackEndMillis <= playbackStartMillis
+        || positionMillis < playbackStartMillis || positionMillis > playbackEndMillis) {
+        qWarning("listening checkpoint is outside its playback interval");
+        return {};
+    }
+    try {
+        const auto state = session_->session_record_listening_progress(
+            id.toStdString(),
+            static_cast<std::uint64_t>(positionMillis),
+            static_cast<std::uint64_t>(playbackStartMillis),
+            static_cast<std::uint64_t>(playbackEndMillis)
+        );
+        QVariantMap result;
+        result.insert(
+            QStringLiteral("lastListenedAtMillis"),
+            static_cast<qlonglong>(state.last_listened_at_millis)
+        );
+        result.insert(
+            QStringLiteral("resumePositionMillis"),
+            static_cast<qlonglong>(state.resume_position_millis)
+        );
+        emit listeningStateChanged(
+            id,
+            static_cast<qlonglong>(state.last_listened_at_millis),
+            static_cast<qlonglong>(state.resume_position_millis)
+        );
+        return result;
+    } catch (const rust::Error& error) {
+        qWarning("cannot record listening progress for %s: %s", qPrintable(id), error.what());
+        return {};
     }
 }
 

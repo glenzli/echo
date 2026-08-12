@@ -587,8 +587,9 @@ InferenceBackend
     process/update 不分配，静音不生声。Scene、Delay、Modulation 报告零基础设施延迟；Transform
     固定 50 ms 并与 DeClick 一同由共享 effect-chain 做顺序无关的时间线补偿，固定延迟节点不接受
     Original 时间遮罩。试听、整段分析、单次／批量离线导出和处理方案都消费同一执行合同；桌面
-    投影已提供完整 Creative map 与 live update 入口，专属参数面板、效果目录接线、草稿历史和简中
-    文案由 UI owner 在通用工作台中完成。本切片为 Echo clean-room 实现，不引入 JUCE／Dragonfly／
+    投影提供完整 Creative map 与 live update 入口，通用工作台以四个独立 Creative 节点接入效果
+    目录、排序、旁路、草稿历史、处理方案和专属参数页，并保持一次家族调参只生成一个 Undo 手势；
+    Original 试听只旁路 Creative，不丢弃已选角色和参数。本切片为 Echo clean-room 实现，不引入 JUCE／Dragonfly／
     DaisySP ReverbSc／Soundpipe RevSC／Signalsmith Stretch，也不进入 Restoration、AI 或 Runtime。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
@@ -597,6 +598,13 @@ InferenceBackend
     的比例继续可拖动，底部 A/B 试听收敛为紧凑控制条。此切片只调整 presentation，不改变草稿、
     Undo/Redo、遮罩手势或 DSP 所有权，也不以更多全宽容器制造专业感。
 - **M4 Audio Space**：声音相册：时间、人物、地点、声音类型、Revisit。
+  - 聆听连续性首个切片（2026-08-12）：Catalog `20260812.3` 在用户状态中持久保存最近聆听时间
+    与 Original／源时间锚定的恢复位置，和 Like、评分、Analysis、Adjustment revision 分离；声音墙
+    增加“最近聆听”集合，卡片波形以克制的已听进度提示长期录音，检查器和单声音视图从同一位置
+    继续。只有真实播放满 3 秒才产生用户事实，播放中每约 5 秒及暂停／停止时做有界 checkpoint；
+    录音至少 60 秒、已听至少 10 秒且仍剩至少 10 秒并未超过 95% 时才保留恢复点，接近结尾自动
+    清空，但最近聆听事实继续存在。该状态不依赖 Infer Runtime，不把试听写入 AI 证据，也不改变
+    Original、处理方案或非破坏性编辑图。
   - 用户声音相册首个切片（2026-08-11）：Catalog 将用户相册与成员关系保存为独立 UserState
     事实，名称、封面声音、成员身份和修改时间不依赖可重建 Analysis。Audio Space 左侧把用户相册
     与 AI 建议相册分区呈现；用户可新建、重命名、删除相册，并从所选声音的浮动操作栏显式增删
