@@ -8,6 +8,7 @@ members = [
     "crates/echo-core",
     "crates/echo-desktop-bridge",
     "crates/echo-domain",
+    "crates/echo-ir",
     "xtask",
 ]
 resolver = "3"
@@ -30,6 +31,7 @@ echo-catalog = { path = "crates/echo-catalog" }
 echo-core = { path = "crates/echo-core" }
 echo-desktop-bridge = { path = "crates/echo-desktop-bridge" }
 echo-domain = { path = "crates/echo-domain" }
+echo-ir = { path = "crates/echo-ir" }
 echo-bridge = { path = "crates/echo-bridge" }
 rusqlite = { version = "0.40.1", features = ["bundled"] }
 serde = { version = "1.0.228", features = ["derive"] }

@@ -407,6 +407,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo-ir"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "echo-domain",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
