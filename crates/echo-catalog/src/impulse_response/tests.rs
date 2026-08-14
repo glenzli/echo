@@ -14,6 +14,7 @@ fn record() -> ImpulseResponseRecord {
         preparation_version: 1,
         source_sample_rate: 44_100,
         channel_count: 2,
+        layout: ImpulseResponseLayout::StereoParallel,
         source_frame_count: 22_050,
         prepared_frame_count: 24_000,
         avcodec_version: 1,
@@ -29,6 +30,53 @@ fn record() -> ImpulseResponseRecord {
             license_url: None,
         },
     }
+}
+
+#[test]
+fn true_stereo_layout_round_trips_and_invalid_shape_fails_before_publication() {
+    let path = std::env::temp_dir().join(format!(
+        "echo-true-stereo-catalog-{}.sqlite",
+        Uuid::now_v7()
+    ));
+    let catalog = crate::open_catalog(&path).expect("catalog");
+    let mut true_stereo = record();
+    true_stereo.import_id = Uuid::now_v7();
+    true_stereo.prepared_hash = content_hash('c');
+    true_stereo.prepared_size_bytes = 16_448;
+    true_stereo.preparation_version = 2;
+    true_stereo.channel_count = 4;
+    true_stereo.layout = ImpulseResponseLayout::TrueStereoLlLrRlRr;
+    catalog
+        .with_transaction(|transaction| record_impulse_response(transaction, &true_stereo))
+        .expect("record true stereo");
+    let restored = catalog
+        .with_transaction(list_impulse_responses)
+        .expect("list true stereo");
+    assert_eq!(restored, vec![true_stereo.clone()]);
+
+    let mut invalid = true_stereo;
+    invalid.import_id = Uuid::now_v7();
+    invalid.prepared_hash = content_hash('d');
+    invalid.preparation_version = 1;
+    assert!(
+        catalog
+            .with_transaction(|transaction| record_impulse_response(transaction, &invalid))
+            .is_err()
+    );
+    let count = catalog
+        .with_transaction(|transaction| {
+            transaction
+                .query_row(
+                    "SELECT COUNT(*) FROM impulse_response_preparations WHERE prepared_hash = ?1",
+                    [invalid.prepared_hash.to_string()],
+                    |row| row.get::<_, i64>(0),
+                )
+                .map_err(crate::CatalogError::from)
+        })
+        .expect("count invalid");
+    assert_eq!(count, 0);
+    drop(catalog);
+    let _ = std::fs::remove_file(path);
 }
 
 #[test]

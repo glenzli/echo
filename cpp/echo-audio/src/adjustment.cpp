@@ -1,5 +1,7 @@
 #include "echo/audio/adjustment.hpp"
 
+#include "echo/audio/freeze_vfx_processor.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -181,6 +183,13 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
     const DigitalDegradeVfxAdjustment& digital = creative.digital_degrade;
     const DriveVfxAdjustment& drive = creative.drive;
     const RotaryVfxAdjustment& rotary = creative.rotary;
+    const FreezeVfxAdjustment& freeze = creative.freeze;
+    const GranularVfxAdjustment& granular = creative.granular;
+    const double granular_pitch_ratio =
+        std::exp2(static_cast<double>(granular.pitch_cents) / 1200.0);
+    const double granular_required_history_millis =
+        static_cast<double>(granular.lookback_millis) + static_cast<double>(granular.scatter_millis)
+        + static_cast<double>(granular.grain_millis) * std::max(1.0, granular_pitch_ratio);
     return valid_transform_character(creative.transform.character)
            && creative.transform.mix_percent <= 100 && creative.transform.amount_percent <= 100
            && valid_digital_degrade_character(digital.character) && digital.mix_percent <= 100
@@ -191,7 +200,14 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
            && drive.drive_centibels <= 3600 && drive.tone_hertz >= 500 && drive.tone_hertz <= 16000
            && drive.output_gain_centibels >= -2400 && drive.output_gain_centibels <= 600
            && valid_rotary_speed(rotary.speed) && rotary.mix_percent <= 100
-           && rotary.motion_percent <= 100 && rotary.stereo_width_percent <= 100;
+           && rotary.motion_percent <= 100 && rotary.stereo_width_percent <= 100
+           && freeze.mix_percent <= 100 && (!freeze.enabled || freeze.capture_source_millis >= 86)
+           && granular.mix_percent <= 100 && granular.grain_millis >= 20
+           && granular.grain_millis <= 250 && granular.density_tenths_hertz >= 10
+           && granular.density_tenths_hertz <= 400 && granular.lookback_millis <= 1500
+           && granular.scatter_millis <= 750 && granular.pitch_cents >= -1200
+           && granular.pitch_cents <= 1200 && granular.stereo_spread_percent <= 100
+           && granular_required_history_millis <= 2000.0;
 }
 
 float evaluate_curve(float progress, FadeCurve curve) {
@@ -340,6 +356,22 @@ PreparedAdjustment::PreparedAdjustment(
     }
     if (!valid_creative_vfx(authored.creative_vfx)) {
         throw std::invalid_argument("adjustment creative VFX is outside the supported range");
+    }
+
+    if (authored.creative_vfx.freeze.enabled) {
+        const std::uint64_t capture_frame =
+            milliseconds_to_frames(authored.creative_vfx.freeze.capture_source_millis, sample_rate);
+        const std::uint64_t trim_start_frame =
+            milliseconds_to_frames(authored.trim_start_millis, sample_rate);
+        const std::uint64_t trim_end_frame =
+            milliseconds_to_frames(authored.trim_end_millis, sample_rate);
+        if (capture_frame < trim_start_frame
+            || capture_frame - trim_start_frame < FreezeVfxProcessor::latency_frames()
+            || capture_frame >= trim_end_frame) {
+            throw std::invalid_argument(
+                "freeze capture requires 4096 reachable source frames inside the trim"
+            );
+        }
     }
 
     trim_start_millis_ = authored.trim_start_millis;

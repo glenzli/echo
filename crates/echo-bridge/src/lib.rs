@@ -75,8 +75,20 @@ mod ffi {
         fn prepare_impulse_response_bridge(
             source_path: &str,
             output_path: &str,
+            layout: u8,
         ) -> Result<FfiPreparedImpulseResponse>;
     }
+}
+
+/// Explicit interpretation requested for one source WAV.
+///
+/// Four-channel WAV files are never inferred to be true stereo. The caller
+/// must opt into the frozen LL/LR/RL/RR plane contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ImpulseResponsePreparationLayout {
+    MonoOrStereo = 0,
+    TrueStereoLlLrRlRr = 1,
 }
 
 /// Evidence for one canonical 48 kHz impulse-response artifact.
@@ -92,11 +104,8 @@ pub struct PreparedImpulseResponse {
     pub size_bytes: u64,
 }
 
-/// Validates a bounded local WAV and writes canonical planar float32 at 48 kHz.
-///
-/// The output is a versioned portable preparation artifact, not a runtime FFT
-/// bank. The caller supplies a temporary output path and publishes it only
-/// after hashing and source-identity checks succeed.
+/// Validates a mono or stereo local WAV and writes canonical planar float32
+/// at 48 kHz using the stable v1 preparation contract.
 ///
 /// # Errors
 ///
@@ -106,9 +115,32 @@ pub fn prepare_impulse_response(
     source: &Path,
     output: &Path,
 ) -> Result<PreparedImpulseResponse, BridgeError> {
+    prepare_impulse_response_with_layout(
+        source,
+        output,
+        ImpulseResponsePreparationLayout::MonoOrStereo,
+    )
+}
+
+/// Validates a bounded local WAV under an explicit plane interpretation and
+/// writes canonical planar float32 at 48 kHz.
+///
+/// The output is a versioned portable preparation artifact, not a runtime FFT
+/// bank. The caller supplies a temporary output path and publishes it only
+/// after hashing and source-identity checks succeed.
+///
+/// # Errors
+///
+/// Returns [`BridgeErrorKind::EngineRejected`] for unsupported WAV structure,
+/// sample layout, duration, non-finite/silent content, or I/O failures.
+pub fn prepare_impulse_response_with_layout(
+    source: &Path,
+    output: &Path,
+    layout: ImpulseResponsePreparationLayout,
+) -> Result<PreparedImpulseResponse, BridgeError> {
     let source = native_path(source)?;
     let output = native_path(output)?;
-    let wire = ffi::prepare_impulse_response_bridge(&source, &output)?;
+    let wire = ffi::prepare_impulse_response_bridge(&source, &output, layout as u8)?;
     Ok(PreparedImpulseResponse {
         preparation_version: wire.preparation_version,
         source_sample_rate: wire.source_sample_rate,

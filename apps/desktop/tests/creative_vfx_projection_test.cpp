@@ -60,6 +60,22 @@ int main() {
         .motion_percent = 74,
         .stereo_width_percent = 91,
     };
+    authored.freeze = {
+        .enabled = true,
+        .mix_percent = 66,
+        .capture_source_millis = 2400,
+    };
+    authored.granular = {
+        .enabled = true,
+        .mix_percent = 58,
+        .grain_millis = 95,
+        .density_tenths_hertz = 175,
+        .lookback_millis = 320,
+        .scatter_millis = 180,
+        .pitch_cents = -350,
+        .stereo_spread_percent = 73,
+        .random_seed = 0x12345678U,
+    };
 
     const QVariantMap qml = CreativeVfxProjection::toQml(authored);
     const auto from_qml = CreativeVfxProjection::fromQml(qml);
@@ -73,17 +89,36 @@ int main() {
     assert(from_qml->drive.drive_centibels == 2450);
     assert(from_qml->rotary.speed == echo::audio::RotaryVfxSpeed::Fast);
     assert(from_qml->rotary.stereo_width_percent == 91);
+    assert(from_qml->freeze.capture_source_millis == 2400);
+    assert(from_qml->granular.pitch_cents == -350);
+    assert(from_qml->granular.random_seed == 0x12345678U);
 
     const QByteArray encoded = CreativeVfxProjection::toJson(authored);
     const QJsonObject json = QJsonDocument::fromJson(encoded).object();
-    assert(json.value(QStringLiteral("scene")).toObject().value(QStringLiteral("character"))
-           == QStringLiteral("underwater"));
+    assert(
+        json.value(QStringLiteral("scene")).toObject().value(QStringLiteral("character"))
+        == QStringLiteral("underwater")
+    );
     assert(json.value(QStringLiteral("scene")).toObject().contains(QStringLiteral("mix_percent")));
     assert(!json.value(QStringLiteral("scene")).toObject().contains(QStringLiteral("mixPercent")));
-    assert(json.value(QStringLiteral("drive")).toObject().value(QStringLiteral("character"))
-           == QStringLiteral("fuzz"));
-    assert(json.value(QStringLiteral("rotary")).toObject().value(QStringLiteral("speed"))
-           == QStringLiteral("fast"));
+    assert(
+        json.value(QStringLiteral("drive")).toObject().value(QStringLiteral("character"))
+        == QStringLiteral("fuzz")
+    );
+    assert(
+        json.value(QStringLiteral("rotary")).toObject().value(QStringLiteral("speed"))
+        == QStringLiteral("fast")
+    );
+    assert(
+        json.value(QStringLiteral("freeze"))
+            .toObject()
+            .value(QStringLiteral("capture_source_millis"))
+        == 2400
+    );
+    assert(
+        json.value(QStringLiteral("granular")).toObject().value(QStringLiteral("pitch_cents"))
+        == -350
+    );
     const auto from_json = CreativeVfxProjection::fromJson(encoded);
     assert(from_json.has_value());
     assert(CreativeVfxProjection::toJson(*from_json) == encoded);
@@ -109,4 +144,22 @@ int main() {
     assert(!defaults->digital_degrade.enabled);
     assert(!defaults->drive.enabled);
     assert(!defaults->rotary.enabled);
+    assert(!defaults->freeze.enabled);
+    assert(defaults->freeze.capture_source_millis == 100);
+    assert(!defaults->granular.enabled);
+
+    invalid = qml;
+    QVariantMap freeze = invalid.value(QStringLiteral("freeze")).toMap();
+    freeze.insert(QStringLiteral("captureSourceMillis"), 85);
+    invalid.insert(QStringLiteral("freeze"), freeze);
+    assert(!CreativeVfxProjection::fromQml(invalid).has_value());
+
+    invalid = qml;
+    QVariantMap granular = invalid.value(QStringLiteral("granular")).toMap();
+    granular.insert(QStringLiteral("lookbackMillis"), 1500);
+    granular.insert(QStringLiteral("scatterMillis"), 750);
+    granular.insert(QStringLiteral("grainMillis"), 250);
+    granular.insert(QStringLiteral("pitchCents"), 1200);
+    invalid.insert(QStringLiteral("granular"), granular);
+    assert(!CreativeVfxProjection::fromQml(invalid).has_value());
 }

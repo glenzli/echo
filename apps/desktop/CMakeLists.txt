@@ -169,6 +169,8 @@ qt_add_qml_module(
         qml/DelayVfxPanel.qml
         qml/DigitalDegradeVfxPanel.qml
         qml/DriveVfxPanel.qml
+        qml/FreezeVfxPanel.qml
+        qml/GranularVfxPanel.qml
         qml/ModulationVfxPanel.qml
         qml/TransformVfxPanel.qml
         qml/RotaryVfxPanel.qml

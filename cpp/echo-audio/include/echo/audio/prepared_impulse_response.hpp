@@ -6,6 +6,12 @@
 
 namespace echo::audio {
 
+enum class PreparedImpulseLayout : std::uint8_t {
+    Mono = 0,
+    StereoParallel = 1,
+    TrueStereoLlLrRlRr = 2,
+};
+
 /// Fully validated planar samples ready for offline runtime-bank construction.
 ///
 /// This owner reads the portable preparation artifact only. Content-addressed
@@ -17,12 +23,20 @@ struct LoadedPreparedImpulseResponse {
     std::uint64_t source_frame_count = 0;
     std::uint32_t avcodec_version = 0;
     std::uint32_t swresample_version = 0;
+    PreparedImpulseLayout layout = PreparedImpulseLayout::Mono;
+    /// LL for stereo layouts, or the shared diagonal impulse for Mono.
     std::vector<float> left;
+    /// RR for stereo layouts. Empty for Mono.
     std::vector<float> right;
+    /// L input -> R output. Present only for TrueStereoLlLrRlRr.
+    std::vector<float> left_to_right;
+    /// R input -> L output. Present only for TrueStereoLlLrRlRr.
+    std::vector<float> right_to_left;
 };
 
-/// Loads one exact v1 `ECHOIR01` artifact and rejects malformed, truncated,
-/// non-finite, silent, non-48 kHz, or unsupported-layout data.
+/// Loads one exact `ECHOIR01` artifact: v1 mono/stereo-parallel or v2
+/// true-stereo LL/LR/RL/RR. Other version/channel combinations and malformed,
+/// truncated, non-finite, silent, or non-48 kHz data are rejected.
 ///
 /// This is a worker-thread operation and may allocate.
 ///

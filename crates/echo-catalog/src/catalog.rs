@@ -18,16 +18,18 @@ use crate::{
         DELIVERY_FORMATS_MIGRATION_SQL, DETERMINISTIC_VFX_SCHEMA_VERSION,
         DRIVE_ROTARY_SCHEMA_VERSION, EARLIEST_COMPATIBLE_SCHEMA_VERSION,
         EDITABLE_EFFECT_CHAIN_SCHEMA_VERSION, EFFECT_CHAIN_MIGRATION_SQL,
-        FIXED_EFFECT_CHAIN_SCHEMA_VERSION, INITIAL_COMPATIBLE_SCHEMA_VERSION,
-        LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL, LISTENING_STATE_SCHEMA_VERSION,
-        LONG_AUDIO_MIGRATION_SQL, METADATA_CALIBRATION_MIGRATION_SQL,
+        FIXED_EFFECT_CHAIN_SCHEMA_VERSION, FREEZE_GRANULAR_SCHEMA_VERSION,
+        INITIAL_COMPATIBLE_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, LISTENING_STATE_MIGRATION_SQL,
+        LISTENING_STATE_SCHEMA_VERSION, LONG_AUDIO_MIGRATION_SQL,
+        METADATA_CALIBRATION_MIGRATION_SQL, METADATA_CALIBRATION_SCHEMA_VERSION,
         OLDER_COMPATIBLE_SCHEMA_VERSION, OLDEST_COMPATIBLE_SCHEMA_VERSION, PREVIOUS_SCHEMA_VERSION,
         PRIMITIVE_COMPATIBLE_SCHEMA_VERSION, PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL,
         PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION, PROCESSING_RECIPES_MIGRATION_SQL,
         PROCESSING_RECIPES_SCHEMA_VERSION, RENDER_EXPORTS_MIGRATION_SQL,
         RESTORATION_CHAIN_MIGRATION_SQL, RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY,
         SCHEMA_SQL, SCHEMA_VERSION, SEMANTIC_SEARCH_MIGRATION_SQL, SOURCE_EDIT_MIGRATION_SQL,
-        SOURCE_EDIT_SCHEMA_VERSION, SPACE_CHARACTERS_SCHEMA_VERSION, USER_ALBUMS_MIGRATION_SQL,
+        SOURCE_EDIT_SCHEMA_VERSION, SPACE_CHARACTERS_SCHEMA_VERSION, TRUE_STEREO_IR_MIGRATION_SQL,
+        USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -95,6 +97,20 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1)",
                 [SCHEMA_IDENTITY.to_string()],
             )?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == FREEZE_GRANULAR_SCHEMA_VERSION) =>
+        {
+            migrate_true_stereo_ir_schema(connection)?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == METADATA_CALIBRATION_SCHEMA_VERSION) =>
+        {
+            migrate_freeze_granular_vfx_schema(connection)?;
         }
         Some(version)
             if version
@@ -274,6 +290,24 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
 
 fn migrate_metadata_calibration_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn migrate_true_stereo_ir_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_true_stereo_ir_migration(&transaction)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn migrate_freeze_granular_vfx_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    // Freeze, Granular, and their two stable chain-tail nodes are
+    // backward-readable JSON additions. Keep authored revision bytes intact;
+    // this dated boundary only prevents older binaries from dropping intent.
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -507,6 +541,8 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
     apply_source_edit_migration(transaction)?;
     apply_processing_recipes_migration(transaction)?;
     apply_processing_recipe_management_migration(transaction)?;
+    apply_convolution_space_migration(transaction)?;
+    apply_true_stereo_ir_migration(transaction)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],
@@ -516,6 +552,69 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_convolution_space_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let space_column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('asset_adjustment_revisions') \
+         WHERE name = 'space_json'",
+        [],
+        |row| row.get(0),
+    )?;
+    let table_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN \
+         ('impulse_response_sources', 'impulse_response_preparations', \
+          'impulse_response_imports')",
+        [],
+        |row| row.get(0),
+    )?;
+    match (space_column_count, table_count) {
+        (0, 0) => transaction.execute_batch(CONVOLUTION_SPACE_MIGRATION_SQL)?,
+        (1, 3) => {}
+        _ => {
+            return Err(CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                "catalog has a partial convolution-space schema".to_owned(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn apply_true_stereo_ir_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let layout_column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('impulse_response_preparations') \
+         WHERE name = 'layout_kind'",
+        [],
+        |row| row.get(0),
+    )?;
+    if layout_column_count == 1 {
+        return Ok(());
+    }
+    if layout_column_count != 0 {
+        return Err(CatalogError::new(
+            CatalogErrorKind::SchemaMismatch,
+            "catalog has an ambiguous impulse-response layout schema".to_owned(),
+        ));
+    }
+    let invalid_preparations: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM impulse_response_preparations WHERE NOT \
+         (preparation_version = 1 AND channel_count IN (1, 2))",
+        [],
+        |row| row.get(0),
+    )?;
+    if invalid_preparations != 0 {
+        return Err(CatalogError::new(
+            CatalogErrorKind::SchemaMismatch,
+            "legacy impulse-response preparation cannot be assigned a layout".to_owned(),
+        ));
+    }
+    transaction.execute_batch(TRUE_STEREO_IR_MIGRATION_SQL)?;
     Ok(())
 }
 

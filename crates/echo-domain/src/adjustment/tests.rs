@@ -141,26 +141,6 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     ])
     .expect("valid reorder");
     assert!(reordered.is_valid());
-    assert_eq!(EffectNodeKind::Space.wire_value(), 3);
-    assert_eq!(EffectNodeKind::DeHum.wire_value(), 5);
-    assert_eq!(EffectNodeKind::DeClick.wire_value(), 6);
-    assert_eq!(EffectNodeKind::ChannelRepair.wire_value(), 7);
-    assert_eq!(EffectNodeKind::SceneVfx.wire_value(), 8);
-    assert_eq!(EffectNodeKind::DelayVfx.wire_value(), 9);
-    assert_eq!(EffectNodeKind::ModulationVfx.wire_value(), 10);
-    assert_eq!(EffectNodeKind::TransformVfx.wire_value(), 11);
-    assert_eq!(EffectNodeKind::DigitalDegradeVfx.wire_value(), 12);
-    assert_eq!(EffectNodeKind::DriveVfx.wire_value(), 13);
-    assert_eq!(EffectNodeKind::RotaryVfx.wire_value(), 14);
-    assert_eq!(EFFECT_NODE_COUNT, 15);
-    assert_eq!(
-        EffectNodeKind::from_wire_value(3),
-        Ok(EffectNodeKind::Space)
-    );
-    assert_eq!(
-        EffectNodeKind::from_wire_value(15),
-        Err(EffectNodeKindValueError)
-    );
 
     assert_eq!(
         EffectChain::new([
@@ -200,7 +180,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
     let encoded_value: serde_json::Value =
         serde_json::from_str(&encoded).expect("encoded chain is JSON");
-    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(15));
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(17));
     assert_eq!(encoded_value["active_count"], 3);
     let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
     assert_eq!(decoded, reduced);
@@ -224,7 +204,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]
     );
     let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(15));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(17));
     assert_eq!(normalized["active_count"], 3);
 
     assert_eq!(
@@ -236,6 +216,33 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
             EffectNodeKind::Space,
             EffectNodeKind::Master,
         ]
+    );
+}
+
+#[test]
+fn effect_node_wire_values_append_freeze_and_granular_without_renumbering() {
+    for (node, expected) in [
+        (EffectNodeKind::Space, 3),
+        (EffectNodeKind::DeHum, 5),
+        (EffectNodeKind::DeClick, 6),
+        (EffectNodeKind::ChannelRepair, 7),
+        (EffectNodeKind::SceneVfx, 8),
+        (EffectNodeKind::DelayVfx, 9),
+        (EffectNodeKind::ModulationVfx, 10),
+        (EffectNodeKind::TransformVfx, 11),
+        (EffectNodeKind::DigitalDegradeVfx, 12),
+        (EffectNodeKind::DriveVfx, 13),
+        (EffectNodeKind::RotaryVfx, 14),
+        (EffectNodeKind::FreezeVfx, 15),
+        (EffectNodeKind::GranularVfx, 16),
+    ] {
+        assert_eq!(node.wire_value(), expected);
+        assert_eq!(EffectNodeKind::from_wire_value(expected), Ok(node));
+    }
+    assert_eq!(EFFECT_NODE_COUNT, 17);
+    assert_eq!(
+        EffectNodeKind::from_wire_value(17),
+        Err(EffectNodeKindValueError)
     );
 }
 
@@ -263,6 +270,50 @@ fn thirteen_node_chain_json_migrates_with_drive_and_rotary_tail() {
     let restored: EffectChain = serde_json::from_value(stored).expect("legacy chain decodes");
     assert!(restored.is_valid());
     assert_eq!(restored.nodes(), EffectChain::standard().nodes());
+}
+
+#[test]
+fn fifteen_node_chain_json_migrates_with_disabled_freeze_and_granular_tail() {
+    let mut stored = serde_json::to_value(EffectChain::standard()).expect("chain encodes");
+    stored["nodes"]
+        .as_array_mut()
+        .expect("nodes array")
+        .truncate(15);
+    let restored: EffectChain = serde_json::from_value(stored).expect("legacy chain decodes");
+    assert!(restored.is_valid());
+    assert_eq!(restored.nodes(), EffectChain::standard().nodes());
+    let normalized = serde_json::to_value(restored).expect("normalized chain encodes");
+    let nodes = normalized["nodes"].as_array().expect("nodes array");
+    assert_eq!(nodes.len(), 17);
+    assert_eq!(nodes[15], "freeze_vfx");
+    assert_eq!(nodes[16], "granular_vfx");
+}
+
+#[test]
+fn enabled_freeze_anchor_requires_rebuildable_trim_pre_roll() {
+    let graph_for_anchor = |capture_source_millis| {
+        let mut creative_vfx = CreativeVfxSettings::default();
+        creative_vfx.freeze.enabled = true;
+        creative_vfx.freeze.capture_source_millis = capture_source_millis;
+        AdjustmentGraph::new(
+            6_000,
+            1_000,
+            5_000,
+            0,
+            0,
+            AdjustmentEffects::default().with_creative_vfx(creative_vfx),
+        )
+    };
+
+    assert!(graph_for_anchor(1_086).is_ok());
+    assert_eq!(
+        graph_for_anchor(1_085),
+        Err(AdjustmentGraphError::FreezeAnchorOutOfRange)
+    );
+    assert_eq!(
+        graph_for_anchor(5_000),
+        Err(AdjustmentGraphError::FreezeAnchorOutOfRange)
+    );
 }
 
 #[test]

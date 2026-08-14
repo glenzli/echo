@@ -68,6 +68,8 @@ mod ffi {
         imported_at_millis: u64,
         source_sample_rate: u32,
         channel_count: u32,
+        layout_kind: String,
+        preparation_version: u32,
         prepared_frame_count: u64,
     }
 
@@ -588,6 +590,20 @@ mod ffi {
             spdx_expression: &str,
             license_url: &str,
         ) -> Result<ImpulseResponseWire>;
+        /// Imports one local WAV under an explicit preparation layout.
+        #[allow(clippy::too_many_arguments)]
+        fn session_import_impulse_response_with_layout(
+            self: &LibrarySession,
+            source_path: &str,
+            preparation_layout: &str,
+            display_name: &str,
+            creator: &str,
+            source_url: &str,
+            attribution: &str,
+            rights_kind: &str,
+            spdx_expression: &str,
+            license_url: &str,
+        ) -> Result<ImpulseResponseWire>;
         /// Returns the waveform artifact for an asset, building and caching
         /// it when absent.
         fn session_waveform_artifact(
@@ -894,6 +910,33 @@ impl LibrarySession {
     ) -> Result<ffi::ImpulseResponseWire, String> {
         self.import_impulse_response(
             source_path,
+            display_name,
+            creator,
+            source_url,
+            attribution,
+            rights_kind,
+            spdx_expression,
+            license_url,
+        )
+        .map_err(|error| error.to_string())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn session_import_impulse_response_with_layout(
+        &self,
+        source_path: &str,
+        preparation_layout: &str,
+        display_name: &str,
+        creator: &str,
+        source_url: &str,
+        attribution: &str,
+        rights_kind: &str,
+        spdx_expression: &str,
+        license_url: &str,
+    ) -> Result<ffi::ImpulseResponseWire, String> {
+        self.import_impulse_response_with_layout(
+            source_path,
+            preparation_layout,
             display_name,
             creator,
             source_url,

@@ -37,6 +37,11 @@ Rectangle {
         return -1;
     }
 
+    function selectedImpulseLayout(): string {
+        const index = selectedImpulseIndex();
+        return index >= 0 ? String(impulseResponses[index].layoutKind || "") : "";
+    }
+
     function activateSpaceMode(index: int): void {
         if (index === 0) {
             draft.setSpaceMode(0);
@@ -358,7 +363,8 @@ Rectangle {
                         return "";
                     const value = panel.impulseResponses[impulseSelector.currentIndex];
                     const rights = value.rightsKind === "spdx" ? value.spdxExpression : qsTr("User-owned · no redistribution");
-                    return [value.creator, rights, value.attribution].filter(part => String(part || "").length > 0).join(" · ");
+                    const layout = value.layoutKind === "true_stereo_ll_lr_rl_rr" ? qsTr("True stereo · LL / LR / RL / RR") : value.layoutKind === "stereo_parallel" ? qsTr("Stereo parallel") : qsTr("Mono");
+                    return [layout, value.creator, rights, value.attribution].filter(part => String(part || "").length > 0).join(" · ");
                 }
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontMeta

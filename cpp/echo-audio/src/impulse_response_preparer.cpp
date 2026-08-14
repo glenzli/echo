@@ -29,6 +29,7 @@ constexpr std::uint16_t kWaveFormatIeeeFloat = 0x0003;
 constexpr std::uint16_t kWaveFormatExtensible = 0xfffe;
 constexpr std::uint32_t kMonoChannelMask = 0x00000004;
 constexpr std::uint32_t kStereoChannelMask = 0x00000003;
+constexpr std::uint32_t kQuadChannelMask = 0x00000033;
 
 [[noreturn]] void fail(const std::string& message) {
     throw std::runtime_error(message);
@@ -70,6 +71,7 @@ struct WavContract {
     std::uint16_t container_bits = 0;
     std::uint16_t valid_bits = 0;
     std::uint32_t sample_rate = 0;
+    std::uint32_t channel_mask = 0;
 };
 
 bool has_wave_subtype_suffix(const std::array<std::uint8_t, 40>& bytes) {
@@ -90,7 +92,11 @@ bool has_wave_subtype_suffix(const std::array<std::uint8_t, 40>& bytes) {
     return std::equal(suffix.begin(), suffix.end(), bytes.begin() + 28);
 }
 
-WavContract parse_format_chunk(const std::array<std::uint8_t, 40>& bytes, std::uint32_t size) {
+WavContract parse_format_chunk(
+    const std::array<std::uint8_t, 40>& bytes,
+    std::uint32_t size,
+    ImpulseResponsePreparationLayout layout
+) {
     if (size < 16U) {
         fail("WAV format chunk is truncated");
     }
@@ -105,8 +111,13 @@ WavContract parse_format_chunk(const std::array<std::uint8_t, 40>& bytes, std::u
     const std::uint32_t byte_rate = read_u32(bytes.data() + 8);
     const std::uint16_t block_align = read_u16(bytes.data() + 12);
 
-    if (contract.channel_count != 1U && contract.channel_count != 2U) {
-        fail("impulse response WAV must be mono or stereo");
+    const bool true_stereo = layout == ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr;
+    if ((!true_stereo && contract.channel_count != 1U && contract.channel_count != 2U)
+        || (true_stereo && contract.channel_count != 4U)) {
+        fail(
+            true_stereo ? "true-stereo impulse response WAV must have four channels"
+                        : "impulse response WAV must be mono or stereo"
+        );
     }
     if (contract.sample_rate < kMinimumSourceSampleRate
         || contract.sample_rate > kMaximumSourceSampleRate) {
@@ -118,7 +129,7 @@ WavContract parse_format_chunk(const std::array<std::uint8_t, 40>& bytes, std::u
             fail("invalid WAVE_FORMAT_EXTENSIBLE header");
         }
         contract.valid_bits = read_u16(bytes.data() + 18);
-        const std::uint32_t channel_mask = read_u32(bytes.data() + 20);
+        contract.channel_mask = read_u32(bytes.data() + 20);
         const std::uint32_t subtype = read_u32(bytes.data() + 24);
         if (subtype == kWaveFormatPcm) {
             contract.floating_point = false;
@@ -127,13 +138,16 @@ WavContract parse_format_chunk(const std::array<std::uint8_t, 40>& bytes, std::u
         } else {
             fail("compressed WAVE_FORMAT_EXTENSIBLE sources are not supported");
         }
-        const std::uint32_t expected_mask =
-            contract.channel_count == 1U ? kMonoChannelMask : kStereoChannelMask;
-        if (channel_mask != expected_mask) {
+        const std::uint32_t expected_mask = contract.channel_count == 1U   ? kMonoChannelMask
+                                            : contract.channel_count == 2U ? kStereoChannelMask
+                                                                           : kQuadChannelMask;
+        if (contract.channel_mask != expected_mask) {
             fail("WAVE_FORMAT_EXTENSIBLE channel mask is ambiguous or unsupported");
         }
     } else if (format_tag != kWaveFormatPcm && format_tag != kWaveFormatIeeeFloat) {
         fail("impulse response WAV must contain uncompressed PCM or IEEE float samples");
+    } else if (true_stereo) {
+        fail("true-stereo impulse response WAV must use WAVE_FORMAT_EXTENSIBLE");
     }
 
     const bool accepted_integer_bits =
@@ -156,7 +170,7 @@ WavContract parse_format_chunk(const std::array<std::uint8_t, 40>& bytes, std::u
     return contract;
 }
 
-WavContract inspect_wav_contract(const std::string& path) {
+WavContract inspect_wav_contract(const std::string& path, ImpulseResponsePreparationLayout layout) {
     const std::uint64_t file_size = std::filesystem::file_size(path);
     if (file_size < 12U || file_size > kMaximumSourceBytes) {
         fail("impulse response source must be a non-empty RIFF/WAVE no larger than 32 MiB");
@@ -197,7 +211,7 @@ WavContract inspect_wav_contract(const std::string& path) {
             const std::size_t bytes_to_read =
                 std::min<std::size_t>(format.size(), static_cast<std::size_t>(chunk_size));
             read_exact(input, format.data(), bytes_to_read);
-            return parse_format_chunk(format, chunk_size);
+            return parse_format_chunk(format, chunk_size, layout);
         }
         cursor = data_start + padded_size;
     }
@@ -252,6 +266,11 @@ void validate_decoder_contract(const AVCodecParameters& parameters, const WavCon
         || parameters.ch_layout.nb_channels != static_cast<int>(contract.channel_count)) {
         fail("decoded WAV stream does not match its RIFF format contract");
     }
+    if (contract.channel_count == 4U
+        && (parameters.ch_layout.order != AV_CHANNEL_ORDER_NATIVE
+            || parameters.ch_layout.u.mask != kQuadChannelMask)) {
+        fail("decoded true-stereo WAV does not preserve its quad transport layout");
+    }
     if (contract.floating_point) {
         if (parameters.codec_id != AV_CODEC_ID_PCM_F32LE) {
             fail("WAV float32 contract decoded as an unexpected codec");
@@ -271,14 +290,14 @@ void validate_decoder_contract(const AVCodecParameters& parameters, const WavCon
 }
 
 struct DecodedImpulseResponse {
-    std::array<std::vector<float>, 2> channels;
+    std::array<std::vector<float>, 4> channels;
     std::uint64_t source_frame_count = 0;
     bool has_nonzero_sample = false;
 };
 
 void append_resampled(
     DecodedImpulseResponse& decoded,
-    const std::array<std::vector<float>, 2>& output,
+    const std::array<std::vector<float>, 4>& output,
     int converted,
     std::uint16_t channel_count
 ) {
@@ -313,8 +332,8 @@ void convert_frame(
     if (capacity < 0) {
         fail("cannot determine IR resampler output capacity");
     }
-    std::array<std::vector<float>, 2> output;
-    std::array<std::uint8_t*, 2> planes{};
+    std::array<std::vector<float>, 4> output;
+    std::array<std::uint8_t*, 4> planes{};
     for (std::size_t channel = 0; channel < channel_count; ++channel) {
         output[channel].resize(static_cast<std::size_t>(capacity));
         planes[channel] = reinterpret_cast<std::uint8_t*>(output[channel].data());
@@ -340,8 +359,8 @@ void flush_resampler(
         if (capacity <= 0) {
             break;
         }
-        std::array<std::vector<float>, 2> output;
-        std::array<std::uint8_t*, 2> planes{};
+        std::array<std::vector<float>, 4> output;
+        std::array<std::uint8_t*, 4> planes{};
         for (std::size_t channel = 0; channel < channel_count; ++channel) {
             output[channel].resize(static_cast<std::size_t>(capacity));
             planes[channel] = reinterpret_cast<std::uint8_t*>(output[channel].data());
@@ -393,7 +412,14 @@ decode_impulse_response(const std::string& path, const WavContract& contract) {
     );
 
     AVChannelLayout output_layout{};
-    av_channel_layout_default(&output_layout, static_cast<int>(contract.channel_count));
+    if (contract.channel_count == 4U) {
+        require_av(
+            av_channel_layout_from_mask(&output_layout, kQuadChannelMask),
+            "cannot construct true-stereo transport layout"
+        );
+    } else {
+        av_channel_layout_default(&output_layout, static_cast<int>(contract.channel_count));
+    }
     SwrContext* raw_resampler = nullptr;
     const int allocation_result = swr_alloc_set_opts2(
         &raw_resampler,
@@ -472,8 +498,10 @@ decode_impulse_response(const std::string& path, const WavContract& contract) {
     if (!decoded.has_nonzero_sample) {
         fail("impulse response WAV is digital silence");
     }
-    if (contract.channel_count == 2U && decoded.channels[0].size() != decoded.channels[1].size()) {
-        fail("prepared stereo impulse response channel lengths differ");
+    for (std::size_t channel = 1; channel < contract.channel_count; ++channel) {
+        if (decoded.channels[0].size() != decoded.channels[channel].size()) {
+            fail("prepared impulse response channel lengths differ");
+        }
     }
     return decoded;
 }
@@ -500,7 +528,8 @@ void write_float(std::ostream& output, float value) {
 std::uint64_t write_prepared_artifact(
     const std::string& output_path,
     const WavContract& contract,
-    const DecodedImpulseResponse& decoded
+    const DecodedImpulseResponse& decoded,
+    std::uint32_t preparation_version
 ) {
     const std::uint64_t frame_count = decoded.channels[0].size();
     const std::uint64_t sample_count = frame_count * contract.channel_count;
@@ -512,7 +541,7 @@ std::uint64_t write_prepared_artifact(
     }
     output.write("ECHOIR01", 8);
     write_u32(output, kPreparedImpulseResponseHeaderBytes);
-    write_u32(output, kPreparedImpulseResponseVersion);
+    write_u32(output, preparation_version);
     write_u32(output, kPreparedImpulseResponseSampleRate);
     write_u32(output, contract.channel_count);
     write_u64(output, frame_count);
@@ -536,16 +565,28 @@ std::uint64_t write_prepared_artifact(
 
 } // namespace
 
-PreparedImpulseResponseResult
-prepare_impulse_response(const std::string& source_path, const std::string& output_path) {
+PreparedImpulseResponseResult prepare_impulse_response(
+    const std::string& source_path,
+    const std::string& output_path,
+    ImpulseResponsePreparationLayout layout
+) {
     if (source_path.empty() || output_path.empty() || source_path == output_path) {
         fail("impulse response preparation requires distinct non-empty paths");
     }
-    const WavContract contract = inspect_wav_contract(source_path);
+    if (layout != ImpulseResponsePreparationLayout::AutoMonoOrStereo
+        && layout != ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr) {
+        fail("impulse response preparation layout is unsupported");
+    }
+    const std::uint32_t preparation_version =
+        layout == ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+            ? kPreparedTrueStereoImpulseResponseVersion
+            : kPreparedImpulseResponseVersion;
+    const WavContract contract = inspect_wav_contract(source_path, layout);
     const DecodedImpulseResponse decoded = decode_impulse_response(source_path, contract);
-    const std::uint64_t size_bytes = write_prepared_artifact(output_path, contract, decoded);
+    const std::uint64_t size_bytes =
+        write_prepared_artifact(output_path, contract, decoded, preparation_version);
     return PreparedImpulseResponseResult{
-        .preparation_version = kPreparedImpulseResponseVersion,
+        .preparation_version = preparation_version,
         .source_sample_rate = contract.sample_rate,
         .channel_count = contract.channel_count,
         .source_frame_count = decoded.source_frame_count,

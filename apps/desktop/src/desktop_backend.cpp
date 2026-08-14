@@ -70,6 +70,10 @@ QVariantMap impulseResponseForQml(const echo::desktop::ImpulseResponseWire& wire
     value.insert(QStringLiteral("sourceSampleRate"), static_cast<int>(wire.source_sample_rate));
     value.insert(QStringLiteral("channelCount"), static_cast<int>(wire.channel_count));
     value.insert(
+        QStringLiteral("layoutKind"),
+        QString::fromUtf8(wire.layout_kind.data(), wire.layout_kind.size())
+    );
+    value.insert(
         QStringLiteral("preparedFrameCount"),
         static_cast<qlonglong>(wire.prepared_frame_count)
     );
@@ -783,6 +787,36 @@ QVariantMap DesktopBackend::importImpulseResponse(
         return impulseResponseForQml(wire);
     } catch (const rust::Error& error) {
         qWarning("cannot import impulse response: %s", error.what());
+        return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
+    }
+}
+
+QVariantMap DesktopBackend::importImpulseResponseWithLayout(
+    const QString& sourcePath,
+    const QString& preparationLayout,
+    const QString& displayName,
+    const QString& creator,
+    const QString& sourceUrl,
+    const QString& attribution,
+    const QString& rightsKind,
+    const QString& spdxExpression,
+    const QString& licenseUrl
+) const {
+    try {
+        const auto wire = session_->session_import_impulse_response_with_layout(
+            sourcePath.toStdString(),
+            preparationLayout.toStdString(),
+            displayName.toStdString(),
+            creator.toStdString(),
+            sourceUrl.toStdString(),
+            attribution.toStdString(),
+            rightsKind.toStdString(),
+            spdxExpression.toStdString(),
+            licenseUrl.toStdString()
+        );
+        return impulseResponseForQml(wire);
+    } catch (const rust::Error& error) {
+        qWarning("cannot import impulse response with layout: %s", error.what());
         return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
     }
 }

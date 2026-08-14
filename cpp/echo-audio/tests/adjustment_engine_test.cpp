@@ -104,7 +104,9 @@ int main() {
               echo::audio::EffectNodeKind::TransformVfx,
               echo::audio::EffectNodeKind::DigitalDegradeVfx,
               echo::audio::EffectNodeKind::DriveVfx,
-              echo::audio::EffectNodeKind::RotaryVfx},
+              echo::audio::EffectNodeKind::RotaryVfx,
+              echo::audio::EffectNodeKind::FreezeVfx,
+              echo::audio::EffectNodeKind::GranularVfx},
          .effect_chain_count = 3},
         10'000,
         48'000
@@ -149,6 +151,40 @@ int main() {
 
     rejected = false;
     try {
+        [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_freeze_anchor(
+            {.creative_vfx = {.freeze = {.enabled = true, .capture_source_millis = 85}}},
+            1'000,
+            48'000
+        );
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    rejected = false;
+    try {
+        [[maybe_unused]] const echo::audio::PreparedAdjustment unreachable_freeze_history(
+            {.trim_start_millis = 500,
+             .trim_end_millis = 1'000,
+             .creative_vfx = {.freeze = {.enabled = true, .capture_source_millis = 550}}},
+            1'000,
+            48'000
+        );
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    [[maybe_unused]] const echo::audio::PreparedAdjustment valid_inactive_freeze_intent(
+        {.trim_start_millis = 500,
+         .trim_end_millis = 1'000,
+         .creative_vfx = {.freeze = {.enabled = true, .capture_source_millis = 600}}},
+        1'000,
+        48'000
+    );
+
+    rejected = false;
+    try {
         [[maybe_unused]] const echo::audio::PreparedAdjustment invalid_chain(
             {.effect_chain =
                  {echo::audio::EffectNodeKind::Space,
@@ -165,7 +201,9 @@ int main() {
                   echo::audio::EffectNodeKind::TransformVfx,
                   echo::audio::EffectNodeKind::DigitalDegradeVfx,
                   echo::audio::EffectNodeKind::DriveVfx,
-                  echo::audio::EffectNodeKind::RotaryVfx}},
+                  echo::audio::EffectNodeKind::RotaryVfx,
+                  echo::audio::EffectNodeKind::FreezeVfx,
+                  echo::audio::EffectNodeKind::GranularVfx}},
             10'000,
             48'000
         );

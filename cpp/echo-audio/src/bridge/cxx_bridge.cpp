@@ -75,9 +75,23 @@ FfiAnalysisProxy build_analysis_proxy_bridge(
 }
 
 FfiPreparedImpulseResponse
-prepare_impulse_response_bridge(rust::Str source_path, rust::Str output_path) {
-    const audio::PreparedImpulseResponseResult result =
-        audio::prepare_impulse_response(std::string(source_path), std::string(output_path));
+prepare_impulse_response_bridge(rust::Str source_path, rust::Str output_path, uint8_t layout) {
+    audio::ImpulseResponsePreparationLayout preparation_layout;
+    switch (layout) {
+    case 0:
+        preparation_layout = audio::ImpulseResponsePreparationLayout::AutoMonoOrStereo;
+        break;
+    case 1:
+        preparation_layout = audio::ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr;
+        break;
+    default:
+        throw std::invalid_argument("impulse response preparation layout is unsupported");
+    }
+    const audio::PreparedImpulseResponseResult result = audio::prepare_impulse_response(
+        std::string(source_path),
+        std::string(output_path),
+        preparation_layout
+    );
     return FfiPreparedImpulseResponse{
         .preparation_version = result.preparation_version,
         .source_sample_rate = result.source_sample_rate,

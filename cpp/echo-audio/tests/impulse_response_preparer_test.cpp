@@ -159,6 +159,47 @@ std::string extensible_pcm24(std::uint32_t channel_mask) {
     return wav;
 }
 
+std::string extensible_true_stereo_pcm24(std::uint32_t channel_mask) {
+    constexpr std::uint32_t sample_rate = 48000;
+    constexpr std::uint16_t channels = 4;
+    constexpr std::uint32_t frames = 4;
+    constexpr std::uint32_t data_bytes = frames * channels * 3U;
+    std::string wav;
+    wav.append("RIFF", 4);
+    append_u32(wav, 60U + data_bytes);
+    wav.append("WAVEfmt ", 8);
+    append_u32(wav, 40);
+    append_u16(wav, 0xfffe);
+    append_u16(wav, channels);
+    append_u32(wav, sample_rate);
+    append_u32(wav, sample_rate * channels * 3U);
+    append_u16(wav, channels * 3U);
+    append_u16(wav, 24);
+    append_u16(wav, 22);
+    append_u16(wav, 24);
+    append_u32(wav, channel_mask);
+    append_u32(wav, 1);
+    append_u16(wav, 0);
+    append_u16(wav, 0x0010);
+    wav.push_back(static_cast<char>(0x80));
+    wav.push_back(0);
+    wav.push_back(0);
+    wav.push_back(static_cast<char>(0xaa));
+    wav.push_back(0);
+    wav.push_back(static_cast<char>(0x38));
+    wav.push_back(static_cast<char>(0x9b));
+    wav.push_back(static_cast<char>(0x71));
+    wav.append("data", 4);
+    append_u32(wav, data_bytes);
+    for (std::uint32_t frame = 0; frame < frames; ++frame) {
+        append_u24(wav, frame == 0U ? 0x400000 : 0);  // LL
+        append_u24(wav, frame == 1U ? 0x300000 : 0);  // LR
+        append_u24(wav, frame == 2U ? -0x400000 : 0); // RL
+        append_u24(wav, frame == 3U ? -0x200000 : 0); // RR
+    }
+    return wav;
+}
+
 std::filesystem::path unique_path(const std::string& role) {
     const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
     return std::filesystem::temp_directory_path() / ("echo-ir-" + role + "-" + suffix);
@@ -175,13 +216,20 @@ std::string read_file(const std::filesystem::path& path) {
     return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
-void expect_rejected(const std::string& wav, const std::string& role) {
+void expect_rejected(
+    const std::string& wav,
+    const std::string& role,
+    echo::audio::ImpulseResponsePreparationLayout layout =
+        echo::audio::ImpulseResponsePreparationLayout::AutoMonoOrStereo
+) {
     const auto source = unique_path(role + ".wav");
     const auto output = unique_path(role + ".echoir");
     write_file(source, wav);
     bool rejected = false;
     try {
-        static_cast<void>(echo::audio::prepare_impulse_response(source.string(), output.string()));
+        static_cast<void>(
+            echo::audio::prepare_impulse_response(source.string(), output.string(), layout)
+        );
     } catch (const std::runtime_error&) {
         rejected = true;
     }
@@ -271,13 +319,74 @@ void stereo_planar_routing_and_extensible_pcm24_are_preserved() {
     std::filesystem::remove(output);
 }
 
+void explicit_true_stereo_layout_writes_stable_v2_ll_lr_rl_rr_planes() {
+    using echo::audio::ImpulseResponsePreparationLayout;
+    const auto source = unique_path("true-stereo.wav");
+    const auto output = unique_path("true-stereo.echoir");
+    const auto repeated_output = unique_path("true-stereo-repeated.echoir");
+    write_file(source, extensible_true_stereo_pcm24(0x00000033));
+    const auto result = echo::audio::prepare_impulse_response(
+        source.string(),
+        output.string(),
+        ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+    );
+    const auto repeated = echo::audio::prepare_impulse_response(
+        source.string(),
+        repeated_output.string(),
+        ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+    );
+    const std::string prepared = read_file(output);
+    assert(result == repeated);
+    assert(read_file(repeated_output) == prepared);
+    assert(result.preparation_version == 2);
+    assert(result.source_sample_rate == 48000);
+    assert(result.channel_count == 4);
+    assert(result.source_frame_count == 4);
+    assert(result.prepared_frame_count == 4);
+    assert(read_u32(prepared, 8) == 64);
+    assert(read_u32(prepared, 12) == 2);
+    assert(read_u32(prepared, 20) == 4);
+    assert(read_u64(prepared, 56) == 4U * 4U * sizeof(float));
+    const std::size_t plane_bytes = 4U * sizeof(float);
+    assert(std::abs(read_float(prepared, 64) - 0.5F) < 0.000001F);
+    assert(std::abs(read_float(prepared, 64 + plane_bytes + sizeof(float)) - 0.375F) < 0.000001F);
+    assert(
+        std::abs(read_float(prepared, 64 + 2U * plane_bytes + 2U * sizeof(float)) + 0.5F)
+        < 0.000001F
+    );
+    assert(
+        std::abs(read_float(prepared, 64 + 3U * plane_bytes + 3U * sizeof(float)) + 0.25F)
+        < 0.000001F
+    );
+    std::filesystem::remove(source);
+    std::filesystem::remove(output);
+    std::filesystem::remove(repeated_output);
+}
+
 void invalid_containers_formats_layouts_and_samples_fail_closed() {
+    using echo::audio::ImpulseResponsePreparationLayout;
     std::string rf64 = classic_pcm16(48000, 1, {1000});
     rf64.replace(0, 4, "RF64");
     expect_rejected(rf64, "rf64");
     expect_rejected(classic_pcm16(48000, 1, {1000}, 6), "compressed");
     expect_rejected(classic_pcm16(48000, 3, {1000, 0, 0}), "three-channel");
     expect_rejected(extensible_pcm24(0), "ambiguous-mask");
+    expect_rejected(extensible_true_stereo_pcm24(0x00000033), "implicit-true-stereo");
+    expect_rejected(
+        extensible_true_stereo_pcm24(0),
+        "true-stereo-ambiguous-mask",
+        ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+    );
+    expect_rejected(
+        classic_pcm16(48000, 4, {1000, 0, 0, 0}),
+        "classic-true-stereo",
+        ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+    );
+    expect_rejected(
+        extensible_pcm24(0x00000003),
+        "stereo-as-true-stereo",
+        ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+    );
     expect_rejected(classic_pcm16(48000, 1, std::vector<std::int16_t>(128, 0)), "silence");
     expect_rejected(
         classic_float32(48000, {0.5F, std::numeric_limits<float>::quiet_NaN()}),
@@ -325,6 +434,7 @@ void prepared_duration_is_bounded() {
 int main() {
     canonical_mono_resampling_and_header_are_stable();
     stereo_planar_routing_and_extensible_pcm24_are_preserved();
+    explicit_true_stereo_layout_writes_stable_v2_ll_lr_rl_rr_planes();
     accepted_pcm32_and_float32_decode_to_finite_canonical_samples();
     invalid_containers_formats_layouts_and_samples_fail_closed();
     prepared_duration_is_bounded();

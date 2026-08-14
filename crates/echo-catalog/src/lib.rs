@@ -75,7 +75,8 @@ pub use derived_artifact::{
 pub use error::CatalogError;
 pub use error::CatalogErrorKind;
 pub use impulse_response::{
-    ImpulseResponseRecord, ImpulseResponseRights, list_impulse_responses, record_impulse_response,
+    ImpulseResponseLayout, ImpulseResponseRecord, ImpulseResponseRights, list_impulse_responses,
+    record_impulse_response,
 };
 pub use inference_run::{
     InferenceRun, InferenceRunState, UpsertInferenceRun, inference_run, upsert_inference_run,

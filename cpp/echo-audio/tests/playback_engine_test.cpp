@@ -314,6 +314,8 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::DigitalDegradeVfx,
                     echo::audio::EffectNodeKind::DriveVfx,
                     echo::audio::EffectNodeKind::RotaryVfx,
+                    echo::audio::EffectNodeKind::FreezeVfx,
+                    echo::audio::EffectNodeKind::GranularVfx,
                 },
             .effect_chain_count = 10,
         };
@@ -385,6 +387,17 @@ int main(int argc, char* argv[]) {
             .mix_percent = 75,
             .bitcrusher = {.bit_depth = 9},
         };
+        first_creative_update.granular = {
+            .enabled = true,
+            .mix_percent = 55,
+            .grain_millis = 90,
+            .density_tenths_hertz = 140,
+            .lookback_millis = 220,
+            .scatter_millis = 80,
+            .pitch_cents = 250,
+            .stereo_spread_percent = 60,
+            .random_seed = 0x10203040U,
+        };
         auto latest_creative_update = first_creative_update;
         latest_creative_update.scene.character = echo::audio::SceneVfxCharacter::Underwater;
         latest_creative_update.delay.character = echo::audio::DelayVfxCharacter::Echo;
@@ -393,6 +406,30 @@ int main(int argc, char* argv[]) {
         latest_creative_update.digital_degrade.character =
             echo::audio::DigitalDegradeVfxCharacter::LoFi;
         latest_creative_update.digital_degrade.sample_rate_reduction.target_rate_hertz = 11'025;
+        latest_creative_update.granular.mix_percent = 72;
+        latest_creative_update.granular.pitch_cents = -350;
+        latest_creative_update.granular.random_seed = 0x55667788U;
+        auto structural_freeze_update = latest_creative_update;
+        structural_freeze_update.freeze.enabled = true;
+        bool freeze_enable_rejected = false;
+        try {
+            adjusted.update_creative_vfx(structural_freeze_update);
+        } catch (const std::invalid_argument&) {
+            freeze_enable_rejected = true;
+        }
+        expect(freeze_enable_rejected, "live Freeze enable requires a prepared playback restart");
+        auto changed_freeze_anchor = latest_creative_update;
+        ++changed_freeze_anchor.freeze.capture_source_millis;
+        bool freeze_anchor_rejected = false;
+        try {
+            adjusted.update_creative_vfx(changed_freeze_anchor);
+        } catch (const std::invalid_argument&) {
+            freeze_anchor_rejected = true;
+        }
+        expect(
+            freeze_anchor_rejected,
+            "live Freeze anchor changes require a prepared playback restart"
+        );
         const std::uint64_t position_before_creative_update = adjusted.position_millis();
         adjusted.update_creative_vfx(first_creative_update);
         adjusted.update_creative_vfx(latest_creative_update);
@@ -534,7 +571,9 @@ int main(int argc, char* argv[]) {
                  echo::audio::EffectNodeKind::TransformVfx,
                  echo::audio::EffectNodeKind::DigitalDegradeVfx,
                  echo::audio::EffectNodeKind::DriveVfx,
-                 echo::audio::EffectNodeKind::RotaryVfx},
+                 echo::audio::EffectNodeKind::RotaryVfx,
+                 echo::audio::EffectNodeKind::FreezeVfx,
+                 echo::audio::EffectNodeKind::GranularVfx},
             .effect_chain_count = 5,
         };
         auto space_then_dynamics = dynamics_then_space;
@@ -554,6 +593,8 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
             echo::audio::EffectNodeKind::DriveVfx,
             echo::audio::EffectNodeKind::RotaryVfx,
+            echo::audio::EffectNodeKind::FreezeVfx,
+            echo::audio::EffectNodeKind::GranularVfx,
         };
 
         echo::audio::PlaybackSession first_order(path.string(), dynamics_then_space);
@@ -609,6 +650,8 @@ int main(int argc, char* argv[]) {
                     echo::audio::EffectNodeKind::DigitalDegradeVfx,
                     echo::audio::EffectNodeKind::DriveVfx,
                     echo::audio::EffectNodeKind::RotaryVfx,
+                    echo::audio::EffectNodeKind::FreezeVfx,
+                    echo::audio::EffectNodeKind::GranularVfx,
                 },
             .effect_chain_count = 3,
         };
@@ -628,6 +671,84 @@ int main(int argc, char* argv[]) {
         );
         expect(sought.position_millis() == 1000, "latency-compensated seek ends at trim out");
         sought.stop();
+    }
+
+    // Seeking after an authored Freeze anchor rebuilds the captured bank and
+    // its causal upstream state from the edit start. Those reconstruction
+    // frames never enter the playback ring, so the first published frame is
+    // the seek target.
+    {
+        echo::audio::PlaybackAdjustment frozen;
+        frozen.trim_end_millis = 2000;
+        frozen.creative_vfx.freeze = {
+            .enabled = true,
+            .mix_percent = 72,
+            .capture_source_millis = 300,
+        };
+        frozen.effect_chain = {
+            echo::audio::EffectNodeKind::FreezeVfx,
+            echo::audio::EffectNodeKind::Master,
+            echo::audio::EffectNodeKind::Restoration,
+            echo::audio::EffectNodeKind::Equalizer,
+            echo::audio::EffectNodeKind::Dynamics,
+            echo::audio::EffectNodeKind::Space,
+            echo::audio::EffectNodeKind::DeHum,
+            echo::audio::EffectNodeKind::DeClick,
+            echo::audio::EffectNodeKind::ChannelRepair,
+            echo::audio::EffectNodeKind::SceneVfx,
+            echo::audio::EffectNodeKind::DelayVfx,
+            echo::audio::EffectNodeKind::ModulationVfx,
+            echo::audio::EffectNodeKind::TransformVfx,
+            echo::audio::EffectNodeKind::DigitalDegradeVfx,
+            echo::audio::EffectNodeKind::DriveVfx,
+            echo::audio::EffectNodeKind::RotaryVfx,
+            echo::audio::EffectNodeKind::GranularVfx,
+        };
+        frozen.effect_chain_count = 2;
+        const echo::audio::PlaybackPipelineOptions authored_only{
+            .apply_output_guard = false,
+            .collect_metering = false,
+        };
+        echo::audio::PlaybackSession continuous(path.string(), frozen, authored_only);
+        std::vector<float> continuous_samples(64'000 * 2U, 0.0F);
+        const std::size_t continuous_frames =
+            pull_until(continuous, continuous_samples.data(), 64'000, 512);
+        expect(continuous_frames >= 60'000, "continuous Freeze render reaches comparison range");
+
+        echo::audio::PlaybackSession rebuilt(path.string(), frozen, authored_only);
+        rebuilt.seek(1000);
+        std::vector<float> rebuilt_samples(12'000 * 2U, 0.0F);
+        const std::size_t rebuilt_frames = pull_until(rebuilt, rebuilt_samples.data(), 12'000, 257);
+        expect(rebuilt_frames >= 12'000, "Freeze seek publishes target audio after pre-roll");
+        expect(rebuilt.position_millis() >= 1000, "Freeze pre-roll is not exposed as playback");
+        bool freeze_seek_matches = rebuilt_frames >= 12'000 && continuous_frames >= 60'000;
+        for (std::size_t sample = 0; freeze_seek_matches && sample < 12'000 * 2U; ++sample) {
+            freeze_seek_matches =
+                std::abs(rebuilt_samples[sample] - continuous_samples[48'000 * 2U + sample])
+                < 2.0E-5F;
+        }
+        expect(
+            freeze_seek_matches,
+            "Freeze seek rebuild matches continuous source-anchored output"
+        );
+        echo::audio::PlaybackSession before_anchor(path.string(), frozen, authored_only);
+        before_anchor.seek(200);
+        std::vector<float> before_anchor_samples(8'000 * 2U, 0.0F);
+        const std::size_t before_anchor_frames =
+            pull_until(before_anchor, before_anchor_samples.data(), 8'000, 173);
+        bool before_anchor_matches = before_anchor_frames >= 8'000;
+        for (std::size_t sample = 0; before_anchor_matches && sample < 8'000 * 2U; ++sample) {
+            before_anchor_matches =
+                std::abs(before_anchor_samples[sample] - continuous_samples[9'600 * 2U + sample])
+                < 2.0E-5F;
+        }
+        expect(
+            before_anchor_matches,
+            "Freeze seek before capture preserves upstream state and future capture"
+        );
+        continuous.stop();
+        rebuilt.stop();
+        before_anchor.stop();
     }
 
     // Source edits collapse hidden time, preserve muted time, insert explicit
@@ -651,6 +772,8 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
             echo::audio::EffectNodeKind::DriveVfx,
             echo::audio::EffectNodeKind::RotaryVfx,
+            echo::audio::EffectNodeKind::FreezeVfx,
+            echo::audio::EffectNodeKind::GranularVfx,
         };
         edited.effect_chain_count = 3;
         edited.effect_masks = {{
@@ -717,6 +840,8 @@ int main(int argc, char* argv[]) {
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
             echo::audio::EffectNodeKind::DriveVfx,
             echo::audio::EffectNodeKind::RotaryVfx,
+            echo::audio::EffectNodeKind::FreezeVfx,
+            echo::audio::EffectNodeKind::GranularVfx,
         };
         hidden_gap.effect_chain_count = 1;
         hidden_gap.edit_segments = {{

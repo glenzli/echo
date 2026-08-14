@@ -8,7 +8,9 @@
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
 use crate::source_edit::{EditTimeline, EffectMask, MAX_EFFECT_MASKS};
-use crate::{SpaceSettings, creative_vfx::CreativeVfxSettings};
+use crate::{
+    SpaceSettings, creative_vfx::CreativeVfxSettings, freeze_vfx::FREEZE_CAPTURE_PRE_ROLL_MILLIS,
+};
 
 /// Lowest supported output gain in hundredths of one decibel.
 pub const MIN_GAIN_CENTIBELS: i16 = -2_400;
@@ -81,7 +83,7 @@ pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
 pub const MIN_CHANNEL_BALANCE_PERCENT: i8 = -100;
 pub const MAX_CHANNEL_BALANCE_PERCENT: i8 = 100;
 /// Echo's authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 15;
+pub const EFFECT_NODE_COUNT: usize = 17;
 const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
@@ -108,6 +110,8 @@ pub enum EffectNodeKind {
     DigitalDegradeVfx = 12,
     DriveVfx = 13,
     RotaryVfx = 14,
+    FreezeVfx = 15,
+    GranularVfx = 16,
 }
 
 impl EffectNodeKind {
@@ -138,6 +142,8 @@ impl EffectNodeKind {
             12 => Ok(Self::DigitalDegradeVfx),
             13 => Ok(Self::DriveVfx),
             14 => Ok(Self::RotaryVfx),
+            15 => Ok(Self::FreezeVfx),
+            16 => Ok(Self::GranularVfx),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -178,9 +184,12 @@ impl<'de> Deserialize<'de> for EffectChain {
     {
         let stored = StoredEffectChain::deserialize(deserializer)?;
         let legacy_node_count = stored.nodes.len();
-        if !matches!(legacy_node_count, 5 | 7 | 8 | 12 | 13 | EFFECT_NODE_COUNT) {
+        if !matches!(
+            legacy_node_count,
+            5 | 7 | 8 | 12 | 13 | 15 | EFFECT_NODE_COUNT
+        ) {
             return Err(D::Error::custom(
-                "effect chain must contain five, seven, eight, twelve, thirteen, or fifteen stable nodes",
+                "effect chain must contain five, seven, eight, twelve, thirteen, fifteen, or seventeen stable nodes",
             ));
         }
         let active_count = stored.active_count.unwrap_or(STANDARD_EFFECT_NODE_COUNT);
@@ -223,6 +232,8 @@ impl EffectChain {
                 EffectNodeKind::DigitalDegradeVfx,
                 EffectNodeKind::DriveVfx,
                 EffectNodeKind::RotaryVfx,
+                EffectNodeKind::FreezeVfx,
+                EffectNodeKind::GranularVfx,
             ],
             active_count: STANDARD_EFFECT_NODE_COUNT,
         }
@@ -1217,6 +1228,7 @@ impl AdjustmentGraph {
             .creative_vfx
             .validate()
             .map_err(|_| AdjustmentGraphError::CreativeVfxOutOfRange)?;
+        validate_freeze_anchor(trim_start_millis, trim_end_millis, effects.creative_vfx)?;
         let edit_timeline = validated_asset_regions(trim_start_millis, trim_end_millis, &effects)?;
         Ok(Self {
             trim_start_millis,
@@ -1367,6 +1379,22 @@ impl AdjustmentGraph {
     }
 }
 
+fn validate_freeze_anchor(
+    trim_start_millis: u64,
+    trim_end_millis: u64,
+    creative_vfx: CreativeVfxSettings,
+) -> Result<(), AdjustmentGraphError> {
+    let freeze = creative_vfx.freeze;
+    if freeze.enabled
+        && (freeze.capture_source_millis
+            < trim_start_millis.saturating_add(FREEZE_CAPTURE_PRE_ROLL_MILLIS)
+            || freeze.capture_source_millis >= trim_end_millis)
+    {
+        return Err(AdjustmentGraphError::FreezeAnchorOutOfRange);
+    }
+    Ok(())
+}
+
 fn validated_asset_regions(
     trim_start_millis: u64,
     trim_end_millis: u64,
@@ -1394,6 +1422,8 @@ fn validated_asset_regions(
                                 | EffectNodeKind::TransformVfx
                                 | EffectNodeKind::DriveVfx
                                 | EffectNodeKind::RotaryVfx
+                                | EffectNodeKind::FreezeVfx
+                                | EffectNodeKind::GranularVfx
                         )
                 })
         })
@@ -1473,6 +1503,7 @@ pub enum AdjustmentGraphError {
     ReverbOutOfRange,
     SpaceOutOfRange,
     CreativeVfxOutOfRange,
+    FreezeAnchorOutOfRange,
     LimiterOutOfRange,
     InvalidEffectChain,
     InvalidEditTimeline,
@@ -1504,6 +1535,9 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::SpaceOutOfRange => "space parameters are outside the supported range",
             Self::CreativeVfxOutOfRange => {
                 "creative VFX parameters are outside the supported range"
+            }
+            Self::FreezeAnchorOutOfRange => {
+                "freeze capture must be inside the trim with a complete source pre-roll"
             }
             Self::LimiterOutOfRange => "limiter parameters are outside the supported range",
             Self::InvalidEffectChain => {

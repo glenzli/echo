@@ -22,6 +22,8 @@ mod adjustment;
 mod analysis;
 mod audio_asset;
 mod creative_vfx;
+mod freeze_vfx;
+mod granular_vfx;
 mod ids;
 mod metadata_calibration;
 mod original;
@@ -67,6 +69,8 @@ pub use creative_vfx::{
     RotaryVfxSpeed, SampleRateReductionSettings, SceneVfxCharacter, SceneVfxSettings,
     SlapbackSettings, TransformVfxCharacter, TransformVfxSettings, TremoloSettings,
 };
+pub use freeze_vfx::{FREEZE_CAPTURE_PRE_ROLL_MILLIS, FreezeVfxSettings};
+pub use granular_vfx::GranularVfxSettings;
 pub use ids::{AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId};
 pub use metadata_calibration::{
     MAX_METADATA_CAPTION_CHARACTERS, MAX_METADATA_KEYWORDS, MAX_METADATA_LABEL_CHARACTERS,

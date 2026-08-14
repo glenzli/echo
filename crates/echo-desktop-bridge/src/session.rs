@@ -28,6 +28,56 @@ pub(crate) fn now_millis() -> i64 {
         })
 }
 
+fn parse_ir_preparation_layout(
+    value: &str,
+) -> Result<echo_ir::ImpulseResponsePreparationLayout, SessionError> {
+    match value {
+        "mono_or_stereo" => Ok(echo_ir::ImpulseResponsePreparationLayout::MonoOrStereo),
+        "true_stereo_ll_lr_rl_rr" => {
+            Ok(echo_ir::ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr)
+        }
+        _ => Err(SessionError {
+            message: "impulse response preparation layout is invalid".to_owned(),
+        }),
+    }
+}
+
+const fn preparation_intent_for_catalog_layout(
+    layout: echo_catalog::ImpulseResponseLayout,
+) -> echo_ir::ImpulseResponsePreparationLayout {
+    match layout {
+        echo_catalog::ImpulseResponseLayout::Mono
+        | echo_catalog::ImpulseResponseLayout::StereoParallel => {
+            echo_ir::ImpulseResponsePreparationLayout::MonoOrStereo
+        }
+        echo_catalog::ImpulseResponseLayout::TrueStereoLlLrRlRr => {
+            echo_ir::ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+        }
+    }
+}
+
+const fn catalog_layout_for_prepared(
+    layout: echo_ir::PreparedIrLayout,
+) -> echo_catalog::ImpulseResponseLayout {
+    match layout {
+        echo_ir::PreparedIrLayout::Mono => echo_catalog::ImpulseResponseLayout::Mono,
+        echo_ir::PreparedIrLayout::StereoParallel => {
+            echo_catalog::ImpulseResponseLayout::StereoParallel
+        }
+        echo_ir::PreparedIrLayout::TrueStereoLlLrRlRr => {
+            echo_catalog::ImpulseResponseLayout::TrueStereoLlLrRlRr
+        }
+    }
+}
+
+const fn catalog_layout_wire_value(layout: echo_catalog::ImpulseResponseLayout) -> &'static str {
+    match layout {
+        echo_catalog::ImpulseResponseLayout::Mono => "mono",
+        echo_catalog::ImpulseResponseLayout::StereoParallel => "stereo_parallel",
+        echo_catalog::ImpulseResponseLayout::TrueStereoLlLrRlRr => "true_stereo_ll_lr_rl_rr",
+    }
+}
+
 fn encode_asset_ids(asset_ids: Vec<AssetId>) -> Vec<String> {
     asset_ids
         .into_iter()
@@ -1007,16 +1057,28 @@ impl LibrarySession {
         }
         let pipeline = self.ir_pipeline()?;
         let rebuilt = pipeline
-            .prepare_owned_source(&echo_ir::StoredIrSource {
-                source_hash: record.source_hash,
-                source_size_bytes: record.source_size_bytes,
-                outcome: echo_ir::ImportOutcome::AlreadyPresent,
-            })
+            .prepare_owned_source_with_layout(
+                &echo_ir::StoredIrSource {
+                    source_hash: record.source_hash,
+                    source_size_bytes: record.source_size_bytes,
+                    outcome: echo_ir::ImportOutcome::AlreadyPresent,
+                },
+                preparation_intent_for_catalog_layout(record.layout),
+            )
             .map_err(|error| SessionError {
                 message: error.to_string(),
             })?;
-        if rebuilt.prepared_hash != record.prepared_hash
+        if rebuilt.source_hash != record.source_hash
+            || rebuilt.prepared_hash != record.prepared_hash
             || rebuilt.preparation_version != record.preparation_version
+            || rebuilt.source_sample_rate != record.source_sample_rate
+            || rebuilt.channel_count != record.channel_count
+            || catalog_layout_for_prepared(rebuilt.layout) != record.layout
+            || rebuilt.source_frame_count != record.source_frame_count
+            || rebuilt.prepared_frame_count != record.prepared_frame_count
+            || rebuilt.avcodec_version != record.avcodec_version
+            || rebuilt.swresample_version != record.swresample_version
+            || rebuilt.size_bytes != record.prepared_size_bytes
         {
             return Err(SessionError {
                 message: "rebuilt impulse response does not match its Catalog evidence".to_owned(),
@@ -1060,6 +1122,8 @@ impl LibrarySession {
             imported_at_millis: record.imported_at_millis,
             source_sample_rate: record.source_sample_rate,
             channel_count: record.channel_count,
+            layout_kind: catalog_layout_wire_value(record.layout).to_owned(),
+            preparation_version: record.preparation_version,
             prepared_frame_count: record.prepared_frame_count,
         })
     }
@@ -1087,6 +1151,33 @@ impl LibrarySession {
         spdx_expression: &str,
         license_url: &str,
     ) -> Result<ImpulseResponseWire, SessionError> {
+        self.import_impulse_response_with_layout(
+            source_path,
+            "mono_or_stereo",
+            display_name,
+            creator,
+            source_url,
+            attribution,
+            rights_kind,
+            spdx_expression,
+            license_url,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn import_impulse_response_with_layout(
+        &self,
+        source_path: &str,
+        preparation_layout: &str,
+        display_name: &str,
+        creator: &str,
+        source_url: &str,
+        attribution: &str,
+        rights_kind: &str,
+        spdx_expression: &str,
+        license_url: &str,
+    ) -> Result<ImpulseResponseWire, SessionError> {
+        let preparation_layout = parse_ir_preparation_layout(preparation_layout)?;
         let optional = |value: &str| {
             let trimmed = value.trim();
             (!trimmed.is_empty()).then(|| trimmed.to_owned())
@@ -1107,8 +1198,9 @@ impl LibrarySession {
         };
         let imported = self
             .ir_pipeline()?
-            .import_local_wav(
+            .import_local_wav_with_layout(
                 Path::new(source_path),
+                preparation_layout,
                 echo_ir::IrImportProvenance {
                     display_name: display_name.trim().to_owned(),
                     creator: optional(creator),
@@ -1141,6 +1233,7 @@ impl LibrarySession {
             preparation_version: imported.preparation.preparation_version,
             source_sample_rate: imported.preparation.source_sample_rate,
             channel_count: imported.preparation.channel_count,
+            layout: catalog_layout_for_prepared(imported.preparation.layout),
             source_frame_count: imported.preparation.source_frame_count,
             prepared_frame_count: imported.preparation.prepared_frame_count,
             avcodec_version: imported.preparation.avcodec_version,

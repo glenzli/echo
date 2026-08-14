@@ -58,6 +58,35 @@ std::vector<float> process(
     return output;
 }
 
+std::vector<float> process_true_stereo(
+    echo::audio::ConvolutionSpaceAdjustment adjustment,
+    const std::vector<float>& input,
+    std::span<const float> impulse_ll,
+    std::span<const float> impulse_lr,
+    std::span<const float> impulse_rl,
+    std::span<const float> impulse_rr,
+    std::size_t block_frames
+) {
+    echo::audio::ConvolutionSpaceProcessor processor(
+        adjustment,
+        kSampleRate,
+        kChannels,
+        impulse_ll,
+        impulse_lr,
+        impulse_rl,
+        impulse_rr
+    );
+    auto output = input;
+    const std::size_t frames = output.size() / kChannels;
+    std::size_t offset = 0;
+    while (offset < frames) {
+        const std::size_t count = std::min(block_frames, frames - offset);
+        processor.process_interleaved(output.data() + offset * kChannels, count, kChannels);
+        offset += count;
+    }
+    return output;
+}
+
 std::vector<float>
 direct_convolution_prefix(const std::vector<float>& input, const std::vector<float>& impulse) {
     std::vector<float> output(input.size(), 0.0F);
@@ -68,6 +97,31 @@ direct_convolution_prefix(const std::vector<float>& input, const std::vector<flo
             sum += static_cast<double>(input[frame - tap]) * static_cast<double>(impulse[tap]);
         }
         output[frame] = static_cast<float>(sum);
+    }
+    return output;
+}
+
+std::vector<float> true_stereo_oracle(
+    const std::vector<float>& input,
+    const std::vector<float>& impulse_ll,
+    const std::vector<float>& impulse_lr,
+    const std::vector<float>& impulse_rl,
+    const std::vector<float>& impulse_rr
+) {
+    std::vector<float> left(input.size() / kChannels);
+    std::vector<float> right(input.size() / kChannels);
+    for (std::size_t frame = 0; frame < left.size(); ++frame) {
+        left[frame] = input[frame * kChannels];
+        right[frame] = input[frame * kChannels + 1];
+    }
+    const auto left_to_left = direct_convolution_prefix(left, impulse_ll);
+    const auto left_to_right = direct_convolution_prefix(left, impulse_lr);
+    const auto right_to_left = direct_convolution_prefix(right, impulse_rl);
+    const auto right_to_right = direct_convolution_prefix(right, impulse_rr);
+    std::vector<float> output(input.size());
+    for (std::size_t frame = 0; frame < left.size(); ++frame) {
+        output[frame * kChannels] = left_to_left[frame] + right_to_left[frame];
+        output[frame * kChannels + 1] = left_to_right[frame] + right_to_right[frame];
     }
     return output;
 }
@@ -174,6 +228,58 @@ int main() {
         assert(processor.impulse_layout() == PreparedImpulseLayout::StereoParallel);
     }
 
+    const std::vector<float> impulse_ll{0.75F, -0.125F, 0.0625F};
+    const std::vector<float> impulse_lr{-0.2F, 0.1F, 0.025F};
+    const std::vector<float> impulse_rl{0.3F, 0.05F, -0.075F};
+    const std::vector<float> impulse_rr{0.6F, -0.2F, 0.1F};
+    {
+        ConvolutionSpaceProcessor processor(
+            enabled(),
+            kSampleRate,
+            kChannels,
+            impulse_ll,
+            impulse_lr,
+            impulse_rl,
+            impulse_rr
+        );
+        assert(processor.impulse_layout() == PreparedImpulseLayout::TrueStereoLlLrRlRr);
+        assert(processor.impulse_frames() == impulse_ll.size());
+        assert(processor.tail_frames() == impulse_ll.size() - 1U);
+    }
+
+    {
+        const auto matrix_oracle =
+            true_stereo_oracle(stereo_input, impulse_ll, impulse_lr, impulse_rl, impulse_rr);
+        for (const std::size_t block_frames : {1U, 127U, 256U, 4096U}) {
+            assert_near(
+                process_true_stereo(
+                    enabled(),
+                    stereo_input,
+                    impulse_ll,
+                    impulse_lr,
+                    impulse_rl,
+                    impulse_rr,
+                    block_frames
+                ),
+                matrix_oracle
+            );
+        }
+
+        std::vector<float> silence(8192 * kChannels, 0.0F);
+        const auto silent_output = process_true_stereo(
+            enabled(),
+            silence,
+            impulse_ll,
+            impulse_lr,
+            impulse_rl,
+            impulse_rr,
+            31
+        );
+        assert(std::all_of(silent_output.begin(), silent_output.end(), [](float sample) {
+            return sample == 0.0F;
+        }));
+    }
+
     {
         std::vector<float> silence(8192 * kChannels, 0.0F);
         const auto output = process(enabled(), silence, kChannels, impulse, {}, 31);
@@ -218,6 +324,15 @@ int main() {
 
         threw = false;
         try {
+            ConvolutionSpaceProcessor
+                processor(enabled(), kSampleRate, kChannels, impulse_ll, {}, {}, impulse_rr);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+
+        threw = false;
+        try {
             const std::vector<float> silent_ir(16, 0.0F);
             ConvolutionSpaceProcessor processor(enabled(), kSampleRate, 1, silent_ir);
         } catch (const std::invalid_argument&) {
@@ -233,6 +348,55 @@ int main() {
             threw = true;
         }
         assert(threw);
+
+        threw = false;
+        try {
+            ConvolutionSpaceProcessor processor(
+                enabled(),
+                kSampleRate,
+                1,
+                impulse_ll,
+                impulse_lr,
+                impulse_rl,
+                impulse_rr
+            );
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+
+        threw = false;
+        try {
+            const std::vector<float> short_path{1.0F};
+            ConvolutionSpaceProcessor processor(
+                enabled(),
+                kSampleRate,
+                kChannels,
+                impulse_ll,
+                short_path,
+                impulse_rl,
+                impulse_rr
+            );
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+
+        threw = false;
+        try {
+            ConvolutionSpaceProcessor processor(
+                enabled(),
+                kSampleRate,
+                kChannels,
+                impulse_ll,
+                impulse_lr,
+                {},
+                impulse_rr
+            );
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
     }
 
     {
@@ -243,6 +407,29 @@ int main() {
         allocation_tracking.store(true, std::memory_order_relaxed);
         adjustment.mix_percent = 60;
         adjustment.wet_gain_centibels = -600;
+        processor.update(adjustment);
+        processor.process_interleaved(samples.data(), samples.size() / kChannels, kChannels);
+        processor.reset();
+        allocation_tracking.store(false, std::memory_order_relaxed);
+        assert(allocation_count.load(std::memory_order_relaxed) == 0);
+    }
+
+    {
+        auto adjustment = enabled();
+        ConvolutionSpaceProcessor processor(
+            adjustment,
+            kSampleRate,
+            kChannels,
+            impulse_ll,
+            impulse_lr,
+            impulse_rl,
+            impulse_rr
+        );
+        auto samples = fixture(4096);
+        allocation_count.store(0, std::memory_order_relaxed);
+        allocation_tracking.store(true, std::memory_order_relaxed);
+        adjustment.mix_percent = 45;
+        adjustment.wet_gain_centibels = -300;
         processor.update(adjustment);
         processor.process_interleaved(samples.data(), samples.size() / kChannels, kChannels);
         processor.reset();

@@ -1,4 +1,460 @@
 use super::*;
+use crate::{ImpulseResponseLayout, list_impulse_responses};
+
+fn replace_current_ir_schema_with_v4(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    transaction.execute_batch(
+        "DROP TABLE impulse_response_imports;
+         DROP TABLE impulse_response_preparations;
+         CREATE TABLE impulse_response_preparations (
+            prepared_hash TEXT PRIMARY KEY,
+            source_hash TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+            size_bytes INTEGER NOT NULL CHECK (size_bytes > 0),
+            preparation_version INTEGER NOT NULL CHECK (preparation_version > 0),
+            source_sample_rate INTEGER NOT NULL CHECK (source_sample_rate > 0),
+            channel_count INTEGER NOT NULL CHECK (channel_count IN (1, 2)),
+            source_frame_count INTEGER NOT NULL CHECK (source_frame_count > 0),
+            prepared_frame_count INTEGER NOT NULL CHECK (prepared_frame_count > 0),
+            avcodec_version INTEGER NOT NULL CHECK (avcodec_version > 0),
+            swresample_version INTEGER NOT NULL CHECK (swresample_version > 0),
+            created_at_millis INTEGER NOT NULL CHECK (created_at_millis >= 0)
+         );
+         CREATE TABLE impulse_response_imports (
+            import_id TEXT PRIMARY KEY,
+            source_hash TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+            prepared_hash TEXT NOT NULL REFERENCES impulse_response_preparations(prepared_hash),
+            imported_at_millis INTEGER NOT NULL CHECK (imported_at_millis >= 0),
+            original_path TEXT NOT NULL,
+            display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+            creator TEXT, source_url TEXT, attribution TEXT,
+            rights_kind TEXT NOT NULL CHECK (
+                rights_kind IN ('spdx', 'user_owned_no_redistribution')),
+            spdx_expression TEXT, license_url TEXT,
+            CHECK ((rights_kind = 'spdx' AND length(trim(spdx_expression)) > 0) OR
+                   (rights_kind = 'user_owned_no_redistribution' AND
+                    spdx_expression IS NULL AND license_url IS NULL))
+         );
+         CREATE INDEX impulse_response_imports_newest
+            ON impulse_response_imports (imported_at_millis DESC, import_id DESC);",
+    )?;
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // One physical v4 fixture audits every preserved value domain.
+fn true_stereo_revision_backfills_v4_layouts_and_preserves_import_rows() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-true-stereo-migration-{}",
+        uuid::Uuid::now_v7()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    let (
+        asset_id,
+        revision_id,
+        recipe_id,
+        authored_space,
+        authored_creative,
+        authored_chain,
+        recipe_patch,
+    ) = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            let asset_id = match crate::register_asset(
+                transaction,
+                &crate::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([0x95; 32]),
+                    path: std::path::Path::new("/voice/true-stereo-v4.wav"),
+                    size_bytes: 100,
+                    codec: Some("pcm"),
+                    duration_millis: Some(120_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )? {
+                crate::RegisterAsset::Created(asset) | crate::RegisterAsset::Existed(asset) => {
+                    asset.id
+                }
+            };
+            crate::record_asset_listening_progress(transaction, asset_id, 40_000, 0, 120_000, 20)?;
+            let seeded_listening: (i64, i64) = transaction.query_row(
+                "SELECT last_listened_at_millis, resume_position_millis
+                 FROM asset_user_state WHERE asset_id = ?1",
+                [asset_id.to_string()],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?;
+            assert_eq!(seeded_listening, (20, 40_000));
+            transaction.execute(
+                "INSERT INTO metadata_calibration_revisions
+                 (asset_id, sound_caption, summary, event_type, mood, keywords_json,
+                  transcript_text, language, created_at_millis)
+                 VALUES (?1, 'V4 caption', NULL, NULL, NULL, NULL, NULL, 'en', 21)",
+                [asset_id.to_string()],
+            )?;
+            let revision = crate::record_adjustment_graph(
+                transaction,
+                asset_id,
+                echo_domain::AdjustmentGraph::identity(120_000)
+                    .expect("identity adjustment validates"),
+                22,
+            )?;
+            let (authored_space, authored_creative, authored_chain): (String, String, String) =
+                transaction.query_row(
+                    "SELECT space_json, creative_vfx_json, effect_chain_json
+                     FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision.revision_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )?;
+            let recipe_adjustment = crate::processing_recipe_patch_from_asset(
+                transaction,
+                asset_id,
+                &[echo_domain::ProcessingComponent::Space],
+            )?;
+            let recipe = crate::create_processing_recipe(
+                transaction,
+                crate::CreateProcessingRecipe {
+                    name: "V4 room",
+                    patch: &recipe_adjustment,
+                },
+                23,
+            )?;
+            let recipe_patch: String = transaction.query_row(
+                "SELECT patch_json FROM processing_recipe_revisions WHERE recipe_id = ?1",
+                [recipe.id.to_string()],
+                |row| row.get(0),
+            )?;
+            replace_current_ir_schema_with_v4(transaction)?;
+            for (suffix, channels) in [('a', 1), ('b', 2)] {
+                let source_hash = suffix.to_string().repeat(64);
+                let prepared_hash = char::from_u32(u32::from(suffix) + 2)
+                    .expect("fixture character")
+                    .to_string()
+                    .repeat(64);
+                transaction.execute(
+                    "INSERT INTO impulse_response_sources
+                     (source_hash, size_bytes, created_at_millis)
+                     VALUES (?1, 4096, 10)",
+                    [&source_hash],
+                )?;
+                transaction.execute(
+                    "INSERT INTO impulse_response_preparations
+                     (prepared_hash, source_hash, size_bytes, preparation_version,
+                      source_sample_rate, channel_count, source_frame_count,
+                      prepared_frame_count, avcodec_version, swresample_version,
+                      created_at_millis)
+                     VALUES (?1, ?2, 8192, 1, 48000, ?3, 100, 100, 1, 1, 11)",
+                    rusqlite::params![prepared_hash, source_hash, channels],
+                )?;
+                transaction.execute(
+                    "INSERT INTO impulse_response_imports
+                     (import_id, source_hash, prepared_hash, imported_at_millis,
+                      original_path, display_name, creator, source_url, attribution,
+                      rights_kind, spdx_expression, license_url)
+                     VALUES (?1, ?2, ?3, 12, '/irs/fixture.wav', ?4, NULL, NULL,
+                             NULL, 'spdx', 'CC0-1.0', NULL)",
+                    rusqlite::params![
+                        uuid::Uuid::now_v7().to_string(),
+                        source_hash,
+                        prepared_hash,
+                        format!("{channels} channel")
+                    ],
+                )?;
+            }
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260813.4' WHERE key = 'schema_version'",
+                [],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = 'echo-catalog-20260813.4-freeze-granular-vfx'
+                 WHERE key = 'schema_identity'",
+                [],
+            )?;
+            Ok((
+                asset_id,
+                revision.revision_id,
+                recipe.id,
+                authored_space,
+                authored_creative,
+                authored_chain,
+                recipe_patch,
+            ))
+        })
+        .expect("v4 fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("v4 migrates");
+    migrated
+        .with_transaction(|transaction| -> Result<(), CatalogError> {
+            let rows = list_impulse_responses(transaction)?;
+            assert_eq!(rows.len(), 2);
+            assert!(
+                rows.iter()
+                    .any(|row| row.layout == ImpulseResponseLayout::Mono)
+            );
+            assert!(
+                rows.iter()
+                    .any(|row| row.layout == ImpulseResponseLayout::StereoParallel)
+            );
+            let foreign_key_failures: i64 = transaction.query_row(
+                "SELECT COUNT(*) FROM pragma_foreign_key_check",
+                [],
+                |row| row.get(0),
+            )?;
+            assert_eq!(foreign_key_failures, 0);
+            let listening = crate::asset_listening_state(transaction, asset_id)?;
+            assert_eq!(listening.last_listened_at_millis, 20);
+            assert_eq!(listening.resume_position_millis, 40_000);
+            assert_eq!(
+                crate::latest_metadata_calibration(transaction, asset_id)?
+                    .expect("metadata calibration remains")
+                    .calibration
+                    .sound_caption
+                    .as_deref(),
+                Some("V4 caption")
+            );
+            let stored_authored: (String, String, String) = transaction.query_row(
+                "SELECT space_json, creative_vfx_json, effect_chain_json
+                 FROM asset_adjustment_revisions WHERE id = ?1",
+                [revision_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )?;
+            assert_eq!(
+                stored_authored,
+                (authored_space, authored_creative, authored_chain)
+            );
+            assert_eq!(
+                transaction.query_row(
+                    "SELECT patch_json FROM processing_recipe_revisions WHERE recipe_id = ?1",
+                    [recipe_id.to_string()],
+                    |row| row.get::<_, String>(0),
+                )?,
+                recipe_patch
+            );
+            Ok(())
+        })
+        .expect("migrated rows read");
+    drop(migrated);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // One predecessor fixture protects every .3-owned value domain.
+fn freeze_granular_revision_preserves_metadata_listening_ir_and_authored_bytes() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-schema-freeze-granular-migration-{}",
+        std::process::id()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("current catalog opens");
+    let (asset_id, revision_id, legacy_creative, legacy_chain) = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            let asset_id = match crate::register_asset(
+                transaction,
+                &crate::AssetRegistrationInput {
+                    content_hash: echo_domain::ContentHash::new([0x84; 32]),
+                    path: std::path::Path::new("/voice/freeze-granular-migration.wav"),
+                    size_bytes: 1,
+                    codec: Some("pcm"),
+                    duration_millis: Some(120_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )? {
+                crate::RegisterAsset::Created(asset) | crate::RegisterAsset::Existed(asset) => {
+                    asset.id
+                }
+            };
+            crate::record_asset_listening_progress(
+                transaction,
+                asset_id,
+                35_000,
+                0,
+                120_000,
+                2_000,
+            )?;
+            transaction.execute(
+                "INSERT INTO metadata_calibration_revisions
+                 (asset_id, sound_caption, summary, event_type, mood, keywords_json,
+                  transcript_text, language, created_at_millis)
+                 VALUES (?1, 'Preserved caption', NULL, 'dialogue', NULL,
+                         '[\"spoken\",\"close\"]', 'Preserved transcript', 'en', 2001)",
+                [asset_id.to_string()],
+            )?;
+            let mut creative = echo_domain::CreativeVfxSettings::default();
+            creative.drive.enabled = true;
+            creative.drive.drive_centibels = 1_900;
+            let graph = echo_domain::AdjustmentGraph::new(
+                120_000,
+                500,
+                119_500,
+                120,
+                240,
+                echo_domain::AdjustmentEffects::new(
+                    echo_domain::FadeCurves::new(
+                        echo_domain::FadeCurve::Smooth,
+                        echo_domain::FadeCurve::EqualPower,
+                    ),
+                    -325,
+                    80,
+                )
+                .with_creative_vfx(creative),
+            )
+            .expect("authored graph validates");
+            let revision = crate::record_adjustment_graph(transaction, asset_id, graph, 2_002)?;
+
+            let mut legacy_creative =
+                serde_json::to_value(creative).expect("creative settings encode");
+            let creative_object = legacy_creative
+                .as_object_mut()
+                .expect("creative settings object");
+            creative_object.remove("freeze");
+            creative_object.remove("granular");
+            let legacy_creative =
+                serde_json::to_string(&legacy_creative).expect("legacy creative encodes");
+            let mut legacy_chain =
+                serde_json::to_value(echo_domain::EffectChain::standard()).expect("chain encodes");
+            legacy_chain["nodes"]
+                .as_array_mut()
+                .expect("chain nodes")
+                .truncate(15);
+            let legacy_chain = serde_json::to_string(&legacy_chain).expect("legacy chain encodes");
+            transaction.execute(
+                "UPDATE asset_adjustment_revisions SET creative_vfx_json = ?1,
+                 effect_chain_json = ?2 WHERE id = ?3",
+                rusqlite::params![legacy_creative, legacy_chain, revision.revision_id],
+            )?;
+
+            replace_current_ir_schema_with_v4(transaction)?;
+            let source_hash = "a".repeat(64);
+            let prepared_hash = "b".repeat(64);
+            transaction.execute(
+                "INSERT INTO impulse_response_sources
+                 (source_hash, size_bytes, created_at_millis) VALUES (?1, 4096, 2003)",
+                [&source_hash],
+            )?;
+            transaction.execute(
+                "INSERT INTO impulse_response_preparations
+                 (prepared_hash, source_hash, size_bytes, preparation_version,
+                  source_sample_rate, channel_count, source_frame_count,
+                  prepared_frame_count, avcodec_version, swresample_version,
+                  created_at_millis)
+                 VALUES (?1, ?2, 8192, 1, 48000, 2, 24000, 24000, 1, 1, 2004)",
+                rusqlite::params![prepared_hash, source_hash],
+            )?;
+            transaction.execute(
+                "INSERT INTO impulse_response_imports
+                 (import_id, source_hash, prepared_hash, imported_at_millis,
+                  original_path, display_name, creator, source_url, attribution,
+                  rights_kind, spdx_expression, license_url)
+                 VALUES ('018f5f1a-ff90-7c71-9ec4-66d36516664c', ?1, ?2, 2005,
+                         '/irs/preserved.wav', 'Preserved IR', 'Recorder', NULL,
+                         'Preserved attribution', 'spdx', 'CC0-1.0', NULL)",
+                rusqlite::params![source_hash, prepared_hash],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = '20260813.3' WHERE key = 'schema_version'",
+                [],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value =
+                 'echo-catalog-20260813.3-metadata-calibration'
+                 WHERE key = 'schema_identity'",
+                [],
+            )?;
+            Ok((
+                asset_id,
+                revision.revision_id,
+                legacy_creative,
+                legacy_chain,
+            ))
+        })
+        .expect("real .3 fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("Freeze and Granular revision migrates");
+    migrated
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            let version: String = transaction.query_row(
+                "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                [],
+                |row| row.get(0),
+            )?;
+            let identity: String = transaction.query_row(
+                "SELECT value FROM catalog_meta WHERE key = 'schema_identity'",
+                [],
+                |row| row.get(0),
+            )?;
+            assert_eq!(version, "20260813.5");
+            assert_eq!(identity, "echo-catalog-20260813.5-true-stereo-ir");
+            assert_eq!(
+                transaction.query_row(
+                    "SELECT creative_vfx_json FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision_id],
+                    |row| row.get::<_, String>(0),
+                )?,
+                legacy_creative
+            );
+            assert_eq!(
+                transaction.query_row(
+                    "SELECT effect_chain_json FROM asset_adjustment_revisions WHERE id = ?1",
+                    [revision_id],
+                    |row| row.get::<_, String>(0),
+                )?,
+                legacy_chain
+            );
+            let listening = crate::asset_listening_state(transaction, asset_id)?;
+            assert_eq!(listening.last_listened_at_millis, 2_000);
+            assert_eq!(listening.resume_position_millis, 35_000);
+            let calibration = crate::latest_metadata_calibration(transaction, asset_id)?
+                .expect("metadata calibration remains");
+            assert_eq!(
+                calibration.calibration.sound_caption.as_deref(),
+                Some("Preserved caption")
+            );
+            assert_eq!(
+                transaction.query_row(
+                    "SELECT display_name FROM impulse_response_imports",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?,
+                "Preserved IR"
+            );
+            let restored =
+                crate::latest_adjustment_graph(transaction, asset_id)?.expect("adjustment remains");
+            assert_eq!(restored.revision_id, revision_id);
+            assert_eq!(restored.graph.gain_centibels(), -325);
+            assert!(restored.graph.creative_vfx().drive.enabled);
+            assert_eq!(
+                restored.graph.creative_vfx().freeze,
+                echo_domain::FreezeVfxSettings::default()
+            );
+            assert_eq!(
+                restored.graph.creative_vfx().granular,
+                echo_domain::GranularVfxSettings::default()
+            );
+            let normalized = serde_json::to_value(restored.graph.effect_chain())
+                .expect("normalized chain encodes");
+            assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(17));
+            assert_eq!(restored.graph.effect_chain().nodes().len(), 5);
+            assert!(
+                !restored
+                    .graph
+                    .effect_chain()
+                    .nodes()
+                    .contains(&echo_domain::EffectNodeKind::FreezeVfx)
+            );
+            assert!(
+                !restored
+                    .graph
+                    .effect_chain()
+                    .nodes()
+                    .contains(&echo_domain::EffectNodeKind::GranularVfx)
+            );
+            Ok(())
+        })
+        .expect("migrated .3 values read");
+    let _ = std::fs::remove_dir_all(root);
+}
 
 #[test]
 fn metadata_calibration_revision_preserves_analysis_and_convolution_schema() {
@@ -74,7 +530,7 @@ fn metadata_calibration_revision_preserves_analysis_and_convolution_schema() {
                 [],
                 |row| row.get(0),
             )?;
-            assert_eq!(version, "20260813.3");
+            assert_eq!(version, "20260813.5");
             assert_eq!(
                 transaction.query_row(
                     "SELECT COUNT(*) FROM analysis_records WHERE asset_id = ?1",
@@ -185,7 +641,7 @@ fn listening_continuity_revision_preserves_user_and_adjustment_state() {
             ))
         })
         .expect("migrated listening state reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(
         affinity,
         crate::AssetAffinity {
@@ -328,8 +784,8 @@ fn deterministic_vfx_revision_preserves_listening_state_and_legacy_json() {
             ))
         })
         .expect("migrated deterministic VFX reads");
-    assert_eq!(version, "20260813.3");
-    assert_eq!(identity, "echo-catalog-20260813.3-metadata-calibration");
+    assert_eq!(version, "20260813.5");
+    assert_eq!(identity, "echo-catalog-20260813.5-true-stereo-ir");
     assert_eq!(listening_columns, 2);
     assert_eq!(listening_values, (987_654_321, 640));
     assert_eq!(stored_creative, legacy_creative);
@@ -338,10 +794,10 @@ fn deterministic_vfx_revision_preserves_listening_state_and_legacy_json() {
     let normalized =
         serde_json::to_value(restored.graph.effect_chain()).expect("normalized chain encodes");
     let nodes = normalized["nodes"].as_array().expect("effect nodes array");
-    assert_eq!(nodes.len(), 15);
+    assert_eq!(nodes.len(), 17);
     assert_eq!(
         nodes.last().and_then(serde_json::Value::as_str),
-        Some("rotary_vfx")
+        Some("granular_vfx")
     );
     let _ = std::fs::remove_dir_all(root);
 }
@@ -436,7 +892,7 @@ fn drive_rotary_revision_preserves_deterministic_vfx_bytes_and_listening_state()
             ))
         })
         .expect("migrated state reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(stored_creative, legacy_creative);
     assert_eq!(stored_chain, legacy_chain);
     assert_eq!(listening.last_listened_at_millis, 1_234_567);
@@ -452,7 +908,7 @@ fn drive_rotary_revision_preserves_deterministic_vfx_bytes_and_listening_state()
     );
     assert_eq!(restored.graph.effect_chain().nodes().len(), 5);
     let normalized = serde_json::to_value(restored.graph.effect_chain()).expect("chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(15));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(17));
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -544,7 +1000,7 @@ fn convolution_space_revision_preserves_drive_rotary_and_listening_state() {
             ))
         })
         .expect("migrated Convolution Space state reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(stored_creative, creative_json);
     assert_eq!(
         stored_space,
@@ -628,7 +1084,7 @@ fn space_character_revision_preserves_legacy_reverb_json_as_room() {
             ))
         })
         .expect("migrated room reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(stored_json, legacy_json);
     assert_eq!(restored.revision_id, revision_id);
     assert_eq!(
@@ -725,7 +1181,7 @@ fn creative_vfx_revision_defaults_legacy_history_to_disabled_without_rewriting_i
             ))
         })
         .expect("migrated creative VFX reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(stored_reverb, legacy_reverb);
     assert_eq!(stored_chain, legacy_chain);
     assert!(default_expression.contains("telephone"));
@@ -837,7 +1293,7 @@ fn channel_repair_revision_adds_identity_without_rewriting_existing_history() {
             ))
         })
         .expect("migrated channel history reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(channel_column_count, 1);
     assert_eq!(stored_chain, legacy_chain);
     assert_eq!(stored_patch, legacy_patch);
@@ -920,7 +1376,7 @@ fn de_plosive_revision_preserves_legacy_restoration_json_and_defaults_disabled()
             ))
         })
         .expect("migrated restoration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(stored_json, legacy_json);
     assert_eq!(restored.revision_id, revision_id);
     assert_eq!(
@@ -1045,7 +1501,7 @@ fn source_edit_revision_adds_columns_without_rewriting_adjustments_recipes_or_re
             ))
         })
         .expect("migrated evidence reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(source_edit_columns, 2);
     assert_eq!(adjustment_ids, vec![adjustment_revision_id]);
     assert_eq!(stored_patch_json, patch_json);
@@ -1164,7 +1620,7 @@ fn immediately_previous_revision_adds_recipe_management_without_rewriting_histor
             },
         )
         .expect("migration schema reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(archived_column_count, 1);
     assert_eq!(revert_table_count, 2);
     assert_eq!(revision_count, 1);
@@ -1264,7 +1720,7 @@ fn processing_recipe_revision_adds_recipes_without_rewriting_assets() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(table_count, 4);
     assert_eq!(asset_count, 1);
     assert_eq!(stored_revision_id, revision_id);
@@ -1351,7 +1807,7 @@ fn restorative_effects_revision_adds_settings_without_rewriting_history() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(column_count, 2);
     assert!(!legacy_json.contains("active_count"));
     assert!(!legacy_json.contains("de_hum"));
@@ -1459,7 +1915,7 @@ fn fixed_chain_revision_adds_authored_effect_chain_column() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert!(default_expression.contains("restoration"));
     assert!(default_expression.contains("master"));
     let _ = std::fs::remove_dir_all(root);
@@ -1503,7 +1959,7 @@ fn immediately_previous_revision_adds_delivery_formats() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert!(table_sql.contains("wav_pcm16"));
     assert!(table_sql.contains("flac24"));
     let _ = std::fs::remove_dir_all(root);
@@ -1550,7 +2006,7 @@ fn immediately_previous_revision_adds_restoration_chain() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(restoration_column_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1618,7 +2074,7 @@ fn previous_catalog_revision_adds_render_exports_without_losing_assets() {
                 ))
             })
             .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(asset_count, 1);
     assert_eq!(render_table_count, 1);
     assert_eq!(album_table_count, 1);
@@ -1666,7 +2122,7 @@ fn immediately_previous_catalog_revision_adds_user_albums() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(album_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1733,7 +2189,7 @@ fn legacy_catalog_revision_migrates_both_compatible_steps() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(render_table_count, 1);
     assert_eq!(reverb_column_count, 1);
     assert_eq!(album_table_count, 1);
@@ -1779,7 +2235,7 @@ fn immediately_previous_revision_adds_long_audio_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(segment_table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
@@ -1829,7 +2285,7 @@ fn immediately_previous_revision_adds_semantic_search_projection() {
             ))
         })
         .expect("migration reads");
-    assert_eq!(version, "20260813.3");
+    assert_eq!(version, "20260813.5");
     assert_eq!(document_count, 1);
     assert_eq!(fts_count, 1);
     let _ = std::fs::remove_dir_all(root);

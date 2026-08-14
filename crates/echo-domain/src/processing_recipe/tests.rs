@@ -89,6 +89,12 @@ fn source_creative_vfx() -> CreativeVfxSettings {
     creative_vfx.rotary.enabled = true;
     creative_vfx.rotary.speed = crate::RotaryVfxSpeed::Fast;
     creative_vfx.rotary.motion_percent = 83;
+    creative_vfx.freeze.enabled = true;
+    creative_vfx.freeze.capture_source_millis = 2_000;
+    creative_vfx.freeze.mix_percent = 62;
+    creative_vfx.granular.enabled = true;
+    creative_vfx.granular.random_seed = 0x1234_5678;
+    creative_vfx.granular.pitch_cents = -240;
     creative_vfx
 }
 
@@ -186,6 +192,8 @@ fn source_effect_chain() -> EffectChain {
         EffectNodeKind::DigitalDegradeVfx,
         EffectNodeKind::DriveVfx,
         EffectNodeKind::RotaryVfx,
+        EffectNodeKind::FreezeVfx,
+        EffectNodeKind::GranularVfx,
         EffectNodeKind::Master,
     ])
     .expect("source chain is valid")
@@ -212,7 +220,7 @@ fn graph_with_processing(
 
 #[test]
 fn default_components_are_complete_and_clip_local_controls_are_absent() {
-    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 16);
+    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 18);
     for component in DEFAULT_PROCESSING_COMPONENTS.iter().copied() {
         assert_eq!(
             ProcessingComponent::from_wire_value(component.wire_value()),
@@ -220,8 +228,30 @@ fn default_components_are_complete_and_clip_local_controls_are_absent() {
         );
     }
     assert_eq!(
-        ProcessingComponent::from_wire_value(16),
+        ProcessingComponent::from_wire_value(18),
         Err(ProcessingComponentValueError)
+    );
+}
+
+#[test]
+fn source_specific_freeze_recipe_applies_only_when_target_can_rebuild_anchor() {
+    let source = graph_with_processing(1_000, 18_000, 300, 450, 350, 90);
+    let patch = AdjustmentPatch::from_graph(source, &[ProcessingComponent::FreezeVfx])
+        .expect("source-specific Freeze patch captures");
+    let compatible = AdjustmentGraph::identity(5_000).expect("compatible target validates");
+    let applied = patch
+        .apply_to(compatible, ProcessingMergeMode::Merge)
+        .expect("compatible target rebuilds the source anchor");
+    assert_eq!(applied.creative_vfx().freeze, source_creative_vfx().freeze);
+
+    let incompatible =
+        AdjustmentGraph::new(5_000, 2_500, 5_000, 0, 0, AdjustmentEffects::default())
+            .expect("target trim validates independently");
+    assert_eq!(
+        patch.apply_to(incompatible, ProcessingMergeMode::Merge),
+        Err(ProcessingRecipeError::InvalidAdjustment(
+            AdjustmentGraphError::FreezeAnchorOutOfRange
+        ))
     );
 }
 

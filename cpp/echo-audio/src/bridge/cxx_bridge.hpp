@@ -21,6 +21,6 @@ namespace echo::bridge {
     uint64_t end_millis
 );
 [[nodiscard]] FfiPreparedImpulseResponse
-prepare_impulse_response_bridge(rust::Str source_path, rust::Str output_path);
+prepare_impulse_response_bridge(rust::Str source_path, rust::Str output_path, uint8_t layout);
 
 } // namespace echo::bridge

@@ -161,6 +161,31 @@ struct RotaryVfxAdjustment {
     std::uint8_t stereo_width_percent = 80;
 };
 
+/// Authored controls for a source-anchored spectral freeze. The anchor is an
+/// Original-time position and remains inert while the node is disabled.
+struct FreezeVfxAdjustment {
+    bool enabled = false;
+    std::uint8_t mix_percent = 70;
+    std::uint64_t capture_source_millis = 100;
+
+    bool operator==(const FreezeVfxAdjustment&) const = default;
+};
+
+/// Bounded authored intent for a source-derived granular texture.
+struct GranularVfxAdjustment {
+    bool enabled = false;
+    std::uint8_t mix_percent = 45;
+    std::uint16_t grain_millis = 80;
+    std::uint16_t density_tenths_hertz = 120;
+    std::uint16_t lookback_millis = 250;
+    std::uint16_t scatter_millis = 120;
+    std::int16_t pitch_cents = 0;
+    std::uint8_t stereo_spread_percent = 50;
+    std::uint32_t random_seed = 0x4543484FU;
+
+    bool operator==(const GranularVfxAdjustment&) const = default;
+};
+
 /// Complete prepared input state for the independent Creative VFX nodes.
 struct CreativeVfxAdjustment {
     SceneVfxAdjustment scene;
@@ -170,6 +195,8 @@ struct CreativeVfxAdjustment {
     DigitalDegradeVfxAdjustment digital_degrade;
     DriveVfxAdjustment drive;
     RotaryVfxAdjustment rotary;
+    FreezeVfxAdjustment freeze;
+    GranularVfxAdjustment granular;
 };
 
 } // namespace echo::audio

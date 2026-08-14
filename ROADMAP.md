@@ -662,6 +662,17 @@ InferenceBackend
     的连续运动状态均不接受 Original 时间遮罩。试听、整段分析、离线导出、Catalog revision、
     处理方案与专属 Creative 参数页共享同一类型化设置；旧 `20260812.4` revision、Listening 状态、
     Creative JSON 和 effect-chain bytes 在迁移时不改写，缺失字段只在读取时恢复为 disabled 默认值。
+  - 冻结／颗粒与真立体声空间切片（2026-08-14）：Catalog `20260813.4` 为 Creative chain
+    追加默认关闭的 Freeze 与 Granular。Freeze 保存源时间锚定的频谱捕获点和干湿比，并由执行层
+    预读固定历史；Granular 保存颗粒大小、密度、回看、散布、音高、声像与确定性种子，使试听与
+    导出可重复。两者均是明确创意处理，不生成新的来源材料；由于各自依赖完整源历史，首版不接受
+    局部效果遮罩。Catalog `20260813.5` 同时把 convolution IR preparation 明确分为 mono、
+    stereo-parallel 与 `LL/LR/RL/RR` true-stereo：用户导入四声道 WAV 时必须显式选择后者，
+    Echo 从不依通道数猜测布局。v2 true-stereo 以四条卷积路径实现 `wetL=LL(L)+RL(R)`、
+    `wetR=LR(L)+RR(R)`；既有 mono/stereo IR 仍保持原路由与字节身份。Creative 目录、草稿
+    历史、处理方案、实时试听与离线导出已消费 Freeze／Granular；Space 的导入界面会显示 IR
+    实际布局与来源／许可证据。此切片不包含云端 IR 浏览、捆绑第三方 IR、生成式环境声，或效果尾音
+    超出 authored 声音时长的导出。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，

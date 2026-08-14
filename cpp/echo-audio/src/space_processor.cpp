@@ -39,6 +39,17 @@ std::unique_ptr<ConvolutionSpaceProcessor> make_convolution(
                   load_prepared_impulse_response(adjustment.convolution.prepared_path)
               );
     const auto& impulse = *loaded;
+    if (impulse.layout == PreparedImpulseLayout::TrueStereoLlLrRlRr) {
+        return std::make_unique<ConvolutionSpaceProcessor>(
+            adjustment.convolution.adjustment,
+            sample_rate,
+            channel_count,
+            impulse.left,
+            impulse.left_to_right,
+            impulse.right_to_left,
+            impulse.right
+        );
+    }
     return std::make_unique<ConvolutionSpaceProcessor>(
         adjustment.convolution.adjustment,
         sample_rate,

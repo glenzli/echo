@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use super::*;
-use crate::{IrRightsDeclaration, IrStoreErrorKind};
+use crate::{ImpulseResponsePreparationLayout, IrRightsDeclaration, IrStoreErrorKind};
 
 fn root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
@@ -17,6 +17,13 @@ fn append_u16(bytes: &mut Vec<u8>, value: u16) {
 
 fn append_u32(bytes: &mut Vec<u8>, value: u32) {
     bytes.extend_from_slice(&value.to_le_bytes());
+}
+
+fn append_i24(bytes: &mut Vec<u8>, value: i32) {
+    let bits = value.cast_unsigned();
+    bytes.push((bits & 0xff) as u8);
+    bytes.push(((bits >> 8) & 0xff) as u8);
+    bytes.push(((bits >> 16) & 0xff) as u8);
 }
 
 fn pcm16_mono_wav(sample_rate: u32, samples: &[i16]) -> Vec<u8> {
@@ -36,6 +43,40 @@ fn pcm16_mono_wav(sample_rate: u32, samples: &[i16]) -> Vec<u8> {
     append_u32(&mut wav, data_bytes);
     for sample in samples {
         append_u16(&mut wav, u16::from_le_bytes(sample.to_le_bytes()));
+    }
+    wav
+}
+
+fn true_stereo_pcm24_wav() -> Vec<u8> {
+    const SAMPLE_RATE: u32 = 48_000;
+    const CHANNELS: u16 = 4;
+    const FRAMES: u32 = 4;
+    const DATA_BYTES: u32 = FRAMES * 4 * 3;
+    let mut wav = Vec::with_capacity((68 + DATA_BYTES) as usize);
+    wav.extend_from_slice(b"RIFF");
+    append_u32(&mut wav, 60 + DATA_BYTES);
+    wav.extend_from_slice(b"WAVEfmt ");
+    append_u32(&mut wav, 40);
+    append_u16(&mut wav, 0xfffe);
+    append_u16(&mut wav, CHANNELS);
+    append_u32(&mut wav, SAMPLE_RATE);
+    append_u32(&mut wav, SAMPLE_RATE * u32::from(CHANNELS) * 3);
+    append_u16(&mut wav, CHANNELS * 3);
+    append_u16(&mut wav, 24);
+    append_u16(&mut wav, 22);
+    append_u16(&mut wav, 24);
+    append_u32(&mut wav, 0x33);
+    append_u32(&mut wav, 1);
+    append_u16(&mut wav, 0);
+    append_u16(&mut wav, 0x0010);
+    wav.extend_from_slice(&[0x80, 0, 0, 0xaa, 0, 0x38, 0x9b, 0x71]);
+    wav.extend_from_slice(b"data");
+    append_u32(&mut wav, DATA_BYTES);
+    for frame in 0..FRAMES {
+        append_i24(&mut wav, if frame == 0 { 0x0040_0000 } else { 0 });
+        append_i24(&mut wav, if frame == 1 { 0x0030_0000 } else { 0 });
+        append_i24(&mut wav, if frame == 2 { -0x0040_0000 } else { 0 });
+        append_i24(&mut wav, if frame == 3 { -0x0020_0000 } else { 0 });
     }
     wav
 }
@@ -77,6 +118,7 @@ fn local_wav_closes_source_preparation_and_provenance_lifecycles() {
     );
     assert_eq!(imported.preparation.source_sample_rate, 24000);
     assert_eq!(imported.preparation.channel_count, 1);
+    assert_eq!(imported.preparation.layout, PreparedIrLayout::Mono);
     assert_eq!(imported.preparation.source_frame_count, 2400);
     assert_eq!(imported.preparation.prepared_frame_count, 4800);
     let prepared = fs::read(&imported.preparation.cache_path).expect("read prepared cache");
@@ -99,6 +141,21 @@ fn local_wav_closes_source_preparation_and_provenance_lifecycles() {
             .source_store()
             .provenance_path(imported.record.import_id)
             .exists()
+    );
+    let explicit_standard = pipeline
+        .import_local_wav_with_layout(
+            &source_path,
+            ImpulseResponsePreparationLayout::MonoOrStereo,
+            user_owned("Explicit standard"),
+        )
+        .expect("explicit standard preparation");
+    assert_eq!(
+        explicit_standard.preparation.prepared_hash,
+        imported.preparation.prepared_hash
+    );
+    assert_eq!(
+        fs::read(&explicit_standard.preparation.cache_path).expect("read explicit standard"),
+        prepared
     );
 
     fs::remove_file(&source_path).expect("remove original import path");
@@ -199,6 +256,73 @@ fn invalid_rights_or_wav_never_publish_provenance() {
             .expect("read provenance events")
             .count(),
         0
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn true_stereo_requires_explicit_intent_and_rebuilds_the_same_v2_identity() {
+    let root = root("true-stereo");
+    fs::create_dir_all(&root).expect("create root");
+    let source_path = root.join("true-stereo.wav");
+    fs::write(&source_path, true_stereo_pcm24_wav()).expect("write true-stereo fixture");
+    let pipeline =
+        IrImportPipeline::open(&root.join("sources"), &root.join("cache")).expect("open pipeline");
+
+    let implicit_error = pipeline
+        .import_local_wav_with_layout(
+            &source_path,
+            ImpulseResponsePreparationLayout::MonoOrStereo,
+            user_owned("Must not infer"),
+        )
+        .expect_err("four channels never imply true stereo");
+    assert_eq!(implicit_error.kind, IrStoreErrorKind::PreparationRejected);
+    assert_eq!(
+        fs::read_dir(root.join("sources/provenance/events"))
+            .expect("read provenance events")
+            .count(),
+        0
+    );
+
+    let imported = pipeline
+        .import_local_wav_with_layout(
+            &source_path,
+            ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr,
+            user_owned("True stereo room"),
+        )
+        .expect("explicit true-stereo import");
+    assert_eq!(imported.preparation.preparation_version, 2);
+    assert_eq!(imported.preparation.channel_count, 4);
+    assert_eq!(
+        imported.preparation.layout,
+        PreparedIrLayout::TrueStereoLlLrRlRr
+    );
+    let prepared = fs::read(&imported.preparation.cache_path).expect("read prepared artifact");
+    assert_eq!(read_u32(&prepared, 12), 2);
+    assert_eq!(read_u32(&prepared, 20), 4);
+    assert_eq!(
+        ContentHash::from(blake3::hash(&prepared)),
+        imported.preparation.prepared_hash
+    );
+
+    fs::remove_file(&imported.preparation.cache_path).expect("evict prepared cache");
+    let rebuilt = pipeline
+        .prepare_owned_source_with_layout(
+            &StoredIrSource {
+                source_hash: imported.record.source_hash,
+                source_size_bytes: imported.record.source_size_bytes,
+                outcome: ImportOutcome::AlreadyPresent,
+            },
+            imported.preparation.layout.preparation_intent(),
+        )
+        .expect("rebuild with persisted layout intent");
+    assert_eq!(rebuilt.layout, PreparedIrLayout::TrueStereoLlLrRlRr);
+    assert_eq!(rebuilt.prepared_hash, imported.preparation.prepared_hash);
+    assert_eq!(
+        fs::read_dir(root.join("sources/provenance/events"))
+            .expect("read provenance events")
+            .count(),
+        1
     );
     let _ = fs::remove_dir_all(root);
 }

@@ -25,6 +25,30 @@ void ImpulseResponseController::importLocalWav(
     const QString& spdxExpression,
     const QString& licenseUrl
 ) {
+    importLocalWavWithLayout(
+        sourcePath,
+        QStringLiteral("mono_or_stereo"),
+        displayName,
+        creator,
+        sourceUrl,
+        attribution,
+        rightsKind,
+        spdxExpression,
+        licenseUrl
+    );
+}
+
+void ImpulseResponseController::importLocalWavWithLayout(
+    const QString& sourcePath,
+    const QString& preparationLayout,
+    const QString& displayName,
+    const QString& creator,
+    const QString& sourceUrl,
+    const QString& attribution,
+    const QString& rightsKind,
+    const QString& spdxExpression,
+    const QString& licenseUrl
+) {
     if (busy_) {
         return;
     }
@@ -35,6 +59,7 @@ void ImpulseResponseController::importLocalWav(
     worker_ = std::jthread([this,
                             generation,
                             sourcePath,
+                            preparationLayout,
                             displayName,
                             creator,
                             sourceUrl,
@@ -42,8 +67,9 @@ void ImpulseResponseController::importLocalWav(
                             rightsKind,
                             spdxExpression,
                             licenseUrl](std::stop_token stop) {
-        const QVariantMap result = backend_.importImpulseResponse(
+        const QVariantMap result = backend_.importImpulseResponseWithLayout(
             sourcePath,
+            preparationLayout,
             displayName,
             creator,
             sourceUrl,

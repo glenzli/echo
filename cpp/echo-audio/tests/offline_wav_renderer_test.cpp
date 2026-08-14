@@ -216,6 +216,8 @@ int main() {
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
         echo::audio::EffectNodeKind::DriveVfx,
         echo::audio::EffectNodeKind::RotaryVfx,
+        echo::audio::EffectNodeKind::FreezeVfx,
+        echo::audio::EffectNodeKind::GranularVfx,
     };
     latency_compensated.effect_chain_count = 3;
     const auto compensated = echo::audio::OfflineWavRenderer::render(
@@ -277,6 +279,8 @@ int main() {
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
         echo::audio::EffectNodeKind::DriveVfx,
         echo::audio::EffectNodeKind::RotaryVfx,
+        echo::audio::EffectNodeKind::FreezeVfx,
+        echo::audio::EffectNodeKind::GranularVfx,
     };
     channel_repaired.effect_chain_count = 4;
     const auto live_channel_repaired = render_playback(source, channel_repaired);
@@ -325,6 +329,8 @@ int main() {
         echo::audio::EffectNodeKind::DigitalDegradeVfx,
         echo::audio::EffectNodeKind::DriveVfx,
         echo::audio::EffectNodeKind::RotaryVfx,
+        echo::audio::EffectNodeKind::FreezeVfx,
+        echo::audio::EffectNodeKind::GranularVfx,
     };
     spring_space.effect_chain_count = 3;
     const auto live_spring_space = render_playback(source, spring_space);
@@ -412,6 +418,8 @@ int main() {
         echo::audio::EffectNodeKind::DeHum,
         echo::audio::EffectNodeKind::DeClick,
         echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::FreezeVfx,
+        echo::audio::EffectNodeKind::GranularVfx,
     };
     creative_vfx.effect_chain_count = 8;
     const auto live_creative_vfx = render_playback(source, creative_vfx);
@@ -428,6 +436,68 @@ int main() {
             std::abs(live_creative_vfx[index] - pcm24(creative_vfx_sink.bytes(), index)) < 2.0E-6F
         );
     }
+
+    auto freeze_granular = full_source;
+    freeze_granular.creative_vfx.freeze = {
+        .enabled = true,
+        .mix_percent = 65,
+        .capture_source_millis = 100,
+    };
+    freeze_granular.creative_vfx.granular = {
+        .enabled = true,
+        .mix_percent = 58,
+        .grain_millis = 70,
+        .density_tenths_hertz = 180,
+        .lookback_millis = 180,
+        .scatter_millis = 60,
+        .pitch_cents = -250,
+        .stereo_spread_percent = 70,
+        .random_seed = 0x13579BDFU,
+    };
+    freeze_granular.effect_chain = {
+        echo::audio::EffectNodeKind::FreezeVfx,
+        echo::audio::EffectNodeKind::GranularVfx,
+        echo::audio::EffectNodeKind::Master,
+        echo::audio::EffectNodeKind::Restoration,
+        echo::audio::EffectNodeKind::Equalizer,
+        echo::audio::EffectNodeKind::Dynamics,
+        echo::audio::EffectNodeKind::Space,
+        echo::audio::EffectNodeKind::DeHum,
+        echo::audio::EffectNodeKind::DeClick,
+        echo::audio::EffectNodeKind::ChannelRepair,
+        echo::audio::EffectNodeKind::SceneVfx,
+        echo::audio::EffectNodeKind::DelayVfx,
+        echo::audio::EffectNodeKind::ModulationVfx,
+        echo::audio::EffectNodeKind::TransformVfx,
+        echo::audio::EffectNodeKind::DigitalDegradeVfx,
+        echo::audio::EffectNodeKind::DriveVfx,
+        echo::audio::EffectNodeKind::RotaryVfx,
+    };
+    freeze_granular.effect_chain_count = 3;
+    const auto live_freeze_granular = render_playback(source, freeze_granular);
+    MemorySink freeze_granular_sink;
+    const auto freeze_granular_result = echo::audio::OfflineWavRenderer::render(
+        source.string(),
+        freeze_granular,
+        freeze_granular_sink
+    );
+    assert(freeze_granular_result.frame_count == 48'000);
+    assert(
+        freeze_granular_result.frame_count * freeze_granular_result.channel_count
+        == live_freeze_granular.size()
+    );
+    bool freeze_granular_changed = false;
+    const auto unprocessed = render_playback(source, full_source);
+    for (std::size_t index = 0; index < live_freeze_granular.size(); ++index) {
+        assert(
+            std::abs(live_freeze_granular[index] - pcm24(freeze_granular_sink.bytes(), index))
+            < 2.0E-6F
+        );
+        freeze_granular_changed =
+            freeze_granular_changed
+            || std::abs(live_freeze_granular[index] - unprocessed[index]) > 1.0E-5F;
+    }
+    assert(freeze_granular_changed);
 
     auto source_edited = full_source;
     source_edited.edit_segments = {

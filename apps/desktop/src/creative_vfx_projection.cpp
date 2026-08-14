@@ -4,6 +4,10 @@
 #include <QJsonObject>
 #include <QStringList>
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
 namespace {
 
 QVariant
@@ -143,6 +147,29 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
     const int rotary_width =
         field(rotary, "stereoWidthPercent", "stereo_width_percent", 80).toInt();
 
+    const QVariantMap freeze = nested(value, "freeze");
+    const int freeze_mix = field(freeze, "mixPercent", "mix_percent", 70).toInt();
+    bool freeze_anchor_ok = false;
+    const qlonglong freeze_anchor =
+        field(freeze, "captureSourceMillis", "capture_source_millis", 100)
+            .toLongLong(&freeze_anchor_ok);
+
+    const QVariantMap granular = nested(value, "granular");
+    const int granular_mix = field(granular, "mixPercent", "mix_percent", 45).toInt();
+    const int grain_millis = field(granular, "grainMillis", "grain_millis", 80).toInt();
+    const int density = field(granular, "densityTenthsHertz", "density_tenths_hertz", 120).toInt();
+    const int lookback = field(granular, "lookbackMillis", "lookback_millis", 250).toInt();
+    const int scatter = field(granular, "scatterMillis", "scatter_millis", 120).toInt();
+    const int pitch = field(granular, "pitchCents", "pitch_cents", 0).toInt();
+    const int spread = field(granular, "stereoSpreadPercent", "stereo_spread_percent", 50).toInt();
+    bool seed_ok = false;
+    const qulonglong seed =
+        field(granular, "randomSeed", "random_seed", 0x4543484FU).toULongLong(&seed_ok);
+    const double pitch_ratio = std::exp2(static_cast<double>(pitch) / 1200.0);
+    const double required_history =
+        static_cast<double>(lookback + scatter)
+        + static_cast<double>(grain_millis) * std::max(1.0, pitch_ratio);
+
     if (!scene_character || scene_mix < 0 || scene_mix > 100 || scene_intensity < 0
         || scene_intensity > 100 || !delay_character || slapback_time < 30 || slapback_time > 180
         || slapback_mix < 0 || slapback_mix > 100 || slapback_cut < 1000 || slapback_cut > 20000
@@ -167,7 +194,13 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
         || drive_mix > 100 || drive_amount < 0 || drive_amount > 3600 || drive_tone < 500
         || drive_tone > 16000 || drive_output < -2400 || drive_output > 600 || !rotary_speed
         || rotary_mix < 0 || rotary_mix > 100 || rotary_motion < 0 || rotary_motion > 100
-        || rotary_width < 0 || rotary_width > 100) {
+        || rotary_width < 0 || rotary_width > 100 || freeze_mix < 0 || freeze_mix > 100
+        || !freeze_anchor_ok || freeze_anchor < 0
+        || (freeze.value(QStringLiteral("enabled"), false).toBool() && freeze_anchor < 86)
+        || granular_mix < 0 || granular_mix > 100 || grain_millis < 20 || grain_millis > 250
+        || density < 10 || density > 400 || lookback < 0 || lookback > 1500 || scatter < 0
+        || scatter > 750 || pitch < -1200 || pitch > 1200 || spread < 0 || spread > 100 || !seed_ok
+        || seed > std::numeric_limits<std::uint32_t>::max() || required_history > 2000.0) {
         return std::nullopt;
     }
 
@@ -265,12 +298,30 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
                 .tone_hertz = static_cast<std::uint16_t>(drive_tone),
                 .output_gain_centibels = static_cast<std::int16_t>(drive_output),
             },
-        .rotary = {
-            .speed = static_cast<echo::audio::RotaryVfxSpeed>(*rotary_speed),
-            .enabled = rotary.value(QStringLiteral("enabled"), false).toBool(),
-            .mix_percent = static_cast<std::uint8_t>(rotary_mix),
-            .motion_percent = static_cast<std::uint8_t>(rotary_motion),
-            .stereo_width_percent = static_cast<std::uint8_t>(rotary_width),
+        .rotary =
+            {
+                .speed = static_cast<echo::audio::RotaryVfxSpeed>(*rotary_speed),
+                .enabled = rotary.value(QStringLiteral("enabled"), false).toBool(),
+                .mix_percent = static_cast<std::uint8_t>(rotary_mix),
+                .motion_percent = static_cast<std::uint8_t>(rotary_motion),
+                .stereo_width_percent = static_cast<std::uint8_t>(rotary_width),
+            },
+        .freeze =
+            {
+                .enabled = freeze.value(QStringLiteral("enabled"), false).toBool(),
+                .mix_percent = static_cast<std::uint8_t>(freeze_mix),
+                .capture_source_millis = static_cast<std::uint64_t>(freeze_anchor),
+            },
+        .granular = {
+            .enabled = granular.value(QStringLiteral("enabled"), false).toBool(),
+            .mix_percent = static_cast<std::uint8_t>(granular_mix),
+            .grain_millis = static_cast<std::uint16_t>(grain_millis),
+            .density_tenths_hertz = static_cast<std::uint16_t>(density),
+            .lookback_millis = static_cast<std::uint16_t>(lookback),
+            .scatter_millis = static_cast<std::uint16_t>(scatter),
+            .pitch_cents = static_cast<std::int16_t>(pitch),
+            .stereo_spread_percent = static_cast<std::uint8_t>(spread),
+            .random_seed = static_cast<std::uint32_t>(seed),
         },
     };
 }
@@ -388,6 +439,24 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         {QStringLiteral("motionPercent"), adjustment.rotary.motion_percent},
         {QStringLiteral("stereoWidthPercent"), adjustment.rotary.stereo_width_percent},
     };
+    QVariantMap freeze{
+        {QStringLiteral("enabled"), adjustment.freeze.enabled},
+        {QStringLiteral("mixPercent"), adjustment.freeze.mix_percent},
+        {QStringLiteral("captureSourceMillis"),
+         QVariant::fromValue<qulonglong>(adjustment.freeze.capture_source_millis)},
+    };
+    QVariantMap granular{
+        {QStringLiteral("enabled"), adjustment.granular.enabled},
+        {QStringLiteral("mixPercent"), adjustment.granular.mix_percent},
+        {QStringLiteral("grainMillis"), adjustment.granular.grain_millis},
+        {QStringLiteral("densityTenthsHertz"), adjustment.granular.density_tenths_hertz},
+        {QStringLiteral("lookbackMillis"), adjustment.granular.lookback_millis},
+        {QStringLiteral("scatterMillis"), adjustment.granular.scatter_millis},
+        {QStringLiteral("pitchCents"), adjustment.granular.pitch_cents},
+        {QStringLiteral("stereoSpreadPercent"), adjustment.granular.stereo_spread_percent},
+        {QStringLiteral("randomSeed"),
+         QVariant::fromValue<qulonglong>(adjustment.granular.random_seed)},
+    };
     digital_degrade.insert(
         QStringLiteral("sampleRateReduction"),
         QVariantMap{
@@ -403,6 +472,8 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         {QStringLiteral("digitalDegrade"), digital_degrade},
         {QStringLiteral("drive"), drive},
         {QStringLiteral("rotary"), rotary},
+        {QStringLiteral("freeze"), freeze},
+        {QStringLiteral("granular"), granular},
     };
 }
 
@@ -500,6 +571,18 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
     rotary = snake(rotary, "mixPercent", "mix_percent");
     rotary = snake(rotary, "motionPercent", "motion_percent");
     rotary = snake(rotary, "stereoWidthPercent", "stereo_width_percent");
+    QVariantMap freeze = nested(qml, "freeze");
+    freeze = snake(freeze, "mixPercent", "mix_percent");
+    freeze = snake(freeze, "captureSourceMillis", "capture_source_millis");
+    QVariantMap granular = nested(qml, "granular");
+    granular = snake(granular, "mixPercent", "mix_percent");
+    granular = snake(granular, "grainMillis", "grain_millis");
+    granular = snake(granular, "densityTenthsHertz", "density_tenths_hertz");
+    granular = snake(granular, "lookbackMillis", "lookback_millis");
+    granular = snake(granular, "scatterMillis", "scatter_millis");
+    granular = snake(granular, "pitchCents", "pitch_cents");
+    granular = snake(granular, "stereoSpreadPercent", "stereo_spread_percent");
+    granular = snake(granular, "randomSeed", "random_seed");
     return QJsonDocument::fromVariant(
                QVariantMap{
                    {QStringLiteral("scene"), scene},
@@ -509,6 +592,8 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
                    {QStringLiteral("digital_degrade"), digital_degrade},
                    {QStringLiteral("drive"), drive},
                    {QStringLiteral("rotary"), rotary},
+                   {QStringLiteral("freeze"), freeze},
+                   {QStringLiteral("granular"), granular},
                }
     )
         .toJson(QJsonDocument::Compact);

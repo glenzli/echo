@@ -11,6 +11,8 @@
 #include "echo/audio/digital_degrade_vfx_processor.hpp"
 #include "echo/audio/drive_vfx_processor.hpp"
 #include "echo/audio/dynamics_processor.hpp"
+#include "echo/audio/freeze_vfx_processor.hpp"
+#include "echo/audio/granular_vfx_processor.hpp"
 #include "echo/audio/modulation_vfx_processor.hpp"
 #include "echo/audio/parametric_equalizer.hpp"
 #include "echo/audio/rotary_vfx_processor.hpp"
@@ -77,6 +79,12 @@ class EffectProcessingChain::Impl {
         digital_degrade_vfx_(adjustment.creative_vfx().digital_degrade, sample_rate, channel_count),
         drive_vfx_(adjustment.creative_vfx().drive, sample_rate, channel_count),
         rotary_vfx_(adjustment.creative_vfx().rotary, sample_rate, channel_count),
+        freeze_vfx_(adjustment.creative_vfx().freeze, sample_rate, channel_count),
+        granular_vfx_(adjustment.creative_vfx().granular, sample_rate, channel_count),
+        freeze_adjustment_(adjustment.creative_vfx().freeze),
+        freeze_capture_source_frame_(
+            adjustment.creative_vfx().freeze.capture_source_millis * sample_rate / 1000U
+        ),
         restoration_enabled_(adjustment.restoration().enabled), mask_plan_(mask_plan),
         dry_samples_(kMaximumProcessingFrames * channel_count, 0.0F) {
         if (sample_rate_ == 0 || channel_count_ == 0) {
@@ -93,6 +101,14 @@ class EffectProcessingChain::Impl {
                 has_local_masks_
                 || (mask_plan_ != nullptr && mask_plan_->is_locally_masked(nodes_[index]));
         }
+        freeze_node_active_ = std::find(
+                                  nodes_.begin(),
+                                  nodes_.begin() + static_cast<std::ptrdiff_t>(node_count_),
+                                  EffectNodeKind::FreezeVfx
+                              )
+                              != nodes_.begin() + static_cast<std::ptrdiff_t>(node_count_);
+        freeze_capture_configured_ =
+            freeze_node_active_ && adjustment.creative_vfx().freeze.enabled;
         reset_compensation();
     }
 
@@ -136,7 +152,11 @@ class EffectProcessingChain::Impl {
             finishing_ = true;
             drain_input_frames_ = latency_frames_;
         }
-        if (pending_output_frames_ == 0 || capacity_frames == 0) {
+        if (pending_output_frames_ == 0) {
+            validate_freeze_capture_complete();
+            return 0;
+        }
+        if (capacity_frames == 0) {
             return 0;
         }
         while (pending_output_frames_ > 0) {
@@ -155,6 +175,7 @@ class EffectProcessingChain::Impl {
                 return produced;
             }
         }
+        validate_freeze_capture_complete();
         return 0;
     }
 
@@ -175,6 +196,9 @@ class EffectProcessingChain::Impl {
         digital_degrade_vfx_.reset();
         drive_vfx_.reset();
         rotary_vfx_.reset();
+        freeze_vfx_.reset();
+        granular_vfx_.reset();
+        freeze_capture_handled_ = false;
         reset_compensation();
     }
 
@@ -254,6 +278,26 @@ class EffectProcessingChain::Impl {
         rotary_vfx_.update(adjustment);
     }
 
+    void update_freeze_vfx(FreezeVfxAdjustment adjustment) {
+        if (!freeze_node_active_) {
+            freeze_adjustment_ = adjustment;
+            freeze_vfx_.update(adjustment);
+            return;
+        }
+        if (adjustment.capture_source_millis != freeze_adjustment_.capture_source_millis) {
+            throw std::logic_error("freeze capture anchor changes require a playback restart");
+        }
+        if (adjustment.enabled && !freeze_capture_configured_) {
+            throw std::logic_error("enabling an unprepared freeze requires a playback restart");
+        }
+        freeze_adjustment_ = adjustment;
+        freeze_vfx_.update(adjustment);
+    }
+
+    void update_granular_vfx(GranularVfxAdjustment adjustment) {
+        granular_vfx_.update(adjustment);
+    }
+
     [[nodiscard]] std::size_t latency_frames() const {
         return latency_frames_;
     }
@@ -275,6 +319,8 @@ class EffectProcessingChain::Impl {
             return transform_vfx_.latency_frames();
         case EffectNodeKind::DriveVfx:
             return drive_vfx_.latency_frames();
+        case EffectNodeKind::FreezeVfx:
+            return freeze_vfx_.latency_frames();
         case EffectNodeKind::Restoration:
         case EffectNodeKind::Equalizer:
         case EffectNodeKind::Dynamics:
@@ -287,6 +333,7 @@ class EffectProcessingChain::Impl {
         case EffectNodeKind::ModulationVfx:
         case EffectNodeKind::DigitalDegradeVfx:
         case EffectNodeKind::RotaryVfx:
+        case EffectNodeKind::GranularVfx:
             return 0;
         }
         return 0;
@@ -368,6 +415,13 @@ class EffectProcessingChain::Impl {
             case EffectNodeKind::RotaryVfx:
                 rotary_vfx_.process_interleaved(samples, frame_count, channel_count_);
                 break;
+            case EffectNodeKind::FreezeVfx:
+                process_freeze(samples, source_frames, frame_count);
+                delay_source_anchors(node, source_frames, frame_count);
+                break;
+            case EffectNodeKind::GranularVfx:
+                granular_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
             case EffectNodeKind::Master:
                 break;
             }
@@ -402,6 +456,53 @@ class EffectProcessingChain::Impl {
             delay[cursor] = source_frames[frame];
             source_frames[frame] = delayed;
             cursor = (cursor + 1) % delay.size();
+        }
+    }
+
+    void
+    process_freeze(float* samples, const std::uint64_t* source_frames, std::size_t frame_count) {
+        if (!freeze_capture_configured_ || freeze_capture_handled_) {
+            freeze_vfx_.process_interleaved(samples, frame_count, channel_count_);
+            return;
+        }
+        if (source_frames == nullptr) {
+            throw std::invalid_argument(
+                "enabled freeze processing requires Original source-frame anchors"
+            );
+        }
+
+        std::size_t capture_offset = frame_count;
+        for (std::size_t frame = 0; frame < frame_count; ++frame) {
+            if (source_frames[frame] == freeze_capture_source_frame_) {
+                capture_offset = frame;
+                break;
+            }
+            if (source_frames[frame] != kNoSourceFrame
+                && source_frames[frame] > freeze_capture_source_frame_) {
+                throw std::logic_error("freeze capture anchor was not reachable in source order");
+            }
+        }
+        if (capture_offset == frame_count) {
+            freeze_vfx_.process_interleaved(samples, frame_count, channel_count_);
+            return;
+        }
+        if (capture_offset != 0) {
+            freeze_vfx_.process_interleaved(samples, capture_offset, channel_count_);
+        }
+        if (!freeze_vfx_.request_capture()) {
+            throw std::logic_error("freeze capture anchor lacks its prepared source history");
+        }
+        freeze_capture_handled_ = true;
+        freeze_vfx_.process_interleaved(
+            samples + capture_offset * channel_count_,
+            frame_count - capture_offset,
+            channel_count_
+        );
+    }
+
+    void validate_freeze_capture_complete() const {
+        if (freeze_capture_configured_ && !freeze_capture_handled_) {
+            throw std::logic_error("freeze capture anchor was not reached before stream end");
         }
     }
 
@@ -461,6 +562,13 @@ class EffectProcessingChain::Impl {
     DigitalDegradeVfxProcessor digital_degrade_vfx_;
     DriveVfxProcessor drive_vfx_;
     RotaryVfxProcessor rotary_vfx_;
+    FreezeVfxProcessor freeze_vfx_;
+    GranularVfxProcessor granular_vfx_;
+    FreezeVfxAdjustment freeze_adjustment_;
+    std::uint64_t freeze_capture_source_frame_ = 0;
+    bool freeze_capture_configured_ = false;
+    bool freeze_capture_handled_ = false;
+    bool freeze_node_active_ = false;
     bool restoration_enabled_ = true;
     const EffectMaskPlan* mask_plan_ = nullptr;
     bool has_local_masks_ = false;
@@ -579,6 +687,14 @@ void EffectProcessingChain::update_drive_vfx(DriveVfxAdjustment adjustment) {
 
 void EffectProcessingChain::update_rotary_vfx(RotaryVfxAdjustment adjustment) {
     impl_->update_rotary_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_freeze_vfx(FreezeVfxAdjustment adjustment) {
+    impl_->update_freeze_vfx(adjustment);
+}
+
+void EffectProcessingChain::update_granular_vfx(GranularVfxAdjustment adjustment) {
+    impl_->update_granular_vfx(adjustment);
 }
 
 void EffectProcessingChain::validate_restoration(
@@ -738,6 +854,22 @@ void EffectProcessingChain::validate_rotary_vfx(
     std::size_t channel_count
 ) {
     [[maybe_unused]] const RotaryVfxProcessor processor(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_freeze_vfx(
+    FreezeVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const FreezeVfxProcessor processor(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_granular_vfx(
+    GranularVfxAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const GranularVfxProcessor processor(adjustment, sample_rate, channel_count);
 }
 
 std::size_t EffectProcessingChain::latency_frames() const {

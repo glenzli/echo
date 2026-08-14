@@ -37,12 +37,14 @@ pub enum ProcessingComponent {
     DigitalDegradeVfx = 13,
     DriveVfx = 14,
     RotaryVfx = 15,
+    FreezeVfx = 16,
+    GranularVfx = 17,
 }
 
 /// Echo's complete reusable processing surface.
 ///
 /// Clip-local trim, fades, and gain are intentionally absent.
-pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 16] = [
+pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 18] = [
     ProcessingComponent::LowCut,
     ProcessingComponent::Restoration,
     ProcessingComponent::DeHum,
@@ -58,6 +60,8 @@ pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 16] = [
     ProcessingComponent::DigitalDegradeVfx,
     ProcessingComponent::DriveVfx,
     ProcessingComponent::RotaryVfx,
+    ProcessingComponent::FreezeVfx,
+    ProcessingComponent::GranularVfx,
     ProcessingComponent::Master,
 ];
 
@@ -90,6 +94,8 @@ impl ProcessingComponent {
             13 => Ok(Self::DigitalDegradeVfx),
             14 => Ok(Self::DriveVfx),
             15 => Ok(Self::RotaryVfx),
+            16 => Ok(Self::FreezeVfx),
+            17 => Ok(Self::GranularVfx),
             _ => Err(ProcessingComponentValueError),
         }
     }
@@ -112,6 +118,8 @@ impl ProcessingComponent {
             Self::DigitalDegradeVfx => Some(EffectNodeKind::DigitalDegradeVfx),
             Self::DriveVfx => Some(EffectNodeKind::DriveVfx),
             Self::RotaryVfx => Some(EffectNodeKind::RotaryVfx),
+            Self::FreezeVfx => Some(EffectNodeKind::FreezeVfx),
+            Self::GranularVfx => Some(EffectNodeKind::GranularVfx),
         }
     }
 }
@@ -237,6 +245,12 @@ impl AdjustmentPatch {
         &self.components
     }
 
+    /// Returns the immutable Space selection carried by this patch.
+    #[must_use]
+    pub const fn space(&self) -> SpaceSettings {
+        self.space
+    }
+
     /// Materializes this patch into a new target-local graph.
     ///
     /// Both modes preserve target trim, fades, fade curves, and clip gain.
@@ -309,6 +323,12 @@ impl AdjustmentPatch {
         if self.contains(ProcessingComponent::RotaryVfx) {
             effects.creative_vfx.rotary = self.creative_vfx.rotary;
         }
+        if self.contains(ProcessingComponent::FreezeVfx) {
+            effects.creative_vfx.freeze = self.creative_vfx.freeze;
+        }
+        if self.contains(ProcessingComponent::GranularVfx) {
+            effects.creative_vfx.granular = self.creative_vfx.granular;
+        }
         if self.contains(ProcessingComponent::Master) {
             effects.limiter = self.limiter;
         }
@@ -339,7 +359,7 @@ impl AdjustmentPatch {
         if self.components.is_empty() {
             return Err(ProcessingRecipeError::EmptyComponents);
         }
-        let mut seen = [false; 16];
+        let mut seen = [false; 18];
         for component in &self.components {
             let index = usize::from(component.wire_value());
             if seen[index] {
@@ -347,10 +367,16 @@ impl AdjustmentPatch {
             }
             seen[index] = true;
         }
+        let validation_duration = self
+            .creative_vfx
+            .freeze
+            .capture_source_millis
+            .saturating_add(1)
+            .max(1);
         AdjustmentGraph::new(
-            1,
+            validation_duration,
             0,
-            1,
+            validation_duration,
             0,
             0,
             AdjustmentEffects::new(FadeCurves::linear(), 0, self.low_cut_hertz)
@@ -371,7 +397,7 @@ impl AdjustmentPatch {
     }
 
     fn replacement_chain(&self) -> Result<EffectChain, ProcessingRecipeError> {
-        let mut nodes = Vec::with_capacity(16);
+        let mut nodes = Vec::with_capacity(18);
         for &node in self.effect_chain.nodes() {
             if node != EffectNodeKind::Master && self.selects_node(node) {
                 nodes.push(node);
@@ -392,7 +418,7 @@ impl AdjustmentPatch {
             return Ok(target);
         }
 
-        let mut retained = Vec::with_capacity(16);
+        let mut retained = Vec::with_capacity(18);
         let mut insertion_index = None;
         for &node in target.nodes() {
             if node == EffectNodeKind::Master {

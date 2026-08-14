@@ -23,6 +23,7 @@ Dialog {
         attribution.text = "";
         spdx.text = "CC0-1.0";
         rights.currentIndex = 0;
+        layout.currentIndex = 0;
         open();
         wavPicker.open();
     }
@@ -79,6 +80,21 @@ Dialog {
         }
 
         ComboBox {
+            id: layout
+            Layout.fillWidth: true
+            model: [qsTr("Mono or stereo (parallel)"), qsTr("True stereo · LL / LR / RL / RR")]
+        }
+
+        Text {
+            Layout.fillWidth: true
+            visible: layout.currentIndex === 1
+            text: qsTr("Choose this only for a four-channel WAV explicitly ordered LL, LR, RL, RR. Echo never guesses this layout from channel count.")
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontMeta
+            wrapMode: Text.WordWrap
+        }
+
+        ComboBox {
             id: rights
             Layout.fillWidth: true
             model: [qsTr("SPDX or public licence"), qsTr("My recording · no redistribution")]
@@ -111,7 +127,7 @@ Dialog {
             Button {
                 text: impulseResponseController.busy ? qsTr("Importing…") : qsTr("Import")
                 enabled: !impulseResponseController.busy && sourcePath.text.length > 0 && displayName.text.trim().length > 0 && (rights.currentIndex === 1 || spdx.text.trim().length > 0)
-                onClicked: impulseResponseController.importLocalWav(sourcePath.text, displayName.text, creator.text, sourceUrl.text, attribution.text, rights.currentIndex === 0 ? "spdx" : "user_owned_no_redistribution", spdx.text, "")
+                onClicked: impulseResponseController.importLocalWavWithLayout(sourcePath.text, layout.currentIndex === 1 ? "true_stereo_ll_lr_rl_rr" : "mono_or_stereo", displayName.text, creator.text, sourceUrl.text, attribution.text, rights.currentIndex === 0 ? "spdx" : "user_owned_no_redistribution", spdx.text, "")
             }
         }
     }

@@ -276,6 +276,9 @@ pub fn record_adjustment_graph(
     };
     let duration = stored_millis(duration)?;
     let validated = validated_adjustment_graph(duration, graph)?;
+    if let Some(selection) = validated.space().impulse_response {
+        crate::impulse_response::validate_impulse_response_selection(transaction, selection)?;
+    }
     if let Some(current) = latest_adjustment_graph(transaction, asset_id)?
         && current.graph == validated
     {

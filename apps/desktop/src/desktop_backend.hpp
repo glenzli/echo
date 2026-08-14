@@ -38,6 +38,17 @@ class DesktopBackend : public QObject {
         const QString& spdxExpression,
         const QString& licenseUrl
     ) const;
+    [[nodiscard]] QVariantMap importImpulseResponseWithLayout(
+        const QString& sourcePath,
+        const QString& preparationLayout,
+        const QString& displayName,
+        const QString& creator,
+        const QString& sourceUrl,
+        const QString& attribution,
+        const QString& rightsKind,
+        const QString& spdxExpression,
+        const QString& licenseUrl
+    ) const;
     Q_INVOKABLE QVariantList listKeywordFacets() const;
     Q_INVOKABLE QVariantList listSmartAlbums() const;
     Q_INVOKABLE QVariantList listUserAlbums() const;

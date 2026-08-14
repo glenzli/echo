@@ -56,6 +56,8 @@ class EffectProcessingChain {
         std::size_t channel_count
     );
 
+    /// Resets all execution state. Granular texture intentionally restarts at
+    /// timeline zero; source-anchored Freeze is rebuilt separately by its host.
     void reset();
 
     void update_restoration(RestorationAdjustment adjustment);
@@ -73,6 +75,8 @@ class EffectProcessingChain {
     void update_digital_degrade_vfx(DigitalDegradeVfxAdjustment adjustment);
     void update_drive_vfx(DriveVfxAdjustment adjustment);
     void update_rotary_vfx(RotaryVfxAdjustment adjustment);
+    void update_freeze_vfx(FreezeVfxAdjustment adjustment);
+    void update_granular_vfx(GranularVfxAdjustment adjustment);
 
     static void validate_restoration(
         RestorationAdjustment adjustment,
@@ -142,6 +146,16 @@ class EffectProcessingChain {
     );
     static void validate_rotary_vfx(
         RotaryVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_freeze_vfx(
+        FreezeVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_granular_vfx(
+        GranularVfxAdjustment adjustment,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );

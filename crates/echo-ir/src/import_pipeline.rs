@@ -25,6 +25,29 @@ pub enum PreparationOutcome {
     AlreadyPresent,
 }
 
+/// Canonical plane identity written into one prepared artifact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreparedIrLayout {
+    Mono,
+    StereoParallel,
+    TrueStereoLlLrRlRr,
+}
+
+impl PreparedIrLayout {
+    /// Restores the only preparation intent that can reproduce this layout.
+    #[must_use]
+    pub const fn preparation_intent(self) -> echo_bridge::ImpulseResponsePreparationLayout {
+        match self {
+            Self::Mono | Self::StereoParallel => {
+                echo_bridge::ImpulseResponsePreparationLayout::MonoOrStereo
+            }
+            Self::TrueStereoLlLrRlRr => {
+                echo_bridge::ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr
+            }
+        }
+    }
+}
+
 /// Rebuildable canonical preparation bound to one durable source identity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedIrArtifact {
@@ -33,6 +56,7 @@ pub struct PreparedIrArtifact {
     pub preparation_version: u32,
     pub source_sample_rate: u32,
     pub channel_count: u32,
+    pub layout: PreparedIrLayout,
     pub source_frame_count: u64,
     pub prepared_frame_count: u64,
     pub avcodec_version: u32,
@@ -86,9 +110,30 @@ impl IrImportPipeline {
         source: &Path,
         provenance: IrImportProvenance,
     ) -> Result<ImportedIr, IrStoreError> {
+        self.import_local_wav_with_layout(
+            source,
+            echo_bridge::ImpulseResponsePreparationLayout::MonoOrStereo,
+            provenance,
+        )
+    }
+
+    /// Imports one WAV under an explicit plane interpretation.
+    ///
+    /// Four-channel sources are accepted only for the explicit true-stereo
+    /// LL/LR/RL/RR intent; channel count alone is never an inference.
+    ///
+    /// # Errors
+    ///
+    /// Fails with the same publication ordering as [`Self::import_local_wav`].
+    pub fn import_local_wav_with_layout(
+        &self,
+        source: &Path,
+        layout: echo_bridge::ImpulseResponsePreparationLayout,
+        provenance: IrImportProvenance,
+    ) -> Result<ImportedIr, IrStoreError> {
         provenance.validate()?;
         let stored = self.source_store.store_source(source)?;
-        let preparation = self.prepare_owned_source(&stored)?;
+        let preparation = self.prepare_owned_source_with_layout(&stored, layout)?;
         let record = self
             .source_store
             .append_provenance(&stored, source, provenance)?;
@@ -109,13 +154,30 @@ impl IrImportPipeline {
         &self,
         stored: &StoredIrSource,
     ) -> Result<PreparedIrArtifact, IrStoreError> {
+        self.prepare_owned_source_with_layout(
+            stored,
+            echo_bridge::ImpulseResponsePreparationLayout::MonoOrStereo,
+        )
+    }
+
+    /// Rebuilds canonical prepared bytes under a persisted explicit layout.
+    ///
+    /// # Errors
+    ///
+    /// Fails when the source or requested layout cannot reproduce a valid
+    /// preparation artifact.
+    pub fn prepare_owned_source_with_layout(
+        &self,
+        stored: &StoredIrSource,
+        layout: echo_bridge::ImpulseResponsePreparationLayout,
+    ) -> Result<PreparedIrArtifact, IrStoreError> {
         let owned_source = self
             .source_store
             .verify_source(stored.source_hash, stored.source_size_bytes)?;
         let staging_root = store_root(&self.prepared_cache).join("ir-preparation-staging");
         fs::create_dir_all(&staging_root)?;
         let temporary = staging_root.join(format!("{}.echoir", Uuid::now_v7()));
-        let result = self.prepare_to_cache(stored.source_hash, &owned_source, &temporary);
+        let result = self.prepare_to_cache(stored.source_hash, &owned_source, &temporary, layout);
         let _ = fs::remove_file(&temporary);
         result
     }
@@ -130,8 +192,11 @@ impl IrImportPipeline {
         source_hash: ContentHash,
         owned_source: &Path,
         temporary: &Path,
+        intent: echo_bridge::ImpulseResponsePreparationLayout,
     ) -> Result<PreparedIrArtifact, IrStoreError> {
-        let evidence = echo_bridge::prepare_impulse_response(owned_source, temporary)?;
+        let evidence =
+            echo_bridge::prepare_impulse_response_with_layout(owned_source, temporary, intent)?;
+        let layout = prepared_layout(intent, &evidence)?;
         let temporary_size = fs::metadata(temporary)?.len();
         if temporary_size != evidence.size_bytes {
             return Err(IrStoreError::new(
@@ -139,20 +204,21 @@ impl IrImportPipeline {
                 "prepared IR size does not match engine evidence",
             ));
         }
-        verify_prepared_header(temporary, &evidence)?;
+        verify_prepared_header(temporary, &evidence, layout)?;
         let (blob, put) = put_file(
             &self.prepared_cache,
             BlobRole::ImpulseResponsePreparation,
             temporary,
         )?;
         let cache_path = verify_blob(&self.prepared_cache, blob.content_hash, blob.size_bytes)?;
-        verify_prepared_header(&cache_path, &evidence)?;
+        verify_prepared_header(&cache_path, &evidence, layout)?;
         Ok(PreparedIrArtifact {
             source_hash,
             prepared_hash: blob.content_hash,
             preparation_version: evidence.preparation_version,
             source_sample_rate: evidence.source_sample_rate,
             channel_count: evidence.channel_count,
+            layout,
             source_frame_count: evidence.source_frame_count,
             prepared_frame_count: evidence.prepared_frame_count,
             avcodec_version: evidence.avcodec_version,
@@ -170,6 +236,7 @@ impl IrImportPipeline {
 fn verify_prepared_header(
     path: &Path,
     evidence: &echo_bridge::PreparedImpulseResponse,
+    layout: PreparedIrLayout,
 ) -> Result<(), IrStoreError> {
     let mut header = [0_u8; PREPARED_HEADER_BYTES];
     File::open(path)?.read_exact(&mut header)?;
@@ -192,7 +259,14 @@ fn verify_prepared_header(
                 "prepared IR artifact size overflow",
             )
         })?;
-    let valid = &header[..8] == b"ECHOIR01"
+    let valid_layout = matches!(
+        (layout, evidence.preparation_version, evidence.channel_count),
+        (PreparedIrLayout::Mono, 1, 1)
+            | (PreparedIrLayout::StereoParallel, 1, 2)
+            | (PreparedIrLayout::TrueStereoLlLrRlRr, 2, 4)
+    );
+    let valid = valid_layout
+        && &header[..8] == b"ECHOIR01"
         && read_u32(&header, 8) == u32::try_from(PREPARED_HEADER_BYTES).expect("header fits u32")
         && read_u32(&header, 12) == evidence.preparation_version
         && read_u32(&header, 16) == 48_000
@@ -212,6 +286,27 @@ fn verify_prepared_header(
         ));
     }
     Ok(())
+}
+
+fn prepared_layout(
+    intent: echo_bridge::ImpulseResponsePreparationLayout,
+    evidence: &echo_bridge::PreparedImpulseResponse,
+) -> Result<PreparedIrLayout, IrStoreError> {
+    match (intent, evidence.preparation_version, evidence.channel_count) {
+        (echo_bridge::ImpulseResponsePreparationLayout::MonoOrStereo, 1, 1) => {
+            Ok(PreparedIrLayout::Mono)
+        }
+        (echo_bridge::ImpulseResponsePreparationLayout::MonoOrStereo, 1, 2) => {
+            Ok(PreparedIrLayout::StereoParallel)
+        }
+        (echo_bridge::ImpulseResponsePreparationLayout::TrueStereoLlLrRlRr, 2, 4) => {
+            Ok(PreparedIrLayout::TrueStereoLlLrRlRr)
+        }
+        _ => Err(IrStoreError::new(
+            crate::IrStoreErrorKind::Corrupt,
+            "prepared IR layout does not match the requested preparation intent",
+        )),
+    }
 }
 
 fn read_u32(bytes: &[u8], offset: usize) -> u32 {

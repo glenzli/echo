@@ -10,6 +10,7 @@ namespace {
 std::shared_ptr<const echo::audio::LoadedPreparedImpulseResponse> impulse() {
     auto value = std::make_shared<echo::audio::LoadedPreparedImpulseResponse>();
     value->preparation_version = 1;
+    value->layout = echo::audio::PreparedImpulseLayout::StereoParallel;
     value->left = {1.0F, 0.25F, 0.0F, -0.1F};
     value->right = value->left;
     return value;
@@ -26,6 +27,20 @@ echo::audio::SpaceAdjustment convolution_space() {
             .impulse = impulse(),
         },
     };
+}
+
+echo::audio::SpaceAdjustment true_stereo_space() {
+    auto value = std::make_shared<echo::audio::LoadedPreparedImpulseResponse>();
+    value->preparation_version = 2;
+    value->layout = echo::audio::PreparedImpulseLayout::TrueStereoLlLrRlRr;
+    value->left = {1.0F};
+    value->left_to_right = {2.0F};
+    value->right_to_left = {3.0F};
+    value->right = {4.0F};
+    auto adjustment = convolution_space();
+    adjustment.convolution.adjustment.mix_percent = 100;
+    adjustment.convolution.impulse = std::move(value);
+    return adjustment;
 }
 
 void disabled_algorithmic_space_is_identity() {
@@ -51,9 +66,18 @@ void convolution_switch_is_finite_and_silence_preserving() {
     processor.reset();
 }
 
+void true_stereo_matrix_reaches_the_shared_space_owner() {
+    echo::audio::SpaceProcessor processor(true_stereo_space(), 48000, 2);
+    std::vector<float> samples{1.0F, 10.0F, 0.0F, 0.0F};
+    processor.process_interleaved(samples.data(), 2, 2);
+    assert(std::abs(samples[0] - 31.0F) < 0.00001F);
+    assert(std::abs(samples[1] - 42.0F) < 0.00001F);
+}
+
 } // namespace
 
 int main() {
     disabled_algorithmic_space_is_identity();
     convolution_switch_is_finite_and_silence_preserving();
+    true_stereo_matrix_reaches_the_shared_space_owner();
 }

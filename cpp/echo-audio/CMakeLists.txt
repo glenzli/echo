@@ -23,6 +23,8 @@ add_library(
     src/dynamics_processor.cpp
     src/effect_processing_chain.cpp
     src/effect_mask_plan.cpp
+    src/freeze_vfx_processor.cpp
+    src/granular_vfx_processor.cpp
     src/impulse_response_preparer.cpp
     src/k_weighting_filter.cpp
     src/low_cut_filter.cpp
@@ -79,6 +81,16 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(echo-freeze-vfx-processor-test tests/freeze_vfx_processor_test.cpp)
+    target_link_libraries(echo-freeze-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-freeze-vfx-processor-test)
+    add_test(NAME echo-freeze-vfx-processor-test COMMAND echo-freeze-vfx-processor-test)
+
+    add_executable(echo-granular-vfx-processor-test tests/granular_vfx_processor_test.cpp)
+    target_link_libraries(echo-granular-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-granular-vfx-processor-test)
+    add_test(NAME echo-granular-vfx-processor-test COMMAND echo-granular-vfx-processor-test)
+
     add_executable(
         echo-adaptive-noise-reducer-test
         tests/adaptive_noise_reducer_test.cpp

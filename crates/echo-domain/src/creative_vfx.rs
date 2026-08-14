@@ -7,6 +7,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::{freeze_vfx::FreezeVfxSettings, granular_vfx::GranularVfxSettings};
+
 /// Stable scene-filter identity.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -540,6 +542,10 @@ pub struct CreativeVfxSettings {
     pub drive: DriveVfxSettings,
     #[serde(default)]
     pub rotary: RotaryVfxSettings,
+    #[serde(default)]
+    pub freeze: FreezeVfxSettings,
+    #[serde(default)]
+    pub granular: GranularVfxSettings,
 }
 
 impl CreativeVfxSettings {
@@ -630,6 +636,8 @@ impl CreativeVfxSettings {
                 motion_percent: 65,
                 stereo_width_percent: 80,
             },
+            freeze: FreezeVfxSettings::standard(),
+            granular: GranularVfxSettings::standard(),
         }
     }
 
@@ -639,7 +647,7 @@ impl CreativeVfxSettings {
     ///
     /// Returns [`CreativeVfxSettingsError`] when any family is outside its
     /// bounded public contract.
-    pub const fn validate(self) -> Result<(), CreativeVfxSettingsError> {
+    pub fn validate(self) -> Result<(), CreativeVfxSettingsError> {
         if self.scene.mix_percent > 100 || self.scene.intensity_percent > 100 {
             return Err(CreativeVfxSettingsError::Scene);
         }
@@ -724,6 +732,12 @@ impl CreativeVfxSettings {
         {
             return Err(CreativeVfxSettingsError::Rotary);
         }
+        if !self.freeze.is_valid() {
+            return Err(CreativeVfxSettingsError::Freeze);
+        }
+        if !self.granular.is_valid() {
+            return Err(CreativeVfxSettingsError::Granular);
+        }
         Ok(())
     }
 }
@@ -737,6 +751,8 @@ pub enum CreativeVfxSettingsError {
     DigitalDegrade,
     Drive,
     Rotary,
+    Freeze,
+    Granular,
 }
 
 impl std::fmt::Display for CreativeVfxSettingsError {
@@ -749,6 +765,8 @@ impl std::fmt::Display for CreativeVfxSettingsError {
             Self::DigitalDegrade => "digital degrade",
             Self::Drive => "drive",
             Self::Rotary => "rotary",
+            Self::Freeze => "freeze",
+            Self::Granular => "granular",
         };
         write!(
             formatter,

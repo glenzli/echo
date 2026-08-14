@@ -90,11 +90,15 @@ LoadedPreparedImpulseResponse load_prepared_impulse_response(const std::string& 
     const std::uint32_t swresample_version = read_u32(header.data() + 52);
     const std::uint64_t data_bytes = read_u64(header.data() + 56);
 
-    if (header_bytes != kPreparedImpulseResponseHeaderBytes
-        || preparation_version != kPreparedImpulseResponseVersion
+    const bool supported_layout =
+        (preparation_version == kPreparedImpulseResponseVersion
+         && (channel_count == 1U || channel_count == 2U))
+        || (preparation_version == kPreparedTrueStereoImpulseResponseVersion
+            && channel_count == 4U);
+    if (header_bytes != kPreparedImpulseResponseHeaderBytes || !supported_layout
         || sample_rate != kPreparedImpulseResponseSampleRate
-        || (channel_count != 1U && channel_count != 2U) || source_channel_count != channel_count
-        || frame_count == 0U || frame_count > kMaximumPreparedFrames || source_frame_count == 0U
+        || source_channel_count != channel_count || frame_count == 0U
+        || frame_count > kMaximumPreparedFrames || source_frame_count == 0U
         || source_frame_count > 5U * static_cast<std::uint64_t>(source_sample_rate)
         || source_sample_rate < kMinimumSourceSampleRate
         || source_sample_rate > kMaximumSourceSampleRate || avcodec_version == 0U
@@ -107,14 +111,22 @@ LoadedPreparedImpulseResponse load_prepared_impulse_response(const std::string& 
         fail("prepared impulse response byte count is inconsistent");
     }
 
+    const bool true_stereo = channel_count == 4U;
     LoadedPreparedImpulseResponse loaded{
         .preparation_version = preparation_version,
         .source_sample_rate = source_sample_rate,
         .source_frame_count = source_frame_count,
         .avcodec_version = avcodec_version,
         .swresample_version = swresample_version,
+        .layout = true_stereo           ? PreparedImpulseLayout::TrueStereoLlLrRlRr
+                  : channel_count == 2U ? PreparedImpulseLayout::StereoParallel
+                                        : PreparedImpulseLayout::Mono,
         .left = std::vector<float>(static_cast<std::size_t>(frame_count)),
-        .right = channel_count == 2U ? std::vector<float>(static_cast<std::size_t>(frame_count))
+        .right = channel_count >= 2U ? std::vector<float>(static_cast<std::size_t>(frame_count))
+                                     : std::vector<float>{},
+        .left_to_right = true_stereo ? std::vector<float>(static_cast<std::size_t>(frame_count))
+                                     : std::vector<float>{},
+        .right_to_left = true_stereo ? std::vector<float>(static_cast<std::size_t>(frame_count))
                                      : std::vector<float>{},
     };
     bool any_nonzero = false;
@@ -128,6 +140,10 @@ LoadedPreparedImpulseResponse load_prepared_impulse_response(const std::string& 
         }
     };
     read_channel(loaded.left);
+    if (true_stereo) {
+        read_channel(loaded.left_to_right);
+        read_channel(loaded.right_to_left);
+    }
     read_channel(loaded.right);
     if (!any_nonzero) {
         fail("prepared impulse response is digital silence");

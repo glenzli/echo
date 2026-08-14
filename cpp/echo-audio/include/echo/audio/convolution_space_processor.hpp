@@ -1,5 +1,7 @@
 #pragma once
 
+#include "echo/audio/prepared_impulse_response.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -13,19 +15,14 @@ struct ConvolutionSpaceAdjustment {
     std::int16_t wet_gain_centibels = 0;
 };
 
-enum class PreparedImpulseLayout : std::uint8_t {
-    Mono = 0,
-    StereoParallel = 1,
-};
-
 /// Realtime convolution over an already verified, canonical 48 kHz impulse.
 ///
 /// A mono impulse drives each program channel independently. StereoParallel
-/// means L→L and R→R; it is deliberately not described as true stereo, which
-/// would require four LL/LR/RL/RR paths. IR decoding, resampling, durable source
-/// identity, and hot bank replacement belong to preparation/lifecycle owners.
-/// Construction performs all allocations and FFT preparation. `update()`,
-/// `process_interleaved()`, and `reset()` allocate nothing and take no locks.
+/// means L→L and R→R. TrueStereoLlLrRlRr uses the complete four-path matrix.
+/// IR decoding, resampling, durable source identity, and hot bank replacement
+/// belong to preparation/lifecycle owners. Construction performs all
+/// allocations and FFT preparation. `update()`, `process_interleaved()`, and
+/// `reset()` allocate nothing and take no locks.
 class ConvolutionSpaceProcessor {
   public:
     ConvolutionSpaceProcessor(
@@ -34,6 +31,17 @@ class ConvolutionSpaceProcessor {
         std::size_t channel_count,
         std::span<const float> impulse_left,
         std::span<const float> impulse_right = {}
+    );
+    /// Constructs a four-path true-stereo matrix. Path names are input ->
+    /// output, so wet L = L*LL + R*RL and wet R = L*LR + R*RR.
+    ConvolutionSpaceProcessor(
+        ConvolutionSpaceAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count,
+        std::span<const float> impulse_ll,
+        std::span<const float> impulse_lr,
+        std::span<const float> impulse_rl,
+        std::span<const float> impulse_rr
     );
     ~ConvolutionSpaceProcessor();
 

@@ -49,7 +49,8 @@ EffectMaskPlan::EffectMaskPlan(
             if (value >= kEffectNodeCount || seen[value] || !active[value]
                 || node == EffectNodeKind::Master || node == EffectNodeKind::DeClick
                 || node == EffectNodeKind::TransformVfx || node == EffectNodeKind::DriveVfx
-                || node == EffectNodeKind::RotaryVfx) {
+                || node == EffectNodeKind::RotaryVfx || node == EffectNodeKind::FreezeVfx
+                || node == EffectNodeKind::GranularVfx) {
                 throw std::invalid_argument(
                     "effect mask nodes must be unique active maskable inserts"
                 );

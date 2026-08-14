@@ -73,6 +73,8 @@ int main() {
                  echo::audio::EffectNodeKind::TransformVfx,
                  echo::audio::EffectNodeKind::DriveVfx,
                  echo::audio::EffectNodeKind::RotaryVfx,
+                 echo::audio::EffectNodeKind::FreezeVfx,
+                 echo::audio::EffectNodeKind::GranularVfx,
              }) {
             invalid.effect_masks[0].nodes = {node};
             if (node == echo::audio::EffectNodeKind::TransformVfx) {
@@ -92,6 +94,8 @@ int main() {
                     echo::audio::EffectNodeKind::DigitalDegradeVfx,
                     echo::audio::EffectNodeKind::DriveVfx,
                     echo::audio::EffectNodeKind::RotaryVfx,
+                    echo::audio::EffectNodeKind::FreezeVfx,
+                    echo::audio::EffectNodeKind::GranularVfx,
                 };
                 invalid.effect_chain_count = 2;
             }

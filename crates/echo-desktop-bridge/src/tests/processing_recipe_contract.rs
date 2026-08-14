@@ -38,6 +38,8 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
                 echo_domain::ProcessingComponent::DigitalDegradeVfx.wire_value(),
                 echo_domain::ProcessingComponent::DriveVfx.wire_value(),
                 echo_domain::ProcessingComponent::RotaryVfx.wire_value(),
+                echo_domain::ProcessingComponent::FreezeVfx.wire_value(),
+                echo_domain::ProcessingComponent::GranularVfx.wire_value(),
             ],
         )
         .expect("recipe creates");
@@ -45,7 +47,7 @@ fn recipe_create_list_and_apply_preserve_target_clip_edits() {
     assert_eq!(recipes.len(), 1);
     assert_eq!(recipes[0].id, recipe_id);
     assert_eq!(recipes[0].name, "Dialogue cleanup");
-    assert_eq!(recipes[0].components, vec![0, 5, 9, 12, 13, 14, 15]);
+    assert_eq!(recipes[0].components, vec![0, 5, 9, 12, 13, 14, 15, 16, 17]);
 
     let receipt = session
         .apply_processing_recipe(&recipe_id, &[target.to_string()], 0)
@@ -111,10 +113,16 @@ fn assert_target_creative_vfx(applied: &echo_domain::AdjustmentGraph) {
     assert!(creative.drive.enabled);
     assert_eq!(creative.rotary.speed, echo_domain::RotaryVfxSpeed::Fast);
     assert!(creative.rotary.enabled);
+    assert!(creative.freeze.enabled);
+    assert_eq!(creative.freeze.capture_source_millis, 2_000);
+    assert!(creative.granular.enabled);
+    assert_eq!(creative.granular.pitch_cents, -240);
     for node in [
         echo_domain::EffectNodeKind::DigitalDegradeVfx,
         echo_domain::EffectNodeKind::DriveVfx,
         echo_domain::EffectNodeKind::RotaryVfx,
+        echo_domain::EffectNodeKind::FreezeVfx,
+        echo_domain::EffectNodeKind::GranularVfx,
     ] {
         assert!(applied.effect_chain().nodes().contains(&node));
     }
@@ -141,9 +149,13 @@ fn recipe_source_adjustment() -> AssetAdjustmentWire {
     creative_vfx.drive.character = echo_domain::DriveVfxCharacter::Overdrive;
     creative_vfx.rotary.enabled = true;
     creative_vfx.rotary.speed = echo_domain::RotaryVfxSpeed::Fast;
+    creative_vfx.freeze.enabled = true;
+    creative_vfx.freeze.capture_source_millis = 2_000;
+    creative_vfx.granular.enabled = true;
+    creative_vfx.granular.pitch_cents = -240;
     source.creative_vfx_json =
         serde_json::to_string(&creative_vfx).expect("source creative VFX encodes");
-    source.effect_chain = vec![0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 4];
+    source.effect_chain = vec![0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 4];
     source.edit_segments = vec![crate::ffi::EditSegmentWire {
         source_start_millis: 500,
         source_end_millis: 9_500,

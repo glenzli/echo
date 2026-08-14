@@ -17,8 +17,8 @@ Item {
 
     readonly property var availableFamilies: {
         const choices = [];
-        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade"), qsTr("Drive"), qsTr("Rotary")];
-        for (let kind = 8; kind <= 14; ++kind) {
+        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade"), qsTr("Drive"), qsTr("Rotary"), qsTr("Freeze"), qsTr("Granular")];
+        for (let kind = 8; kind <= 16; ++kind) {
             if (draft.effectChain.indexOf(kind) >= 0) {
                 choices.push({
                     kind: kind,
@@ -158,6 +158,18 @@ Item {
             RotaryVfxPanel {
                 anchors.fill: parent
                 visible: panel.familyKind === 14
+                draft: panel.draft
+            }
+
+            FreezeVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 15
+                draft: panel.draft
+            }
+
+            GranularVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 16
                 draft: panel.draft
             }
         }

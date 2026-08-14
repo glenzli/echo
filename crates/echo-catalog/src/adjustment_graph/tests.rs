@@ -6,11 +6,79 @@ use echo_domain::{
     DelayVfxCharacter, DigitalDegradeVfxCharacter, EditSegment, EditSegmentState, EditTimeline,
     EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings,
     ModulationVfxCharacter, NoiseReductionSettings, RestorationSettings, ReverbCharacter,
-    ReverbSettings, SceneVfxCharacter, TransformVfxCharacter,
+    ReverbSettings, SceneVfxCharacter, SpaceMode, SpaceSettings, TransformVfxCharacter,
 };
 
 use super::*;
 use crate::{AssetRegistrationInput, RegisterAsset, open_catalog, register_asset};
+
+#[test]
+fn convolution_adjustment_requires_one_exact_catalog_import_triple() {
+    let root = std::env::temp_dir().join(format!("echo-ir-selection-{}", uuid::Uuid::now_v7()));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset_id = register_fixture_asset(&catalog, 0x91, "/voices/ir-selection.wav");
+    let import_id = uuid::Uuid::now_v7();
+    let source_hash = ContentHash::new([0xa1; 32]);
+    let prepared_hash = ContentHash::new([0xb1; 32]);
+    let selection = echo_domain::ImpulseResponseSelection {
+        import_id,
+        source_hash,
+        prepared_hash,
+    };
+    let graph = AdjustmentGraph::new(
+        10_000,
+        0,
+        10_000,
+        0,
+        0,
+        AdjustmentEffects::new(FadeCurves::linear(), 0, 0).with_space(SpaceSettings {
+            mode: SpaceMode::Convolution,
+            impulse_response: Some(selection),
+            ..SpaceSettings::default()
+        }),
+    )
+    .expect("convolution graph validates structurally");
+    assert!(
+        catalog
+            .with_transaction(|transaction| {
+                record_adjustment_graph(transaction, asset_id, graph.clone(), 20)
+            })
+            .is_err()
+    );
+    catalog
+        .with_transaction(|transaction| {
+            crate::record_impulse_response(
+                transaction,
+                &crate::ImpulseResponseRecord {
+                    import_id,
+                    source_hash,
+                    source_size_bytes: 4_096,
+                    prepared_hash,
+                    prepared_size_bytes: 8_192,
+                    preparation_version: 1,
+                    source_sample_rate: 48_000,
+                    channel_count: 2,
+                    layout: crate::ImpulseResponseLayout::StereoParallel,
+                    source_frame_count: 100,
+                    prepared_frame_count: 100,
+                    avcodec_version: 1,
+                    swresample_version: 1,
+                    imported_at_millis: 21,
+                    original_path: "/irs/room.wav".to_owned(),
+                    display_name: "Room".to_owned(),
+                    creator: None,
+                    source_url: None,
+                    attribution: None,
+                    rights: crate::ImpulseResponseRights::UserOwnedNoRedistribution,
+                },
+            )
+        })
+        .expect("IR evidence records");
+    catalog
+        .with_transaction(|transaction| record_adjustment_graph(transaction, asset_id, graph, 22))
+        .expect("exact selection saves");
+    let _ = std::fs::remove_dir_all(root);
+}
 
 #[test]
 fn revisions_are_append_only_and_identical_saves_are_idempotent() {
@@ -295,6 +363,18 @@ fn fully_configured_graph() -> AdjustmentGraph {
     creative_vfx.digital_degrade.enabled = true;
     creative_vfx.digital_degrade.character = DigitalDegradeVfxCharacter::LoFi;
     creative_vfx.digital_degrade.bitcrusher.bit_depth = 7;
+    creative_vfx.freeze.enabled = true;
+    creative_vfx.freeze.mix_percent = 64;
+    creative_vfx.freeze.capture_source_millis = 2_000;
+    creative_vfx.granular.enabled = true;
+    creative_vfx.granular.mix_percent = 58;
+    creative_vfx.granular.grain_millis = 105;
+    creative_vfx.granular.density_tenths_hertz = 180;
+    creative_vfx.granular.lookback_millis = 300;
+    creative_vfx.granular.scatter_millis = 160;
+    creative_vfx.granular.pitch_cents = -275;
+    creative_vfx.granular.stereo_spread_percent = 72;
+    creative_vfx.granular.random_seed = 0xCAFE_BABE;
     AdjustmentGraph::new(
         10_000,
         1_000,

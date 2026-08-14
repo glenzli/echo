@@ -155,6 +155,7 @@ pub fn create_processing_recipe(
     validate_recipe_name(input.name)?;
     validate_timestamp(now_millis)?;
     ensure_unique_name(transaction, input.name, None)?;
+    validate_patch_ir_selection(transaction, input.patch)?;
 
     let recipe_id = ProcessingRecipeId::new();
     let revision = ProcessingRecipeRevision::new(
@@ -257,6 +258,7 @@ pub fn append_processing_recipe_revision(
     now_millis: i64,
 ) -> Result<ProcessingRecipeRevision, CatalogError> {
     validate_timestamp(now_millis)?;
+    validate_patch_ir_selection(transaction, patch)?;
     let current = processing_recipe(transaction, recipe_id)?
         .ok_or_else(|| recipe_error("processing recipe does not exist"))?;
     let sequence = current
@@ -869,6 +871,12 @@ fn apply_to_target(
     merge_mode: ProcessingMergeMode,
     now_millis: i64,
 ) -> Result<ProcessingRecipeTargetReceipt, CatalogError> {
+    if let Err(error) = validate_patch_ir_selection(transaction, revision.patch()) {
+        return Ok(failed_target(
+            asset_id,
+            format!("processing recipe impulse response is unavailable: {error}"),
+        ));
+    }
     let duration = transaction
         .query_row(
             "SELECT duration_millis FROM assets WHERE id = ?1",
@@ -926,6 +934,18 @@ fn apply_to_target(
         resulting_adjustment_revision_id: Some(saved.revision_id),
         failure_reason: None,
     })
+}
+
+fn validate_patch_ir_selection(
+    transaction: &Transaction<'_>,
+    patch: &AdjustmentPatch,
+) -> Result<(), CatalogError> {
+    if patch.components().contains(&ProcessingComponent::Space)
+        && let Some(selection) = patch.space().impulse_response
+    {
+        crate::impulse_response::validate_impulse_response_selection(transaction, selection)?;
+    }
+    Ok(())
 }
 
 fn insert_target_receipt(

@@ -10,8 +10,11 @@ mod error;
 mod import_pipeline;
 mod source_store;
 
+pub use echo_bridge::ImpulseResponsePreparationLayout;
 pub use error::{IrStoreError, IrStoreErrorKind};
-pub use import_pipeline::{ImportedIr, IrImportPipeline, PreparationOutcome, PreparedIrArtifact};
+pub use import_pipeline::{
+    ImportedIr, IrImportPipeline, PreparationOutcome, PreparedIrArtifact, PreparedIrLayout,
+};
 pub use source_store::{
     ImportOutcome, IrImportProvenance, IrImportRecord, IrRightsDeclaration, IrSourceStore,
     StoredIrSource,

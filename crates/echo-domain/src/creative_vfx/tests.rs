@@ -1,4 +1,5 @@
 use super::*;
+use crate::FREEZE_CAPTURE_PRE_ROLL_MILLIS;
 
 #[test]
 fn defaults_are_disabled_and_valid() {
@@ -11,6 +12,8 @@ fn defaults_are_disabled_and_valid() {
     assert!(!settings.digital_degrade.enabled);
     assert!(!settings.drive.enabled);
     assert!(!settings.rotary.enabled);
+    assert!(!settings.freeze.enabled);
+    assert!(!settings.granular.enabled);
 }
 
 #[test]
@@ -69,6 +72,22 @@ fn family_ranges_are_validated_independently() {
     let mut settings = CreativeVfxSettings::default();
     settings.rotary.motion_percent = 101;
     assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Rotary));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.freeze.enabled = true;
+    settings.freeze.capture_source_millis = FREEZE_CAPTURE_PRE_ROLL_MILLIS - 1;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Freeze));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.granular.grain_millis = 19;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Granular));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.granular.lookback_millis = 1_500;
+    settings.granular.scatter_millis = 750;
+    settings.granular.grain_millis = 250;
+    settings.granular.pitch_cents = 1_200;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Granular));
 }
 
 #[test]
@@ -118,6 +137,22 @@ fn aggregate_json_preserves_typed_family_settings() {
             motion_percent: 88,
             stereo_width_percent: 72,
         },
+        freeze: FreezeVfxSettings {
+            enabled: true,
+            mix_percent: 68,
+            capture_source_millis: 2_400,
+        },
+        granular: GranularVfxSettings {
+            enabled: true,
+            mix_percent: 52,
+            grain_millis: 96,
+            density_tenths_hertz: 175,
+            lookback_millis: 320,
+            scatter_millis: 180,
+            pitch_cents: -350,
+            stereo_spread_percent: 74,
+            random_seed: 0x1234_5678,
+        },
     };
     let encoded = serde_json::to_string(&settings).expect("settings encode");
     let decoded: CreativeVfxSettings = serde_json::from_str(&encoded).expect("settings decode");
@@ -150,4 +185,16 @@ fn legacy_json_defaults_drive_and_rotary_to_disabled_identity() {
         serde_json::from_value(value).expect("legacy settings decode");
     assert_eq!(restored.drive, DriveVfxSettings::default());
     assert_eq!(restored.rotary, RotaryVfxSettings::default());
+}
+
+#[test]
+fn legacy_json_defaults_freeze_and_granular_to_disabled_identity() {
+    let mut value = serde_json::to_value(CreativeVfxSettings::default()).expect("settings encode");
+    let object = value.as_object_mut().expect("settings object");
+    object.remove("freeze");
+    object.remove("granular");
+    let restored: CreativeVfxSettings =
+        serde_json::from_value(value).expect("legacy settings decode");
+    assert_eq!(restored.freeze, FreezeVfxSettings::default());
+    assert_eq!(restored.granular, GranularVfxSettings::default());
 }

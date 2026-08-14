@@ -13,6 +13,7 @@ namespace {
 
 constexpr std::uint32_t kCanonicalSampleRate = 48000;
 constexpr std::size_t kMaximumChannels = 2;
+constexpr std::size_t kConvolutionPathCount = 4;
 constexpr std::size_t kPartitionFrames = 256;
 constexpr std::size_t kScratchFrames = 4096;
 constexpr std::size_t kMaximumImpulseFrames = kCanonicalSampleRate * 5U;
@@ -34,39 +35,51 @@ PreparedImpulseLayout validate_impulse(
     ConvolutionSpaceAdjustment adjustment,
     std::uint32_t sample_rate,
     std::size_t channel_count,
-    std::span<const float> impulse_left,
-    std::span<const float> impulse_right
+    PreparedImpulseLayout requested_layout,
+    std::span<const float> impulse_ll,
+    std::span<const float> impulse_lr,
+    std::span<const float> impulse_rl,
+    std::span<const float> impulse_rr
 ) {
     validate_adjustment(adjustment);
     if (sample_rate != kCanonicalSampleRate || channel_count == 0
-        || channel_count > kMaximumChannels || impulse_left.empty()
-        || impulse_left.size() > kMaximumImpulseFrames
-        || (!impulse_right.empty() && channel_count != 2)
-        || (!impulse_right.empty() && impulse_right.size() != impulse_left.size())) {
+        || channel_count > kMaximumChannels || impulse_ll.empty()
+        || impulse_ll.size() > kMaximumImpulseFrames) {
+        throw std::invalid_argument("prepared convolution impulse is unsupported");
+    }
+    const bool mono = requested_layout == PreparedImpulseLayout::Mono;
+    const bool stereo_parallel = requested_layout == PreparedImpulseLayout::StereoParallel;
+    const bool true_stereo = requested_layout == PreparedImpulseLayout::TrueStereoLlLrRlRr;
+    if ((!mono && !stereo_parallel && !true_stereo)
+        || (mono && (!impulse_lr.empty() || !impulse_rl.empty() || !impulse_rr.empty()))
+        || (stereo_parallel
+            && (channel_count != 2 || !impulse_lr.empty() || !impulse_rl.empty()
+                || impulse_rr.size() != impulse_ll.size()))
+        || (true_stereo
+            && (channel_count != 2 || impulse_lr.size() != impulse_ll.size()
+                || impulse_rl.size() != impulse_ll.size()
+                || impulse_rr.size() != impulse_ll.size()))) {
         throw std::invalid_argument("prepared convolution impulse is unsupported");
     }
     bool any_nonzero = false;
-    for (const float sample : impulse_left) {
-        if (!std::isfinite(sample)) {
-            throw std::invalid_argument(
-                "prepared convolution impulse contains a non-finite sample"
-            );
+    for (const std::span<const float> impulse : {impulse_ll, impulse_lr, impulse_rl, impulse_rr}) {
+        for (const float sample : impulse) {
+            if (!std::isfinite(sample)) {
+                throw std::invalid_argument(
+                    "prepared convolution impulse contains a non-finite sample"
+                );
+            }
+            any_nonzero = any_nonzero || sample != 0.0F;
         }
-        any_nonzero = any_nonzero || sample != 0.0F;
-    }
-    for (const float sample : impulse_right) {
-        if (!std::isfinite(sample)) {
-            throw std::invalid_argument(
-                "prepared convolution impulse contains a non-finite sample"
-            );
-        }
-        any_nonzero = any_nonzero || sample != 0.0F;
     }
     if (!any_nonzero) {
         throw std::invalid_argument("prepared convolution impulse is silent");
     }
-    return impulse_right.empty() ? PreparedImpulseLayout::Mono
-                                 : PreparedImpulseLayout::StereoParallel;
+    return requested_layout;
+}
+
+bool has_nonzero(std::span<const float> impulse) noexcept {
+    return std::any_of(impulse.begin(), impulse.end(), [](float sample) { return sample != 0.0F; });
 }
 
 class LinearRamp {
@@ -115,30 +128,50 @@ class ConvolutionSpaceProcessor::Impl {
         ConvolutionSpaceAdjustment adjustment,
         std::uint32_t sample_rate,
         std::size_t channel_count,
-        std::span<const float> impulse_left,
-        std::span<const float> impulse_right
+        PreparedImpulseLayout requested_layout,
+        std::span<const float> impulse_ll,
+        std::span<const float> impulse_lr,
+        std::span<const float> impulse_rl,
+        std::span<const float> impulse_rr
     ) :
         sample_rate_(sample_rate), channel_count_(channel_count), authored_(adjustment),
-        layout_(
-            validate_impulse(adjustment, sample_rate, channel_count, impulse_left, impulse_right)
-        ),
-        impulse_frames_(impulse_left.size()),
+        layout_(validate_impulse(
+            adjustment,
+            sample_rate,
+            channel_count,
+            requested_layout,
+            impulse_ll,
+            impulse_lr,
+            impulse_rl,
+            impulse_rr
+        )),
+        impulse_frames_(impulse_ll.size()),
         input_scratch_{
             std::vector<float>(kScratchFrames, 0.0F),
             std::vector<float>(kScratchFrames, 0.0F)
         },
         output_scratch_{
             std::vector<float>(kScratchFrames, 0.0F),
+            std::vector<float>(kScratchFrames, 0.0F),
+            std::vector<float>(kScratchFrames, 0.0F),
             std::vector<float>(kScratchFrames, 0.0F)
         } {
-        if (!convolvers_[0].init(kPartitionFrames, impulse_left.data(), impulse_left.size())) {
-            throw std::runtime_error("cannot prepare left convolution bank");
+        const auto prepare_path = [&](std::size_t path, std::span<const float> impulse) {
+            if (!has_nonzero(impulse)) {
+                return;
+            }
+            if (!convolvers_[path].init(kPartitionFrames, impulse.data(), impulse.size())) {
+                throw std::runtime_error("cannot prepare convolution bank path");
+            }
+            prepared_paths_[path] = true;
+        };
+        prepare_path(0, impulse_ll);
+        if (layout_ == PreparedImpulseLayout::TrueStereoLlLrRlRr) {
+            prepare_path(1, impulse_lr);
+            prepare_path(2, impulse_rl);
         }
         if (channel_count_ == 2) {
-            const auto right = impulse_right.empty() ? impulse_left : impulse_right;
-            if (!convolvers_[1].init(kPartitionFrames, right.data(), right.size())) {
-                throw std::runtime_error("cannot prepare right convolution bank");
-            }
+            prepare_path(3, layout_ == PreparedImpulseLayout::Mono ? impulse_ll : impulse_rr);
         }
         smoothing_frames_ = sample_rate_ / 50U;
         reset_parameters();
@@ -178,21 +211,27 @@ class ConvolutionSpaceProcessor::Impl {
                     input_scratch_[channel][frame] = finite(samples[base + channel]);
                 }
             }
-            for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                convolvers_[channel].process(
-                    input_scratch_[channel].data(),
-                    output_scratch_[channel].data(),
-                    count
-                );
+            process_path(0, 0, count);
+            if (channel_count_ == 2) {
+                if (layout_ == PreparedImpulseLayout::TrueStereoLlLrRlRr) {
+                    process_path(1, 0, count);
+                    process_path(2, 1, count);
+                }
+                process_path(3, 1, count);
             }
             for (std::size_t frame = 0; frame < count; ++frame) {
                 const float wet_mix = enabled_.next() * mix_.next();
                 const float wet_gain = centibels_to_gain(wet_gain_centibels_.next());
                 const std::size_t base = (processed + frame) * channel_count_;
-                for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                    const float dry = input_scratch_[channel][frame];
-                    const float wet = finite(output_scratch_[channel][frame]) * wet_gain;
-                    samples[base + channel] = dry + wet_mix * (wet - dry);
+                const float dry_left = input_scratch_[0][frame];
+                const float wet_left =
+                    finite(output_scratch_[0][frame] + output_scratch_[2][frame]) * wet_gain;
+                samples[base] = dry_left + wet_mix * (wet_left - dry_left);
+                if (channel_count_ == 2) {
+                    const float dry_right = input_scratch_[1][frame];
+                    const float wet_right =
+                        finite(output_scratch_[1][frame] + output_scratch_[3][frame]) * wet_gain;
+                    samples[base + 1] = dry_right + wet_mix * (wet_right - dry_right);
                 }
             }
             processed += count;
@@ -221,11 +260,28 @@ class ConvolutionSpaceProcessor::Impl {
     }
 
   private:
+    void
+    process_path(std::size_t path, std::size_t input_channel, std::size_t frame_count) noexcept {
+        if (prepared_paths_[path]) {
+            convolvers_[path].process(
+                input_scratch_[input_channel].data(),
+                output_scratch_[path].data(),
+                frame_count
+            );
+        } else {
+            std::fill_n(output_scratch_[path].data(), frame_count, 0.0F);
+        }
+    }
+
     void clear_history() noexcept {
-        for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-            convolvers_[channel].resetState();
-            std::fill(input_scratch_[channel].begin(), input_scratch_[channel].end(), 0.0F);
-            std::fill(output_scratch_[channel].begin(), output_scratch_[channel].end(), 0.0F);
+        for (std::size_t path = 0; path < kConvolutionPathCount; ++path) {
+            if (prepared_paths_[path]) {
+                convolvers_[path].resetState();
+            }
+            std::fill(output_scratch_[path].begin(), output_scratch_[path].end(), 0.0F);
+        }
+        for (auto& input : input_scratch_) {
+            std::fill(input.begin(), input.end(), 0.0F);
         }
         history_cleared_ = true;
     }
@@ -242,9 +298,10 @@ class ConvolutionSpaceProcessor::Impl {
     PreparedImpulseLayout layout_;
     std::size_t impulse_frames_;
     std::size_t smoothing_frames_ = 1;
-    std::array<fftconvolver::FFTConvolver, kMaximumChannels> convolvers_;
+    std::array<fftconvolver::FFTConvolver, kConvolutionPathCount> convolvers_;
+    std::array<bool, kConvolutionPathCount> prepared_paths_{};
     std::array<std::vector<float>, kMaximumChannels> input_scratch_;
-    std::array<std::vector<float>, kMaximumChannels> output_scratch_;
+    std::array<std::vector<float>, kConvolutionPathCount> output_scratch_;
     LinearRamp enabled_;
     LinearRamp mix_;
     LinearRamp wet_gain_centibels_;
@@ -259,7 +316,39 @@ ConvolutionSpaceProcessor::ConvolutionSpaceProcessor(
     std::span<const float> impulse_right
 ) :
     impl_(
-        std::make_unique<Impl>(adjustment, sample_rate, channel_count, impulse_left, impulse_right)
+        std::make_unique<Impl>(
+            adjustment,
+            sample_rate,
+            channel_count,
+            impulse_right.empty() ? PreparedImpulseLayout::Mono
+                                  : PreparedImpulseLayout::StereoParallel,
+            impulse_left,
+            std::span<const float>{},
+            std::span<const float>{},
+            impulse_right
+        )
+    ) {}
+
+ConvolutionSpaceProcessor::ConvolutionSpaceProcessor(
+    ConvolutionSpaceAdjustment adjustment,
+    std::uint32_t sample_rate,
+    std::size_t channel_count,
+    std::span<const float> impulse_ll,
+    std::span<const float> impulse_lr,
+    std::span<const float> impulse_rl,
+    std::span<const float> impulse_rr
+) :
+    impl_(
+        std::make_unique<Impl>(
+            adjustment,
+            sample_rate,
+            channel_count,
+            PreparedImpulseLayout::TrueStereoLlLrRlRr,
+            impulse_ll,
+            impulse_lr,
+            impulse_rl,
+            impulse_rr
+        )
     ) {}
 
 ConvolutionSpaceProcessor::~ConvolutionSpaceProcessor() = default;

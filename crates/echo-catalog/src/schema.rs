@@ -141,9 +141,13 @@ pub(crate) const DRIVE_ROTARY_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 1);
 pub(crate) const CONVOLUTION_SPACE_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 2);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 3);
+pub(crate) const METADATA_CALIBRATION_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_813, 3);
+pub(crate) const FREEZE_GRANULAR_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_813, 4);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 5);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.3-metadata-calibration";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.5-true-stereo-ir";
 pub(crate) const METADATA_CALIBRATION_MIGRATION_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS metadata_calibration_revisions (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,6 +212,76 @@ CREATE TABLE impulse_response_imports (
 CREATE INDEX impulse_response_imports_newest
     ON impulse_response_imports (imported_at_millis DESC, import_id DESC);
 "#;
+pub(crate) const TRUE_STEREO_IR_MIGRATION_SQL: &str = r"
+ALTER TABLE impulse_response_imports RENAME TO impulse_response_imports_v4;
+ALTER TABLE impulse_response_preparations RENAME TO impulse_response_preparations_v4;
+
+CREATE TABLE impulse_response_preparations (
+    prepared_hash       TEXT PRIMARY KEY,
+    source_hash         TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+    size_bytes          INTEGER NOT NULL CHECK (size_bytes > 0),
+    preparation_version INTEGER NOT NULL CHECK (preparation_version > 0),
+    source_sample_rate  INTEGER NOT NULL CHECK (source_sample_rate > 0),
+    channel_count       INTEGER NOT NULL CHECK (channel_count IN (1, 2, 4)),
+    layout_kind         TEXT NOT NULL CHECK (
+                        layout_kind IN ('mono', 'stereo_parallel',
+                                        'true_stereo_ll_lr_rl_rr')),
+    source_frame_count  INTEGER NOT NULL CHECK (source_frame_count > 0),
+    prepared_frame_count INTEGER NOT NULL CHECK (prepared_frame_count > 0),
+    avcodec_version     INTEGER NOT NULL CHECK (avcodec_version > 0),
+    swresample_version  INTEGER NOT NULL CHECK (swresample_version > 0),
+    created_at_millis   INTEGER NOT NULL CHECK (created_at_millis >= 0),
+    CHECK ((preparation_version = 1 AND channel_count = 1 AND layout_kind = 'mono') OR
+           (preparation_version = 1 AND channel_count = 2 AND
+            layout_kind = 'stereo_parallel') OR
+           (preparation_version = 2 AND channel_count = 4 AND
+            layout_kind = 'true_stereo_ll_lr_rl_rr'))
+);
+
+INSERT INTO impulse_response_preparations
+    (prepared_hash, source_hash, size_bytes, preparation_version,
+     source_sample_rate, channel_count, layout_kind, source_frame_count,
+     prepared_frame_count, avcodec_version, swresample_version, created_at_millis)
+SELECT prepared_hash, source_hash, size_bytes, preparation_version,
+       source_sample_rate, channel_count,
+       CASE channel_count WHEN 1 THEN 'mono' ELSE 'stereo_parallel' END,
+       source_frame_count, prepared_frame_count, avcodec_version,
+       swresample_version, created_at_millis
+FROM impulse_response_preparations_v4;
+
+CREATE TABLE impulse_response_imports (
+    import_id          TEXT PRIMARY KEY,
+    source_hash        TEXT NOT NULL REFERENCES impulse_response_sources(source_hash),
+    prepared_hash      TEXT NOT NULL REFERENCES impulse_response_preparations(prepared_hash),
+    imported_at_millis INTEGER NOT NULL CHECK (imported_at_millis >= 0),
+    original_path      TEXT NOT NULL,
+    display_name       TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+    creator            TEXT,
+    source_url         TEXT,
+    attribution        TEXT,
+    rights_kind        TEXT NOT NULL CHECK (
+                       rights_kind IN ('spdx', 'user_owned_no_redistribution')),
+    spdx_expression    TEXT,
+    license_url        TEXT,
+    CHECK ((rights_kind = 'spdx' AND length(trim(spdx_expression)) > 0) OR
+           (rights_kind = 'user_owned_no_redistribution' AND spdx_expression IS NULL
+            AND license_url IS NULL))
+);
+
+INSERT INTO impulse_response_imports
+    (import_id, source_hash, prepared_hash, imported_at_millis, original_path,
+     display_name, creator, source_url, attribution, rights_kind,
+     spdx_expression, license_url)
+SELECT import_id, source_hash, prepared_hash, imported_at_millis, original_path,
+       display_name, creator, source_url, attribution, rights_kind,
+       spdx_expression, license_url
+FROM impulse_response_imports_v4;
+
+DROP TABLE impulse_response_imports_v4;
+DROP TABLE impulse_response_preparations_v4;
+CREATE INDEX impulse_response_imports_newest
+    ON impulse_response_imports (imported_at_millis DESC, import_id DESC);
+";
 pub(crate) const LISTENING_STATE_MIGRATION_SQL: &str = r"
 ALTER TABLE asset_user_state
     ADD COLUMN last_listened_at_millis INTEGER NOT NULL DEFAULT 0
@@ -764,12 +838,20 @@ CREATE TABLE IF NOT EXISTS impulse_response_preparations (
     size_bytes          INTEGER NOT NULL CHECK (size_bytes > 0),
     preparation_version INTEGER NOT NULL CHECK (preparation_version > 0),
     source_sample_rate  INTEGER NOT NULL CHECK (source_sample_rate > 0),
-    channel_count       INTEGER NOT NULL CHECK (channel_count IN (1, 2)),
+    channel_count       INTEGER NOT NULL CHECK (channel_count IN (1, 2, 4)),
+    layout_kind         TEXT NOT NULL CHECK (
+                        layout_kind IN ('mono', 'stereo_parallel',
+                                        'true_stereo_ll_lr_rl_rr')),
     source_frame_count  INTEGER NOT NULL CHECK (source_frame_count > 0),
     prepared_frame_count INTEGER NOT NULL CHECK (prepared_frame_count > 0),
     avcodec_version     INTEGER NOT NULL CHECK (avcodec_version > 0),
     swresample_version  INTEGER NOT NULL CHECK (swresample_version > 0),
-    created_at_millis   INTEGER NOT NULL CHECK (created_at_millis >= 0)
+    created_at_millis   INTEGER NOT NULL CHECK (created_at_millis >= 0),
+    CHECK ((preparation_version = 1 AND channel_count = 1 AND layout_kind = 'mono') OR
+           (preparation_version = 1 AND channel_count = 2 AND
+            layout_kind = 'stereo_parallel') OR
+           (preparation_version = 2 AND channel_count = 4 AND
+            layout_kind = 'true_stereo_ll_lr_rl_rr'))
 );
 
 CREATE TABLE IF NOT EXISTS impulse_response_imports (

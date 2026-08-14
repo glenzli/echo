@@ -2,12 +2,127 @@ use std::path::Path;
 
 use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentPatch, AssetId, CompressorSettings, ContentHash,
-    FadeCurve, FadeCurves, ProcessingComponent, ProcessingMergeMode,
+    FadeCurve, FadeCurves, ProcessingComponent, ProcessingMergeMode, SpaceMode, SpaceSettings,
 };
 use rusqlite::Transaction;
 
 use super::*;
 use crate::{AssetRegistrationInput, RegisterAsset, open_catalog, register_asset};
+
+#[test]
+#[allow(clippy::too_many_lines)] // One legacy fixture proves failure ordering and no writes.
+fn legacy_recipe_with_missing_ir_fails_each_target_without_writing_adjustments() {
+    let root = fixture_root("recipe-missing-ir");
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset_id = catalog
+        .with_transaction(|transaction| -> Result<_, CatalogError> {
+            Ok(register(transaction, 0x92, "/voices/recipe-ir.wav", 10_000))
+        })
+        .expect("asset registers");
+    let selection = echo_domain::ImpulseResponseSelection {
+        import_id: uuid::Uuid::now_v7(),
+        source_hash: ContentHash::new([0xa2; 32]),
+        prepared_hash: ContentHash::new([0xb2; 32]),
+    };
+    let graph = AdjustmentGraph::new(
+        10_000,
+        0,
+        10_000,
+        0,
+        0,
+        AdjustmentEffects::new(FadeCurves::linear(), 0, 0).with_space(SpaceSettings {
+            mode: SpaceMode::Convolution,
+            impulse_response: Some(selection),
+            ..SpaceSettings::default()
+        }),
+    )
+    .expect("recipe source graph validates");
+    let patch = AdjustmentPatch::from_graph(graph, &[ProcessingComponent::Space])
+        .expect("space patch validates");
+    assert!(
+        catalog
+            .with_transaction(|transaction| {
+                create_processing_recipe(
+                    transaction,
+                    CreateProcessingRecipe {
+                        name: "Missing IR",
+                        patch: &patch,
+                    },
+                    9,
+                )
+            })
+            .is_err()
+    );
+    let valid_recipe = catalog
+        .with_transaction(|transaction| {
+            create_processing_recipe(
+                transaction,
+                CreateProcessingRecipe {
+                    name: "Valid source",
+                    patch: &patch_with_low_cut_and_dynamics(120, -1_800),
+                },
+                9,
+            )
+        })
+        .expect("recipe without convolution IR creates");
+    assert!(
+        catalog
+            .with_transaction(|transaction| {
+                append_processing_recipe_revision(transaction, valid_recipe.id, &patch, 10)
+            })
+            .is_err()
+    );
+    let recipe_id = ProcessingRecipeId::new();
+    let revision_id = ProcessingRecipeRevisionId::new();
+    catalog
+        .with_transaction(|transaction| -> Result<(), CatalogError> {
+            transaction.execute(
+                "INSERT INTO processing_recipes
+                 (id, name, created_at_millis, updated_at_millis)
+                 VALUES (?1, 'Legacy missing IR', 10, 10)",
+                [recipe_id.to_string()],
+            )?;
+            transaction.execute(
+                "INSERT INTO processing_recipe_revisions
+                 (id, recipe_id, revision_number, patch_json, created_at_millis)
+                 VALUES (?1, ?2, 1, ?3, 10)",
+                rusqlite::params![
+                    revision_id.to_string(),
+                    recipe_id.to_string(),
+                    serde_json::to_string(&patch).expect("patch encodes"),
+                ],
+            )?;
+            Ok(())
+        })
+        .expect("legacy malformed recipe fixture writes");
+    let receipt = catalog
+        .with_transaction(|transaction| {
+            apply_processing_recipe(
+                transaction,
+                recipe_id,
+                &[asset_id],
+                ProcessingMergeMode::Merge,
+                20,
+            )
+        })
+        .expect("application records failure receipt");
+    assert_eq!(
+        receipt.targets[0].outcome,
+        ProcessingRecipeTargetOutcome::Failed
+    );
+    assert!(
+        receipt.targets[0]
+            .resulting_adjustment_revision_id
+            .is_none()
+    );
+    assert!(
+        catalog
+            .with_transaction(|transaction| latest_adjustment_graph(transaction, asset_id))
+            .expect("target reads")
+            .is_none()
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
 
 #[test]
 fn named_recipe_keeps_stable_identity_across_immutable_revisions() {

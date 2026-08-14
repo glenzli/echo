@@ -82,7 +82,7 @@ QtObject {
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canUndo: _historyIndex > 0
     readonly property bool canRedo: _historyIndex >= 0 && _historyIndex < _history.length - 1
-    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(13) || !creativeVfxFamilyEnabled("drive")) && (!containsEffectNode(14) || !creativeVfxFamilyEnabled("rotary")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
+    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(13) || !creativeVfxFamilyEnabled("drive")) && (!containsEffectNode(14) || !creativeVfxFamilyEnabled("rotary")) && (!containsEffectNode(15) || !creativeVfxFamilyEnabled("freeze")) && (!containsEffectNode(16) || !creativeVfxFamilyEnabled("granular")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks, var creativeVfx, var space)
@@ -221,13 +221,37 @@ QtObject {
         return value ? copyCreativeVfx(value) : {};
     }
 
+    function defaultCreativeVfxFamily(name: string): var {
+        if (name === "freeze") {
+            return {
+                enabled: false,
+                mixPercent: 70,
+                captureSourceMillis: 100
+            };
+        }
+        if (name === "granular") {
+            return {
+                enabled: false,
+                mixPercent: 45,
+                grainMillis: 80,
+                densityTenthsHertz: 120,
+                lookbackMillis: 250,
+                scatterMillis: 120,
+                pitchCents: 0,
+                stereoSpreadPercent: 50,
+                randomSeed: 1162039375
+            };
+        }
+        return null;
+    }
+
     function creativeVfxFamilyEnabled(name: string): bool {
         return Boolean(creativeVfx && creativeVfx[name] && creativeVfx[name].enabled);
     }
 
     function creativeVfxForOriginal(): var {
         const value = copyCreativeVfx(creativeVfx);
-        const families = ["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary"];
+        const families = ["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary", "freeze", "granular"];
         for (let index = 0; index < families.length; ++index) {
             const family = families[index];
             if (value[family])
@@ -237,7 +261,7 @@ QtObject {
     }
 
     function setCreativeVfxFamily(name: string, value: var): void {
-        if (["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary"].indexOf(name) < 0 || !value)
+        if (["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary", "freeze", "granular"].indexOf(name) < 0 || !value)
             return;
         const next = copyCreativeVfx(creativeVfx);
         next[name] = copyCreativeVfx(value);
@@ -246,8 +270,10 @@ QtObject {
     }
 
     function setCreativeVfxFamilyEnabled(name: string, enabled: bool): void {
-        const family = creativeVfxFamily(name);
+        let family = creativeVfxFamily(name);
         if (Object.keys(family).length === 0)
+            family = defaultCreativeVfxFamily(name);
+        if (!family || Object.keys(family).length === 0)
             return;
         family.enabled = enabled;
         setCreativeVfxFamily(name, family);
@@ -1128,6 +1154,10 @@ QtObject {
             return creativeVfxFamilyEnabled("drive");
         if (kind === 14)
             return creativeVfxFamilyEnabled("rotary");
+        if (kind === 15)
+            return creativeVfxFamilyEnabled("freeze");
+        if (kind === 16)
+            return creativeVfxFamilyEnabled("granular");
         return false;
     }
 
@@ -1169,6 +1199,12 @@ QtObject {
         } else if (kind === 14) {
             setCreativeVfxFamilyEnabled("rotary", enabled);
             return;
+        } else if (kind === 15) {
+            setCreativeVfxFamilyEnabled("freeze", enabled);
+            return;
+        } else if (kind === 16) {
+            setCreativeVfxFamilyEnabled("granular", enabled);
+            return;
         } else
             return;
         pushCurrent();
@@ -1191,7 +1227,7 @@ QtObject {
     }
 
     function addEffectNode(kind: int): void {
-        if (kind < 0 || kind > 14 || kind === 4 || containsEffectNode(kind))
+        if (kind < 0 || kind > 16 || kind === 4 || containsEffectNode(kind))
             return;
         const next = copyEffectChain(effectChain);
         next.splice(next.length - 1, 0, kind);
@@ -1224,11 +1260,15 @@ QtObject {
             setCreativeVfxFamilyEnabled("drive", true);
         else if (kind === 14)
             setCreativeVfxFamilyEnabled("rotary", true);
+        else if (kind === 15)
+            setCreativeVfxFamilyEnabled("freeze", true);
+        else if (kind === 16)
+            setCreativeVfxFamilyEnabled("granular", true);
         pushCurrent();
     }
 
     function removeEffectNode(kind: int): void {
-        if (kind < 0 || kind > 14 || kind === 4)
+        if (kind < 0 || kind > 16 || kind === 4)
             return;
         const next = copyEffectChain(effectChain);
         const index = next.indexOf(kind);

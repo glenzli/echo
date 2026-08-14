@@ -1,5 +1,6 @@
 //! Session contract tests: transcripts query against a real catalog.
 
+mod impulse_response_contract;
 mod listening_state_contract;
 mod long_audio_contract;
 mod metadata_calibration_contract;

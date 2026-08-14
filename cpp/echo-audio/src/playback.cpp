@@ -3,6 +3,7 @@
 #include "echo/audio/effect_mask_plan.hpp"
 #include "echo/audio/effect_processing_chain.hpp"
 #include "echo/audio/ffmpeg_include.hpp"
+#include "echo/audio/freeze_vfx_processor.hpp"
 #include "echo/audio/loudness_meter.hpp"
 #include "echo/audio/low_cut_filter.hpp"
 #include "echo/audio/output_guard.hpp"
@@ -301,6 +302,24 @@ class PlaybackSession::Impl {
         pending_de_hum_ = adjustment_->de_hum();
         pending_de_click_ = adjustment_->de_click();
         pending_channel_repair_ = adjustment_->channel_repair();
+        pending_compressor_ = adjustment_->compressor();
+        pending_reverb_ = adjustment_->reverb();
+        pending_space_ = adjustment_->space();
+        pending_creative_vfx_ = adjustment_->creative_vfx();
+        pending_limiter_ = adjustment_->limiter();
+        const auto chain = adjustment_->effect_chain();
+        freeze_node_active_ =
+            std::find(
+                chain.begin(),
+                chain.begin() + static_cast<std::ptrdiff_t>(adjustment_->effect_chain_count()),
+                EffectNodeKind::FreezeVfx
+            )
+            != chain.begin() + static_cast<std::ptrdiff_t>(adjustment_->effect_chain_count());
+        initial_freeze_enabled_ = pending_creative_vfx_.freeze.enabled;
+        freeze_capture_source_millis_ = pending_creative_vfx_.freeze.capture_source_millis;
+        if (freeze_node_active_ && initial_freeze_enabled_) {
+            validate_freeze_source_anchor(pending_creative_vfx_.freeze);
+        }
 
         ring_ = std::make_unique<FrameRing>(kRingCapacityFrames, channel_count_);
         packet_.reset(av_packet_alloc());
@@ -528,6 +547,27 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        EffectProcessingChain::validate_freeze_vfx(
+            adjustment.freeze,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        EffectProcessingChain::validate_granular_vfx(
+            adjustment.granular,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        if (adjustment.freeze.capture_source_millis != freeze_capture_source_millis_) {
+            throw std::invalid_argument(
+                "freeze capture anchor changes require a new playback session"
+            );
+        }
+        if (adjustment.freeze.enabled && !initial_freeze_enabled_) {
+            throw std::invalid_argument("enabling freeze requires a prepared playback session");
+        }
+        if (adjustment.freeze.enabled) {
+            validate_freeze_source_anchor(adjustment.freeze);
+        }
         {
             std::lock_guard<std::mutex> lock(effect_mutex_);
             pending_creative_vfx_ = adjustment;
@@ -586,6 +626,29 @@ class PlaybackSession::Impl {
     }
 
   private:
+    void validate_freeze_source_anchor(FreezeVfxAdjustment adjustment) const {
+        const std::uint64_t capture_frame =
+            adjustment.capture_source_millis * kCanonicalSampleRate / 1000U;
+        const std::uint64_t plan_start = source_edit_plan_->start_frame();
+        const std::uint64_t plan_end = source_edit_plan_->end_frame();
+        if (capture_frame < plan_start
+            || capture_frame - plan_start < FreezeVfxProcessor::latency_frames()
+            || capture_frame >= plan_end) {
+            throw std::invalid_argument(
+                "freeze capture requires 4096 reachable source frames inside the edit"
+            );
+        }
+        const std::uint64_t pre_roll_start = capture_frame - FreezeVfxProcessor::latency_frames();
+        for (std::uint64_t frame = pre_roll_start; frame <= capture_frame; ++frame) {
+            const SourceEditFrame edit = source_edit_plan_->frame_at(frame);
+            if (!edit.emitted || edit.gap_after_frames != 0) {
+                throw std::invalid_argument(
+                    "freeze capture pre-roll cannot cross hidden source frames or authored gaps"
+                );
+            }
+        }
+    }
+
     const AVStream* find_audio_stream() const {
         for (unsigned int index = 0; index < format_.get()->nb_streams; ++index) {
             const AVStream* candidate = format_.get()->streams[index];
@@ -597,9 +660,19 @@ class PlaybackSession::Impl {
     }
 
     bool perform_seek(std::uint64_t millis) {
+        const std::uint64_t target_source_frame = millis * kCanonicalSampleRate / 1000U;
+        std::uint64_t decode_start_frame = target_source_frame;
+        if (freeze_node_active_ && initial_freeze_enabled_
+            && target_source_frame > source_edit_plan_->start_frame()) {
+            // Freeze itself needs only its fixed 4096-frame window, but its
+            // future captured bank also depends on causal upstream state
+            // (resampling and the low-cut filter). Rebuild from the edit start
+            // for every nonzero seek, then discard everything before target.
+            decode_start_frame = source_edit_plan_->start_frame();
+        }
         const std::int64_t timestamp = av_rescale_q(
-            static_cast<std::int64_t>(millis),
-            AVRational{1, 1000},
+            static_cast<std::int64_t>(decode_start_frame),
+            AVRational{1, kCanonicalSampleRate},
             format_.get()->streams[stream_index_]->time_base
         );
         const int result =
@@ -612,11 +685,15 @@ class PlaybackSession::Impl {
         if (swr_init(swr_.get()) < 0) {
             fail("cannot reset resampler after seek");
         }
-        decoded_frame_cursor_ = millis * kCanonicalSampleRate / 1000;
+        decoded_frame_cursor_ = decode_start_frame;
         decode_cursor_initialized_ = false;
         minimum_decode_frame_ = decoded_frame_cursor_;
+        minimum_publish_source_frame_ = target_source_frame;
+        pre_roll_discarding_ = decode_start_frame < target_source_frame;
         pending_gap_frames_ = 0;
         low_cut_filter_->reset();
+        // Granular intentionally starts a fresh processor-input timeline on
+        // seek; unlike Freeze, it does not reconstruct pre-seek texture state.
         effect_chain_->reset();
         output_limiter_->reset();
         if (options_.apply_output_guard) {
@@ -648,10 +725,7 @@ class PlaybackSession::Impl {
             std::this_thread::yield();
         }
         ring_->reset();
-        position_source_frame_.store(
-            millis * kCanonicalSampleRate / 1000,
-            std::memory_order_relaxed
-        );
+        position_source_frame_.store(target_source_frame, std::memory_order_relaxed);
         read_gate_.store(0, std::memory_order_seq_cst);
         return true;
     }
@@ -722,6 +796,8 @@ class PlaybackSession::Impl {
             effect_chain_->update_digital_degrade_vfx(pending_creative_vfx_.digital_degrade);
             effect_chain_->update_drive_vfx(pending_creative_vfx_.drive);
             effect_chain_->update_rotary_vfx(pending_creative_vfx_.rotary);
+            effect_chain_->update_freeze_vfx(pending_creative_vfx_.freeze);
+            effect_chain_->update_granular_vfx(pending_creative_vfx_.granular);
             creative_vfx_update_pending_ = false;
         }
     }
@@ -741,6 +817,36 @@ class PlaybackSession::Impl {
         output_limiter_->process_interleaved(samples, frame_count, channel_count_);
         if (options_.apply_output_guard) {
             output_guard_->process_interleaved(samples, frame_count, channel_count_);
+        }
+        if (pre_roll_discarding_) {
+            std::size_t first_publish_frame = frame_count;
+            for (std::size_t frame = 0; frame < frame_count; ++frame) {
+                if (source_frames[frame] != kNoSourceFrame
+                    && source_frames[frame] >= minimum_publish_source_frame_) {
+                    first_publish_frame = frame;
+                    break;
+                }
+            }
+            if (first_publish_frame == frame_count) {
+                return;
+            }
+            if (first_publish_frame != 0) {
+                std::memmove(
+                    samples,
+                    samples + first_publish_frame * channel_count_,
+                    (frame_count - first_publish_frame) * channel_count_ * sizeof(float)
+                );
+                std::memmove(
+                    source_frames,
+                    source_frames + first_publish_frame,
+                    (frame_count - first_publish_frame) * sizeof(std::uint64_t)
+                );
+                frame_count -= first_publish_frame;
+            }
+            pre_roll_discarding_ = false;
+            if (options_.collect_metering) {
+                loudness_meter_->reset();
+            }
         }
         if (options_.collect_metering) {
             loudness_meter_->process_interleaved(samples, frame_count, channel_count_);
@@ -1087,7 +1193,12 @@ class PlaybackSession::Impl {
     std::uint64_t decoded_frame_cursor_ = 0;
     bool decode_cursor_initialized_ = false;
     std::uint64_t minimum_decode_frame_ = 0;
+    std::uint64_t minimum_publish_source_frame_ = 0;
     std::uint64_t pending_gap_frames_ = 0;
+    std::uint64_t freeze_capture_source_millis_ = 100;
+    bool freeze_node_active_ = false;
+    bool initial_freeze_enabled_ = false;
+    bool pre_roll_discarding_ = false;
     std::mutex effect_mutex_;
     ParametricEqualizerAdjustment pending_equalizer_;
     bool equalizer_update_pending_ = false;

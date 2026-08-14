@@ -12,6 +12,33 @@ use uuid::Uuid;
 
 use crate::{CatalogError, CatalogErrorKind};
 
+/// Canonical plane interpretation of one prepared impulse response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImpulseResponseLayout {
+    Mono,
+    StereoParallel,
+    TrueStereoLlLrRlRr,
+}
+
+impl ImpulseResponseLayout {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Mono => "mono",
+            Self::StereoParallel => "stereo_parallel",
+            Self::TrueStereoLlLrRlRr => "true_stereo_ll_lr_rl_rr",
+        }
+    }
+
+    fn from_stored(value: &str) -> rusqlite::Result<Self> {
+        match value {
+            "mono" => Ok(Self::Mono),
+            "stereo_parallel" => Ok(Self::StereoParallel),
+            "true_stereo_ll_lr_rl_rr" => Ok(Self::TrueStereoLlLrRlRr),
+            _ => Err(rusqlite::Error::InvalidQuery),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImpulseResponseRights {
     Spdx {
@@ -31,6 +58,7 @@ pub struct ImpulseResponseRecord {
     pub preparation_version: u32,
     pub source_sample_rate: u32,
     pub channel_count: u32,
+    pub layout: ImpulseResponseLayout,
     pub source_frame_count: u64,
     pub prepared_frame_count: u64,
     pub avcodec_version: u32,
@@ -56,6 +84,7 @@ pub fn record_impulse_response(
     transaction: &Transaction<'_>,
     record: &ImpulseResponseRecord,
 ) -> Result<(), CatalogError> {
+    validate_preparation_shape(record)?;
     if let Some(existing) = list_impulse_responses(transaction)?
         .into_iter()
         .find(|existing| existing.import_id == record.import_id)
@@ -99,9 +128,9 @@ pub fn record_impulse_response(
     }
     transaction.execute(
         "INSERT INTO impulse_response_preparations (prepared_hash, source_hash, size_bytes, \
-         preparation_version, source_sample_rate, channel_count, source_frame_count, \
+         preparation_version, source_sample_rate, channel_count, layout_kind, source_frame_count, \
          prepared_frame_count, avcodec_version, swresample_version, created_at_millis) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12) \
          ON CONFLICT(prepared_hash) DO NOTHING",
         rusqlite::params![
             record.prepared_hash.to_string(),
@@ -110,6 +139,7 @@ pub fn record_impulse_response(
             i64::from(record.preparation_version),
             i64::from(record.source_sample_rate),
             i64::from(record.channel_count),
+            record.layout.as_str(),
             i64::try_from(record.source_frame_count).map_err(range_error)?,
             i64::try_from(record.prepared_frame_count).map_err(range_error)?,
             i64::from(record.avcodec_version),
@@ -117,10 +147,10 @@ pub fn record_impulse_response(
             i64::try_from(record.imported_at_millis).map_err(range_error)?,
         ],
     )?;
-    let stored_preparation: (String, i64, i64, i64, i64, i64, i64, i64, i64) = transaction
+    let stored_preparation: (String, i64, i64, i64, i64, String, i64, i64, i64, i64) = transaction
         .query_row(
             "SELECT source_hash, size_bytes, preparation_version, source_sample_rate, \
-             channel_count, source_frame_count, prepared_frame_count, avcodec_version, \
+             channel_count, layout_kind, source_frame_count, prepared_frame_count, avcodec_version, \
              swresample_version FROM impulse_response_preparations WHERE prepared_hash = ?1",
             [record.prepared_hash.to_string()],
             |row| {
@@ -134,6 +164,7 @@ pub fn record_impulse_response(
                     row.get(6)?,
                     row.get(7)?,
                     row.get(8)?,
+                    row.get(9)?,
                 ))
             },
         )?;
@@ -143,6 +174,7 @@ pub fn record_impulse_response(
         i64::from(record.preparation_version),
         i64::from(record.source_sample_rate),
         i64::from(record.channel_count),
+        record.layout.as_str().to_owned(),
         i64::try_from(record.source_frame_count).map_err(range_error)?,
         i64::try_from(record.prepared_frame_count).map_err(range_error)?,
         i64::from(record.avcodec_version),
@@ -187,7 +219,7 @@ pub fn list_impulse_responses(
 ) -> Result<Vec<ImpulseResponseRecord>, CatalogError> {
     let mut statement = transaction.prepare(
         "SELECT i.import_id, i.source_hash, s.size_bytes, i.prepared_hash, p.size_bytes, \
-         p.preparation_version, p.source_sample_rate, p.channel_count, p.source_frame_count, \
+         p.preparation_version, p.source_sample_rate, p.channel_count, p.layout_kind, p.source_frame_count, \
          p.prepared_frame_count, p.avcodec_version, p.swresample_version, i.imported_at_millis, \
          i.original_path, i.display_name, i.creator, i.source_url, i.attribution, i.rights_kind, \
          i.spdx_expression, i.license_url FROM impulse_response_imports i \
@@ -201,17 +233,17 @@ pub fn list_impulse_responses(
 }
 
 fn record_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ImpulseResponseRecord> {
-    let rights_kind: String = row.get(18)?;
+    let rights_kind: String = row.get(19)?;
     let rights = match rights_kind.as_str() {
         "spdx" => ImpulseResponseRights::Spdx {
-            expression: row.get::<_, Option<String>>(19)?.ok_or_else(|| {
+            expression: row.get::<_, Option<String>>(20)?.ok_or_else(|| {
                 rusqlite::Error::InvalidColumnType(
-                    19,
+                    20,
                     "spdx_expression".to_owned(),
                     rusqlite::types::Type::Null,
                 )
             })?,
-            license_url: row.get(20)?,
+            license_url: row.get(21)?,
         },
         "user_owned_no_redistribution" => ImpulseResponseRights::UserOwnedNoRedistribution,
         _ => return Err(rusqlite::Error::InvalidQuery),
@@ -228,18 +260,64 @@ fn record_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ImpulseResponseR
         preparation_version: stored_u32(row.get(5)?)?,
         source_sample_rate: stored_u32(row.get(6)?)?,
         channel_count: stored_u32(row.get(7)?)?,
-        source_frame_count: stored_u64(row.get(8)?)?,
-        prepared_frame_count: stored_u64(row.get(9)?)?,
-        avcodec_version: stored_u32(row.get(10)?)?,
-        swresample_version: stored_u32(row.get(11)?)?,
-        imported_at_millis: stored_u64(row.get(12)?)?,
-        original_path: row.get(13)?,
-        display_name: row.get(14)?,
-        creator: row.get(15)?,
-        source_url: row.get(16)?,
-        attribution: row.get(17)?,
+        layout: ImpulseResponseLayout::from_stored(&row.get::<_, String>(8)?)?,
+        source_frame_count: stored_u64(row.get(9)?)?,
+        prepared_frame_count: stored_u64(row.get(10)?)?,
+        avcodec_version: stored_u32(row.get(11)?)?,
+        swresample_version: stored_u32(row.get(12)?)?,
+        imported_at_millis: stored_u64(row.get(13)?)?,
+        original_path: row.get(14)?,
+        display_name: row.get(15)?,
+        creator: row.get(16)?,
+        source_url: row.get(17)?,
+        attribution: row.get(18)?,
         rights,
     })
+}
+
+/// Validates that an authored immutable selection resolves to one import row.
+pub(crate) fn validate_impulse_response_selection(
+    transaction: &Transaction<'_>,
+    selection: echo_domain::ImpulseResponseSelection,
+) -> Result<(), CatalogError> {
+    let matches: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM impulse_response_imports WHERE import_id = ?1 \
+         AND source_hash = ?2 AND prepared_hash = ?3",
+        rusqlite::params![
+            selection.import_id.to_string(),
+            selection.source_hash.to_string(),
+            selection.prepared_hash.to_string(),
+        ],
+        |row| row.get(0),
+    )?;
+    if matches == 1 {
+        Ok(())
+    } else {
+        Err(CatalogError::new(
+            CatalogErrorKind::Other,
+            "impulse response selection does not resolve to one immutable import".to_owned(),
+        ))
+    }
+}
+
+fn validate_preparation_shape(record: &ImpulseResponseRecord) -> Result<(), CatalogError> {
+    if matches!(
+        (
+            record.preparation_version,
+            record.channel_count,
+            record.layout
+        ),
+        (1, 1, ImpulseResponseLayout::Mono)
+            | (1, 2, ImpulseResponseLayout::StereoParallel)
+            | (2, 4, ImpulseResponseLayout::TrueStereoLlLrRlRr)
+    ) {
+        Ok(())
+    } else {
+        Err(CatalogError::new(
+            CatalogErrorKind::Other,
+            "impulse response preparation version, channels, and layout conflict".to_owned(),
+        ))
+    }
 }
 
 fn stored_u64(value: i64) -> rusqlite::Result<u64> {

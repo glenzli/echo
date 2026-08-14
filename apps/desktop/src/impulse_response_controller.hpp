@@ -32,6 +32,17 @@ class ImpulseResponseController : public QObject {
         const QString& spdxExpression,
         const QString& licenseUrl
     );
+    Q_INVOKABLE void importLocalWavWithLayout(
+        const QString& sourcePath,
+        const QString& preparationLayout,
+        const QString& displayName,
+        const QString& creator,
+        const QString& sourceUrl,
+        const QString& attribution,
+        const QString& rightsKind,
+        const QString& spdxExpression,
+        const QString& licenseUrl
+    );
     Q_INVOKABLE void refresh();
 
     [[nodiscard]] bool busy() const;
