@@ -46,7 +46,7 @@ pub const ALIGNMENT_INTENT: &str = "audio.align";
 pub const MAX_AUDIO_UPLOAD_BYTES: u64 = 25 * 1024 * 1024;
 
 const EXPECTED_APP_ID: &str = "echo";
-const TRANSCRIPTION_CAPABILITY: &str = "infer.audio.transcription@20260811.1";
+const TRANSCRIPTION_CAPABILITY: &str = "infer.audio.transcription@20260814.1";
 const ALIGNMENT_CAPABILITY: &str = "infer.audio.alignment@20260811.1";
 pub(crate) const AUDIO_EVENT_DETECTION_CAPABILITY: &str = "infer.audio.event-detection@20260813.2";
 
@@ -692,7 +692,7 @@ pub(crate) fn validate_local_only_job(
     let valid = job.policy == "local-first"
         && job.priority == "background"
         && job.placement == "local"
-        && job.capability_level == "foundational"
+        && capability_level_meets_foundational_floor(&job.capability_level)
         && constraints.policy.as_deref() == Some("local-first")
         && constraints.priority.as_deref() == Some("background")
         && constraints.placement.as_deref() == Some("local_only")
@@ -702,11 +702,19 @@ pub(crate) fn validate_local_only_job(
         && constraints.latency.as_deref() == Some("throughput")
         && constraints.max_cost_usd == Some(0.0)
         && constraints.fallback.as_deref() == Some("none")
+        && job.routing.capability_floor == "foundational"
         && job
             .attempts
             .iter()
             .all(|attempt| attempt.trigger != "fallback");
     if valid { Ok(()) } else { Err(protocol(code)) }
+}
+
+fn capability_level_meets_foundational_floor(level: &str) -> bool {
+    matches!(
+        level,
+        "foundational" | "capable" | "advanced" | "expert" | "exceptional"
+    )
 }
 
 fn map_sdk_error(error: SdkError) -> InferRuntimeError {

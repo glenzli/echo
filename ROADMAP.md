@@ -101,7 +101,7 @@ Echo 是产品和声音记忆的 owner；Infer Build 是共享的本地推理控
 `audio.transcribe` / `audio.align` 任务接口，不预建没有消费方的第二套调度机制。
 
 正式 consumer 固定使用官方 `infer-runtime-client`，Git revision 为
-`578735ac099e87d6864edd1adc0f8da64100f28b`；Core 身份固定为
+`5b2895f9f2ad4ae10ce6eaae8eacec77077d23a6`；Core 身份固定为
 `infer-runtime.consumer-core@20260813.1`，能力目录固定为
 `infer-runtime.capability-catalog@20260813.1`。Echo 仍以独立、非资源管理员的 `app_id=echo`
 调用，既有 managed credential 路径与 ACL 不变。endpoint 只允许显式
@@ -114,15 +114,19 @@ Echo 不再持有这些协议基础实现，也不把 bearer token 物化到 Rus
 命令行参数。SDK 发现的 manifest 只是连接候选，连接才建立存活事实；Echo 不修改或删除 Provider
 manifest。Echo 的后台 worker 只提交稳定 Intent、核验产品约束、记录本地任务状态，并把已净化的
 Runtime Job／Attempt／模型构建证据写入 Catalog。四条已迁移路径分别要求精确 capability：
-`audio.transcribe` → `infer.audio.transcription@20260811.1`、`audio.align` →
+`audio.transcribe` → `infer.audio.transcription@20260814.1`、`audio.align` →
 `infer.audio.alignment@20260811.1`、`text.summarize` → `infer.responses@20260812.1`、
 `semantic.embed_text` → `infer.vision.text-embedding@20260811.1`。具名 Deployment／Model Profile
 路由不自动启用，协议升级也不扩大 App ACL、fallback 或 Provider 可见性。Runtime 不可用不得
 阻断扫描、波形、播放或 Library 浏览。
 
+`infer.audio.transcription@20260814.1` 把 `language` 固定为仅在无歧义时存在的 document-level
+标量；混合语言的 provider 证据由 SDK 类型化为无区间的 input set，或仅在 provider 提供时使用的
+有区间 segments。Echo 不把空标量误判为无语音、不私有解析数组，也不虚构语言时间范围。
+
 2026-08-13 hard migration 的合同测试只使用官方 SDK fixture／fake transport，不把仍运行旧预发布
 草案的 daemon 当作新合同成败依据；真实 E2E 必须等 Runtime 切换到上述 Core／Catalog 后执行。
-声音事件现由官方 SDK revision `578735ac099e87d6864edd1adc0f8da64100f28b` 的
+声音事件现由官方 SDK revision `5b2895f9f2ad4ae10ce6eaae8eacec77077d23a6` 的
 `Client::detect_audio_events_file` 消费，精确能力为
 `infer.audio.event-detection@20260813.2`。Echo 只映射经 SDK 严格验证的 AudioSet
 事件、coverage、speech presence、ontology／policy 与 provenance，再核验 Echo App-scoped
@@ -300,7 +304,7 @@ InferenceBackend
   - 已完成（正式 Runtime 切片，2026-08-09；Discovery 与声音事件迁移 2026-08-11；官方 SDK
     hard migration 2026-08-13）：Echo 以独立非管理员 App 身份消费
     `infer-runtime.consumer-core@20260813.1`／`infer-runtime.capability-catalog@20260813.1`，并由
-    revision `578735ac099e87d6864edd1adc0f8da64100f28b` 的官方 SDK 通过 owner-only 稳定
+    revision `5b2895f9f2ad4ae10ce6eaae8eacec77077d23a6` 的官方 SDK 通过 owner-only 稳定
     registration 发现本机 Consumer endpoint；后台队列提交 `audio.transcribe`，非空文字继续
     `audio.align`。四条受支持路径都读取 App-scoped Job/Attempt，并把 Core／Capability 身份、
     provider/deployment、physical model/build 与稳定错误码写入 Catalog。桌面读取层以最新对齐

@@ -97,7 +97,7 @@ fn runtime_completion_links_the_local_job_to_sanitized_provenance() {
         job: crate::RuntimeJobSnapshot {
             id: "runtime-job-1".to_owned(),
             consumer_core_contract: crate::EXPECTED_CONTRACT_VERSION.to_owned(),
-            capability_contract: Some("infer.audio.transcription@20260811.1".to_owned()),
+            capability_contract: Some("infer.audio.transcription@20260814.1".to_owned()),
             app_id: "echo".to_owned(),
             intent: crate::TRANSCRIPTION_INTENT.to_owned(),
             provider: "mlx-audio-local".to_owned(),
@@ -134,7 +134,7 @@ fn runtime_completion_links_the_local_job_to_sanitized_provenance() {
 }
 
 #[test]
-fn audio_event_job_without_a_managed_credential_fails_without_publishing_evidence() {
+fn audio_event_job_without_an_available_runtime_fails_without_publishing_evidence() {
     let root =
         std::env::temp_dir().join(format!("echo-worker-audio-events-{}", std::process::id()));
     let source = crate::infer_runtime::tests::audio_fixture();
@@ -194,7 +194,7 @@ fn audio_event_job_without_a_managed_credential_fails_without_publishing_evidenc
     };
 
     let error = dispatch_analysis(&catalog, &config, &job).expect_err("missing credential fails");
-    assert_eq!(error.kind, crate::CoreErrorKind::InferenceRejected);
+    assert_eq!(error.kind, crate::CoreErrorKind::InferenceUnavailable);
 
     let records = catalog
         .with_transaction(|transaction| {
@@ -216,10 +216,7 @@ fn audio_event_job_without_a_managed_credential_fails_without_publishing_evidenc
         .expect("inference run exists");
     assert_eq!(run.state, InferenceRunState::Failed);
     assert_eq!(run.intent, crate::AUDIO_EVENT_DETECTION_INTENT);
-    assert_eq!(
-        run.error_code.as_deref(),
-        Some("runtime_credential_unavailable")
-    );
+    assert_eq!(run.error_code.as_deref(), Some("runtime_unavailable"));
     assert!(run.snapshot.is_none());
 
     std::fs::remove_file(source).expect("source removes");

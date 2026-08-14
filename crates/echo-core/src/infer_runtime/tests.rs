@@ -269,6 +269,86 @@ fn fake_sdk_transcription_preserves_echo_provenance() {
 }
 
 #[test]
+fn transcription_accepts_a_known_capability_above_the_requested_floor() {
+    let response: SdkTranscriptionResponse = serde_json::from_value(json!({
+        "id":"transcribe-capable","text":"","language":null,"segments":[],"usage":{}
+    }))
+    .unwrap();
+    let mut job = sdk_job_fixture(TRANSCRIPTION_INTENT, TRANSCRIPTION_CAPABILITY);
+    job.capability_level = "capable".to_owned();
+    let client = InferRuntimeClient::with_transport(FakeTransport::transcription(response, job));
+    assert!(
+        client
+            .transcribe(&audio_fixture(), &TranscriptionIntent::default())
+            .is_ok()
+    );
+}
+
+#[test]
+fn transcription_rejects_an_unknown_capability_level() {
+    let response: SdkTranscriptionResponse = serde_json::from_value(json!({
+        "id":"transcribe-unknown-level","text":"","language":null,"segments":[],"usage":{}
+    }))
+    .unwrap();
+    let mut job = sdk_job_fixture(TRANSCRIPTION_INTENT, TRANSCRIPTION_CAPABILITY);
+    job.capability_level = "unrecognized".to_owned();
+    let client = InferRuntimeClient::with_transport(FakeTransport::transcription(response, job));
+    let error = client
+        .transcribe(&audio_fixture(), &TranscriptionIntent::default())
+        .unwrap_err();
+    assert_eq!(error.code, "inconsistent_transcription_constraints");
+}
+
+#[test]
+#[ignore = "requires a healthy local Infer Runtime and Echo's managed credential"]
+fn live_sdk_transcription_job_satisfies_echo_local_constraints() {
+    let source = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../local-audio-library/public-domain-non-speech/01-rain.ogg");
+    let intent = TranscriptionIntent::default();
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url: String::new(),
+        credential_path: crate::infer_runtime_credential_path()
+            .expect("Echo credential path resolves"),
+    });
+    let (_, job) = client
+        .transport()
+        .expect("SDK transport builds")
+        .transcribe(&source, None, &intent.metadata)
+        .expect("official SDK transcribes public non-speech source");
+    let job = validate_succeeded_job(job, TRANSCRIPTION_INTENT, TRANSCRIPTION_CAPABILITY)
+        .expect("SDK Job is Echo scoped and successful");
+    assert!(
+        validate_local_only_job(&job, "inconsistent_transcription_constraints").is_ok(),
+        "sanitized Job constraints: {job:#?}"
+    );
+}
+
+#[test]
+fn typed_mixed_language_evidence_keeps_transcription_usable() {
+    let response: SdkTranscriptionResponse = serde_json::from_value(json!({
+        "id":"transcribe-mixed","text":"你好 hello","language":null,
+        "language_evidence": {
+            "kind":"input_set", "source":"provider_reported",
+            "languages":["Chinese", "English"]
+        },
+        "segments":[],"usage":{}
+    }))
+    .unwrap();
+    assert!(matches!(
+        response.language_evidence.as_ref(),
+        Some(infer_runtime_client::TranscriptionLanguageEvidence::InputSet { languages, .. })
+            if languages == &["Chinese".to_owned(), "English".to_owned()]
+    ));
+    let job = sdk_job_fixture(TRANSCRIPTION_INTENT, TRANSCRIPTION_CAPABILITY);
+    let client = InferRuntimeClient::with_transport(FakeTransport::transcription(response, job));
+    let payload = client
+        .transcribe(&audio_fixture(), &TranscriptionIntent::default())
+        .unwrap();
+    assert_eq!(payload.language, None);
+    assert_eq!(payload.text, "你好 hello");
+}
+
+#[test]
 fn transcription_rejects_runtime_fallback_evidence() {
     let response: SdkTranscriptionResponse = serde_json::from_value(json!({
         "id":"transcribe-fallback","text":"你好","language":"zh",
