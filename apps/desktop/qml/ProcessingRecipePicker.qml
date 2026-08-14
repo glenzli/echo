@@ -74,6 +74,10 @@ Rectangle {
             return qsTr("Drive");
         if (componentId === "rotaryVfx")
             return qsTr("Rotary");
+        if (componentId === "freezeVfx")
+            return qsTr("Freeze");
+        if (componentId === "granularVfx")
+            return qsTr("Granular");
         if (componentId === "master")
             return qsTr("Master output");
         return componentId;

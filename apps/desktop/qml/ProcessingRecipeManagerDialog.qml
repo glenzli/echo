@@ -101,6 +101,10 @@ Popup {
             return qsTr("Drive");
         if (componentId === "rotaryVfx")
             return qsTr("Rotary");
+        if (componentId === "freezeVfx")
+            return qsTr("Freeze");
+        if (componentId === "granularVfx")
+            return qsTr("Granular");
         if (componentId === "master")
             return qsTr("Master output");
         return componentId;
@@ -127,7 +131,7 @@ Popup {
         const current = dialog.recipeComponents();
         for (let index = 0; index < current.length; ++index)
             selected[String(current[index])] = true;
-        const orderedIds = ["lowCut", "restoration", "deHum", "deClick", "channelRepair", "equalizer", "dynamics", "space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegradeVfx", "driveVfx", "rotaryVfx", "master"];
+        const orderedIds = ["lowCut", "restoration", "deHum", "deClick", "channelRepair", "equalizer", "dynamics", "space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegradeVfx", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx", "master"];
         updateComponents.clear();
         for (let index = 0; index < orderedIds.length; ++index) {
             const componentId = orderedIds[index];

@@ -124,6 +124,18 @@ Popup {
                 included: false
             },
             {
+                componentId: "freezeVfx",
+                title: qsTr("Freeze"),
+                summary: qsTr("Source-anchored spectral hold"),
+                included: false
+            },
+            {
+                componentId: "granularVfx",
+                title: qsTr("Granular"),
+                summary: qsTr("Deterministic grain texture"),
+                included: false
+            },
+            {
                 componentId: "master",
                 title: qsTr("Master output"),
                 summary: qsTr("Limiter and output policy"),
@@ -155,7 +167,7 @@ Popup {
             if (componentId.length === 0)
                 continue;
             const available = entry.available === undefined ? true : Boolean(entry.available);
-            const included = entry.included === undefined ? ["space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegradeVfx", "driveVfx", "rotaryVfx"].indexOf(componentId) < 0 : Boolean(entry.included);
+            const included = entry.included === undefined ? ["space", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegradeVfx", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx"].indexOf(componentId) < 0 : Boolean(entry.included);
             componentProjection.append({
                 componentId: componentId,
                 title: String(entry.title || componentId),
