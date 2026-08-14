@@ -87,3 +87,13 @@ ECHO_DEBUG_SCREENSHOT="$smoke_root/startup.png" \
 
 "$repository_root/scripts/promote_debug_build.sh" "$candidate_app" "$validation_label"
 "$repository_root/scripts/run_debug.sh" --check
+
+# Promotion is successful even if maintenance is unavailable. The pruning
+# helper is conservative: it preserves the current release and skips every
+# release while Echo is running.
+if ! "$repository_root/scripts/prune_local_builds.sh" --apply --scratch --older-than-hours 24; then
+    echo "canonical debug build: scratch maintenance was skipped" >&2
+fi
+if ! "$repository_root/scripts/prune_local_builds.sh" --apply --releases --keep-releases "${ECHO_DEBUG_RELEASE_KEEP:-3}"; then
+    echo "canonical debug build: release maintenance was skipped" >&2
+fi

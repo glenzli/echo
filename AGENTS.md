@@ -45,3 +45,13 @@ policy, `.clang-format`, build outputs outside the worktree (`.echo-local-*` sib
 macOS (Apple Silicon) is the first-class platform. Windows must not require architecture changes:
 no macOS-only APIs outside the audio engine's platform shim, no MLX assumptions below the
 `InferenceBackend` routing layer.
+
+## Local build retention
+
+- Use `scripts/build_and_promote_debug.sh` for the reusable runnable Debug app.
+- Use `scripts/build_desktop_scratch.sh` for focused temporary desktop validation; it cleans its
+  managed candidate by default. Do not create persistent ad-hoc `/private/tmp/echo-*` CMake
+  directories.
+- `scripts/prune_local_builds.sh` is report-only unless `--apply` is explicit. It must only remove
+  Echo-marked scratch builds or verified inactive Debug releases, never audio libraries, catalogs,
+  caches, models, credentials, or unmarked historical directories.

@@ -98,6 +98,16 @@ or pass an explicit catalog and cache root. The
 `./scripts/build_and_promote_debug.sh --check` command reports its stable
 candidate and canonical paths without building.
 
+For one-off compilation checks, use `./scripts/build_desktop_scratch.sh` rather
+than creating another ad-hoc CMake directory. Its managed candidate is removed
+on exit, including after a failure; pass `--keep` (or `ECHO_KEEP_BUILD=1`) only
+when you need to inspect it. `./scripts/prune_local_builds.sh` is report-only
+by default and can safely reclaim stale managed scratch builds and excess Debug
+releases with `--apply`. It never removes unmarked legacy `/private/tmp/echo-*`
+directories, catalogs, caches, models, or credentials; use
+`--report-legacy-tmp` to inventory those historical candidates before any
+separate, explicit deletion decision.
+
 The canonical external build is the shared `build:echo-canonical-debug` resource
 and its coordination pseudo-path is `@external/echo-canonical-debug`; release
 stewards must serialize promotion of that resource.
