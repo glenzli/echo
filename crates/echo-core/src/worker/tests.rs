@@ -134,7 +134,7 @@ fn runtime_completion_links_the_local_job_to_sanitized_provenance() {
 }
 
 #[test]
-fn unpublished_audio_event_capability_fails_without_publishing_evidence() {
+fn audio_event_job_without_a_managed_credential_fails_without_publishing_evidence() {
     let root =
         std::env::temp_dir().join(format!("echo-worker-audio-events-{}", std::process::id()));
     let source = crate::infer_runtime::tests::audio_fixture();
@@ -193,7 +193,7 @@ fn unpublished_audio_event_capability_fails_without_publishing_evidence() {
         },
     };
 
-    let error = dispatch_analysis(&catalog, &config, &job).expect_err("capability fails closed");
+    let error = dispatch_analysis(&catalog, &config, &job).expect_err("missing credential fails");
     assert_eq!(error.kind, crate::CoreErrorKind::InferenceRejected);
 
     let records = catalog
@@ -218,7 +218,7 @@ fn unpublished_audio_event_capability_fails_without_publishing_evidence() {
     assert_eq!(run.intent, crate::AUDIO_EVENT_DETECTION_INTENT);
     assert_eq!(
         run.error_code.as_deref(),
-        Some("capability_contract_unsupported")
+        Some("runtime_credential_unavailable")
     );
     assert!(run.snapshot.is_none());
 
