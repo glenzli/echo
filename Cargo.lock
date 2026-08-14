@@ -878,7 +878,7 @@ dependencies = [
 [[package]]
 name = "infer-runtime-client"
 version = "1.0.0"
-source = "git+https://github.com/glenzli/infer-runtime.git?rev=8588a945047cedaea62035969e479e7fb7ff795c#8588a945047cedaea62035969e479e7fb7ff795c"
+source = "git+https://github.com/glenzli/infer-runtime.git?rev=578735ac099e87d6864edd1adc0f8da64100f28b#578735ac099e87d6864edd1adc0f8da64100f28b"
 dependencies = [
  "bytes",
  "libc",

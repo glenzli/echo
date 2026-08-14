@@ -30,9 +30,11 @@ use std::{
 };
 
 use infer_runtime_client::{
-    AlignmentResponse as SdkAlignmentResponse, Client, DiscoveryResolver, Error as SdkError,
-    JobSnapshot as SdkJobSnapshot, ResponsesRequest, ResponsesResult, TextEmbeddingRequest,
-    TextEmbeddingResponse, TranscriptionFormat, TranscriptionResponse as SdkTranscriptionResponse,
+    AlignmentResponse as SdkAlignmentResponse,
+    AudioEventDetectionResponse as SdkAudioEventDetectionResponse, Client, DiscoveryResolver,
+    Error as SdkError, JobSnapshot as SdkJobSnapshot, ResponsesRequest, ResponsesResult,
+    TextEmbeddingRequest, TextEmbeddingResponse, TranscriptionFormat,
+    TranscriptionResponse as SdkTranscriptionResponse,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +48,7 @@ pub const MAX_AUDIO_UPLOAD_BYTES: u64 = 25 * 1024 * 1024;
 const EXPECTED_APP_ID: &str = "echo";
 const TRANSCRIPTION_CAPABILITY: &str = "infer.audio.transcription@20260811.1";
 const ALIGNMENT_CAPABILITY: &str = "infer.audio.alignment@20260811.1";
+pub(crate) const AUDIO_EVENT_DETECTION_CAPABILITY: &str = "infer.audio.event-detection@20260813.2";
 
 pub(crate) fn is_current_contract_version(version: &str) -> bool {
     version == EXPECTED_CONTRACT_VERSION
@@ -437,6 +440,12 @@ pub(crate) trait RuntimeTransport: fmt::Debug + Send + Sync {
         metadata: &BTreeMap<String, String>,
     ) -> Result<(SdkAlignmentResponse, SdkJobSnapshot), InferRuntimeError>;
 
+    fn detect_audio_events(
+        &self,
+        source: &Path,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(SdkAudioEventDetectionResponse, SdkJobSnapshot), InferRuntimeError>;
+
     fn contextualize(
         &self,
         request: &ResponsesRequest,
@@ -511,6 +520,21 @@ impl RuntimeTransport for SdkTransport {
                 .await?;
             let response_id = response_id(&response.extra)?;
             let job = self.client.job(response_id).await?;
+            Ok((response, job))
+        })
+    }
+
+    fn detect_audio_events(
+        &self,
+        source: &Path,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(SdkAudioEventDetectionResponse, SdkJobSnapshot), InferRuntimeError> {
+        Self::run(async {
+            let response = self
+                .client
+                .detect_audio_events_file(source, audio_content_type(source), metadata)
+                .await?;
+            let job = self.client.job(&response.id).await?;
             Ok((response, job))
         })
     }

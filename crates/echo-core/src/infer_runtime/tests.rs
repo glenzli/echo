@@ -5,8 +5,9 @@ use std::{
 };
 
 use infer_runtime_client::{
-    AlignmentResponse as SdkAlignmentResponse, JobSnapshot as SdkJobSnapshot, ResponsesRequest,
-    ResponsesResult, TextEmbeddingRequest, TextEmbeddingResponse,
+    AlignmentResponse as SdkAlignmentResponse,
+    AudioEventDetectionResponse as SdkAudioEventDetectionResponse, JobSnapshot as SdkJobSnapshot,
+    ResponsesRequest, ResponsesResult, TextEmbeddingRequest, TextEmbeddingResponse,
     TranscriptionResponse as SdkTranscriptionResponse,
 };
 use serde_json::json;
@@ -20,6 +21,9 @@ pub(crate) struct FakeTransport {
     transcriptions:
         Mutex<VecDeque<Result<(SdkTranscriptionResponse, SdkJobSnapshot), InferRuntimeError>>>,
     alignments: Mutex<VecDeque<Result<(SdkAlignmentResponse, SdkJobSnapshot), InferRuntimeError>>>,
+    audio_event_detections: Mutex<
+        VecDeque<Result<(SdkAudioEventDetectionResponse, SdkJobSnapshot), InferRuntimeError>>,
+    >,
     contextual: Mutex<VecDeque<Result<(ResponsesResult, SdkJobSnapshot), InferRuntimeError>>>,
     embeddings: Mutex<VecDeque<Result<(TextEmbeddingResponse, SdkJobSnapshot), InferRuntimeError>>>,
 }
@@ -38,6 +42,16 @@ impl FakeTransport {
     pub(crate) fn alignment(response: SdkAlignmentResponse, job: SdkJobSnapshot) -> Arc<Self> {
         Arc::new(Self {
             alignments: Mutex::new(VecDeque::from([Ok((response, job))])),
+            ..Self::default()
+        })
+    }
+
+    pub(crate) fn audio_event_detection(
+        response: SdkAudioEventDetectionResponse,
+        job: SdkJobSnapshot,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            audio_event_detections: Mutex::new(VecDeque::from([Ok((response, job))])),
             ..Self::default()
         })
     }
@@ -82,6 +96,15 @@ impl RuntimeTransport for FakeTransport {
         assert!(!text.is_empty());
         assert_echo_constraints(metadata);
         pop(&self.alignments)
+    }
+
+    fn detect_audio_events(
+        &self,
+        _source: &Path,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(SdkAudioEventDetectionResponse, SdkJobSnapshot), InferRuntimeError> {
+        assert_echo_constraints(metadata);
+        pop(&self.audio_event_detections)
     }
 
     fn contextualize(

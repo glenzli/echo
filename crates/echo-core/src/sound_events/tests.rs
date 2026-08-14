@@ -198,13 +198,18 @@ fn detection() -> AudioEventDetection {
                 window_frames: 3,
             },
             max_classes_per_window: 12,
+            max_events: 64,
+            speech_class_set_revision: "audioset-speech@20260813.2".to_owned(),
             speech_present_threshold: 0.3,
             speech_absent_threshold: 0.05,
+            max_audio_seconds: 600,
         },
         provenance: crate::SoundEventProvenance {
             model: "google/yamnet/1".to_owned(),
             model_archive_sha256:
                 "b80da2a1a56926fb0767205051a200dd7b3beaf3ea1ea126c42a53943996e5e0".to_owned(),
+            artifact_set_sha256: "8d0db0c8e4aafefc0d41344d3eb5f3e34ff2f58ad7c32a018d3be90f27f211d2"
+                .to_owned(),
             model_license_spdx: "Apache-2.0".to_owned(),
             training_data_license_spdx: "CC-BY-4.0".to_owned(),
             runtime: "tensorflow-saved-model".to_owned(),

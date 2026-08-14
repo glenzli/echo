@@ -1,16 +1,21 @@
 //! Echo sound-event evidence types.
 //!
-//! The frozen official Capability Catalog does not publish an
-//! `audio.detect_events` capability. Echo therefore preserves its product and
-//! persistence types but fails closed instead of retaining a private wire path.
+//! This owner maps the dated official SDK response into Echo's durable evidence
+//! shape. The SDK remains the sole owner of Discovery, HTTP and strict
+//! capability response validation.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use infer_runtime_client::{
+    AudioCoverageStatus as SdkAudioCoverageStatus,
+    AudioEventDetectionResponse as SdkAudioEventDetectionResponse,
+    SpeechPresenceStatus as SdkSpeechPresenceStatus,
+};
+
 use super::{
-    InferRuntimeClient, InferRuntimeError, InferRuntimeErrorKind, RuntimeProvenance,
-    default_background_constraints,
+    InferRuntimeClient, InferRuntimeError, RuntimeProvenance, default_background_constraints,
 };
 
 pub const AUDIO_EVENT_DETECTION_INTENT: &str = "audio.detect_events";
@@ -103,8 +108,11 @@ pub struct SoundEventDetectionPolicy {
     pub event_score_threshold: f64,
     pub smoothing: SoundEventSmoothingPolicy,
     pub max_classes_per_window: usize,
+    pub max_events: usize,
+    pub speech_class_set_revision: String,
     pub speech_present_threshold: f64,
     pub speech_absent_threshold: f64,
+    pub max_audio_seconds: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -112,6 +120,7 @@ pub struct SoundEventDetectionPolicy {
 pub struct SoundEventProvenance {
     pub model: String,
     pub model_archive_sha256: String,
+    pub artifact_set_sha256: String,
     pub model_license_spdx: String,
     pub training_data_license_spdx: String,
     pub runtime: String,
@@ -137,21 +146,115 @@ pub struct AudioEventDetection {
 }
 
 impl InferRuntimeClient {
-    /// Fails closed until the official Catalog and SDK publish this capability.
+    /// Submits the dated official sound-event detection intent.
     ///
     /// # Errors
     ///
-    /// Always returns `capability_contract_unsupported` without reading input.
     pub fn detect_audio_events(
         &self,
-        _source: &std::path::Path,
-        _intent: &AudioEventDetectionIntent,
+        source: &std::path::Path,
+        intent: &AudioEventDetectionIntent,
     ) -> Result<AudioEventDetection, InferRuntimeError> {
-        Err(InferRuntimeError::new(
-            InferRuntimeErrorKind::ContractMismatch,
-            "capability_contract_unsupported",
-            None,
+        super::validate_source(source)?;
+        if intent.model != AUDIO_EVENT_DETECTION_INTENT {
+            return Err(super::rejected("invalid_audio_event_detection_intent"));
+        }
+        let (response, job) = self
+            .transport()?
+            .detect_audio_events(source, &intent.metadata)?;
+        let job = super::validate_succeeded_job(
+            job,
+            AUDIO_EVENT_DETECTION_INTENT,
+            super::AUDIO_EVENT_DETECTION_CAPABILITY,
+        )?;
+        super::validate_local_only_job(&job, "inconsistent_audio_event_constraints")?;
+        Ok(AudioEventDetection::from_sdk(
+            response,
+            RuntimeProvenance {
+                contract_version: super::EXPECTED_CONTRACT_VERSION.to_owned(),
+                job,
+            },
         ))
+    }
+}
+
+impl AudioEventDetection {
+    fn from_sdk(response: SdkAudioEventDetectionResponse, runtime: RuntimeProvenance) -> Self {
+        Self {
+            id: response.id,
+            model: response.model,
+            object: response.object,
+            events: response
+                .events
+                .into_iter()
+                .map(|event| DetectedAudioEvent {
+                    class_id: event.class_id,
+                    label: event.label,
+                    start_seconds: event.start_seconds,
+                    end_seconds: event.end_seconds,
+                    score: event.score,
+                })
+                .collect(),
+            speech_presence: SpeechPresence {
+                status: match response.speech_presence.status {
+                    SdkSpeechPresenceStatus::Present => SpeechPresenceStatus::Present,
+                    SdkSpeechPresenceStatus::Absent => SpeechPresenceStatus::Absent,
+                    SdkSpeechPresenceStatus::Unknown => SpeechPresenceStatus::Unknown,
+                },
+                max_score: response.speech_presence.max_score,
+            },
+            coverage: AudioAnalysisCoverage {
+                status: match response.coverage.status {
+                    SdkAudioCoverageStatus::Full => AudioCoverageStatus::Full,
+                    SdkAudioCoverageStatus::Partial => AudioCoverageStatus::Partial,
+                    SdkAudioCoverageStatus::None => AudioCoverageStatus::None,
+                },
+                input_duration_seconds: response.coverage.input_duration_seconds,
+                analyzed_start_seconds: response.coverage.analyzed_start_seconds,
+                analyzed_end_seconds: response.coverage.analyzed_end_seconds,
+                analyzed_seconds: response.coverage.analyzed_seconds,
+                ratio: response.coverage.ratio,
+                window_count: response.coverage.window_count,
+                window_seconds: response.coverage.window_seconds,
+                hop_seconds: response.coverage.hop_seconds,
+            },
+            ontology: SoundEventOntology {
+                id: response.ontology.id,
+                revision: response.ontology.revision,
+                class_id_namespace: response.ontology.class_id_namespace,
+                class_count: response.ontology.class_count,
+                artifact_sha256: response.ontology.artifact_sha256,
+                license_spdx: response.ontology.license_spdx,
+            },
+            policy: SoundEventDetectionPolicy {
+                revision: response.policy.revision,
+                score_kind: response.policy.score_kind,
+                event_score_threshold: response.policy.event_score_threshold,
+                smoothing: SoundEventSmoothingPolicy {
+                    method: response.policy.smoothing.method,
+                    window_frames: response.policy.smoothing.window_frames,
+                },
+                max_classes_per_window: response.policy.max_classes_per_window,
+                max_events: response.policy.max_events,
+                speech_class_set_revision: response.policy.speech_class_set_revision,
+                speech_present_threshold: response.policy.speech_present_threshold,
+                speech_absent_threshold: response.policy.speech_absent_threshold,
+                max_audio_seconds: response.policy.max_audio_seconds,
+            },
+            provenance: SoundEventProvenance {
+                model: response.provenance.model,
+                model_archive_sha256: response.provenance.model_archive_sha256,
+                artifact_set_sha256: response.provenance.artifact_set_sha256,
+                model_license_spdx: response.provenance.model_license_spdx,
+                training_data_license_spdx: response.provenance.training_data_license_spdx,
+                runtime: response.provenance.runtime,
+                runtime_version: response.provenance.runtime_version,
+                decoder: response.provenance.decoder,
+                decoder_version: response.provenance.decoder_version,
+                preprocessing_identity: response.provenance.preprocessing_identity,
+            },
+            runtime,
+        }
     }
 }
 
