@@ -30,12 +30,17 @@ AI model selection, and milestone plan.
 ## Infer Runtime consumer contract
 
 Echo uses the official `infer-runtime-client` SDK pinned to revision
-`8588a945047cedaea62035969e479e7fb7ff795c`. The SDK owns strict
+`578735ac099e87d6864edd1adc0f8da64100f28b`. The SDK owns strict
 `infra.discovery.registration@20260812.1` selection, exact
 `infer-runtime.consumer-core@20260813.1` negotiation, the
 `infer-runtime.capability-catalog@20260813.1` intersection, managed credential loading, common
 headers, loopback transport, redirects/proxies and error envelopes. There is no legacy candidate
 or fixed-port fallback.
+
+Sound-event analysis uses the SDK's typed
+`Client::detect_audio_events_file` capability with exact identity
+`infer.audio.event-detection@20260813.2`; Echo stores its validated AudioSet evidence and
+App-scoped Job provenance without maintaining a private audio-event HTTP path.
 
 Job evidence is validated as `capability_level`, `evaluation_status`, and
 `routing.capability_floor` before it reaches Echo's product workflows. Endpoint paths, the
