@@ -46,11 +46,16 @@ Rectangle {
         return [red, green, blue];
     }
 
-    onArtifactChanged: spectrumCanvas.requestPaint()
-    onViewStartRatioChanged: spectrumCanvas.requestPaint()
-    onViewEndRatioChanged: spectrumCanvas.requestPaint()
-    onWidthChanged: spectrumCanvas.requestPaint()
-    onHeightChanged: spectrumCanvas.requestPaint()
+    function requestSpectrumPaint(): void {
+        if (spectrumCanvas && spectrumCanvas.available)
+            spectrumCanvas.requestPaint();
+    }
+
+    onArtifactChanged: requestSpectrumPaint()
+    onViewStartRatioChanged: requestSpectrumPaint()
+    onViewEndRatioChanged: requestSpectrumPaint()
+    onWidthChanged: requestSpectrumPaint()
+    onHeightChanged: requestSpectrumPaint()
 
     ColumnLayout {
         anchors.fill: parent
@@ -102,7 +107,15 @@ Rectangle {
 
                 anchors.fill: parent
                 renderTarget: Canvas.Image
-                renderStrategy: Canvas.Cooperative
+                renderStrategy: Canvas.Immediate
+
+                Component.onCompleted: spectrogram.requestSpectrumPaint()
+                onAvailableChanged: {
+                    if (available)
+                        spectrogram.requestSpectrumPaint();
+                }
+                onWidthChanged: spectrogram.requestSpectrumPaint()
+                onHeightChanged: spectrogram.requestSpectrumPaint()
 
                 onPaint: {
                     const context = getContext("2d");
