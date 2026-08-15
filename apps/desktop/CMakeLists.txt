@@ -124,6 +124,8 @@ qt_add_executable(
     src/playback_adjustment_projection.hpp
     src/render_export_controller.cpp
     src/render_export_controller.hpp
+    src/rendered_spectral_working_copy_controller.cpp
+    src/rendered_spectral_working_copy_controller.hpp
     src/qt_render_byte_sink.hpp
     src/semantic_search_controller.cpp
     src/semantic_search_controller.hpp

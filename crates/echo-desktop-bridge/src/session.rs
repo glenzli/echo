@@ -2,6 +2,7 @@
 //! process lifetime.
 
 mod processing_recipe;
+mod rendered_spectral_working_copy;
 
 use std::{
     collections::HashMap,
@@ -16,9 +17,26 @@ use echo_domain::AssetId;
 use crate::ffi::{
     AnalysisStatusWire, AssetListeningStateWire, AssetSummaryWire, EditSegmentWire, EffectMaskWire,
     EqualizerBandWire, ImpulseResponseWire, JobStatsWire, KeywordFacetWire, LongAudioChapterWire,
-    RevisitSnapshotWire, ScanRootWire, SearchHitWire, SmartAlbumWire, SpectrogramArtifactWire,
-    TranscriptSegmentWire, TranscriptWire, UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
+    RenderedSpectralWorkingCopyWire, RevisitSnapshotWire, ScanRootWire, SearchHitWire,
+    SmartAlbumWire, SpectrogramArtifactWire, TranscriptSegmentWire, TranscriptWire, UserAlbumWire,
+    WaveformArtifactWire, WaveformLevelWire,
 };
+
+pub(crate) fn rendered_spectral_working_copy_wire(
+    copy: rendered_spectral_working_copy::ResolvedRenderedSpectralWorkingCopy,
+) -> RenderedSpectralWorkingCopyWire {
+    RenderedSpectralWorkingCopyWire {
+        id: copy.record.id,
+        cache_path: copy.cache_path.to_string_lossy().into_owned(),
+        parent_adjustment_revision_id: copy.record.parent_adjustment_revision_id,
+        operation_count: copy.record.operation_count,
+        enabled: copy.record.enabled,
+        upstream_current: matches!(
+            copy.record.availability,
+            echo_catalog::RenderedSpectralWorkingCopyAvailability::Available
+        ),
+    }
+}
 
 pub(crate) fn now_millis() -> i64 {
     std::time::SystemTime::now()

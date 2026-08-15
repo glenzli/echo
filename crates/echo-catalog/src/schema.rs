@@ -151,9 +151,12 @@ pub(crate) const ORIGINAL_FIRST_SPECTRAL_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_815, 1);
 pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_815, 2);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 3);
+pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EDIT_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_815, 3);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 4);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260815.3-rendered-spectral-working-copy";
+pub(crate) const SCHEMA_IDENTITY: &str =
+    "echo-catalog-20260815.4-rendered-spectral-working-copy-edits";
 
 pub(crate) const ORIGINAL_FIRST_SPECTRAL_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -167,6 +170,7 @@ CREATE TABLE IF NOT EXISTS rendered_spectral_working_copies (
     asset_id                      TEXT NOT NULL REFERENCES assets(id),
     parent_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
     parent_render_content_hash    TEXT NOT NULL,
+    working_render_content_hash   TEXT NOT NULL,
     manifest_schema_version       INTEGER NOT NULL CHECK (manifest_schema_version > 0),
     tile_manifest_json            TEXT NOT NULL CHECK (json_valid(tile_manifest_json)),
     tool_version                  TEXT NOT NULL CHECK (length(trim(tool_version)) > 0),
@@ -176,6 +180,19 @@ CREATE TABLE IF NOT EXISTS rendered_spectral_working_copies (
 
 CREATE INDEX IF NOT EXISTS rendered_spectral_working_copies_asset_created
     ON rendered_spectral_working_copies (asset_id, created_at_millis DESC, id DESC);
+"#;
+
+pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EDIT_MIGRATION_SQL: &str = r#"
+ALTER TABLE rendered_spectral_working_copies
+    ADD COLUMN working_render_content_hash TEXT NOT NULL DEFAULT '';
+
+UPDATE rendered_spectral_working_copies
+   SET working_render_content_hash = parent_render_content_hash
+ WHERE working_render_content_hash = '';
+
+UPDATE rendered_spectral_working_copies
+   SET tile_manifest_json = '{"schema":1,"operations":[]}'
+ WHERE tile_manifest_json = '{"schema":1,"tiles":[]}';
 "#;
 
 pub(crate) const AUDIO_SEMANTIC_MIGRATION_SQL: &str = r"
@@ -1028,6 +1045,7 @@ CREATE TABLE IF NOT EXISTS rendered_spectral_working_copies (
     asset_id                      TEXT NOT NULL REFERENCES assets(id),
     parent_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
     parent_render_content_hash    TEXT NOT NULL,
+    working_render_content_hash   TEXT NOT NULL,
     manifest_schema_version       INTEGER NOT NULL CHECK (manifest_schema_version > 0),
     tile_manifest_json            TEXT NOT NULL CHECK (json_valid(tile_manifest_json)),
     tool_version                  TEXT NOT NULL CHECK (length(trim(tool_version)) > 0),

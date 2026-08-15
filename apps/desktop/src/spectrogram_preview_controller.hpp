@@ -22,6 +22,8 @@ class SpectrogramPreviewController : public QObject {
     );
 
     Q_INVOKABLE void request(const QString& assetId);
+    /// Requests an ephemeral preview for the verified active working cache.
+    Q_INVOKABLE void requestPath(const QString& assetId, const QString& sourcePath);
     Q_INVOKABLE void clear();
 
     [[nodiscard]] QString assetId() const;

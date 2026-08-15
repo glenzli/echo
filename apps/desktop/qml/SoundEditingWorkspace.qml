@@ -23,6 +23,8 @@ Rectangle {
     property int processingHistoryModelRevision: 0
     property string processingRecipeNotice: ""
     property string lastProcessingRecipeBatchId: ""
+    property var renderedSpectralWorkingCopies: []
+    property bool renderedSpectralEraseMode: false
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
     readonly property bool dirty: adjustmentDraft.dirty
@@ -63,6 +65,28 @@ Rectangle {
         }
         values.push(formatDuration(asset.durationMillis));
         return values.join(" · ");
+    }
+
+    function activeRenderedSpectralWorkingCopy(): var {
+        for (let index = 0; index < renderedSpectralWorkingCopies.length; ++index) {
+            const copy = renderedSpectralWorkingCopies[index];
+            if (copy.enabled && copy.upstreamCurrent && copy.cachePath.length > 0)
+                return copy;
+        }
+        return null;
+    }
+
+    function refreshSpectrogramPreview(): void {
+        if (!hasAsset || asset.pathStatus === "missing") {
+            spectrogramPreview.clear();
+            return;
+        }
+        const copy = activeRenderedSpectralWorkingCopy();
+        if (renderedSpectralEraseMode && copy) {
+            spectrogramPreview.requestPath(asset.id, copy.cachePath);
+        } else {
+            spectrogramPreview.request(asset.id);
+        }
     }
 
     function playbackBaseAdjustmentKey(): string {
@@ -118,11 +142,13 @@ Rectangle {
 
     function refreshAsset(): void {
         waveformLevels = [];
+        renderedSpectralWorkingCopies = [];
         spectrogramPreview.clear();
         if (!asset || !asset.id || asset.pathStatus === "missing")
             return;
         waveformLevels = backend.waveformForAsset(asset.id);
-        spectrogramPreview.request(asset.id);
+        renderedSpectralWorkingCopies = backend.renderedSpectralWorkingCopies(asset.id);
+        refreshSpectrogramPreview();
     }
 
     function playFrom(millis: int): void {
@@ -337,6 +363,8 @@ Rectangle {
         player.stop();
         loudnessAnalyzer.cancel();
         renderExporter.cancel();
+        renderedSpectralWorkingCopy.cancel();
+        renderedSpectralEraseMode = false;
         auditionOriginal = false;
         loadedPath = "";
         loadedBaseAdjustmentKey = "";
@@ -354,6 +382,17 @@ Rectangle {
         }
         function onProcessingRecipesChanged(): void {
             workspace.refreshProcessingRecipes();
+        }
+    }
+
+    Connections {
+        target: renderedSpectralWorkingCopy
+
+        function onStateChanged(): void {
+            if (workspace.hasAsset && renderedSpectralWorkingCopy.hasResult) {
+                workspace.renderedSpectralWorkingCopies = backend.renderedSpectralWorkingCopies(workspace.asset.id);
+                workspace.refreshSpectrogramPreview();
+            }
         }
     }
 
@@ -800,11 +839,46 @@ Rectangle {
                 selectionEndRatio: adjustmentDraft.sourceDurationMillis > 0 ? editorTimeline.selectionEndMillis / adjustmentDraft.sourceDurationMillis : 0
                 layerEnabled: adjustmentDraft.spectralRepair.enabled
                 regions: adjustmentDraft.spectralRepair.regions
+                canCreateRenderedWorkingCopy: workspace.hasAsset && workspace.asset.pathStatus !== "missing" && !workspace.dirty
+                renderedWorkingCopyRunning: renderedSpectralWorkingCopy.running
+                renderedWorkingCopyReady: workspace.renderedSpectralWorkingCopies.some(function(copy) {
+                    return copy.enabled && copy.upstreamCurrent && copy.cachePath.length > 0;
+                })
+                renderedWorkingCopyError: renderedSpectralWorkingCopy.errorText
+                renderedEraseMode: workspace.renderedSpectralEraseMode
+                renderedWorkingCopyOperationCount: {
+                    const copy = workspace.activeRenderedSpectralWorkingCopy();
+                    return copy ? Number(copy.operationCount) : 0;
+                }
                 onLayerEnabledRequested: enabled => adjustmentDraft.setSpectralRepairEnabled(enabled)
                 onRegionRequested: function(startMillis, endMillis, lowHertz, highHertz) {
                     adjustmentDraft.addSpectralRepairRegion(startMillis, endMillis, lowHertz, highHertz);
                 }
                 onClearRequested: adjustmentDraft.clearSpectralRepairRegions()
+                onRenderedWorkingCopyRequested: renderedSpectralWorkingCopy.createFromSavedAsset(workspace.asset)
+                onRenderedEraseModeRequested: function(enabled) {
+                    workspace.renderedSpectralEraseMode = enabled;
+                    workspace.refreshSpectrogramPreview();
+                }
+                onRenderedEraseRequested: function(startMillis, endMillis, lowHertz, highHertz) {
+                    const copy = workspace.activeRenderedSpectralWorkingCopy();
+                    if (!copy || !workspace.hasAsset)
+                        return;
+                    renderedSpectralWorkingCopy.eraseRegion(
+                        workspace.asset.id,
+                        Number(copy.id),
+                        copy.cachePath,
+                        startMillis,
+                        endMillis,
+                        lowHertz,
+                        highHertz
+                    );
+                }
+                onRenderedWorkingCopyAuditionRequested: {
+                    const copy = workspace.activeRenderedSpectralWorkingCopy();
+                    if (copy)
+                        player.play(copy.cachePath);
+                }
             }
 
             SoundAdjustmentEditor {

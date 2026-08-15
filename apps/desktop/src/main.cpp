@@ -9,6 +9,7 @@
 #include "loudness_analysis_controller.hpp"
 #include "playback_controller.hpp"
 #include "render_export_controller.hpp"
+#include "rendered_spectral_working_copy_controller.hpp"
 #include "semantic_search_controller.hpp"
 #include "spectrogram_preview_controller.hpp"
 #include "ui_preferences.hpp"
@@ -75,6 +76,7 @@ int main(int argc, char* argv[]) {
         PlaybackController player;
         LoudnessAnalysisController loudness_analyzer;
         RenderExportController render_exporter(backend);
+        RenderedSpectralWorkingCopyController rendered_spectral_working_copy(backend);
         BatchExportController batch_exporter(backend);
         ImpulseResponseController impulse_response_controller(backend);
         UiPreferences ui_prefs(application);
@@ -111,6 +113,10 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(
             QStringLiteral("renderExporter"),
             &render_exporter
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("renderedSpectralWorkingCopy"),
+            &rendered_spectral_working_copy
         );
         engine.rootContext()->setContextProperty(QStringLiteral("batchExporter"), &batch_exporter);
         engine.rootContext()->setContextProperty(

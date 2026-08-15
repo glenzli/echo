@@ -2155,3 +2155,140 @@ QString DesktopBackend::recordRenderExport(
         return QString::fromUtf8(error.what());
     }
 }
+
+QVariantMap DesktopBackend::createRenderedSpectralWorkingCopy(
+    const QString& assetId,
+    qint64 adjustmentRevisionId,
+    const QString& renderedPath
+) const {
+    QVariantMap result;
+    try {
+        const auto copy = session_->session_create_rendered_spectral_working_copy(
+            assetId.toStdString(),
+            adjustmentRevisionId,
+            renderedPath.toStdString()
+        );
+        result.insert(QStringLiteral("id"), static_cast<qlonglong>(copy.id));
+        result.insert(
+            QStringLiteral("cachePath"),
+            QString::fromUtf8(copy.cache_path.data(), copy.cache_path.size())
+        );
+        result.insert(
+            QStringLiteral("parentAdjustmentRevisionId"),
+            static_cast<qlonglong>(copy.parent_adjustment_revision_id)
+        );
+        result.insert(QStringLiteral("operationCount"), static_cast<quint32>(copy.operation_count));
+        result.insert(QStringLiteral("enabled"), copy.enabled);
+        result.insert(QStringLiteral("upstreamCurrent"), copy.upstream_current);
+    } catch (const rust::Error& error) {
+        result.insert(QStringLiteral("error"), QString::fromUtf8(error.what()));
+    }
+    return result;
+}
+
+QVariantList DesktopBackend::renderedSpectralWorkingCopies(const QString& assetId) const {
+    QVariantList result;
+    try {
+        for (const auto& copy :
+             session_->session_rendered_spectral_working_copies(assetId.toStdString())) {
+            QVariantMap entry;
+            entry.insert(QStringLiteral("id"), static_cast<qlonglong>(copy.id));
+            entry.insert(
+                QStringLiteral("cachePath"),
+                QString::fromUtf8(copy.cache_path.data(), copy.cache_path.size())
+            );
+            entry.insert(
+                QStringLiteral("parentAdjustmentRevisionId"),
+                static_cast<qlonglong>(copy.parent_adjustment_revision_id)
+            );
+            entry.insert(
+                QStringLiteral("operationCount"),
+                static_cast<quint32>(copy.operation_count)
+            );
+            entry.insert(QStringLiteral("enabled"), copy.enabled);
+            entry.insert(QStringLiteral("upstreamCurrent"), copy.upstream_current);
+            result.append(entry);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("rendered spectral working-copy listing failed: %s", error.what());
+    }
+    return result;
+}
+
+QVariantMap DesktopBackend::commitRenderedSpectralErase(
+    const QString& assetId,
+    qint64 workingCopyId,
+    const QString& renderedPath,
+    quint64 startMillis,
+    quint64 endMillis,
+    quint16 lowHertz,
+    quint16 highHertz,
+    qint16 attenuationCentibels,
+    quint16 timeFeatherMillis,
+    quint16 frequencyFeatherHertz
+) const {
+    QVariantMap result;
+    try {
+        const auto copy = session_->session_commit_rendered_spectral_erase(
+            assetId.toStdString(),
+            workingCopyId,
+            renderedPath.toStdString(),
+            startMillis,
+            endMillis,
+            lowHertz,
+            highHertz,
+            attenuationCentibels,
+            timeFeatherMillis,
+            frequencyFeatherHertz
+        );
+        result.insert(QStringLiteral("id"), static_cast<qlonglong>(copy.id));
+        result.insert(
+            QStringLiteral("cachePath"),
+            QString::fromUtf8(copy.cache_path.data(), copy.cache_path.size())
+        );
+        result.insert(
+            QStringLiteral("parentAdjustmentRevisionId"),
+            static_cast<qlonglong>(copy.parent_adjustment_revision_id)
+        );
+        result.insert(QStringLiteral("operationCount"), static_cast<quint32>(copy.operation_count));
+        result.insert(QStringLiteral("enabled"), copy.enabled);
+        result.insert(QStringLiteral("upstreamCurrent"), copy.upstream_current);
+    } catch (const rust::Error& error) {
+        result.insert(QStringLiteral("error"), QString::fromUtf8(error.what()));
+    }
+    return result;
+}
+
+bool DesktopBackend::setRenderedSpectralWorkingCopyEnabled(
+    const QString& assetId,
+    qint64 workingCopyId,
+    bool enabled
+) const {
+    try {
+        session_->session_set_rendered_spectral_working_copy_enabled(
+            assetId.toStdString(),
+            workingCopyId,
+            enabled
+        );
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("rendered spectral working-copy bypass failed: %s", error.what());
+        return false;
+    }
+}
+
+bool DesktopBackend::removeRenderedSpectralWorkingCopy(
+    const QString& assetId,
+    qint64 workingCopyId
+) const {
+    try {
+        session_->session_remove_rendered_spectral_working_copy(
+            assetId.toStdString(),
+            workingCopyId
+        );
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("rendered spectral working-copy removal failed: %s", error.what());
+        return false;
+    }
+}

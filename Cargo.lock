@@ -451,6 +451,7 @@ dependencies = [
  "cxx",
  "cxx-build",
  "echo-ai",
+ "echo-bridge",
  "echo-cache",
  "echo-catalog",
  "echo-core",

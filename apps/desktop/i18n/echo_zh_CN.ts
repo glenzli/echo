@@ -4900,5 +4900,49 @@
         <source>Clear repairs</source>
         <translation>清除修复区域</translation>
     </message>
+    <message>
+        <source>Post-effect repair</source>
+        <translation>效果后修复</translation>
+    </message>
+    <message>
+        <source>Freezing render…</source>
+        <translation>正在冻结渲染…</translation>
+    </message>
+    <message>
+        <source>Rendered repair ready</source>
+        <translation>渲染后修复已就绪</translation>
+    </message>
+    <message>
+        <source>Create working copy</source>
+        <translation>创建工作副本</translation>
+    </message>
+    <message>
+        <source>Frozen from the current saved adjustment. Upstream changes require a new copy.</source>
+        <translation>已从当前保存的调整冻结；修改前序调整需要创建新副本。</translation>
+    </message>
+    <message>
+        <source>Save adjustments before creating a post-effect repair copy.</source>
+        <translation>请先保存调整，再创建效果后修复副本。</translation>
+    </message>
+    <message>
+        <source>Erase mode</source>
+        <translation>擦除模式</translation>
+    </message>
+    <message>
+        <source>Audition rendered</source>
+        <translation>试听渲染副本</translation>
+    </message>
+    <message>
+        <source>Draw a region to erase it in the rendered working layer.</source>
+        <translation>拖拽选区以在渲染工作层中擦除。</translation>
+    </message>
+    <message>
+        <source>%1 committed repairs. Upstream changes require a new copy.</source>
+        <translation>已提交 %1 个修复；上游变更后需要新建副本。</translation>
+    </message>
+    <message>
+        <source>Rendered working layer · destructive</source>
+        <translation>渲染工作层 · 破坏性</translation>
+    </message>
 </context>
 </TS>

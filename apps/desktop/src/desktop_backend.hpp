@@ -259,6 +259,35 @@ class DesktopBackend : public QObject {
         float integratedLufs,
         float truePeakDbtp
     ) const;
+    /// Worker-thread admission after a private full render completes. The
+    /// returned map names only a verified content-addressed cache path.
+    [[nodiscard]] QVariantMap createRenderedSpectralWorkingCopy(
+        const QString& assetId,
+        qint64 adjustmentRevisionId,
+        const QString& renderedPath
+    ) const;
+    /// Worker-thread commit after one deterministic erase render. The cache
+    /// payload and the shared working-layer manifest advance together.
+    [[nodiscard]] QVariantMap commitRenderedSpectralErase(
+        const QString& assetId,
+        qint64 workingCopyId,
+        const QString& renderedPath,
+        quint64 startMillis,
+        quint64 endMillis,
+        quint16 lowHertz,
+        quint16 highHertz,
+        qint16 attenuationCentibels,
+        quint16 timeFeatherMillis,
+        quint16 frequencyFeatherHertz
+    ) const;
+    Q_INVOKABLE QVariantList renderedSpectralWorkingCopies(const QString& assetId) const;
+    Q_INVOKABLE bool setRenderedSpectralWorkingCopyEnabled(
+        const QString& assetId,
+        qint64 workingCopyId,
+        bool enabled
+    ) const;
+    Q_INVOKABLE bool
+    removeRenderedSpectralWorkingCopy(const QString& assetId, qint64 workingCopyId) const;
 
   signals:
     void assetsChanged();

@@ -20,12 +20,22 @@ Rectangle {
     required property real selectionEndRatio
     required property bool layerEnabled
     required property var regions
+    required property bool canCreateRenderedWorkingCopy
+    required property bool renderedWorkingCopyRunning
+    required property bool renderedWorkingCopyReady
+    required property string renderedWorkingCopyError
+    required property bool renderedEraseMode
+    required property int renderedWorkingCopyOperationCount
 
     readonly property bool hasOverview: imageUrl.length > 0
 
     signal regionRequested(int startMillis, int endMillis, int lowHertz, int highHertz)
     signal layerEnabledRequested(bool enabled)
     signal clearRequested
+    signal renderedWorkingCopyRequested
+    signal renderedEraseModeRequested(bool enabled)
+    signal renderedEraseRequested(int startMillis, int endMillis, int lowHertz, int highHertz)
+    signal renderedWorkingCopyAuditionRequested
 
     implicitHeight: 230
     color: Theme.panelRaised
@@ -53,7 +63,9 @@ Rectangle {
             }
 
             Text {
-                text: qsTr("Original-first · non-destructive")
+                text: spectrogram.renderedEraseMode
+                    ? qsTr("Rendered working layer · destructive")
+                    : qsTr("Original-first · non-destructive")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
             }
@@ -77,6 +89,53 @@ Rectangle {
                 text: qsTr("Clear repairs")
                 enabled: regions.length > 0
                 onClicked: spectrogram.clearRequested()
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Text {
+                text: qsTr("Post-effect repair")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontMeta
+            }
+
+            Button {
+                text: spectrogram.renderedWorkingCopyRunning ? qsTr("Freezing render…")
+                    : (spectrogram.renderedWorkingCopyReady ? qsTr("Rendered repair ready") : qsTr("Create working copy"))
+                enabled: spectrogram.canCreateRenderedWorkingCopy && !spectrogram.renderedWorkingCopyRunning
+                    && !spectrogram.renderedWorkingCopyReady
+                onClicked: spectrogram.renderedWorkingCopyRequested()
+            }
+
+            Switch {
+                visible: spectrogram.renderedWorkingCopyReady
+                text: qsTr("Erase mode")
+                checked: spectrogram.renderedEraseMode
+                enabled: !spectrogram.renderedWorkingCopyRunning
+                onToggled: spectrogram.renderedEraseModeRequested(checked)
+            }
+
+            Button {
+                visible: spectrogram.renderedWorkingCopyReady
+                text: qsTr("Audition rendered")
+                enabled: !spectrogram.renderedWorkingCopyRunning
+                onClicked: spectrogram.renderedWorkingCopyAuditionRequested()
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: spectrogram.renderedWorkingCopyError.length > 0 ? spectrogram.renderedWorkingCopyError
+                    : (spectrogram.renderedWorkingCopyReady
+                        ? (spectrogram.renderedEraseMode
+                            ? qsTr("Draw a region to erase it in the rendered working layer.")
+                            : qsTr("%1 committed repairs. Upstream changes require a new copy.").arg(spectrogram.renderedWorkingCopyOperationCount))
+                        : qsTr("Save adjustments before creating a post-effect repair copy."))
+                color: spectrogram.renderedWorkingCopyError.length > 0 ? Theme.warningText : Theme.textDisabled
+                font.pixelSize: Theme.fontMeta
+                elide: Text.ElideRight
             }
         }
 
@@ -164,7 +223,7 @@ Rectangle {
 
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton
-                enabled: spectrogram.layerEnabled
+                enabled: spectrogram.layerEnabled || spectrogram.renderedEraseMode
                 cursorShape: Qt.CrossCursor
                 onPressed: function(mouse) {
                     pendingRegion.startX = mouse.x;
@@ -188,12 +247,15 @@ Rectangle {
                     const endRatio = spectrogram.viewStartRatio + (pendingRegion.leftEdge + pendingRegion.width) / width * viewDuration;
                     const high = Math.round((1 - pendingRegion.topEdge / height) * 24000);
                     const low = Math.round((1 - (pendingRegion.topEdge + pendingRegion.height) / height) * 24000);
-                    spectrogram.regionRequested(
-                        Math.round(spectrogram.clamp(startRatio, 0, 1) * spectrogram.sourceDurationMillis),
-                        Math.round(spectrogram.clamp(endRatio, 0, 1) * spectrogram.sourceDurationMillis),
-                        Math.max(20, Math.min(23999, low)),
-                        Math.max(21, Math.min(24000, high))
-                    );
+                    const startMillis = Math.round(spectrogram.clamp(startRatio, 0, 1) * spectrogram.sourceDurationMillis);
+                    const endMillis = Math.round(spectrogram.clamp(endRatio, 0, 1) * spectrogram.sourceDurationMillis);
+                    const lowHertz = Math.max(20, Math.min(23999, low));
+                    const highHertz = Math.max(21, Math.min(24000, high));
+                    if (spectrogram.renderedEraseMode) {
+                        spectrogram.renderedEraseRequested(startMillis, endMillis, lowHertz, highHertz);
+                    } else {
+                        spectrogram.regionRequested(startMillis, endMillis, lowHertz, highHertz);
+                    }
                 }
             }
 

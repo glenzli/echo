@@ -28,7 +28,9 @@ use crate::{
         PREVIOUS_SCHEMA_VERSION, PRIMITIVE_COMPATIBLE_SCHEMA_VERSION,
         PROCESSING_RECIPE_MANAGEMENT_MIGRATION_SQL, PROCESSING_RECIPE_MANAGEMENT_SCHEMA_VERSION,
         PROCESSING_RECIPES_MIGRATION_SQL, PROCESSING_RECIPES_SCHEMA_VERSION,
-        RENDER_EXPORTS_MIGRATION_SQL, RENDERED_SPECTRAL_WORKING_COPY_MIGRATION_SQL,
+        RENDER_EXPORTS_MIGRATION_SQL, RENDERED_SPECTRAL_WORKING_COPY_EDIT_MIGRATION_SQL,
+        RENDERED_SPECTRAL_WORKING_COPY_EDIT_SCHEMA_VERSION,
+        RENDERED_SPECTRAL_WORKING_COPY_MIGRATION_SQL,
         RENDERED_SPECTRAL_WORKING_COPY_SCHEMA_VERSION, RESTORATION_CHAIN_MIGRATION_SQL,
         RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
         SEMANTIC_SEARCH_MIGRATION_SQL, SOURCE_EDIT_MIGRATION_SQL, SOURCE_EDIT_SCHEMA_VERSION,
@@ -101,6 +103,17 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1)",
                 [SCHEMA_IDENTITY.to_string()],
             )?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| {
+                    revision == RENDERED_SPECTRAL_WORKING_COPY_EDIT_SCHEMA_VERSION
+                }) =>
+        {
+            connection.execute_batch(SCHEMA_SQL)?;
+            connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
+            // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version)
             if version
@@ -599,6 +612,7 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
     apply_true_stereo_ir_migration(transaction)?;
     apply_original_first_spectral_migration(transaction)?;
     apply_rendered_spectral_working_copy_migration(transaction)?;
+    apply_rendered_spectral_working_copy_edit_migration(transaction)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],
@@ -608,6 +622,28 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_rendered_spectral_working_copy_edit_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let column_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('rendered_spectral_working_copies') \
+         WHERE name = 'working_render_content_hash'",
+        [],
+        |row| row.get(0),
+    )?;
+    match column_count {
+        0 => transaction.execute_batch(RENDERED_SPECTRAL_WORKING_COPY_EDIT_MIGRATION_SQL)?,
+        1 => {}
+        _ => {
+            return Err(CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                "catalog has an ambiguous rendered spectral working-copy edit schema",
+            ));
+        }
+    }
     Ok(())
 }
 

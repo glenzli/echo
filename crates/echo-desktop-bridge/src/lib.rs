@@ -8,6 +8,7 @@ mod render_exports;
 mod session;
 
 use crate::session::LibrarySession;
+use std::path::Path;
 
 #[cxx::bridge(namespace = "echo::desktop")]
 mod ffi {
@@ -283,6 +284,17 @@ mod ffi {
         true_peak_dbtp: f32,
     }
 
+    /// One desktop projection of a frozen post-effect spectral working copy.
+    #[derive(Debug)]
+    struct RenderedSpectralWorkingCopyWire {
+        id: i64,
+        cache_path: String,
+        parent_adjustment_revision_id: i64,
+        operation_count: u32,
+        enabled: bool,
+        upstream_current: bool,
+    }
+
     /// One indexed keyword facet over the newest contextual evidence.
     #[derive(Debug)]
     struct KeywordFacetWire {
@@ -521,6 +533,10 @@ mod ffi {
             cache_root: &str,
             asset_id: &str,
         ) -> Result<SpectrogramArtifactWire>;
+        /// Builds one bounded display overview for a verified private working
+        /// copy. This path is intentionally not catalog-owned: the working
+        /// copy cache identity already anchors its mutable lifecycle.
+        fn spectrogram_artifact_for_path(path: &str) -> Result<SpectrogramArtifactWire>;
         /// Opens (creating if needed) the catalog and cache at the given
         /// roots.
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
@@ -692,6 +708,48 @@ mod ffi {
             adjustment_revision_id: i64,
             evidence: &RenderExportWire,
         ) -> Result<i64>;
+        /// Moves one completed private render into the content-addressed cache
+        /// and atomically records it as a frozen spectral working-copy parent.
+        fn session_create_rendered_spectral_working_copy(
+            self: &LibrarySession,
+            asset_id: &str,
+            adjustment_revision_id: i64,
+            rendered_path: &str,
+        ) -> Result<RenderedSpectralWorkingCopyWire>;
+        /// Lists preserved post-effect working copies and cache-readable paths.
+        fn session_rendered_spectral_working_copies(
+            self: &LibrarySession,
+            asset_id: &str,
+        ) -> Result<Vec<RenderedSpectralWorkingCopyWire>>;
+        /// Bypasses or restores one whole post-effect working copy.
+        fn session_set_rendered_spectral_working_copy_enabled(
+            self: &LibrarySession,
+            asset_id: &str,
+            working_copy_id: i64,
+            enabled: bool,
+        ) -> Result<()>;
+        /// Publishes the next current cache identity after an accepted
+        /// deterministic erase into the one shared working copy.
+        fn session_commit_rendered_spectral_erase(
+            self: &LibrarySession,
+            asset_id: &str,
+            working_copy_id: i64,
+            rendered_path: &str,
+            start_millis: u64,
+            end_millis: u64,
+            low_hertz: u16,
+            high_hertz: u16,
+            attenuation_centibels: i16,
+            time_feather_millis: u16,
+            frequency_feather_hertz: u16,
+        ) -> Result<RenderedSpectralWorkingCopyWire>;
+        /// Removes one whole post-effect working copy; cache bytes remain
+        /// disposable and are never user-authored state.
+        fn session_remove_rendered_spectral_working_copy(
+            self: &LibrarySession,
+            asset_id: &str,
+            working_copy_id: i64,
+        ) -> Result<()>;
         /// Starts the background worker pool (idempotent).
         fn session_start_workers(self: &LibrarySession, runtime_endpoint: &str) -> Result<()>;
         /// Reads the process-local worker transition revision.
@@ -787,6 +845,22 @@ pub fn spectrogram_artifact_for_catalog(
 ) -> Result<ffi::SpectrogramArtifactWire, String> {
     session::open_session(catalog_path, cache_root)
         .and_then(|session| session.spectrogram_artifact(asset_id))
+        .map(|payload| ffi::SpectrogramArtifactWire {
+            canonical_sample_rate: payload.canonical_sample_rate,
+            window_frames: payload.window_frames,
+            hop_frames: payload.hop_frames,
+            time_columns: payload.time_columns,
+            frequency_bins: payload.frequency_bins,
+            magnitudes: payload.magnitudes,
+        })
+        .map_err(|error| error.message)
+}
+
+/// Builds a display-only spectrogram from an already verified private render
+/// cache path. The resulting pixels are ephemeral and never become Catalog
+/// editing evidence.
+pub fn spectrogram_artifact_for_path(path: &str) -> Result<ffi::SpectrogramArtifactWire, String> {
+    echo_bridge::spectrogram::build_spectrogram_overview(Path::new(path), 1024, 128)
         .map(|payload| ffi::SpectrogramArtifactWire {
             canonical_sample_rate: payload.canonical_sample_rate,
             window_frames: payload.window_frames,
@@ -1131,6 +1205,80 @@ impl LibrarySession {
             evidence.true_peak_dbtp,
         )
         .map_err(|error| error.message)
+    }
+
+    fn session_create_rendered_spectral_working_copy(
+        &self,
+        asset_id: &str,
+        adjustment_revision_id: i64,
+        rendered_path: &str,
+    ) -> Result<ffi::RenderedSpectralWorkingCopyWire, String> {
+        self.create_rendered_spectral_working_copy(asset_id, adjustment_revision_id, rendered_path)
+            .map(session::rendered_spectral_working_copy_wire)
+            .map_err(|error| error.message)
+    }
+
+    fn session_rendered_spectral_working_copies(
+        &self,
+        asset_id: &str,
+    ) -> Result<Vec<ffi::RenderedSpectralWorkingCopyWire>, String> {
+        self.rendered_spectral_working_copies(asset_id)
+            .map(|copies| {
+                copies
+                    .into_iter()
+                    .map(session::rendered_spectral_working_copy_wire)
+                    .collect()
+            })
+            .map_err(|error| error.message)
+    }
+
+    fn session_set_rendered_spectral_working_copy_enabled(
+        &self,
+        asset_id: &str,
+        working_copy_id: i64,
+        enabled: bool,
+    ) -> Result<(), String> {
+        self.set_rendered_spectral_working_copy_enabled(asset_id, working_copy_id, enabled)
+            .map_err(|error| error.message)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn session_commit_rendered_spectral_erase(
+        &self,
+        asset_id: &str,
+        working_copy_id: i64,
+        rendered_path: &str,
+        start_millis: u64,
+        end_millis: u64,
+        low_hertz: u16,
+        high_hertz: u16,
+        attenuation_centibels: i16,
+        time_feather_millis: u16,
+        frequency_feather_hertz: u16,
+    ) -> Result<ffi::RenderedSpectralWorkingCopyWire, String> {
+        self.commit_rendered_spectral_erase(
+            asset_id,
+            working_copy_id,
+            rendered_path,
+            start_millis,
+            end_millis,
+            low_hertz,
+            high_hertz,
+            attenuation_centibels,
+            time_feather_millis,
+            frequency_feather_hertz,
+        )
+        .map(session::rendered_spectral_working_copy_wire)
+        .map_err(|error| error.message)
+    }
+
+    fn session_remove_rendered_spectral_working_copy(
+        &self,
+        asset_id: &str,
+        working_copy_id: i64,
+    ) -> Result<(), String> {
+        self.remove_rendered_spectral_working_copy(asset_id, working_copy_id)
+            .map_err(|error| error.message)
     }
 }
 

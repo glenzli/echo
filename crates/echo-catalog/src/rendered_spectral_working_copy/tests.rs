@@ -66,6 +66,36 @@ fn working_copy_freezes_render_evidence_and_becomes_unavailable_after_upstream_c
         RenderedSpectralWorkingCopyAvailability::Available
     );
 
+    let committed = catalog
+        .with_transaction(|transaction| {
+            commit_rendered_spectral_erase(
+                transaction,
+                CommitRenderedSpectralErase {
+                    asset_id,
+                    working_copy_id: created.id,
+                    rendered_content_hash: ContentHash::new([10; 32]),
+                    start_millis: 100,
+                    end_millis: 220,
+                    low_hertz: 240,
+                    high_hertz: 1_800,
+                    attenuation_centibels: 9_600,
+                    time_feather_millis: 24,
+                    frequency_feather_hertz: 60,
+                },
+            )
+        })
+        .expect("erase commit updates the shared working copy");
+    assert_eq!(
+        committed.parent_render_content_hash,
+        ContentHash::new([9; 32])
+    );
+    assert_eq!(
+        committed.working_render_content_hash,
+        ContentHash::new([10; 32])
+    );
+    assert_eq!(committed.operation_count, 1);
+    assert!(committed.tile_manifest_json.contains("\"erase\""));
+
     catalog
         .with_transaction(|transaction| {
             set_rendered_spectral_working_copy_enabled(transaction, asset_id, created.id, false)

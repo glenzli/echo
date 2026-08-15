@@ -121,10 +121,10 @@ pub use render_export::{
     record_render_export,
 };
 pub use rendered_spectral_working_copy::{
-    CreateRenderedSpectralWorkingCopy, RenderedSpectralWorkingCopy,
-    RenderedSpectralWorkingCopyAvailability, create_rendered_spectral_working_copy,
-    list_rendered_spectral_working_copies, remove_rendered_spectral_working_copy,
-    set_rendered_spectral_working_copy_enabled,
+    CommitRenderedSpectralErase, CreateRenderedSpectralWorkingCopy, RenderedSpectralWorkingCopy,
+    RenderedSpectralWorkingCopyAvailability, commit_rendered_spectral_erase,
+    create_rendered_spectral_working_copy, list_rendered_spectral_working_copies,
+    remove_rendered_spectral_working_copy, set_rendered_spectral_working_copy_enabled,
 };
 pub use revisit::{RevisitSnapshot, revisit_snapshot};
 pub use scan_journal::{journal_fingerprint, upsert_journal};

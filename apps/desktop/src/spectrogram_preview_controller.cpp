@@ -29,6 +29,41 @@ QRgb colorForMagnitude(std::uint8_t magnitude) {
     return qRgba(red, green, blue, 255);
 }
 
+PreviewOutcome encodePreview(const echo::desktop::SpectrogramArtifactWire& artifact) {
+    PreviewOutcome outcome;
+    const auto columns = static_cast<int>(artifact.time_columns);
+    const auto bins = static_cast<int>(artifact.frequency_bins);
+    if (columns <= 0 || bins <= 0
+        || artifact.magnitudes.size()
+               != static_cast<std::size_t>(columns) * static_cast<std::size_t>(bins)) {
+        return outcome;
+    }
+    QImage image(columns, bins, QImage::Format_RGBA8888);
+    for (int y = 0; y < bins; ++y) {
+        auto* destination = image.scanLine(y);
+        const int source_bin = bins - y - 1;
+        for (int x = 0; x < columns; ++x) {
+            const std::size_t offset = static_cast<std::size_t>(x) * static_cast<std::size_t>(bins)
+                                       + static_cast<std::size_t>(source_bin);
+            const QRgb color = colorForMagnitude(artifact.magnitudes[offset]);
+            const int destination_offset = x * 4;
+            destination[destination_offset] = static_cast<uchar>(qRed(color));
+            destination[destination_offset + 1] = static_cast<uchar>(qGreen(color));
+            destination[destination_offset + 2] = static_cast<uchar>(qBlue(color));
+            destination[destination_offset + 3] = static_cast<uchar>(qAlpha(color));
+        }
+    }
+    QByteArray encoded;
+    QBuffer buffer(&encoded);
+    if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG")) {
+        return outcome;
+    }
+    outcome.image_url =
+        QStringLiteral("data:image/png;base64,") + QString::fromLatin1(encoded.toBase64());
+    outcome.succeeded = true;
+    return outcome;
+}
+
 PreviewOutcome
 makePreview(const QString& catalogPath, const QString& cacheRoot, const QString& assetId) {
     PreviewOutcome outcome;
@@ -38,40 +73,22 @@ makePreview(const QString& catalogPath, const QString& cacheRoot, const QString&
             cacheRoot.toStdString(),
             assetId.toStdString()
         );
-        const auto columns = static_cast<int>(artifact.time_columns);
-        const auto bins = static_cast<int>(artifact.frequency_bins);
-        if (columns <= 0 || bins <= 0
-            || artifact.magnitudes.size()
-                   != static_cast<std::size_t>(columns) * static_cast<std::size_t>(bins)) {
-            return outcome;
-        }
-        QImage image(columns, bins, QImage::Format_RGBA8888);
-        for (int y = 0; y < bins; ++y) {
-            auto* destination = image.scanLine(y);
-            const int source_bin = bins - y - 1;
-            for (int x = 0; x < columns; ++x) {
-                const std::size_t offset =
-                    static_cast<std::size_t>(x) * static_cast<std::size_t>(bins)
-                    + static_cast<std::size_t>(source_bin);
-                const QRgb color = colorForMagnitude(artifact.magnitudes[offset]);
-                const int destination_offset = x * 4;
-                destination[destination_offset] = static_cast<uchar>(qRed(color));
-                destination[destination_offset + 1] = static_cast<uchar>(qGreen(color));
-                destination[destination_offset + 2] = static_cast<uchar>(qBlue(color));
-                destination[destination_offset + 3] = static_cast<uchar>(qAlpha(color));
-            }
-        }
-        QByteArray encoded;
-        QBuffer buffer(&encoded);
-        if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG")) {
-            return outcome;
-        }
-        outcome.image_url =
-            QStringLiteral("data:image/png;base64,") + QString::fromLatin1(encoded.toBase64());
-        outcome.succeeded = true;
+        outcome = encodePreview(artifact);
     } catch (const rust::Error&) {
         // The QML projection has an explicit unavailable state; keep source
         // and catalog paths out of desktop diagnostics.
+    }
+    return outcome;
+}
+
+PreviewOutcome makePreviewForPath(const QString& sourcePath) {
+    PreviewOutcome outcome;
+    try {
+        const auto artifact =
+            echo::desktop::spectrogram_artifact_for_path(sourcePath.toStdString());
+        outcome = encodePreview(artifact);
+    } catch (const rust::Error&) {
+        // The work-copy projection already reports an unavailable cache path.
     }
     return outcome;
 }
@@ -120,6 +137,40 @@ void SpectrogramPreviewController::request(const QString& assetId) {
     watcher->setFuture(QtConcurrent::run([catalog_path, cache_root, assetId] {
         return makePreview(catalog_path, cache_root, assetId);
     }));
+}
+
+void SpectrogramPreviewController::requestPath(const QString& assetId, const QString& sourcePath) {
+    if (assetId.isEmpty() || sourcePath.isEmpty()) {
+        clear();
+        return;
+    }
+    const std::uint64_t generation = ++generation_;
+    asset_id_ = assetId;
+    image_url_.clear();
+    error_text_.clear();
+    running_ = true;
+    emit previewChanged();
+    emit stateChanged();
+
+    auto* watcher = new QFutureWatcher<PreviewOutcome>(this);
+    connect(watcher, &QFutureWatcher<PreviewOutcome>::finished, this, [this, watcher, generation] {
+        const PreviewOutcome outcome = watcher->result();
+        watcher->deleteLater();
+        if (generation != generation_) {
+            return;
+        }
+        running_ = false;
+        if (outcome.succeeded) {
+            image_url_ = outcome.image_url;
+            error_text_.clear();
+        } else {
+            image_url_.clear();
+            error_text_ = QStringLiteral("spectrogram overview unavailable");
+        }
+        emit previewChanged();
+        emit stateChanged();
+    });
+    watcher->setFuture(QtConcurrent::run([sourcePath] { return makePreviewForPath(sourcePath); }));
 }
 
 void SpectrogramPreviewController::clear() {
