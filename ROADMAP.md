@@ -698,6 +698,18 @@ InferenceBackend
     Plate 或 Spring 的内部反馈。领域设置、Catalog JSON、桌面 ABI、播放／导出投影与 Space 面板
     都保留同一组有界字段；旧 revision 缺失字段恢复为 disabled 默认值。桌面继续使用已有的原子
     Space 参数 map 承载该算法空间专属控件，而不是延长历史固定参数信号。
+  - 频谱修复工作区 P0（2026-08-15）：Echo 从 immutable Original 解码为 canonical 48 kHz mono，
+    用 `2048` 帧 Hann STFT／`512` 帧 hop 生成最多 `1024×128` 的有界频谱概览；概览以版本化 JSON
+    payload 写入 content-addressed cache，Catalog 仅保存可重建的 derived-artifact reference，损坏或
+    schema 不兼容时隔离并重建。桌面通过单一 Rust/CXX/Qt 投影消费该概览，在编辑工作区显示与时间轴
+    同一 viewport、选区和播放头的 Original 只读频谱图。领域层定义 source-time + Hz + attenuation
+    + feather 的至多 64 个参数区域；桌面草稿、Undo/Redo、Catalog JSON 与原生投影完整传递这些语义，
+    频谱图上的拖拽新增一个可清除的默认柔和衰减区域。P1 的 `2048/512` Hann STFT 核既提供独立离线
+    处理，也提供跨解码块保持重叠历史、seek 时重置、结束时只补齐真实源时长的 producer-thread stream；
+    它在 `SourceEditPlan` 之前进入共享 `PlaybackSession`，因此实时试听、离线 WAV/FLAC 导出和响度分析
+    使用同一 source-anchored 语义。合成正弦覆盖区域内衰减、区域外保持、任意分块和尾部时长；离线导出
+    契约覆盖真实消费链。画笔、修补、细粒度选择编辑和更丰富的区域参数面板仍须作为后续单独契约完成，
+    不得把显示 cache 或像素坐标伪装成用户修复事实。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，

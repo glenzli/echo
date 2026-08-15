@@ -13,6 +13,7 @@ Rectangle {
     required property var asset
 
     property var waveformLevels: []
+    property var spectrogramArtifact: ({})
     property string loadedPath: ""
     property string loadedBaseAdjustmentKey: ""
     property string loadedAdjustmentKey: ""
@@ -118,9 +119,11 @@ Rectangle {
 
     function refreshAsset(): void {
         waveformLevels = [];
+        spectrogramArtifact = ({});
         if (!asset || !asset.id || asset.pathStatus === "missing")
             return;
         waveformLevels = backend.waveformForAsset(asset.id);
+        spectrogramArtifact = backend.spectrogramForAsset(asset.id);
     }
 
     function playFrom(millis: int): void {
@@ -360,8 +363,8 @@ Rectangle {
 
         asset: workspace.asset
 
-        onSaveRequested: function (startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx, space) {
-            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx, space)) {
+        onSaveRequested: function (startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx, spectralRepair, space) {
+            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx, spectralRepair, space)) {
                 adjustmentDraft.markSaved();
                 workspace.auditionOriginal = false;
                 workspace.loadedBaseAdjustmentKey = "";
@@ -778,6 +781,28 @@ Rectangle {
                 onEditGestureFinished: adjustmentDraft.endGesture()
                 onUndoRequested: adjustmentDraft.undo()
                 onRedoRequested: adjustmentDraft.redo()
+            }
+
+            SpectrogramView {
+                SplitView.fillWidth: true
+                SplitView.preferredHeight: 226
+                SplitView.minimumHeight: 150
+                SplitView.maximumHeight: 360
+                artifact: workspace.spectrogramArtifact
+                sourceDurationMillis: adjustmentDraft.sourceDurationMillis
+                viewStartRatio: editorTimeline.viewStartRatio
+                viewEndRatio: editorTimeline.viewEndRatio
+                progress: adjustmentDraft.sourceDurationMillis > 0
+                    ? (workspace.hasAsset && workspace.ownsActivePlayback() ? player.position : adjustmentDraft.trimStartMillis) / adjustmentDraft.sourceDurationMillis
+                    : 0
+                hasTimeSelection: editorTimeline.hasTimeSelection
+                selectionStartRatio: adjustmentDraft.sourceDurationMillis > 0 ? editorTimeline.selectionStartMillis / adjustmentDraft.sourceDurationMillis : 0
+                selectionEndRatio: adjustmentDraft.sourceDurationMillis > 0 ? editorTimeline.selectionEndMillis / adjustmentDraft.sourceDurationMillis : 0
+                regions: adjustmentDraft.spectralRepair.regions
+                onRegionRequested: function(startMillis, endMillis, lowHertz, highHertz) {
+                    adjustmentDraft.addSpectralRepairRegion(startMillis, endMillis, lowHertz, highHertz);
+                }
+                onClearRequested: adjustmentDraft.clearSpectralRepairRegions()
             }
 
             SoundAdjustmentEditor {

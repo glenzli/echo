@@ -104,6 +104,20 @@ float pcm24(const std::vector<std::byte>& bytes, std::size_t sample_index) {
     return static_cast<float>(static_cast<std::int32_t>(raw)) / 8'388'607.0F;
 }
 
+float rms_channel(
+    const std::vector<float>& samples,
+    std::size_t channel_count,
+    std::size_t first_frame,
+    std::size_t last_frame
+) {
+    float sum = 0.0F;
+    for (std::size_t frame = first_frame; frame < last_frame; ++frame) {
+        const float sample = samples[frame * channel_count];
+        sum += sample * sample;
+    }
+    return std::sqrt(sum / static_cast<float>(last_frame - first_frame));
+}
+
 std::vector<float> render_playback(
     const std::filesystem::path& source,
     const echo::audio::PlaybackAdjustment& adjustment
@@ -146,6 +160,32 @@ int main() {
         std::ofstream output(source, std::ios::binary);
         const std::string wav = sine_wav();
         output.write(wav.data(), static_cast<std::streamsize>(wav.size()));
+    }
+
+    const echo::audio::PlaybackAdjustment source_adjustment{.trim_end_millis = 1000};
+    const auto baseline = render_playback(source, source_adjustment);
+    const echo::audio::PlaybackAdjustment repaired{
+        .trim_end_millis = 1000,
+        .spectral_repair = {
+            {.start_millis = 100,
+             .end_millis = 900,
+             .low_hertz = 360,
+             .high_hertz = 520,
+             .attenuation_centibels = 4800}
+        },
+    };
+    const auto spectral_repaired = render_playback(source, repaired);
+    assert(spectral_repaired.size() == baseline.size());
+    const float baseline_rms = rms_channel(baseline, 2, 26'400, 36'000);
+    const float repaired_rms = rms_channel(spectral_repaired, 2, 26'400, 36'000);
+    if (!(repaired_rms < baseline_rms * 0.02F)) {
+        std::fprintf(
+            stderr,
+            "spectral repair export RMS %.6f was not below baseline %.6f\n",
+            repaired_rms,
+            baseline_rms
+        );
+        return 1;
     }
 
     MemorySink sink;

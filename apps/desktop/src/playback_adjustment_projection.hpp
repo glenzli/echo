@@ -59,6 +59,7 @@ class PlaybackAdjustmentProjection {
         const QVariantList& effectChain,
         const QVariantList& editSegments,
         const QVariantList& effectMasks,
-        const QVariantMap& creativeVfx = QVariantMap{}
+        const QVariantMap& creativeVfx = QVariantMap{},
+        const QVariantMap& spectralRepair = QVariantMap{}
     );
 };

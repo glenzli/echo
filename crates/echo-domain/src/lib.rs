@@ -30,6 +30,7 @@ mod original;
 mod processing_recipe;
 mod source_edit;
 mod space;
+mod spectral_repair;
 
 pub use adjustment::{
     AdjustmentEffects, AdjustmentGraph, AdjustmentGraphError, ChannelRepairSettings,
@@ -94,6 +95,7 @@ pub use space::{
     ImpulseResponseSelection, MAX_CONVOLUTION_WET_GAIN_CENTIBELS,
     MIN_CONVOLUTION_WET_GAIN_CENTIBELS, SpaceMode, SpaceModeValueError, SpaceSettings,
 };
+pub use spectral_repair::{SpectralAttenuationRegion, SpectralRepairError, SpectralRepairSettings};
 
 #[cfg(test)]
 mod tests;

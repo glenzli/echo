@@ -29,6 +29,8 @@ use crate::error::{CacheError, CacheErrorKind};
 pub enum BlobRole {
     /// Multi-level waveform peak pyramid.
     WaveformPyramid,
+    /// Bounded STFT overview for the spectral repair workspace.
+    SpectrogramOverview,
     /// Embedding payload reference.
     Embedding,
     /// Transcript cache.

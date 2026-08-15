@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QString>
 
 #include <array>
@@ -85,6 +86,15 @@ QVariantMap creativeVfxForQml(const rust::String& encoded) {
         QByteArray(encoded.data(), static_cast<qsizetype>(encoded.size()))
     );
     return adjustment.has_value() ? CreativeVfxProjection::toQml(*adjustment) : QVariantMap{};
+}
+
+QVariantMap spectralRepairForQml(const rust::String& encoded) {
+    const QJsonDocument document =
+        QJsonDocument::fromJson(QByteArray(encoded.data(), static_cast<qsizetype>(encoded.size())));
+    if (!document.isObject()) {
+        return {{QStringLiteral("regions"), QVariantList{}}};
+    }
+    return document.object().toVariantMap();
 }
 
 bool appendEqualizerBands(
@@ -724,6 +734,10 @@ QVariantList DesktopBackend::listAssets() const {
             static_cast<int>(asset.convolution_wet_gain_centibels)
         );
         entry.insert(QStringLiteral("creativeVfx"), creativeVfxForQml(asset.creative_vfx_json));
+        entry.insert(
+            QStringLiteral("spectralRepair"),
+            spectralRepairForQml(asset.spectral_repair_json)
+        );
         entry.insert(QStringLiteral("limiterEnabled"), asset.limiter_enabled);
         entry.insert(
             QStringLiteral("limiterCeilingCentibels"),
@@ -1573,6 +1587,7 @@ bool DesktopBackend::setAssetAdjustment(
         editSegments,
         effectMasks,
         {},
+        {},
         {}
     );
 }
@@ -1640,6 +1655,7 @@ bool DesktopBackend::setAssetAdjustment(
     const QVariantList& editSegments,
     const QVariantList& effectMasks,
     const QVariantMap& creativeVfx,
+    const QVariantMap& spectralRepair,
     const QVariantMap& space
 ) {
     const int space_mode = space.value(QStringLiteral("mode"), 0).toInt();
@@ -1789,6 +1805,13 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.convolution_mix_percent = static_cast<std::uint8_t>(convolution_mix);
         adjustment.convolution_wet_gain_centibels = static_cast<std::int16_t>(convolution_wet_gain);
         adjustment.creative_vfx_json = CreativeVfxProjection::toJson(*creative_vfx).toStdString();
+        const QJsonDocument spectral_repair_document = QJsonDocument::fromVariant(spectralRepair);
+        if (!spectral_repair_document.isObject()) {
+            qWarning("spectral repair settings are outside the supported contract");
+            return false;
+        }
+        adjustment.spectral_repair_json =
+            spectral_repair_document.toJson(QJsonDocument::Compact).toStdString();
         adjustment.limiter_enabled = limiterEnabled;
         adjustment.limiter_ceiling_centibels = static_cast<std::int16_t>(limiterCeilingCentibels);
         adjustment.limiter_release_millis = static_cast<std::uint16_t>(limiterReleaseMillis);
@@ -1846,6 +1869,30 @@ QVariantList DesktopBackend::waveformForAsset(const QString& id) const {
         levels.append(entry);
     }
     return levels;
+}
+
+QVariantMap DesktopBackend::spectrogramForAsset(const QString& id) const {
+    QVariantMap artifact;
+    try {
+        const auto wire = session_->session_spectrogram_artifact(id.toStdString());
+        QVariantList magnitudes;
+        magnitudes.reserve(static_cast<qsizetype>(wire.magnitudes.size()));
+        for (const auto magnitude : wire.magnitudes) {
+            magnitudes.append(static_cast<int>(magnitude));
+        }
+        artifact.insert(
+            QStringLiteral("canonicalSampleRate"),
+            static_cast<int>(wire.canonical_sample_rate)
+        );
+        artifact.insert(QStringLiteral("windowFrames"), static_cast<int>(wire.window_frames));
+        artifact.insert(QStringLiteral("hopFrames"), static_cast<int>(wire.hop_frames));
+        artifact.insert(QStringLiteral("timeColumns"), static_cast<int>(wire.time_columns));
+        artifact.insert(QStringLiteral("frequencyBins"), static_cast<int>(wire.frequency_bins));
+        artifact.insert(QStringLiteral("magnitudes"), magnitudes);
+    } catch (const rust::Error& error) {
+        qWarning("spectrogram query failed for %s: %s", qPrintable(id), error.what());
+    }
+    return artifact;
 }
 
 QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {

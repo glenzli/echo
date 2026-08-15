@@ -4855,4 +4855,37 @@
     <message><source>Repeats</source><translation>重复次数</translation></message>
     <message><source>Reverse slice</source><translation>倒放片段</translation></message>
 </context>
+<context>
+    <name>SpectrogramView</name>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="57"/>
+        <source>Spectrogram</source>
+        <translation>频谱图</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="64"/>
+        <source>Original · read-only overview</source>
+        <translation>原始音频 · 只读概览</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="75"/>
+        <source>Loading…</source>
+        <translation>正在加载…</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="138"/>
+        <source>Spectrogram overview unavailable</source>
+        <translation>频谱概览不可用</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="82"/>
+        <source>%1 repairs</source>
+        <translation>%1 个修复区域</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="88"/>
+        <source>Clear repairs</source>
+        <translation>清除修复区域</translation>
+    </message>
+</context>
 </TS>

@@ -177,6 +177,7 @@ mod ffi {
         convolution_mix_percent: u8,
         convolution_wet_gain_centibels: i16,
         creative_vfx_json: String,
+        spectral_repair_json: String,
         limiter_enabled: bool,
         limiter_ceiling_centibels: i16,
         limiter_release_millis: u16,
@@ -259,6 +260,7 @@ mod ffi {
         convolution_mix_percent: u8,
         convolution_wet_gain_centibels: i16,
         creative_vfx_json: String,
+        spectral_repair_json: String,
         limiter_enabled: bool,
         limiter_ceiling_centibels: i16,
         limiter_release_millis: u16,
@@ -409,6 +411,17 @@ mod ffi {
     struct WaveformArtifactWire {
         canonical_sample_rate: u32,
         levels: Vec<WaveformLevelWire>,
+    }
+
+    /// A cached, bounded spectrogram overview for display.
+    #[derive(Debug)]
+    struct SpectrogramArtifactWire {
+        canonical_sample_rate: u32,
+        window_frames: u32,
+        hop_frames: u32,
+        time_columns: u32,
+        frequency_bins: u32,
+        magnitudes: Vec<u8>,
     }
 
     /// One transcript segment for display and click-to-seek.
@@ -618,6 +631,12 @@ mod ffi {
             self: &LibrarySession,
             asset_id: &str,
         ) -> Result<WaveformArtifactWire>;
+        /// Returns the bounded spectrogram overview for an asset, building and
+        /// caching it when absent.
+        fn session_spectrogram_artifact(
+            self: &LibrarySession,
+            asset_id: &str,
+        ) -> Result<SpectrogramArtifactWire>;
         /// Returns every transcript evidence record for an asset, newest
         /// first.
         fn session_transcripts(
@@ -968,6 +987,21 @@ impl LibrarySession {
         asset_id: &str,
     ) -> Result<ffi::WaveformArtifactWire, String> {
         self.waveform_artifact(asset_id)
+            .map_err(|error| error.message)
+    }
+
+    /// Returns the bounded spectrogram overview for an asset, building and
+    /// caching it when absent.
+    ///
+    /// # Errors
+    ///
+    /// Returns the session error message when the artifact cannot be built,
+    /// read, or decoded.
+    fn session_spectrogram_artifact(
+        &self,
+        asset_id: &str,
+    ) -> Result<ffi::SpectrogramArtifactWire, String> {
+        self.spectrogram_artifact(asset_id)
             .map_err(|error| error.message)
     }
 

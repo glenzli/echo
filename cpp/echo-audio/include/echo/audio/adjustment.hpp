@@ -3,6 +3,7 @@
 #include "echo/audio/convolution_space_processor.hpp"
 #include "echo/audio/creative_vfx.hpp"
 #include "echo/audio/prepared_impulse_response.hpp"
+#include "echo/audio/spectral_repair_processor.hpp"
 
 #include <array>
 #include <cstddef>
@@ -260,6 +261,9 @@ struct PlaybackAdjustment {
     ReverbAdjustment reverb;
     SpaceAdjustment space;
     CreativeVfxAdjustment creative_vfx;
+    /// Source-anchored spectral attenuation intent, applied before edit-plan
+    /// muting and insert effects by the eventual streaming repair stage.
+    std::vector<SpectralAttenuationRegion> spectral_repair;
     LimiterAdjustment limiter;
     std::array<EffectNodeKind, kEffectNodeCount> effect_chain{{
         EffectNodeKind::Restoration,

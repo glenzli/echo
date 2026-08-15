@@ -71,6 +71,7 @@ QtObject {
     property var editSegments: defaultEditSegments(0, 0)
     property var effectMasks: []
     property var creativeVfx: ({})
+    property var spectralRepair: ({ regions: [] })
 
     property var _savedSnapshot: ({})
     property var _history: []
@@ -82,10 +83,10 @@ QtObject {
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canUndo: _historyIndex > 0
     readonly property bool canRedo: _historyIndex >= 0 && _historyIndex < _history.length - 1
-    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(13) || !creativeVfxFamilyEnabled("drive")) && (!containsEffectNode(14) || !creativeVfxFamilyEnabled("rotary")) && (!containsEffectNode(15) || !creativeVfxFamilyEnabled("freeze")) && (!containsEffectNode(16) || !creativeVfxFamilyEnabled("granular")) && (!containsEffectNode(17) || !creativeVfxFamilyEnabled("tape")) && (!containsEffectNode(18) || !creativeVfxFamilyEnabled("pitch")) && (!containsEffectNode(19) || !creativeVfxFamilyEnabled("autoWah")) && (!containsEffectNode(20) || !creativeVfxFamilyEnabled("stereo")) && (!containsEffectNode(21) || !creativeVfxFamilyEnabled("beatRepeat")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
+    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(13) || !creativeVfxFamilyEnabled("drive")) && (!containsEffectNode(14) || !creativeVfxFamilyEnabled("rotary")) && (!containsEffectNode(15) || !creativeVfxFamilyEnabled("freeze")) && (!containsEffectNode(16) || !creativeVfxFamilyEnabled("granular")) && (!containsEffectNode(17) || !creativeVfxFamilyEnabled("tape")) && (!containsEffectNode(18) || !creativeVfxFamilyEnabled("pitch")) && (!containsEffectNode(19) || !creativeVfxFamilyEnabled("autoWah")) && (!containsEffectNode(20) || !creativeVfxFamilyEnabled("stereo")) && (!containsEffectNode(21) || !creativeVfxFamilyEnabled("beatRepeat")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0 && spectralRepair.regions.length === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
-    signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks, var creativeVfx, var space)
+    signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks, var creativeVfx, var spectralRepair, var space)
 
     function defaultSpace(): var {
         return {
@@ -222,6 +223,47 @@ QtObject {
 
     function creativeVfxValue(): var {
         return copyCreativeVfx(creativeVfx);
+    }
+
+    function copySpectralRepair(value: var): var {
+        const regions = value && value.regions ? value.regions : [];
+        const copied = [];
+        for (let index = 0; index < regions.length && index < 64; ++index) {
+            const region = regions[index];
+            const start = Math.max(0, Math.round(Number(region.startMillis)));
+            const end = Math.min(sourceDurationMillis, Math.round(Number(region.endMillis)));
+            const low = Math.max(20, Math.round(Number(region.lowHertz)));
+            const high = Math.min(24000, Math.round(Number(region.highHertz)));
+            const attenuation = Math.max(0, Math.min(9600, Math.round(Number(region.attenuationCentibels))));
+            const timeFeather = Math.max(0, Math.min(250, Math.round(Number(region.timeFeatherMillis))));
+            const frequencyFeather = Math.max(0, Math.min(2000, Math.round(Number(region.frequencyFeatherHertz))));
+            if (end > start && high > low)
+                copied.push({ startMillis: start, endMillis: end, lowHertz: low, highHertz: high, attenuationCentibels: attenuation, timeFeatherMillis: timeFeather, frequencyFeatherHertz: frequencyFeather });
+        }
+        return { regions: copied };
+    }
+
+    function spectralRepairValue(): var {
+        return copySpectralRepair(spectralRepair);
+    }
+
+    function setSpectralRepairRegions(value: var): void {
+        spectralRepair = copySpectralRepair(value);
+        pushCurrent();
+    }
+
+    function addSpectralRepairRegion(startMillis: int, endMillis: int, lowHertz: int, highHertz: int): void {
+        const next = copySpectralRepair(spectralRepair);
+        if (next.regions.length >= 64)
+            return;
+        next.regions.push({ startMillis: startMillis, endMillis: endMillis, lowHertz: lowHertz, highHertz: highHertz, attenuationCentibels: 2400, timeFeatherMillis: 24, frequencyFeatherHertz: 80 });
+        setSpectralRepairRegions(next);
+    }
+
+    function clearSpectralRepairRegions(): void {
+        if (spectralRepair.regions.length === 0)
+            return;
+        setSpectralRepairRegions({ regions: [] });
     }
 
     function creativeVfxFamily(name: string): var {
@@ -568,7 +610,8 @@ QtObject {
             effectChain: copyEffectChain(effectChain),
             editSegments: copyEditSegments(editSegments, trimStartMillis, trimEndMillis),
             effectMasks: copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis),
-            creativeVfx: copyCreativeVfx(creativeVfx)
+            creativeVfx: copyCreativeVfx(creativeVfx),
+            spectralRepair: copySpectralRepair(spectralRepair)
         };
     }
 
@@ -635,12 +678,15 @@ QtObject {
             effectChain: copyEffectChain(value.effectChain),
             editSegments: copyEditSegments(value.editSegments, Number(value.trimStartMillis), Number(value.trimEndMillis)),
             effectMasks: copyEffectMasks(value.effectMasks, value.effectChain, Number(value.trimStartMillis), Number(value.trimEndMillis)),
-            creativeVfx: copyCreativeVfx(value.creativeVfx)
+            creativeVfx: copyCreativeVfx(value.creativeVfx),
+            spectralRepair: copySpectralRepair(value.spectralRepair)
         };
     }
 
     function sameSnapshot(left: var, right: var): bool {
         if (!left || !right)
+            return false;
+        if (JSON.stringify(copySpectralRepair(left.spectralRepair)) !== JSON.stringify(copySpectralRepair(right.spectralRepair)))
             return false;
         return Number(left.trimStartMillis) === Number(right.trimStartMillis) && Number(left.trimEndMillis) === Number(right.trimEndMillis) && Number(left.fadeInMillis) === Number(right.fadeInMillis) && Number(left.fadeOutMillis) === Number(right.fadeOutMillis) && Number(left.fadeInCurve) === Number(right.fadeInCurve) && Number(left.fadeOutCurve) === Number(right.fadeOutCurve) && Number(left.gainCentibels) === Number(right.gainCentibels) && Number(left.lowCutHertz) === Number(right.lowCutHertz) && Boolean(left.restorationEnabled) === Boolean(right.restorationEnabled) && Boolean(left.dePlosiveEnabled) === Boolean(right.dePlosiveEnabled) && Number(left.dePlosiveFrequencyHertz) === Number(right.dePlosiveFrequencyHertz) && Number(left.dePlosiveSensitivityPercent) === Number(right.dePlosiveSensitivityPercent) && Number(left.dePlosiveReductionCentibels) === Number(right.dePlosiveReductionCentibels) && Number(left.dePlosiveReleaseMillis) === Number(right.dePlosiveReleaseMillis) && Boolean(left.noiseReductionEnabled) === Boolean(right.noiseReductionEnabled) && Number(left.noiseReductionCentibels) === Number(right.noiseReductionCentibels) && Number(left.noiseReductionSensitivityPercent) === Number(right.noiseReductionSensitivityPercent) && Number(left.noiseReductionSmoothingMillis) === Number(right.noiseReductionSmoothingMillis) && Boolean(left.deEsserEnabled) === Boolean(right.deEsserEnabled) && Number(left.deEsserFrequencyHertz) === Number(right.deEsserFrequencyHertz) && Number(left.deEsserThresholdCentibels) === Number(right.deEsserThresholdCentibels) && Number(left.deEsserReductionCentibels) === Number(right.deEsserReductionCentibels) && Boolean(left.deHumEnabled) === Boolean(right.deHumEnabled) && Number(left.deHumFundamentalHertz) === Number(right.deHumFundamentalHertz) && Number(left.deHumHarmonicCount) === Number(right.deHumHarmonicCount) && Number(left.deHumQualityTenths) === Number(right.deHumQualityTenths) && Number(left.deHumDepthCentibels) === Number(right.deHumDepthCentibels) && Boolean(left.deClickEnabled) === Boolean(right.deClickEnabled) && Number(left.deClickSensitivityPercent) === Number(right.deClickSensitivityPercent) && Number(left.deClickMaximumClickMicroseconds) === Number(right.deClickMaximumClickMicroseconds) && Number(left.deClickRepairPercent) === Number(right.deClickRepairPercent) && Boolean(left.channelRepairEnabled) === Boolean(right.channelRepairEnabled) && Boolean(left.channelRepairInvertLeft) === Boolean(right.channelRepairInvertLeft) && Boolean(left.channelRepairInvertRight) === Boolean(right.channelRepairInvertRight) && Boolean(left.channelRepairSwapChannels) === Boolean(right.channelRepairSwapChannels) && Boolean(left.channelRepairMonoFoldDown) === Boolean(right.channelRepairMonoFoldDown) && Number(left.channelRepairBalancePercent) === Number(right.channelRepairBalancePercent) && Boolean(left.equalizerEnabled) === Boolean(right.equalizerEnabled) && sameEqualizer(left.equalizerBands, right.equalizerBands) && Boolean(left.compressorEnabled) === Boolean(right.compressorEnabled) && Number(left.compressorThresholdCentibels) === Number(right.compressorThresholdCentibels) && Number(left.compressorRatioTenths) === Number(right.compressorRatioTenths) && Number(left.compressorAttackMillis) === Number(right.compressorAttackMillis) && Number(left.compressorReleaseMillis) === Number(right.compressorReleaseMillis) && Number(left.compressorMakeupCentibels) === Number(right.compressorMakeupCentibels) && Number(left.reverbCharacter) === Number(right.reverbCharacter) && Boolean(left.reverbEnabled) === Boolean(right.reverbEnabled) && Number(left.reverbMixPercent) === Number(right.reverbMixPercent) && Number(left.reverbPreDelayMillis) === Number(right.reverbPreDelayMillis) && Number(left.reverbDecayMillis) === Number(right.reverbDecayMillis) && Number(left.reverbSizePercent) === Number(right.reverbSizePercent) && Number(left.reverbDampingPercent) === Number(right.reverbDampingPercent) && Number(left.reverbLowCutHertz) === Number(right.reverbLowCutHertz) && Number(left.reverbHighCutHertz) === Number(right.reverbHighCutHertz) && sameSpace(left.space, right.space) && Boolean(left.limiterEnabled) === Boolean(right.limiterEnabled) && Number(left.limiterCeilingCentibels) === Number(right.limiterCeilingCentibels) && Number(left.limiterReleaseMillis) === Number(right.limiterReleaseMillis) && sameEffectChain(left.effectChain, right.effectChain) && sameEditSegments(left.editSegments, right.editSegments) && sameEffectMasks(left.effectMasks, right.effectMasks) && sameCreativeVfx(left.creativeVfx, right.creativeVfx);
     }
@@ -709,7 +755,8 @@ QtObject {
                 effectChain: defaultEffectChain(),
                 editSegments: [],
                 effectMasks: [],
-                creativeVfx: {}
+            creativeVfx: {},
+            spectralRepair: { regions: [] }
             };
         }
         const duration = Math.max(0, Number(asset.durationMillis));
@@ -787,7 +834,8 @@ QtObject {
             effectChain: copyEffectChain(asset.effectChain),
             editSegments: copyEditSegments(asset.editSegments, Math.max(0, Number(asset.trimStartMillis)), Number(asset.trimEndMillis) > 0 ? Number(asset.trimEndMillis) : duration),
             effectMasks: copyEffectMasks(asset.effectMasks, asset.effectChain, Math.max(0, Number(asset.trimStartMillis)), Number(asset.trimEndMillis) > 0 ? Number(asset.trimEndMillis) : duration),
-            creativeVfx: copyCreativeVfx(asset.creativeVfx)
+            creativeVfx: copyCreativeVfx(asset.creativeVfx),
+            spectralRepair: copySpectralRepair(asset.spectralRepair)
         };
     }
 
@@ -855,6 +903,7 @@ QtObject {
         editSegments = copyEditSegments(value.editSegments, trimStartMillis, trimEndMillis);
         effectMasks = copyEffectMasks(value.effectMasks, effectChain, trimStartMillis, trimEndMillis);
         creativeVfx = copyCreativeVfx(value.creativeVfx);
+        spectralRepair = copySpectralRepair(value.spectralRepair);
         _restoring = false;
     }
 
@@ -1786,7 +1835,8 @@ QtObject {
             effectChain: defaultEffectChain(),
             editSegments: defaultEditSegments(0, sourceDurationMillis),
             effectMasks: [],
-            creativeVfx: creativeVfxForOriginal()
+            creativeVfx: creativeVfxForOriginal(),
+            spectralRepair: { regions: [] }
         });
         pushCurrent();
     }
@@ -1799,7 +1849,7 @@ QtObject {
     function save(): void {
         if (!asset || !dirty)
             return;
-        saveRequested(trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationEnabled, dePlosiveEnabled, dePlosiveFrequencyHertz, dePlosiveSensitivityPercent, dePlosiveReductionCentibels, dePlosiveReleaseMillis, noiseReductionEnabled, noiseReductionCentibels, noiseReductionSensitivityPercent, noiseReductionSmoothingMillis, deEsserEnabled, deEsserFrequencyHertz, deEsserThresholdCentibels, deEsserReductionCentibels, deHumEnabled, deHumFundamentalHertz, deHumHarmonicCount, deHumQualityTenths, deHumDepthCentibels, deClickEnabled, deClickSensitivityPercent, deClickMaximumClickMicroseconds, deClickRepairPercent, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalancePercent, equalizerEnabled, copyEqualizerBands(equalizerBands), compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbCharacter, reverbEnabled, reverbMixPercent, reverbPreDelayMillis, reverbDecayMillis, reverbSizePercent, reverbDampingPercent, reverbLowCutHertz, reverbHighCutHertz, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, copyEffectChain(effectChain), copyEditSegments(editSegments, trimStartMillis, trimEndMillis), copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis), copyCreativeVfx(creativeVfx), copySpace(space));
+        saveRequested(trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationEnabled, dePlosiveEnabled, dePlosiveFrequencyHertz, dePlosiveSensitivityPercent, dePlosiveReductionCentibels, dePlosiveReleaseMillis, noiseReductionEnabled, noiseReductionCentibels, noiseReductionSensitivityPercent, noiseSmoothingMillis, deEsserEnabled, deEsserFrequencyHertz, deEsserThresholdCentibels, deEsserReductionCentibels, deHumEnabled, deHumFundamentalHertz, deHumHarmonicCount, deHumQualityTenths, deHumDepthCentibels, deClickEnabled, deClickSensitivityPercent, deClickMaximumClickMicroseconds, deClickRepairPercent, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalancePercent, equalizerEnabled, copyEqualizerBands(equalizerBands), compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbCharacter, reverbEnabled, reverbMixPercent, reverbPreDelayMillis, reverbDecayMillis, reverbSizePercent, reverbDampingPercent, reverbLowCutHertz, reverbHighCutHertz, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, copyEffectChain(effectChain), copyEditSegments(editSegments, trimStartMillis, trimEndMillis), copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis), copyCreativeVfx(creativeVfx), copySpectralRepair(spectralRepair), copySpace(space));
     }
 
     function markSaved(): void {

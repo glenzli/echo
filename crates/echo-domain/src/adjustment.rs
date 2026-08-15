@@ -10,6 +10,7 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 use crate::source_edit::{EditTimeline, EffectMask, MAX_EFFECT_MASKS};
 use crate::{
     SpaceSettings, creative_vfx::CreativeVfxSettings, freeze_vfx::FREEZE_CAPTURE_PRE_ROLL_MILLIS,
+    spectral_repair::SpectralRepairSettings,
 };
 
 /// Lowest supported output gain in hundredths of one decibel.
@@ -969,6 +970,7 @@ pub struct AdjustmentEffects {
     pub reverb: ReverbSettings,
     pub space: SpaceSettings,
     pub creative_vfx: CreativeVfxSettings,
+    pub spectral_repair: SpectralRepairSettings,
     pub limiter: LimiterSettings,
     pub effect_chain: EffectChain,
     pub edit_timeline: Option<EditTimeline>,
@@ -991,6 +993,7 @@ impl AdjustmentEffects {
             reverb: ReverbSettings::studio_room(),
             space: SpaceSettings::algorithmic(),
             creative_vfx: CreativeVfxSettings::standard(),
+            spectral_repair: SpectralRepairSettings::identity(),
             limiter: LimiterSettings::standard(),
             effect_chain: EffectChain::standard(),
             edit_timeline: None,
@@ -1053,6 +1056,12 @@ impl AdjustmentEffects {
     }
 
     #[must_use]
+    pub fn with_spectral_repair(mut self, spectral_repair: SpectralRepairSettings) -> Self {
+        self.spectral_repair = spectral_repair;
+        self
+    }
+
+    #[must_use]
     pub const fn with_limiter(mut self, limiter: LimiterSettings) -> Self {
         self.limiter = limiter;
         self
@@ -1110,6 +1119,8 @@ pub struct AdjustmentGraph {
     #[serde(default)]
     creative_vfx: CreativeVfxSettings,
     #[serde(default)]
+    spectral_repair: SpectralRepairSettings,
+    #[serde(default)]
     limiter: LimiterSettings,
     #[serde(default)]
     effect_chain: EffectChain,
@@ -1143,6 +1154,8 @@ struct StoredAdjustmentGraph {
     space: SpaceSettings,
     #[serde(default)]
     creative_vfx: CreativeVfxSettings,
+    #[serde(default)]
+    spectral_repair: SpectralRepairSettings,
     #[serde(default)]
     limiter: LimiterSettings,
     #[serde(default)]
@@ -1179,6 +1192,7 @@ impl<'de> Deserialize<'de> for AdjustmentGraph {
             .with_reverb(stored.reverb)
             .with_space(stored.space)
             .with_creative_vfx(stored.creative_vfx)
+            .with_spectral_repair(stored.spectral_repair)
             .with_limiter(stored.limiter)
             .with_effect_chain(stored.effect_chain)
             .with_optional_edit_timeline(stored.edit_timeline)
@@ -1280,6 +1294,10 @@ impl AdjustmentGraph {
             .creative_vfx
             .validate()
             .map_err(|_| AdjustmentGraphError::CreativeVfxOutOfRange)?;
+        effects
+            .spectral_repair
+            .validate(source_duration_millis)
+            .map_err(|_| AdjustmentGraphError::SpectralRepairOutOfRange)?;
         validate_freeze_anchor(trim_start_millis, trim_end_millis, effects.creative_vfx)?;
         let edit_timeline = validated_asset_regions(trim_start_millis, trim_end_millis, &effects)?;
         Ok(Self {
@@ -1300,6 +1318,7 @@ impl AdjustmentGraph {
             reverb,
             space: effects.space,
             creative_vfx: effects.creative_vfx,
+            spectral_repair: effects.spectral_repair,
             limiter,
             effect_chain: effects.effect_chain,
             edit_timeline,
@@ -1408,6 +1427,11 @@ impl AdjustmentGraph {
     #[must_use]
     pub const fn creative_vfx(&self) -> CreativeVfxSettings {
         self.creative_vfx
+    }
+
+    #[must_use]
+    pub fn spectral_repair(&self) -> &SpectralRepairSettings {
+        &self.spectral_repair
     }
 
     #[must_use]
@@ -1557,6 +1581,7 @@ pub enum AdjustmentGraphError {
     ReverbOutOfRange,
     SpaceOutOfRange,
     CreativeVfxOutOfRange,
+    SpectralRepairOutOfRange,
     FreezeAnchorOutOfRange,
     LimiterOutOfRange,
     InvalidEffectChain,
@@ -1589,6 +1614,9 @@ impl std::fmt::Display for AdjustmentGraphError {
             Self::SpaceOutOfRange => "space parameters are outside the supported range",
             Self::CreativeVfxOutOfRange => {
                 "creative VFX parameters are outside the supported range"
+            }
+            Self::SpectralRepairOutOfRange => {
+                "spectral repair parameters are outside the supported range"
             }
             Self::FreezeAnchorOutOfRange => {
                 "freeze capture must be inside the trim with a complete source pre-roll"

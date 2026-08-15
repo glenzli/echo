@@ -10,14 +10,14 @@ use std::{
 };
 
 use echo_catalog::{AssetLookup, Catalog, find_by_id, open_catalog, query_analysis};
-use echo_core::load_or_build_waveform;
+use echo_core::{load_or_build_spectrogram, load_or_build_waveform};
 use echo_domain::AssetId;
 
 use crate::ffi::{
     AnalysisStatusWire, AssetListeningStateWire, AssetSummaryWire, EditSegmentWire, EffectMaskWire,
     EqualizerBandWire, ImpulseResponseWire, JobStatsWire, KeywordFacetWire, LongAudioChapterWire,
-    RevisitSnapshotWire, ScanRootWire, SearchHitWire, SmartAlbumWire, TranscriptSegmentWire,
-    TranscriptWire, UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
+    RevisitSnapshotWire, ScanRootWire, SearchHitWire, SmartAlbumWire, SpectrogramArtifactWire,
+    TranscriptSegmentWire, TranscriptWire, UserAlbumWire, WaveformArtifactWire, WaveformLevelWire,
 };
 
 pub(crate) fn now_millis() -> i64 {
@@ -187,6 +187,7 @@ struct AdjustmentWireFields {
     convolution_mix_percent: u8,
     convolution_wet_gain_centibels: i16,
     creative_vfx_json: String,
+    spectral_repair_json: String,
     limiter_enabled: bool,
     limiter_ceiling_centibels: i16,
     limiter_release_millis: u16,
@@ -569,6 +570,7 @@ fn adjustment_graph_from_wire(
         })
         .with_space(space_settings_from_wire(adjustment)?)
         .with_creative_vfx(creative_vfx_from_wire(&adjustment.creative_vfx_json)?)
+        .with_spectral_repair(spectral_repair_from_wire(&adjustment.spectral_repair_json)?)
         .with_limiter(echo_domain::LimiterSettings {
             enabled: adjustment.limiter_enabled,
             ceiling_centibels: adjustment.limiter_ceiling_centibels,
@@ -590,6 +592,17 @@ fn adjustment_graph_from_wire(
 fn creative_vfx_from_wire(encoded: &str) -> Result<echo_domain::CreativeVfxSettings, SessionError> {
     serde_json::from_str(encoded).map_err(|error| SessionError {
         message: format!("creative VFX settings are invalid: {error}"),
+    })
+}
+
+fn spectral_repair_from_wire(
+    encoded: &str,
+) -> Result<echo_domain::SpectralRepairSettings, SessionError> {
+    if encoded.is_empty() {
+        return Ok(echo_domain::SpectralRepairSettings::identity());
+    }
+    serde_json::from_str(encoded).map_err(|error| SessionError {
+        message: format!("spectral repair settings are invalid: {error}"),
     })
 }
 
@@ -667,6 +680,10 @@ fn adjustment_wire_fields(
             convolution_wet_gain_centibels: 0,
             creative_vfx_json: serde_json::to_string(&echo_domain::CreativeVfxSettings::default())
                 .expect("default creative VFX settings encode"),
+            spectral_repair_json: serde_json::to_string(
+                &echo_domain::SpectralRepairSettings::identity(),
+            )
+            .expect("default spectral repair settings encode"),
             limiter_enabled: false,
             limiter_ceiling_centibels: -100,
             limiter_release_millis: 100,
@@ -793,6 +810,8 @@ fn adjustment_wire_fields(
             convolution_wet_gain_centibels: revision.graph.space().convolution_wet_gain_centibels,
             creative_vfx_json: serde_json::to_string(&revision.graph.creative_vfx())
                 .expect("validated creative VFX settings encode"),
+            spectral_repair_json: serde_json::to_string(revision.graph.spectral_repair())
+                .expect("validated spectral repair settings encode"),
             limiter_enabled: revision.graph.limiter().enabled,
             limiter_ceiling_centibels: revision.graph.limiter().ceiling_centibels,
             limiter_release_millis: revision.graph.limiter().release_millis,
@@ -981,6 +1000,7 @@ fn asset_summary_wire(
         convolution_mix_percent: adjustment.convolution_mix_percent,
         convolution_wet_gain_centibels: adjustment.convolution_wet_gain_centibels,
         creative_vfx_json: adjustment.creative_vfx_json,
+        spectral_repair_json: adjustment.spectral_repair_json,
         limiter_enabled: adjustment.limiter_enabled,
         limiter_ceiling_centibels: adjustment.limiter_ceiling_centibels,
         limiter_release_millis: adjustment.limiter_release_millis,
@@ -1688,6 +1708,45 @@ impl LibrarySession {
                     maxs: level.maxs,
                 })
                 .collect(),
+        })
+    }
+
+    /// Returns the bounded spectrogram overview for an asset, building and
+    /// caching it when absent.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError`] when the asset is unknown or the artifact
+    /// cannot be built, read, or decoded.
+    pub fn spectrogram_artifact(
+        &self,
+        asset_id: &str,
+    ) -> Result<SpectrogramArtifactWire, SessionError> {
+        let id = AssetId::from_str(asset_id).map_err(|error| SessionError {
+            message: format!("invalid asset id {asset_id}: {error}"),
+        })?;
+        let source =
+            self.catalog
+                .with_transaction(|transaction| match find_by_id(transaction, id) {
+                    Ok(AssetLookup::Found(asset)) => Ok(asset.original.path),
+                    Ok(AssetLookup::NotFound) => Err(SessionError {
+                        message: format!("asset {asset_id} not found"),
+                    }),
+                    Err(error) => Err(SessionError {
+                        message: error.to_string(),
+                    }),
+                })?;
+        let payload = load_or_build_spectrogram(&self.catalog, id, &source, &self.cache_root)
+            .map_err(|error| SessionError {
+                message: format!("cannot build spectrogram for {}: {error}", source.display()),
+            })?;
+        Ok(SpectrogramArtifactWire {
+            canonical_sample_rate: payload.canonical_sample_rate,
+            window_frames: payload.window_frames,
+            hop_frames: payload.hop_frames,
+            time_columns: payload.time_columns,
+            frequency_bins: payload.frequency_bins,
+            magnitudes: payload.magnitudes,
         })
     }
 

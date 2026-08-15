@@ -3,6 +3,7 @@
 #include <echo/audio/analysis_proxy.hpp>
 #include <echo/audio/decode.hpp>
 #include <echo/audio/impulse_response_preparer.hpp>
+#include <echo/audio/spectrogram.hpp>
 #include <echo/audio/waveform.hpp>
 
 #include <stdexcept>
@@ -50,6 +51,26 @@ FfiWaveform build_waveform_bridge(rust::Str path, uint32_t max_levels) {
         }
         wire_level.samples_per_bucket = level.samples_per_bucket;
         wire.levels.push_back(wire_level);
+    }
+    return wire;
+}
+
+FfiSpectrogram build_spectrogram_overview_bridge(
+    rust::Str path,
+    uint32_t max_time_columns,
+    uint32_t frequency_bins
+) {
+    const audio::SpectrogramOverview result =
+        audio::build_spectrogram_overview(std::string(path), max_time_columns, frequency_bins);
+    FfiSpectrogram wire;
+    wire.canonical_sample_rate = result.canonical_sample_rate;
+    wire.window_frames = result.window_frames;
+    wire.hop_frames = result.hop_frames;
+    wire.time_columns = result.time_columns;
+    wire.frequency_bins = result.frequency_bins;
+    wire.magnitudes.reserve(result.magnitudes.size());
+    for (const std::uint8_t magnitude : result.magnitudes) {
+        wire.magnitudes.push_back(magnitude);
     }
     return wire;
 }

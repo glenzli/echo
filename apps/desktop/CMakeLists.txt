@@ -220,6 +220,7 @@ qt_add_qml_module(
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
         qml/SpaceReverbPanel.qml
+        qml/SpectrogramView.qml
         qml/StereoVfxPanel.qml
         qml/ImpulseResponseImportDialog.qml
         qml/SoundEditorTimeline.qml

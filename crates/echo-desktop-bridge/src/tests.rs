@@ -314,6 +314,10 @@ fn adjustment_revision_round_trips_through_the_live_session() {
         convolution_mix_percent: 46,
         convolution_wet_gain_centibels: -175,
         creative_vfx_json: serde_json::to_string(&creative_vfx).expect("creative VFX encodes"),
+        spectral_repair_json: serde_json::to_string(
+            &echo_domain::SpectralRepairSettings::identity(),
+        )
+        .expect("spectral repair encodes"),
         limiter_enabled: true,
         limiter_ceiling_centibels: -125,
         limiter_release_millis: 160,

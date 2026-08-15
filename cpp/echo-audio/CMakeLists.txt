@@ -48,6 +48,8 @@ add_library(
     src/rotary_vfx_processor.cpp
     src/scene_vfx_processor.cpp
     src/source_edit_plan.cpp
+    src/spectrogram.cpp
+    src/spectral_repair_processor.cpp
     src/spring_space_reverb.cpp
     src/stereo_vfx_processor.cpp
     src/space_processor.cpp
@@ -100,6 +102,15 @@ if(BUILD_TESTING)
     target_link_libraries(echo-stereo-vfx-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-stereo-vfx-processor-test)
     add_test(NAME echo-stereo-vfx-processor-test COMMAND echo-stereo-vfx-processor-test)
+
+add_executable(echo-spectrogram-test tests/spectrogram_test.cpp)
+    target_link_libraries(echo-spectrogram-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-spectrogram-test)
+add_test(NAME echo-spectrogram-test COMMAND echo-spectrogram-test)
+
+add_executable(echo-spectral-repair-processor-test tests/spectral_repair_processor_test.cpp)
+target_link_libraries(echo-spectral-repair-processor-test PRIVATE echo-audio)
+add_test(NAME echo-spectral-repair-processor-test COMMAND echo-spectral-repair-processor-test)
 
     add_executable(echo-pitch-vfx-processor-test tests/pitch_vfx_processor_test.cpp)
     target_link_libraries(echo-pitch-vfx-processor-test PRIVATE Echo::Audio)

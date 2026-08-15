@@ -15,6 +15,8 @@ use crate::{CatalogError, CatalogErrorKind};
 pub enum DerivedArtifactKind {
     /// Multi-resolution min/max waveform pyramid.
     WaveformPyramid,
+    /// Bounded STFT overview for the spectral repair workspace.
+    SpectrogramOverview,
 }
 
 /// One catalog reference to content-addressed artifact bytes.
@@ -126,12 +128,14 @@ pub fn remove_derived_artifact(
 const fn kind_text(kind: DerivedArtifactKind) -> &'static str {
     match kind {
         DerivedArtifactKind::WaveformPyramid => "waveform_pyramid",
+        DerivedArtifactKind::SpectrogramOverview => "spectrogram_overview",
     }
 }
 
 fn parse_kind(text: &str) -> Result<DerivedArtifactKind, CatalogError> {
     match text {
         "waveform_pyramid" => Ok(DerivedArtifactKind::WaveformPyramid),
+        "spectrogram_overview" => Ok(DerivedArtifactKind::SpectrogramOverview),
         _ => Err(malformed("kind")),
     }
 }

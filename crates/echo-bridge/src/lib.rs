@@ -8,6 +8,7 @@
 //! narrow boundary so that no AI work ever crosses an audio callback.
 
 mod error;
+pub mod spectrogram;
 pub mod waveform;
 
 use std::path::Path;
@@ -43,6 +44,15 @@ mod ffi {
         levels: Vec<FfiWaveformLevel>,
     }
 
+    struct FfiSpectrogram {
+        canonical_sample_rate: u32,
+        window_frames: u32,
+        hop_frames: u32,
+        time_columns: u32,
+        frequency_bins: u32,
+        magnitudes: Vec<u8>,
+    }
+
     struct FfiAnalysisProxy {
         sample_rate: u32,
         channel_count: u32,
@@ -66,6 +76,11 @@ mod ffi {
 
         fn probe_audio(path: &str) -> Result<FfiAudioProbe>;
         fn build_waveform_bridge(path: &str, max_levels: u32) -> Result<FfiWaveform>;
+        fn build_spectrogram_overview_bridge(
+            path: &str,
+            max_time_columns: u32,
+            frequency_bins: u32,
+        ) -> Result<FfiSpectrogram>;
         fn build_analysis_proxy_bridge(
             source_path: &str,
             output_path: &str,

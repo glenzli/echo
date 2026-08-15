@@ -10,6 +10,41 @@
 
 namespace {
 
+std::optional<std::vector<echo::audio::SpectralAttenuationRegion>>
+spectralRepairFromQml(const QVariantMap& value) {
+    const QVariantList values = value.value(QStringLiteral("regions")).toList();
+    if (values.size() > 64) {
+        return std::nullopt;
+    }
+    std::vector<echo::audio::SpectralAttenuationRegion> regions;
+    regions.reserve(values.size());
+    for (const QVariant& item : values) {
+        const QVariantMap region = item.toMap();
+        const qint64 start = region.value(QStringLiteral("startMillis")).toLongLong();
+        const qint64 end = region.value(QStringLiteral("endMillis")).toLongLong();
+        const int low = region.value(QStringLiteral("lowHertz")).toInt();
+        const int high = region.value(QStringLiteral("highHertz")).toInt();
+        const int attenuation = region.value(QStringLiteral("attenuationCentibels")).toInt();
+        const int time_feather = region.value(QStringLiteral("timeFeatherMillis")).toInt();
+        const int frequency_feather = region.value(QStringLiteral("frequencyFeatherHertz")).toInt();
+        if (start < 0 || end <= start || low < 20 || high <= low || high > 24'000 || attenuation < 0
+            || attenuation > 9'600 || time_feather < 0 || time_feather > 250
+            || frequency_feather < 0 || frequency_feather > 2'000) {
+            return std::nullopt;
+        }
+        regions.push_back({
+            .start_millis = static_cast<std::uint64_t>(start),
+            .end_millis = static_cast<std::uint64_t>(end),
+            .low_hertz = static_cast<std::uint16_t>(low),
+            .high_hertz = static_cast<std::uint16_t>(high),
+            .attenuation_centibels = static_cast<std::int16_t>(attenuation),
+            .time_feather_millis = static_cast<std::uint16_t>(time_feather),
+            .frequency_feather_hertz = static_cast<std::uint16_t>(frequency_feather),
+        });
+    }
+    return regions;
+}
+
 struct EffectChainProjection {
     std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> nodes;
     std::uint8_t active_count;
@@ -368,7 +403,8 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         asset.value(QStringLiteral("effectChain")).toList(),
         asset.value(QStringLiteral("editSegments")).toList(),
         asset.value(QStringLiteral("effectMasks")).toList(),
-        asset.value(QStringLiteral("creativeVfx")).toMap()
+        asset.value(QStringLiteral("creativeVfx")).toMap(),
+        asset.value(QStringLiteral("spectralRepair")).toMap()
     );
 }
 
@@ -400,7 +436,8 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const QVariantList& effectChainValue,
     const QVariantList& editSegmentsValue,
     const QVariantList& effectMasksValue,
-    const QVariantMap& creativeVfxValue
+    const QVariantMap& creativeVfxValue,
+    const QVariantMap& spectralRepairValue
 ) {
     if (trimStartMillis < 0 || trimEndMillis <= trimStartMillis || fadeInMillis < 0
         || fadeOutMillis < 0 || fadeInCurve < 0 || fadeInCurve > 2 || fadeOutCurve < 0
@@ -422,14 +459,15 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const auto deClick = deClickFromQml(deClickValue);
     const auto channelRepair = channelRepairFromQml(channelRepairValue);
     const auto creativeVfx = CreativeVfxProjection::fromQml(creativeVfxValue);
+    const auto spectralRepair = spectralRepairFromQml(spectralRepairValue);
     const auto effectChain = effectChainFromQml(effectChainValue);
     auto editSegments = editSegmentsFromQmlImpl(editSegmentsValue, trimStartMillis, trimEndMillis);
     const auto space =
         reverb.has_value() ? SpaceProjection::fromQml(reverbValue, *reverb) : std::nullopt;
     if (!equalizer.has_value() || !reverb.has_value() || !space.has_value()
         || !restoration.has_value() || !deHum.has_value() || !deClick.has_value()
-        || !channelRepair.has_value() || !creativeVfx.has_value() || !effectChain.has_value()
-        || !editSegments.has_value()) {
+        || !channelRepair.has_value() || !creativeVfx.has_value() || !spectralRepair.has_value()
+        || !effectChain.has_value() || !editSegments.has_value()) {
         return std::nullopt;
     }
     auto effectMasks =
@@ -464,6 +502,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
         .reverb = *reverb,
         .space = *space,
         .creative_vfx = *creativeVfx,
+        .spectral_repair = std::move(*spectralRepair),
         .limiter =
             {
                 .enabled = limiterEnabled,

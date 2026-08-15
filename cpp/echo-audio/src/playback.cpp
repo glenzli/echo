@@ -288,6 +288,15 @@ class PlaybackSession::Impl {
             fail("cannot initialize resampler: " + av_error_text(result));
         }
         channel_count_ = kPlaybackChannels;
+        if (!adjustment.spectral_repair.empty()) {
+            spectral_repair_stream_ = std::make_unique<SpectralRepairStream>(
+                kCanonicalSampleRate,
+                channel_count_,
+                adjustment.spectral_repair
+            );
+            spectral_scratch_.resize(4096 * channel_count_);
+            spectral_source_frames_.resize(4096, kNoSourceFrame);
+        }
         low_cut_filter_ = std::make_unique<LowCutFilter>(
             adjustment_->low_cut_hertz(),
             kCanonicalSampleRate,
@@ -717,6 +726,9 @@ class PlaybackSession::Impl {
         pre_roll_discarding_ = decode_start_frame < target_source_frame;
         pending_gap_frames_ = 0;
         low_cut_filter_->reset();
+        if (spectral_repair_stream_ != nullptr) {
+            spectral_repair_stream_->reset();
+        }
         // Granular intentionally starts a fresh processor-input timeline on
         // seek; unlike Freeze, it does not reconstruct pre-seek texture state.
         effect_chain_->reset();
@@ -963,18 +975,15 @@ class PlaybackSession::Impl {
             capacity = std::min(scratch_frames, writable);
             return capacity > 0;
         };
-        while (input_consumed < selected_count) {
-            const std::uint64_t source_frame = selected_start + input_consumed;
+        const auto consume_source_frame = [&](const float* input,
+                                              std::uint64_t source_frame) -> bool {
             const SourceEditFrame edit = source_edit_plan_->frame_at(source_frame);
             if (edit.emitted) {
                 if (!ensure_capacity()) {
                     return false;
                 }
                 for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-                    const float filtered = low_cut_filter_->process_sample(
-                        planes[channel][input_offset + input_consumed],
-                        channel
-                    );
+                    const float filtered = low_cut_filter_->process_sample(input[channel], channel);
                     scratch[buffered * channel_count_ + channel] =
                         filtered * adjustment_->gain_amplitude() * edit.amplitude;
                 }
@@ -994,7 +1003,69 @@ class PlaybackSession::Impl {
                 buffered += gap;
                 pending_gap_frames_ -= gap;
             }
-            ++input_consumed;
+            return true;
+        };
+        if (spectral_repair_stream_ != nullptr) {
+            spectral_input_.resize(selected_count * channel_count_);
+            for (std::size_t frame = 0; frame < selected_count; ++frame) {
+                for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                    spectral_input_[frame * channel_count_ + channel] =
+                        planes[channel][input_offset + frame];
+                }
+            }
+            spectral_repair_stream_
+                ->push_interleaved(spectral_input_.data(), selected_count, selected_start);
+            while (true) {
+                const std::size_t repaired = spectral_repair_stream_->drain_interleaved(
+                    spectral_scratch_.data(),
+                    spectral_source_frames_.data(),
+                    spectral_source_frames_.size()
+                );
+                if (repaired == 0) {
+                    break;
+                }
+                for (std::size_t frame = 0; frame < repaired; ++frame) {
+                    if (!consume_source_frame(
+                            spectral_scratch_.data() + frame * channel_count_,
+                            spectral_source_frames_[frame]
+                        )) {
+                        return false;
+                    }
+                }
+            }
+        } else {
+            while (input_consumed < selected_count) {
+                const std::uint64_t source_frame = selected_start + input_consumed;
+                std::array<float, 2> input{};
+                for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                    input[channel] = planes[channel][input_offset + input_consumed];
+                }
+                if (!consume_source_frame(input.data(), source_frame)) {
+                    return false;
+                }
+                ++input_consumed;
+            }
+        }
+        if (frame_end >= source_edit_plan_->end_frame() && spectral_repair_stream_ != nullptr) {
+            spectral_repair_stream_->finish();
+            while (true) {
+                const std::size_t repaired = spectral_repair_stream_->drain_interleaved(
+                    spectral_scratch_.data(),
+                    spectral_source_frames_.data(),
+                    spectral_source_frames_.size()
+                );
+                if (repaired == 0) {
+                    break;
+                }
+                for (std::size_t frame = 0; frame < repaired; ++frame) {
+                    if (!consume_source_frame(
+                            spectral_scratch_.data() + frame * channel_count_,
+                            spectral_source_frames_[frame]
+                        )) {
+                        return false;
+                    }
+                }
+            }
         }
         if (!flush()) {
             return false;
@@ -1216,6 +1287,10 @@ class PlaybackSession::Impl {
     std::unique_ptr<SourceEditPlan> source_edit_plan_;
     std::unique_ptr<EffectMaskPlan> effect_mask_plan_;
     std::unique_ptr<LowCutFilter> low_cut_filter_;
+    std::unique_ptr<SpectralRepairStream> spectral_repair_stream_;
+    std::vector<float> spectral_input_;
+    std::vector<float> spectral_scratch_;
+    std::vector<std::uint64_t> spectral_source_frames_;
     std::unique_ptr<EffectProcessingChain> effect_chain_;
     std::unique_ptr<OutputLimiter> output_limiter_;
     std::unique_ptr<OutputGuard> output_guard_;

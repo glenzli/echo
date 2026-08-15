@@ -452,6 +452,10 @@ fn adjustment(duration_millis: u64) -> AssetAdjustmentWire {
         convolution_wet_gain_centibels: 0,
         creative_vfx_json: serde_json::to_string(&echo_domain::CreativeVfxSettings::default())
             .expect("default creative VFX encodes"),
+        spectral_repair_json: serde_json::to_string(
+            &echo_domain::SpectralRepairSettings::identity(),
+        )
+        .expect("default spectral repair encodes"),
         limiter_enabled: false,
         limiter_ceiling_centibels: -100,
         limiter_release_millis: 100,

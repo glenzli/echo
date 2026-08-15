@@ -23,6 +23,7 @@ mod search;
 mod semantic_search;
 mod sound_event_workflow;
 mod sound_events;
+mod spectrogram_artifact;
 mod util;
 mod waveform_artifact;
 mod worker;
@@ -61,6 +62,10 @@ pub use scanner::{
 pub use search::search as semantic_search;
 pub use sound_events::{
     AUDIO_EVENTS_SCHEMA_VERSION, AudioEventChunk, AudioEventsEvidence, record_audio_events,
+};
+pub use spectrogram_artifact::{
+    SpectrogramArtifact, SpectrogramArtifactPayload, build_and_cache_spectrogram,
+    load_or_build_spectrogram,
 };
 pub use waveform_artifact::{
     WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,

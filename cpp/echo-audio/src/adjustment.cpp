@@ -380,6 +380,11 @@ PreparedAdjustment::PreparedAdjustment(
     if (!valid_creative_vfx(authored.creative_vfx)) {
         throw std::invalid_argument("adjustment creative VFX is outside the supported range");
     }
+    SpectralRepairProcessor::validate_regions(
+        authored.spectral_repair,
+        source_duration_millis,
+        sample_rate
+    );
 
     if (authored.creative_vfx.freeze.enabled) {
         const std::uint64_t capture_frame =
