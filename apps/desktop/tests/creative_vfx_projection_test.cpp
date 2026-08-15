@@ -106,6 +106,19 @@ int main() {
         .maximum_frequency_hertz = 3400,
         .resonance_tenths = 22,
     };
+    authored.stereo = {
+        .enabled = true,
+        .mix_percent = 84,
+        .width_percent = 146,
+        .pan_percent = -18,
+    };
+    authored.beat_repeat = {
+        .enabled = true,
+        .mix_percent = 72,
+        .slice_millis = 180,
+        .repeat_count = 4,
+        .reverse = true,
+    };
 
     const QVariantMap qml = CreativeVfxProjection::toQml(authored);
     const auto from_qml = CreativeVfxProjection::fromQml(qml);
@@ -128,6 +141,8 @@ int main() {
     assert(from_qml->pitch.harmony_enabled);
     assert(from_qml->pitch.formant_colour_semitones == 2);
     assert(from_qml->auto_wah.maximum_frequency_hertz == 3400);
+    assert(from_qml->stereo.width_percent == 146);
+    assert(from_qml->beat_repeat.reverse);
 
     const QByteArray encoded = CreativeVfxProjection::toJson(authored);
     const QJsonObject json = QJsonDocument::fromJson(encoded).object();
@@ -169,6 +184,8 @@ int main() {
             .value(QStringLiteral("maximum_frequency_hertz"))
         == 3400
     );
+    assert(json.value(QStringLiteral("stereo")).toObject().value(QStringLiteral("pan_percent")) == -18);
+    assert(json.value(QStringLiteral("beat_repeat")).toObject().value(QStringLiteral("reverse")).toBool());
     const auto from_json = CreativeVfxProjection::fromJson(encoded);
     assert(from_json.has_value());
     assert(CreativeVfxProjection::toJson(*from_json) == encoded);
@@ -202,6 +219,8 @@ int main() {
     assert(!defaults->tape.enabled);
     assert(!defaults->pitch.enabled);
     assert(!defaults->auto_wah.enabled);
+    assert(!defaults->stereo.enabled);
+    assert(!defaults->beat_repeat.enabled);
 
     invalid = qml;
     QVariantMap delay = invalid.value(QStringLiteral("delay")).toMap();

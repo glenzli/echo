@@ -42,12 +42,14 @@ pub enum ProcessingComponent {
     TapeVfx = 18,
     PitchVfx = 19,
     AutoWahVfx = 20,
+    StereoVfx = 21,
+    BeatRepeatVfx = 22,
 }
 
 /// Echo's complete reusable processing surface.
 ///
 /// Clip-local trim, fades, and gain are intentionally absent.
-pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 21] = [
+pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 23] = [
     ProcessingComponent::LowCut,
     ProcessingComponent::Restoration,
     ProcessingComponent::DeHum,
@@ -68,6 +70,8 @@ pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 21] = [
     ProcessingComponent::TapeVfx,
     ProcessingComponent::PitchVfx,
     ProcessingComponent::AutoWahVfx,
+    ProcessingComponent::StereoVfx,
+    ProcessingComponent::BeatRepeatVfx,
     ProcessingComponent::Master,
 ];
 
@@ -105,6 +109,8 @@ impl ProcessingComponent {
             18 => Ok(Self::TapeVfx),
             19 => Ok(Self::PitchVfx),
             20 => Ok(Self::AutoWahVfx),
+            21 => Ok(Self::StereoVfx),
+            22 => Ok(Self::BeatRepeatVfx),
             _ => Err(ProcessingComponentValueError),
         }
     }
@@ -132,6 +138,8 @@ impl ProcessingComponent {
             Self::TapeVfx => Some(EffectNodeKind::TapeVfx),
             Self::PitchVfx => Some(EffectNodeKind::PitchVfx),
             Self::AutoWahVfx => Some(EffectNodeKind::AutoWahVfx),
+            Self::StereoVfx => Some(EffectNodeKind::StereoVfx),
+            Self::BeatRepeatVfx => Some(EffectNodeKind::BeatRepeatVfx),
         }
     }
 }
@@ -350,6 +358,12 @@ impl AdjustmentPatch {
         if self.contains(ProcessingComponent::AutoWahVfx) {
             effects.creative_vfx.auto_wah = self.creative_vfx.auto_wah;
         }
+        if self.contains(ProcessingComponent::StereoVfx) {
+            effects.creative_vfx.stereo = self.creative_vfx.stereo;
+        }
+        if self.contains(ProcessingComponent::BeatRepeatVfx) {
+            effects.creative_vfx.beat_repeat = self.creative_vfx.beat_repeat;
+        }
         if self.contains(ProcessingComponent::Master) {
             effects.limiter = self.limiter;
         }
@@ -380,7 +394,7 @@ impl AdjustmentPatch {
         if self.components.is_empty() {
             return Err(ProcessingRecipeError::EmptyComponents);
         }
-        let mut seen = [false; 21];
+        let mut seen = [false; 23];
         for component in &self.components {
             let index = usize::from(component.wire_value());
             if seen[index] {

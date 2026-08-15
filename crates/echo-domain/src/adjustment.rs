@@ -88,7 +88,7 @@ pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
 pub const MIN_CHANNEL_BALANCE_PERCENT: i8 = -100;
 pub const MAX_CHANNEL_BALANCE_PERCENT: i8 = 100;
 /// Echo's authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 20;
+pub const EFFECT_NODE_COUNT: usize = 22;
 const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
@@ -120,6 +120,8 @@ pub enum EffectNodeKind {
     TapeVfx = 17,
     PitchVfx = 18,
     AutoWahVfx = 19,
+    StereoVfx = 20,
+    BeatRepeatVfx = 21,
 }
 
 impl EffectNodeKind {
@@ -155,6 +157,8 @@ impl EffectNodeKind {
             17 => Ok(Self::TapeVfx),
             18 => Ok(Self::PitchVfx),
             19 => Ok(Self::AutoWahVfx),
+            20 => Ok(Self::StereoVfx),
+            21 => Ok(Self::BeatRepeatVfx),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -197,7 +201,7 @@ impl<'de> Deserialize<'de> for EffectChain {
         let legacy_node_count = stored.nodes.len();
         if !matches!(
             legacy_node_count,
-            5 | 7 | 8 | 12 | 13 | 15 | 17 | EFFECT_NODE_COUNT
+            5 | 7 | 8 | 12 | 13 | 15 | 17 | 20 | EFFECT_NODE_COUNT
         ) {
             return Err(D::Error::custom(
                 "effect chain has an unsupported stable node count",
@@ -248,6 +252,8 @@ impl EffectChain {
                 EffectNodeKind::TapeVfx,
                 EffectNodeKind::PitchVfx,
                 EffectNodeKind::AutoWahVfx,
+                EffectNodeKind::StereoVfx,
+                EffectNodeKind::BeatRepeatVfx,
             ],
             active_count: STANDARD_EFFECT_NODE_COUNT,
         }
@@ -1471,6 +1477,7 @@ fn validated_asset_regions(
                                 | EffectNodeKind::FreezeVfx
                                 | EffectNodeKind::GranularVfx
                                 | EffectNodeKind::PitchVfx
+                                | EffectNodeKind::BeatRepeatVfx
                         )
                 })
         })

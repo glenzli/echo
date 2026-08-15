@@ -191,6 +191,8 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
     const TapeVfxParameters& tape = creative.tape;
     const PitchVfxParameters& pitch = creative.pitch;
     const AutoWahVfxParameters& auto_wah = creative.auto_wah;
+    const StereoVfxParameters& stereo = creative.stereo;
+    const BeatRepeatVfxParameters& beat_repeat = creative.beat_repeat;
     const double granular_pitch_ratio =
         std::exp2(static_cast<double>(granular.pitch_cents) / 1200.0);
     const double granular_required_history_millis =
@@ -222,7 +224,11 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
            && pitch.formant_colour_semitones <= 12 && auto_wah.mix_percent <= 100
            && auto_wah.sensitivity_percent <= 100 && auto_wah.minimum_frequency_hertz >= 80
            && auto_wah.maximum_frequency_hertz > auto_wah.minimum_frequency_hertz
-           && auto_wah.resonance_tenths >= 5 && auto_wah.resonance_tenths <= 50;
+           && auto_wah.resonance_tenths >= 5 && auto_wah.resonance_tenths <= 50
+           && stereo.mix_percent <= 100 && stereo.width_percent <= 200 && stereo.pan_percent >= -100
+           && stereo.pan_percent <= 100 && beat_repeat.mix_percent <= 100
+           && beat_repeat.slice_millis >= 30 && beat_repeat.slice_millis <= 500
+           && beat_repeat.repeat_count >= 1 && beat_repeat.repeat_count <= 4;
 }
 
 float evaluate_curve(float progress, FadeCurve curve) {

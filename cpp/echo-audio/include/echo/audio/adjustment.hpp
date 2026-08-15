@@ -22,7 +22,7 @@ enum class FadeCurve : std::uint8_t {
 };
 
 inline constexpr std::size_t kParametricEqualizerBandCount = 6;
-inline constexpr std::size_t kEffectNodeCount = 20;
+inline constexpr std::size_t kEffectNodeCount = 22;
 
 enum class EffectNodeKind : std::uint8_t {
     Restoration = 0,
@@ -45,6 +45,8 @@ enum class EffectNodeKind : std::uint8_t {
     TapeVfx = 17,
     PitchVfx = 18,
     AutoWahVfx = 19,
+    StereoVfx = 20,
+    BeatRepeatVfx = 21,
 };
 
 enum class EditSegmentState : std::uint8_t {
@@ -280,6 +282,8 @@ struct PlaybackAdjustment {
         EffectNodeKind::TapeVfx,
         EffectNodeKind::PitchVfx,
         EffectNodeKind::AutoWahVfx,
+        EffectNodeKind::StereoVfx,
+        EffectNodeKind::BeatRepeatVfx,
     }};
     std::uint8_t effect_chain_count = 5;
     std::vector<EditSegment> edit_segments;

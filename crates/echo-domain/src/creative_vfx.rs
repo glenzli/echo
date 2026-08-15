@@ -594,6 +594,50 @@ pub struct AutoWahVfxSettings {
     pub resonance_tenths: u8,
 }
 
+/// Mid/side width and linked stereo pan. This owner intentionally performs no
+/// artificial ambience or mono-to-stereo synthesis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StereoVfxSettings {
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub width_percent: u8,
+    pub pan_percent: i8,
+}
+
+impl Default for StereoVfxSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            mix_percent: 100,
+            width_percent: 100,
+            pan_percent: 0,
+        }
+    }
+}
+
+/// A bounded source-buffer repeat effect. `reverse` reads a captured slice in
+/// reverse order; it never synthesizes content beyond received source frames.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BeatRepeatVfxSettings {
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub slice_millis: u16,
+    pub repeat_count: u8,
+    pub reverse: bool,
+}
+
+impl Default for BeatRepeatVfxSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            mix_percent: 100,
+            slice_millis: 125,
+            repeat_count: 2,
+            reverse: false,
+        }
+    }
+}
+
 impl Default for AutoWahVfxSettings {
     fn default() -> Self {
         Self {
@@ -646,6 +690,10 @@ pub struct CreativeVfxSettings {
     pub pitch: PitchVfxSettings,
     #[serde(default)]
     pub auto_wah: AutoWahVfxSettings,
+    #[serde(default)]
+    pub stereo: StereoVfxSettings,
+    #[serde(default)]
+    pub beat_repeat: BeatRepeatVfxSettings,
 }
 
 impl CreativeVfxSettings {
@@ -767,6 +815,19 @@ impl CreativeVfxSettings {
                 minimum_frequency_hertz: 280,
                 maximum_frequency_hertz: 2_800,
                 resonance_tenths: 18,
+            },
+            stereo: StereoVfxSettings {
+                enabled: false,
+                mix_percent: 100,
+                width_percent: 100,
+                pan_percent: 0,
+            },
+            beat_repeat: BeatRepeatVfxSettings {
+                enabled: false,
+                mix_percent: 100,
+                slice_millis: 125,
+                repeat_count: 2,
+                reverse: false,
             },
         }
     }
@@ -895,6 +956,18 @@ impl CreativeVfxSettings {
         {
             return Err(CreativeVfxSettingsError::AutoWah);
         }
+        if self.stereo.mix_percent > 100
+            || self.stereo.width_percent > 200
+            || !(-100..=100).contains(&self.stereo.pan_percent)
+        {
+            return Err(CreativeVfxSettingsError::Stereo);
+        }
+        if self.beat_repeat.mix_percent > 100
+            || !(30..=500).contains(&self.beat_repeat.slice_millis)
+            || !(1..=4).contains(&self.beat_repeat.repeat_count)
+        {
+            return Err(CreativeVfxSettingsError::BeatRepeat);
+        }
         Ok(())
     }
 }
@@ -913,6 +986,8 @@ pub enum CreativeVfxSettingsError {
     Tape,
     Pitch,
     AutoWah,
+    Stereo,
+    BeatRepeat,
 }
 
 impl std::fmt::Display for CreativeVfxSettingsError {
@@ -930,6 +1005,8 @@ impl std::fmt::Display for CreativeVfxSettingsError {
             Self::Tape => "tape",
             Self::Pitch => "pitch",
             Self::AutoWah => "auto-wah",
+            Self::Stereo => "stereo",
+            Self::BeatRepeat => "beat repeat",
         };
         write!(
             formatter,

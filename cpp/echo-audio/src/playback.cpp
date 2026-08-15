@@ -572,6 +572,16 @@ class PlaybackSession::Impl {
             kCanonicalSampleRate,
             channel_count_
         );
+        EffectProcessingChain::validate_stereo_vfx(
+            adjustment.stereo,
+            kCanonicalSampleRate,
+            channel_count_
+        );
+        EffectProcessingChain::validate_beat_repeat_vfx(
+            adjustment.beat_repeat,
+            kCanonicalSampleRate,
+            channel_count_
+        );
         if (adjustment.freeze.capture_source_millis != freeze_capture_source_millis_) {
             throw std::invalid_argument(
                 "freeze capture anchor changes require a new playback session"
@@ -816,6 +826,8 @@ class PlaybackSession::Impl {
             effect_chain_->update_tape_vfx(pending_creative_vfx_.tape);
             effect_chain_->update_pitch_vfx(pending_creative_vfx_.pitch);
             effect_chain_->update_auto_wah_vfx(pending_creative_vfx_.auto_wah);
+            effect_chain_->update_stereo_vfx(pending_creative_vfx_.stereo);
+            effect_chain_->update_beat_repeat_vfx(pending_creative_vfx_.beat_repeat);
             creative_vfx_update_pending_ = false;
         }
     }

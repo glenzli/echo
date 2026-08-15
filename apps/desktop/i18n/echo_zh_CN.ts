@@ -201,6 +201,10 @@
         <source>Bitcrusher · Sample-rate reduction · Lo-Fi</source>
         <translation>位深破碎 · 降采样率 · 低保真</translation>
     </message>
+    <message><source>Stereo</source><translation>立体声</translation></message>
+    <message><source>Beat Repeat</source><translation>节拍重复</translation></message>
+    <message><source>Mid/side width · Equal-power pan</source><translation>中侧宽度 · 等功率声像</translation></message>
+    <message><source>Captured slices · Repeat · Reverse</source><translation>捕获片段 · 重复 · 倒放</translation></message>
 </context>
 <context>
     <name>AudioLibrarySidebar</name>
@@ -1185,6 +1189,12 @@
         <source>Degrade</source>
         <translation>降质</translation>
     </message>
+    <message><source>Stereo</source><translation>立体声</translation></message>
+    <message><source>Beat Repeat</source><translation>节拍重复</translation></message>
+    <message><source>Saved</source><translation>已保存</translation></message>
+    <message><source>Preset name</source><translation>预设名称</translation></message>
+    <message><source>Save</source><translation>保存</translation></message>
+    <message><source>Delete saved preset</source><translation>删除已保存的预设</translation></message>
 </context>
 <context>
     <name>DeClickPanel</name>
@@ -4826,5 +4836,23 @@
     <message><source>Low frequency</source><translation>低频</translation></message>
     <message><source>High frequency</source><translation>高频</translation></message>
     <message><source>Resonance</source><translation>共振</translation></message>
+</context>
+<context>
+    <name>StereoVfxPanel</name>
+    <message><source>Stereo</source><translation>立体声</translation></message>
+    <message><source>Width and pan</source><translation>宽度与声像</translation></message>
+    <message><source>Mix</source><translation>混合</translation></message>
+    <message><source>Width</source><translation>宽度</translation></message>
+    <message><source>Pan</source><translation>声像</translation></message>
+    <message><source>Center</source><translation>居中</translation></message>
+</context>
+<context>
+    <name>BeatRepeatVfxPanel</name>
+    <message><source>Beat Repeat</source><translation>节拍重复</translation></message>
+    <message><source>Repeat or reverse captured source slices</source><translation>重复或倒放捕获的源片段</translation></message>
+    <message><source>Mix</source><translation>混合</translation></message>
+    <message><source>Slice</source><translation>片段</translation></message>
+    <message><source>Repeats</source><translation>重复次数</translation></message>
+    <message><source>Reverse slice</source><translation>倒放片段</translation></message>
 </context>
 </TS>

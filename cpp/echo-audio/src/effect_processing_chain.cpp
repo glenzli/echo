@@ -3,6 +3,7 @@
 #include "echo/audio/adaptive_noise_reducer.hpp"
 #include "echo/audio/algorithmic_reverb.hpp"
 #include "echo/audio/auto_wah_vfx_processor.hpp"
+#include "echo/audio/beat_repeat_vfx_processor.hpp"
 #include "echo/audio/channel_repair_processor.hpp"
 #include "echo/audio/de_click_processor.hpp"
 #include "echo/audio/de_esser.hpp"
@@ -20,6 +21,7 @@
 #include "echo/audio/rotary_vfx_processor.hpp"
 #include "echo/audio/scene_vfx_processor.hpp"
 #include "echo/audio/space_processor.hpp"
+#include "echo/audio/stereo_vfx_processor.hpp"
 #include "echo/audio/tape_vfx_processor.hpp"
 #include "echo/audio/transform_vfx_processor.hpp"
 
@@ -87,6 +89,8 @@ class EffectProcessingChain::Impl {
         tape_vfx_(adjustment.creative_vfx().tape, sample_rate, channel_count),
         pitch_vfx_(adjustment.creative_vfx().pitch, sample_rate, channel_count),
         auto_wah_vfx_(adjustment.creative_vfx().auto_wah, sample_rate, channel_count),
+        stereo_vfx_(adjustment.creative_vfx().stereo, sample_rate, channel_count),
+        beat_repeat_vfx_(adjustment.creative_vfx().beat_repeat, sample_rate, channel_count),
         freeze_adjustment_(adjustment.creative_vfx().freeze),
         freeze_capture_source_frame_(
             adjustment.creative_vfx().freeze.capture_source_millis * sample_rate / 1000U
@@ -207,6 +211,8 @@ class EffectProcessingChain::Impl {
         tape_vfx_.reset();
         pitch_vfx_.reset();
         auto_wah_vfx_.reset();
+        stereo_vfx_.reset();
+        beat_repeat_vfx_.reset();
         freeze_capture_handled_ = false;
         reset_compensation();
     }
@@ -315,6 +321,12 @@ class EffectProcessingChain::Impl {
     void update_auto_wah_vfx(AutoWahVfxParameters parameters) {
         auto_wah_vfx_.update(parameters);
     }
+    void update_stereo_vfx(StereoVfxParameters parameters) {
+        stereo_vfx_.update(parameters);
+    }
+    void update_beat_repeat_vfx(BeatRepeatVfxParameters parameters) {
+        beat_repeat_vfx_.update(parameters);
+    }
 
     [[nodiscard]] std::size_t latency_frames() const {
         return latency_frames_;
@@ -341,6 +353,8 @@ class EffectProcessingChain::Impl {
             return freeze_vfx_.latency_frames();
         case EffectNodeKind::PitchVfx:
             return pitch_vfx_.latency_frames();
+        case EffectNodeKind::BeatRepeatVfx:
+            return beat_repeat_vfx_.latency_frames();
         case EffectNodeKind::Restoration:
         case EffectNodeKind::Equalizer:
         case EffectNodeKind::Dynamics:
@@ -356,6 +370,7 @@ class EffectProcessingChain::Impl {
         case EffectNodeKind::GranularVfx:
         case EffectNodeKind::TapeVfx:
         case EffectNodeKind::AutoWahVfx:
+        case EffectNodeKind::StereoVfx:
             return 0;
         }
         return 0;
@@ -453,6 +468,13 @@ class EffectProcessingChain::Impl {
                 break;
             case EffectNodeKind::AutoWahVfx:
                 auto_wah_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::StereoVfx:
+                stereo_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::BeatRepeatVfx:
+                beat_repeat_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                delay_source_anchors(node, source_frames, frame_count);
                 break;
             case EffectNodeKind::Master:
                 break;
@@ -599,6 +621,8 @@ class EffectProcessingChain::Impl {
     TapeVfxProcessor tape_vfx_;
     PitchVfxProcessor pitch_vfx_;
     AutoWahVfxProcessor auto_wah_vfx_;
+    StereoVfxProcessor stereo_vfx_;
+    BeatRepeatVfxProcessor beat_repeat_vfx_;
     FreezeVfxAdjustment freeze_adjustment_;
     std::uint64_t freeze_capture_source_frame_ = 0;
     bool freeze_capture_configured_ = false;
@@ -739,6 +763,12 @@ void EffectProcessingChain::update_pitch_vfx(PitchVfxParameters parameters) {
 }
 void EffectProcessingChain::update_auto_wah_vfx(AutoWahVfxParameters parameters) {
     impl_->update_auto_wah_vfx(parameters);
+}
+void EffectProcessingChain::update_stereo_vfx(StereoVfxParameters parameters) {
+    impl_->update_stereo_vfx(parameters);
+}
+void EffectProcessingChain::update_beat_repeat_vfx(BeatRepeatVfxParameters parameters) {
+    impl_->update_beat_repeat_vfx(parameters);
 }
 
 void EffectProcessingChain::validate_restoration(
@@ -938,6 +968,22 @@ void EffectProcessingChain::validate_auto_wah_vfx(
     std::size_t channel_count
 ) {
     [[maybe_unused]] const AutoWahVfxProcessor processor(parameters, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_stereo_vfx(
+    StereoVfxParameters parameters,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const StereoVfxProcessor processor(parameters, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_beat_repeat_vfx(
+    BeatRepeatVfxParameters parameters,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const BeatRepeatVfxProcessor processor(parameters, sample_rate, channel_count);
 }
 
 std::size_t EffectProcessingChain::latency_frames() const {

@@ -95,6 +95,13 @@ fn source_creative_vfx() -> CreativeVfxSettings {
     creative_vfx.granular.enabled = true;
     creative_vfx.granular.random_seed = 0x1234_5678;
     creative_vfx.granular.pitch_cents = -240;
+    creative_vfx.stereo.enabled = true;
+    creative_vfx.stereo.width_percent = 146;
+    creative_vfx.stereo.pan_percent = -18;
+    creative_vfx.beat_repeat.enabled = true;
+    creative_vfx.beat_repeat.slice_millis = 180;
+    creative_vfx.beat_repeat.repeat_count = 4;
+    creative_vfx.beat_repeat.reverse = true;
     creative_vfx
 }
 
@@ -221,7 +228,7 @@ fn graph_with_processing(
 
 #[test]
 fn default_components_are_complete_and_clip_local_controls_are_absent() {
-    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 21);
+    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 23);
     for component in DEFAULT_PROCESSING_COMPONENTS.iter().copied() {
         assert_eq!(
             ProcessingComponent::from_wire_value(component.wire_value()),
@@ -229,7 +236,7 @@ fn default_components_are_complete_and_clip_local_controls_are_absent() {
         );
     }
     assert_eq!(
-        ProcessingComponent::from_wire_value(21),
+        ProcessingComponent::from_wire_value(23),
         Err(ProcessingComponentValueError)
     );
 }

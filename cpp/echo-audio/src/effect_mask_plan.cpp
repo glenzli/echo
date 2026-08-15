@@ -50,7 +50,8 @@ EffectMaskPlan::EffectMaskPlan(
                 || node == EffectNodeKind::Master || node == EffectNodeKind::DeClick
                 || node == EffectNodeKind::TransformVfx || node == EffectNodeKind::DriveVfx
                 || node == EffectNodeKind::RotaryVfx || node == EffectNodeKind::PitchVfx
-                || node == EffectNodeKind::FreezeVfx || node == EffectNodeKind::GranularVfx) {
+                || node == EffectNodeKind::BeatRepeatVfx || node == EffectNodeKind::FreezeVfx
+                || node == EffectNodeKind::GranularVfx) {
                 throw std::invalid_argument(
                     "effect mask nodes must be unique active maskable inserts"
                 );

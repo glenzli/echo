@@ -458,6 +458,7 @@ impl EffectMask {
                     | EffectNodeKind::FreezeVfx
                     | EffectNodeKind::GranularVfx
                     | EffectNodeKind::PitchVfx
+                    | EffectNodeKind::BeatRepeatVfx
             ) {
                 return Err(EffectMaskError::UnsupportedEffectNode);
             }

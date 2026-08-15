@@ -43,6 +43,8 @@ echo::audio::PlaybackAdjustment master_only() {
         echo::audio::EffectNodeKind::TapeVfx,
         echo::audio::EffectNodeKind::PitchVfx,
         echo::audio::EffectNodeKind::AutoWahVfx,
+        echo::audio::EffectNodeKind::StereoVfx,
+        echo::audio::EffectNodeKind::BeatRepeatVfx,
     };
     adjustment.effect_chain_count = 1;
     return adjustment;
@@ -223,6 +225,14 @@ echo::audio::PlaybackAdjustment creative_only(echo::audio::EffectNodeKind node) 
         break;
     case echo::audio::EffectNodeKind::AutoWahVfx:
         adjustment.creative_vfx.auto_wah.enabled = true;
+        break;
+    case echo::audio::EffectNodeKind::StereoVfx:
+        adjustment.creative_vfx.stereo.enabled = true;
+        adjustment.creative_vfx.stereo.width_percent = 150;
+        break;
+    case echo::audio::EffectNodeKind::BeatRepeatVfx:
+        adjustment.creative_vfx.beat_repeat.enabled = true;
+        adjustment.creative_vfx.beat_repeat.reverse = true;
         break;
     case echo::audio::EffectNodeKind::Restoration:
     case echo::audio::EffectNodeKind::Equalizer:
@@ -572,6 +582,8 @@ int main() {
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
             echo::audio::EffectNodeKind::DriveVfx,
             echo::audio::EffectNodeKind::RotaryVfx,
+            echo::audio::EffectNodeKind::StereoVfx,
+            echo::audio::EffectNodeKind::BeatRepeatVfx,
             echo::audio::EffectNodeKind::TapeVfx,
             echo::audio::EffectNodeKind::PitchVfx,
             echo::audio::EffectNodeKind::AutoWahVfx,
@@ -631,7 +643,10 @@ int main() {
                         ? 2'400
                         : (node == echo::audio::EffectNodeKind::DriveVfx
                                ? 32
-                               : (node == echo::audio::EffectNodeKind::PitchVfx ? 576 : 0)))
+                               : (node == echo::audio::EffectNodeKind::PitchVfx
+                                      ? 576
+                                      : (node == echo::audio::EffectNodeKind::BeatRepeatVfx ? 96'000
+                                                                                            : 0))))
             );
             const auto output = process_in_chunks(chain, input, 137);
             assert(output.size() == input.size());

@@ -6,6 +6,7 @@ add_library(
     echo-audio STATIC
     src/adaptive_noise_reducer.cpp
     src/auto_wah_vfx_processor.cpp
+    src/beat_repeat_vfx_processor.cpp
     src/analysis_proxy.cpp
     src/algorithmic_reverb.cpp
     src/adjustment.cpp
@@ -48,6 +49,7 @@ add_library(
     src/scene_vfx_processor.cpp
     src/source_edit_plan.cpp
     src/spring_space_reverb.cpp
+    src/stereo_vfx_processor.cpp
     src/space_processor.cpp
     src/transform_vfx_processor.cpp
     src/tremolo_vfx.cpp
@@ -88,6 +90,16 @@ if(BUILD_TESTING)
     target_link_libraries(echo-auto-wah-vfx-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-auto-wah-vfx-processor-test)
     add_test(NAME echo-auto-wah-vfx-processor-test COMMAND echo-auto-wah-vfx-processor-test)
+
+    add_executable(echo-beat-repeat-vfx-processor-test tests/beat_repeat_vfx_processor_test.cpp)
+    target_link_libraries(echo-beat-repeat-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-beat-repeat-vfx-processor-test)
+    add_test(NAME echo-beat-repeat-vfx-processor-test COMMAND echo-beat-repeat-vfx-processor-test)
+
+    add_executable(echo-stereo-vfx-processor-test tests/stereo_vfx_processor_test.cpp)
+    target_link_libraries(echo-stereo-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-stereo-vfx-processor-test)
+    add_test(NAME echo-stereo-vfx-processor-test COMMAND echo-stereo-vfx-processor-test)
 
     add_executable(echo-pitch-vfx-processor-test tests/pitch_vfx_processor_test.cpp)
     target_link_libraries(echo-pitch-vfx-processor-test PRIVATE Echo::Audio)

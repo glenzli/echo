@@ -1,7 +1,9 @@
 #pragma once
 
 #include "echo/audio/auto_wah_vfx_processor.hpp"
+#include "echo/audio/beat_repeat_vfx_processor.hpp"
 #include "echo/audio/pitch_vfx_processor.hpp"
+#include "echo/audio/stereo_vfx_processor.hpp"
 #include "echo/audio/tape_vfx_processor.hpp"
 
 #include <cstdint>
@@ -214,6 +216,8 @@ struct CreativeVfxAdjustment {
     TapeVfxParameters tape;
     PitchVfxParameters pitch;
     AutoWahVfxParameters auto_wah;
+    StereoVfxParameters stereo;
+    BeatRepeatVfxParameters beat_repeat;
 };
 
 } // namespace echo::audio

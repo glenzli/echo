@@ -17,10 +17,15 @@ Item {
 
     readonly property var presetTitles: [qsTr("Voice memo"), qsTr("Night drive"), qsTr("Dream voice")]
 
+    function saveNamedPreset(): void {
+        if (creativeVfxPresets.savePreset(namedPresetField.text, panel.draft.creativeVfxValue(), panel.draft.copyEffectChain(panel.draft.effectChain)))
+            namedPresetField.clear();
+    }
+
     readonly property var availableFamilies: {
         const choices = [];
-        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade"), qsTr("Drive"), qsTr("Rotary"), qsTr("Freeze"), qsTr("Granular"), qsTr("Tape"), qsTr("Pitch"), qsTr("Auto-Wah")];
-        for (let kind = 8; kind <= 19; ++kind) {
+        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade"), qsTr("Drive"), qsTr("Rotary"), qsTr("Freeze"), qsTr("Granular"), qsTr("Tape"), qsTr("Pitch"), qsTr("Auto-Wah"), qsTr("Stereo"), qsTr("Beat Repeat")];
+        for (let kind = 8; kind <= 21; ++kind) {
             if (draft.effectChain.indexOf(kind) >= 0) {
                 choices.push({
                     kind: kind,
@@ -33,7 +38,7 @@ Item {
     }
 
     implicitWidth: 760
-    implicitHeight: 342
+    implicitHeight: 386
 
     ColumnLayout {
         anchors.fill: parent
@@ -163,6 +168,45 @@ Item {
             Text { text: qsTr("Applies an undoable effect recipe"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 28
+            spacing: 6
+
+            Text { text: qsTr("Saved"); color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; font.weight: Font.DemiBold }
+            TextField {
+                id: namedPresetField
+                Layout.preferredWidth: 150
+                placeholderText: qsTr("Preset name")
+                maximumLength: 48
+                selectByMouse: true
+                onAccepted: panel.saveNamedPreset()
+            }
+            Button {
+                id: savePresetButton
+                text: qsTr("Save")
+                enabled: namedPresetField.text.trim().length > 0
+                onClicked: panel.saveNamedPreset()
+            }
+            Repeater {
+                model: creativeVfxPresets.presets
+                delegate: RowLayout {
+                    required property var modelData
+                    spacing: 1
+                    Button {
+                        text: String(parent.modelData.name)
+                        onClicked: panel.draft.applyNamedCreativePreset(parent.modelData)
+                    }
+                    Button {
+                        text: "×"
+                        accessibleName: qsTr("Delete saved preset")
+                        onClicked: creativeVfxPresets.removePreset(String(parent.modelData.name))
+                    }
+                }
+            }
+            Item { Layout.fillWidth: true }
+        }
+
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -236,6 +280,18 @@ Item {
             AutoWahVfxPanel {
                 anchors.fill: parent
                 visible: panel.familyKind === 19
+                draft: panel.draft
+            }
+
+            StereoVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 20
+                draft: panel.draft
+            }
+
+            BeatRepeatVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 21
                 draft: panel.draft
             }
         }

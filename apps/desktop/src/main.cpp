@@ -2,6 +2,7 @@
 //! playback controller, and UI preferences, then load the Audio Space shell.
 
 #include "batch_export_controller.hpp"
+#include "creative_vfx_presets.hpp"
 #include "desktop_backend.hpp"
 #include "impulse_response_controller.hpp"
 #include "inference_preferences.hpp"
@@ -76,6 +77,7 @@ int main(int argc, char* argv[]) {
         BatchExportController batch_exporter(backend);
         ImpulseResponseController impulse_response_controller(backend);
         UiPreferences ui_prefs(application);
+        CreativeVfxPresets creative_vfx_presets;
         InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
         SemanticSearchController semantic_search(
             QString::fromStdString(catalog),
@@ -111,6 +113,10 @@ int main(int argc, char* argv[]) {
             &impulse_response_controller
         );
         engine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("creativeVfxPresets"),
+            &creative_vfx_presets
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("inferencePrefs"),
             &inference_prefs

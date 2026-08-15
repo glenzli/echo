@@ -80,6 +80,8 @@ class EffectProcessingChain {
     void update_tape_vfx(TapeVfxParameters parameters);
     void update_pitch_vfx(PitchVfxParameters parameters);
     void update_auto_wah_vfx(AutoWahVfxParameters parameters);
+    void update_stereo_vfx(StereoVfxParameters parameters);
+    void update_beat_repeat_vfx(BeatRepeatVfxParameters parameters);
 
     static void validate_restoration(
         RestorationAdjustment adjustment,
@@ -174,6 +176,16 @@ class EffectProcessingChain {
     );
     static void validate_auto_wah_vfx(
         AutoWahVfxParameters parameters,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_stereo_vfx(
+        StereoVfxParameters parameters,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_beat_repeat_vfx(
+        BeatRepeatVfxParameters parameters,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );

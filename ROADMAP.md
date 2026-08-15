@@ -679,6 +679,14 @@ InferenceBackend
     不作特定人声身份保持或模仿声明；Auto-Wah 是包络跟随共振滤波。三者都拥有类型化 JSON、处理方案、
     Runtime／离线执行、桌面目录、草稿历史和中文面板；旧 revision 缺失字段恢复为 disabled defaults。
     Pitch 因固定延迟不能使用局部 effect mask，Tape 与 Auto-Wah 可遵循普通可遮罩 insert 语义。
+  - 立体声、节拍重复与本地 Creative 快照（2026-08-15）：Creative chain 追加默认关闭的 Stereo
+    与 Beat Repeat 两个独立 singleton。Stereo 是零延迟的 mid/side 宽度和等功率声像处理，不把单声道
+    信号伪装成立体声；Beat Repeat 使用预分配的源历史、30–500 ms 切片、1–4 次重复与可选反向读出，
+    固定报告最多两秒的因果延迟，因此不能使用局部 effect mask。两者的类型化 JSON、处理方案、实时
+    试听、整段分析、离线导出与桌面面板使用同一范围约束，旧 revision 缺失字段恢复为 disabled defaults。
+    Creative 页还可将一个已验证的 Creative 参数快照与 authored effect chain 保存为最多 32 个本地命名
+    预设；它们只保存在应用设置中，应用时仍是当前声音的一次可撤销调整，不创建通用预设系统、不写回
+    Original，也不保存生成式来源。
   - Creative 场景与 Delay Ducking（2026-08-15）：Creative 页提供 Voice memo、Night drive 与
     Dream voice 三个可撤销的参数宏；它们只应用既有确定性 VFX 参数与节点，不保存 `preset_id`，
     不创建生成式声源。Delay VFX 增加默认关闭的输入包络 Ducking，使用被处理源自身的响度按

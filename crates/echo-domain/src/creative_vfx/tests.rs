@@ -18,6 +18,8 @@ fn defaults_are_disabled_and_valid() {
     assert!(!settings.tape.enabled);
     assert!(!settings.pitch.enabled);
     assert!(!settings.auto_wah.enabled);
+    assert!(!settings.stereo.enabled);
+    assert!(!settings.beat_repeat.enabled);
 }
 
 #[test]
@@ -101,6 +103,17 @@ fn family_ranges_are_validated_independently() {
     let mut settings = CreativeVfxSettings::default();
     settings.auto_wah.maximum_frequency_hertz = settings.auto_wah.minimum_frequency_hertz;
     assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::AutoWah));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.stereo.width_percent = 201;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Stereo));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.beat_repeat.slice_millis = 29;
+    assert_eq!(
+        settings.validate(),
+        Err(CreativeVfxSettingsError::BeatRepeat)
+    );
 
     let mut settings = CreativeVfxSettings::default();
     settings.granular.lookback_millis = 1_500;
@@ -202,6 +215,19 @@ fn aggregate_json_preserves_typed_family_settings() {
             minimum_frequency_hertz: 310,
             maximum_frequency_hertz: 3_400,
             resonance_tenths: 22,
+        },
+        stereo: StereoVfxSettings {
+            enabled: true,
+            mix_percent: 84,
+            width_percent: 146,
+            pan_percent: -18,
+        },
+        beat_repeat: BeatRepeatVfxSettings {
+            enabled: true,
+            mix_percent: 72,
+            slice_millis: 180,
+            repeat_count: 4,
+            reverse: true,
         },
     };
     let encoded = serde_json::to_string(&settings).expect("settings encode");

@@ -62,13 +62,14 @@ pub use analysis::{
 };
 pub use audio_asset::AudioAsset;
 pub use creative_vfx::{
-    AutoWahVfxSettings, BitcrusherSettings, ChorusSettings, CreativeVfxSettings,
-    CreativeVfxSettingsError, CreativeVfxValueError, DelayDuckingSettings, DelayVfxCharacter,
-    DelayVfxSettings, DigitalDegradeVfxCharacter, DigitalDegradeVfxSettings, DriveVfxCharacter,
-    DriveVfxSettings, EchoSettings, FlangerSettings, ModulationVfxCharacter, ModulationVfxSettings,
-    PhaserSettings, PitchVfxSettings, RotaryVfxSettings, RotaryVfxSpeed,
+    AutoWahVfxSettings, BeatRepeatVfxSettings, BitcrusherSettings, ChorusSettings,
+    CreativeVfxSettings, CreativeVfxSettingsError, CreativeVfxValueError, DelayDuckingSettings,
+    DelayVfxCharacter, DelayVfxSettings, DigitalDegradeVfxCharacter, DigitalDegradeVfxSettings,
+    DriveVfxCharacter, DriveVfxSettings, EchoSettings, FlangerSettings, ModulationVfxCharacter,
+    ModulationVfxSettings, PhaserSettings, PitchVfxSettings, RotaryVfxSettings, RotaryVfxSpeed,
     SampleRateReductionSettings, SceneVfxCharacter, SceneVfxSettings, SlapbackSettings,
-    TapeVfxSettings, TransformVfxCharacter, TransformVfxSettings, TremoloSettings,
+    StereoVfxSettings, TapeVfxSettings, TransformVfxCharacter, TransformVfxSettings,
+    TremoloSettings,
 };
 pub use freeze_vfx::{FREEZE_CAPTURE_PRE_ROLL_MILLIS, FreezeVfxSettings};
 pub use granular_vfx::GranularVfxSettings;

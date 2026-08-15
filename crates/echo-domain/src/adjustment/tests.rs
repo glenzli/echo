@@ -204,7 +204,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
     let encoded_value: serde_json::Value =
         serde_json::from_str(&encoded).expect("encoded chain is JSON");
-    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(20));
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(22));
     assert_eq!(encoded_value["active_count"], 3);
     let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
     assert_eq!(decoded, reduced);
@@ -228,7 +228,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]
     );
     let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(20));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(22));
     assert_eq!(normalized["active_count"], 3);
 
     assert_eq!(
@@ -262,13 +262,15 @@ fn effect_node_wire_values_append_creative_vfx_without_renumbering() {
         (EffectNodeKind::TapeVfx, 17),
         (EffectNodeKind::PitchVfx, 18),
         (EffectNodeKind::AutoWahVfx, 19),
+        (EffectNodeKind::StereoVfx, 20),
+        (EffectNodeKind::BeatRepeatVfx, 21),
     ] {
         assert_eq!(node.wire_value(), expected);
         assert_eq!(EffectNodeKind::from_wire_value(expected), Ok(node));
     }
-    assert_eq!(EFFECT_NODE_COUNT, 20);
+    assert_eq!(EFFECT_NODE_COUNT, 22);
     assert_eq!(
-        EffectNodeKind::from_wire_value(20),
+        EffectNodeKind::from_wire_value(22),
         Err(EffectNodeKindValueError)
     );
 }
@@ -311,12 +313,14 @@ fn fifteen_node_chain_json_migrates_with_disabled_creative_vfx_tail() {
     assert_eq!(restored.nodes(), EffectChain::standard().nodes());
     let normalized = serde_json::to_value(restored).expect("normalized chain encodes");
     let nodes = normalized["nodes"].as_array().expect("nodes array");
-    assert_eq!(nodes.len(), 20);
+    assert_eq!(nodes.len(), 22);
     assert_eq!(nodes[15], "freeze_vfx");
     assert_eq!(nodes[16], "granular_vfx");
     assert_eq!(nodes[17], "tape_vfx");
     assert_eq!(nodes[18], "pitch_vfx");
     assert_eq!(nodes[19], "auto_wah_vfx");
+    assert_eq!(nodes[20], "stereo_vfx");
+    assert_eq!(nodes[21], "beat_repeat_vfx");
 }
 
 #[test]

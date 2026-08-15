@@ -70,6 +70,10 @@ Item {
             return qsTr("Pitch");
         if (kind === 19)
             return qsTr("Auto-Wah");
+        if (kind === 20)
+            return qsTr("Stereo");
+        if (kind === 21)
+            return qsTr("Beat Repeat");
         return qsTr("Master");
     }
 
@@ -112,6 +116,10 @@ Item {
             return qsTr("Pitch shift · Harmony · Formant colour");
         if (kind === 19)
             return qsTr("Envelope-following resonant filter");
+        if (kind === 20)
+            return qsTr("Mid/side width · Equal-power pan");
+        if (kind === 21)
+            return qsTr("Captured slices · Repeat · Reverse");
         return qsTr("Limiter · Loudness");
     }
 
@@ -136,11 +144,11 @@ Item {
     }
 
     function effectId(kind: int): string {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx", "tapeVfx", "pitchVfx", "autoWahVfx"][kind];
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx", "tapeVfx", "pitchVfx", "autoWahVfx", "stereoVfx", "beatRepeatVfx"][kind];
     }
 
     function effectKind(effectId: string): int {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx", "tapeVfx", "pitchVfx", "autoWahVfx"].indexOf(effectId);
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx", "tapeVfx", "pitchVfx", "autoWahVfx", "stereoVfx", "beatRepeatVfx"].indexOf(effectId);
     }
 
     function buildChainModel(chain: var): var {
@@ -332,6 +340,24 @@ Item {
                 categoryTitle: qsTr("Creative"),
                 iconSource: nodeIcon(19),
                 available: chain.indexOf(19) < 0
+            },
+            {
+                effectId: "stereoVfx",
+                title: nodeTitle(20),
+                summary: nodeSummary(20),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(20),
+                available: chain.indexOf(20) < 0
+            },
+            {
+                effectId: "beatRepeatVfx",
+                title: nodeTitle(21),
+                summary: nodeSummary(21),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(21),
+                available: chain.indexOf(21) < 0
             }
         ];
     }
@@ -513,7 +539,7 @@ Item {
 
                 CreativeVfxPanel {
                     anchors.fill: parent
-                    visible: rack.currentKind >= 8 && rack.currentKind <= 19
+                    visible: rack.currentKind >= 8 && rack.currentKind <= 21
                     draft: rack.draft
                     familyKind: rack.currentKind
                     onFamilySelected: kind => rack.selectedNodeId = rack.effectId(kind)

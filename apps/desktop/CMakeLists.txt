@@ -115,6 +115,8 @@ qt_add_executable(
     src/playback_controller.hpp
     src/creative_vfx_projection.cpp
     src/creative_vfx_projection.hpp
+    src/creative_vfx_presets.cpp
+    src/creative_vfx_presets.hpp
     src/parametric_equalizer_projection.cpp
     src/parametric_equalizer_projection.hpp
     src/playback_adjustment_projection.cpp
@@ -174,6 +176,7 @@ qt_add_qml_module(
         qml/TapeVfxPanel.qml
         qml/PitchVfxPanel.qml
         qml/AutoWahVfxPanel.qml
+        qml/BeatRepeatVfxPanel.qml
         qml/ModulationVfxPanel.qml
         qml/TransformVfxPanel.qml
         qml/RotaryVfxPanel.qml
@@ -217,6 +220,7 @@ qt_add_qml_module(
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
         qml/SpaceReverbPanel.qml
+        qml/StereoVfxPanel.qml
         qml/ImpulseResponseImportDialog.qml
         qml/SoundEditorTimeline.qml
         qml/SourceEditTimeline.qml

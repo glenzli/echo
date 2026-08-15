@@ -197,6 +197,16 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
     const int wah_maximum =
         field(auto_wah, "maximumFrequencyHertz", "maximum_frequency_hertz", 2800).toInt();
     const int wah_resonance = field(auto_wah, "resonanceTenths", "resonance_tenths", 18).toInt();
+    const QVariantMap stereo = nested(value, "stereo");
+    const int stereo_mix = field(stereo, "mixPercent", "mix_percent", 100).toInt();
+    const int stereo_width = field(stereo, "widthPercent", "width_percent", 100).toInt();
+    const int stereo_pan = field(stereo, "panPercent", "pan_percent", 0).toInt();
+    const QVariantMap beat_repeat = nested(value, "beat_repeat").isEmpty()
+                                        ? nested(value, "beatRepeat")
+                                        : nested(value, "beat_repeat");
+    const int beat_mix = field(beat_repeat, "mixPercent", "mix_percent", 100).toInt();
+    const int beat_slice = field(beat_repeat, "sliceMillis", "slice_millis", 125).toInt();
+    const int beat_repeats = field(beat_repeat, "repeatCount", "repeat_count", 2).toInt();
 
     if (!scene_character || scene_mix < 0 || scene_mix > 100 || scene_intensity < 0
         || scene_intensity > 100 || !delay_character || slapback_time < 30 || slapback_time > 180
@@ -239,7 +249,10 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
         || harmony_semitones < -12 || harmony_semitones > 12 || harmony_mix < 0 || harmony_mix > 100
         || formant_colour < -12 || formant_colour > 12 || wah_mix < 0 || wah_mix > 100
         || wah_sensitivity < 0 || wah_sensitivity > 100 || wah_minimum < 80
-        || wah_maximum <= wah_minimum || wah_resonance < 5 || wah_resonance > 50) {
+        || wah_maximum <= wah_minimum || wah_resonance < 5 || wah_resonance > 50 || stereo_mix < 0
+        || stereo_mix > 100 || stereo_width < 0 || stereo_width > 200 || stereo_pan < -100
+        || stereo_pan > 100 || beat_mix < 0 || beat_mix > 100 || beat_slice < 30 || beat_slice > 500
+        || beat_repeats < 1 || beat_repeats > 4) {
         return std::nullopt;
     }
 
@@ -385,13 +398,26 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
              .harmony_semitones = static_cast<std::int8_t>(harmony_semitones),
              .harmony_mix_percent = static_cast<std::uint8_t>(harmony_mix),
              .formant_colour_semitones = static_cast<std::int8_t>(formant_colour)},
-        .auto_wah = {
-            .enabled = auto_wah.value(QStringLiteral("enabled"), false).toBool(),
-            .mix_percent = static_cast<std::uint8_t>(wah_mix),
-            .sensitivity_percent = static_cast<std::uint8_t>(wah_sensitivity),
-            .minimum_frequency_hertz = static_cast<std::uint16_t>(wah_minimum),
-            .maximum_frequency_hertz = static_cast<std::uint16_t>(wah_maximum),
-            .resonance_tenths = static_cast<std::uint8_t>(wah_resonance)
+        .auto_wah =
+            {.enabled = auto_wah.value(QStringLiteral("enabled"), false).toBool(),
+             .mix_percent = static_cast<std::uint8_t>(wah_mix),
+             .sensitivity_percent = static_cast<std::uint8_t>(wah_sensitivity),
+             .minimum_frequency_hertz = static_cast<std::uint16_t>(wah_minimum),
+             .maximum_frequency_hertz = static_cast<std::uint16_t>(wah_maximum),
+             .resonance_tenths = static_cast<std::uint8_t>(wah_resonance)},
+        .stereo =
+            {
+                .enabled = stereo.value(QStringLiteral("enabled"), false).toBool(),
+                .mix_percent = static_cast<std::uint8_t>(stereo_mix),
+                .width_percent = static_cast<std::uint8_t>(stereo_width),
+                .pan_percent = static_cast<std::int8_t>(stereo_pan),
+            },
+        .beat_repeat = {
+            .enabled = beat_repeat.value(QStringLiteral("enabled"), false).toBool(),
+            .mix_percent = static_cast<std::uint8_t>(beat_mix),
+            .slice_millis = static_cast<std::uint16_t>(beat_slice),
+            .repeat_count = static_cast<std::uint8_t>(beat_repeats),
+            .reverse = field(beat_repeat, "reverse", "reverse", false).toBool(),
         },
     };
 }
@@ -560,6 +586,19 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         {QStringLiteral("maximumFrequencyHertz"), adjustment.auto_wah.maximum_frequency_hertz},
         {QStringLiteral("resonanceTenths"), adjustment.auto_wah.resonance_tenths},
     };
+    QVariantMap stereo{
+        {QStringLiteral("enabled"), adjustment.stereo.enabled},
+        {QStringLiteral("mixPercent"), adjustment.stereo.mix_percent},
+        {QStringLiteral("widthPercent"), adjustment.stereo.width_percent},
+        {QStringLiteral("panPercent"), adjustment.stereo.pan_percent},
+    };
+    QVariantMap beat_repeat{
+        {QStringLiteral("enabled"), adjustment.beat_repeat.enabled},
+        {QStringLiteral("mixPercent"), adjustment.beat_repeat.mix_percent},
+        {QStringLiteral("sliceMillis"), adjustment.beat_repeat.slice_millis},
+        {QStringLiteral("repeatCount"), adjustment.beat_repeat.repeat_count},
+        {QStringLiteral("reverse"), adjustment.beat_repeat.reverse},
+    };
     digital_degrade.insert(
         QStringLiteral("sampleRateReduction"),
         QVariantMap{
@@ -580,6 +619,8 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         {QStringLiteral("tape"), tape},
         {QStringLiteral("pitch"), pitch},
         {QStringLiteral("autoWah"), auto_wah},
+        {QStringLiteral("stereo"), stereo},
+        {QStringLiteral("beatRepeat"), beat_repeat},
     };
 }
 
@@ -712,6 +753,14 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
     auto_wah = snake(auto_wah, "minimumFrequencyHertz", "minimum_frequency_hertz");
     auto_wah = snake(auto_wah, "maximumFrequencyHertz", "maximum_frequency_hertz");
     auto_wah = snake(auto_wah, "resonanceTenths", "resonance_tenths");
+    QVariantMap stereo = nested(qml, "stereo");
+    stereo = snake(stereo, "mixPercent", "mix_percent");
+    stereo = snake(stereo, "widthPercent", "width_percent");
+    stereo = snake(stereo, "panPercent", "pan_percent");
+    QVariantMap beat_repeat = nested(qml, "beatRepeat");
+    beat_repeat = snake(beat_repeat, "mixPercent", "mix_percent");
+    beat_repeat = snake(beat_repeat, "sliceMillis", "slice_millis");
+    beat_repeat = snake(beat_repeat, "repeatCount", "repeat_count");
     return QJsonDocument::fromVariant(
                QVariantMap{
                    {QStringLiteral("scene"), scene},
@@ -726,6 +775,8 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
                    {QStringLiteral("tape"), tape},
                    {QStringLiteral("pitch"), pitch},
                    {QStringLiteral("auto_wah"), auto_wah},
+                   {QStringLiteral("stereo"), stereo},
+                   {QStringLiteral("beat_repeat"), beat_repeat},
                }
     )
         .toJson(QJsonDocument::Compact);
