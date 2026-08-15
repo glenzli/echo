@@ -149,14 +149,33 @@ pub(crate) const FREEZE_GRANULAR_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 4);
 pub(crate) const ORIGINAL_FIRST_SPECTRAL_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_815, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 2);
+pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_815, 2);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 3);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260815.2-original-first-spectral";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260815.3-rendered-spectral-working-copy";
 
 pub(crate) const ORIGINAL_FIRST_SPECTRAL_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
     ADD COLUMN spectral_repair_json TEXT NOT NULL DEFAULT
     '{"enabled":true,"regions":[]}';
+"#;
+
+pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_MIGRATION_SQL: &str = r#"
+CREATE TABLE IF NOT EXISTS rendered_spectral_working_copies (
+    id                            INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id                      TEXT NOT NULL REFERENCES assets(id),
+    parent_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    parent_render_content_hash    TEXT NOT NULL,
+    manifest_schema_version       INTEGER NOT NULL CHECK (manifest_schema_version > 0),
+    tile_manifest_json            TEXT NOT NULL CHECK (json_valid(tile_manifest_json)),
+    tool_version                  TEXT NOT NULL CHECK (length(trim(tool_version)) > 0),
+    enabled                       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    created_at_millis             INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS rendered_spectral_working_copies_asset_created
+    ON rendered_spectral_working_copies (asset_id, created_at_millis DESC, id DESC);
 "#;
 
 pub(crate) const AUDIO_SEMANTIC_MIGRATION_SQL: &str = r"
@@ -1003,6 +1022,21 @@ CREATE TABLE IF NOT EXISTS render_exports (
 
 CREATE INDEX IF NOT EXISTS render_exports_asset_created
     ON render_exports (asset_id, created_at_millis DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS rendered_spectral_working_copies (
+    id                            INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id                      TEXT NOT NULL REFERENCES assets(id),
+    parent_adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    parent_render_content_hash    TEXT NOT NULL,
+    manifest_schema_version       INTEGER NOT NULL CHECK (manifest_schema_version > 0),
+    tile_manifest_json            TEXT NOT NULL CHECK (json_valid(tile_manifest_json)),
+    tool_version                  TEXT NOT NULL CHECK (length(trim(tool_version)) > 0),
+    enabled                       INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    created_at_millis             INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS rendered_spectral_working_copies_asset_created
+    ON rendered_spectral_working_copies (asset_id, created_at_millis DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS asset_source_metadata (
     asset_id           TEXT PRIMARY KEY REFERENCES assets(id),
