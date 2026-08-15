@@ -96,6 +96,21 @@ pub(crate) fn enqueue_audio_events(
     )
 }
 
+/// Persists CLAP indexing only after ASR produced a valid empty transcript.
+pub(crate) fn enqueue_audio_embedding(
+    transaction: &Transaction<'_>,
+    asset_id: AssetId,
+    now_millis: i64,
+) -> Result<(), echo_catalog::CatalogError> {
+    enqueue_job(
+        transaction,
+        &format!("embed-audio-clap-v1-{asset_id}"),
+        JobKind::EmbedAudio,
+        &serde_json::json!({ "asset_id": asset_id.to_string() }),
+        now_millis,
+    )
+}
+
 /// Backfills sound-event intent only for present assets whose latest ASR
 /// observation is valid and empty. Unknown or failed ASR never reaches this
 /// admission path.

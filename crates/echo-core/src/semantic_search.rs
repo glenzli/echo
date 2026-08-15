@@ -141,7 +141,7 @@ pub(crate) fn dispatch_document(
 ///
 /// Returns a credential, Runtime, contract, or Catalog failure without
 /// persisting the query text.
-pub fn search(
+pub(crate) fn search(
     catalog: &Catalog,
     config: &crate::InferRuntimeConfig,
     query: &str,

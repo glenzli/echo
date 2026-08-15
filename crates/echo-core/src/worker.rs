@@ -22,7 +22,7 @@ use echo_catalog::{
 };
 
 use crate::{
-    analysis_queue,
+    analysis_queue, audio_semantic_search,
     error::{CoreError, CoreErrorKind},
     metadata_queue, scanner, semantic_search,
 };
@@ -65,6 +65,7 @@ impl WorkerPool {
         analysis_queue::enqueue_missing_alignments(catalog, now)?;
         analysis_queue::enqueue_missing_contextual(catalog, now)?;
         semantic_search::enqueue_missing_documents(catalog, now)?;
+        audio_semantic_search::enqueue_missing_documents(catalog, now)?;
 
         let stop = Arc::new(AtomicBool::new(false));
         let state_revision = Arc::new(AtomicU64::new(1));
@@ -153,6 +154,7 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             analysis_queue::enqueue_missing_alignments(catalog, crate::util::now_millis())?;
             analysis_queue::enqueue_missing_contextual(catalog, crate::util::now_millis())?;
             semantic_search::enqueue_missing_documents(catalog, crate::util::now_millis())?;
+            audio_semantic_search::enqueue_missing_documents(catalog, crate::util::now_millis())?;
             Ok(())
         }
         JobKind::ImportFile => {
@@ -204,7 +206,8 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
         | JobKind::DetectAudioEvents
         | JobKind::Align
         | JobKind::Contextual
-        | JobKind::EmbedText => dispatch_analysis(catalog, config, job),
+        | JobKind::EmbedText
+        | JobKind::EmbedAudio => dispatch_analysis(catalog, config, job),
     }
 }
 
@@ -219,6 +222,7 @@ fn dispatch_analysis(
         JobKind::Align => dispatch_alignment(catalog, config, job),
         JobKind::Contextual => dispatch_contextual(catalog, config, job),
         JobKind::EmbedText => semantic_search::dispatch_document(catalog, config, job),
+        JobKind::EmbedAudio => audio_semantic_search::dispatch_document(catalog, config, job),
         JobKind::ScanRoot
         | JobKind::ImportFile
         | JobKind::ExtractMetadata
@@ -257,7 +261,13 @@ fn dispatch_transcription(
     catalog.with_transaction(|transaction| {
         if payload.text.trim().is_empty() {
             analysis_queue::enqueue_audio_events(transaction, asset_id, crate::util::now_millis())
-                .map_err(CoreError::from)
+                .map_err(CoreError::from)?;
+            analysis_queue::enqueue_audio_embedding(
+                transaction,
+                asset_id,
+                crate::util::now_millis(),
+            )
+            .map_err(CoreError::from)
         } else {
             analysis_queue::enqueue_alignment(transaction, asset_id, crate::util::now_millis())
                 .map_err(CoreError::from)

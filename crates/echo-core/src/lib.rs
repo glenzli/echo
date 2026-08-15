@@ -10,6 +10,7 @@
 mod analysis;
 mod analysis_queue;
 mod analysis_recovery;
+mod audio_semantic_search;
 mod contextual;
 mod error;
 mod import;
@@ -18,6 +19,7 @@ mod infer_runtime_credentials;
 mod long_audio;
 mod metadata_queue;
 mod scanner;
+mod search;
 mod semantic_search;
 mod sound_event_workflow;
 mod sound_events;
@@ -36,16 +38,17 @@ pub use contextual::{
 pub use error::{CoreError, CoreErrorKind};
 pub use import::{ImportOutcome, hash_file, import_asset, import_asset_with_probe};
 pub use infer_runtime::{
-    ALIGNMENT_INTENT, AUDIO_EVENT_DETECTION_INTENT, AlignmentIntent, AlignmentItem,
-    AlignmentPayload, AudioAnalysisCoverage, AudioCoverageStatus, AudioEventDetection,
-    AudioEventDetectionIntent, CONTEXTUAL_INTENT, ContextualIntent, ContextualResponse,
-    DetectedAudioEvent, EXPECTED_CONTRACT_VERSION, InferRuntimeClient, InferRuntimeConfig,
-    InferRuntimeError, InferRuntimeErrorKind, MAX_AUDIO_UPLOAD_BYTES, MAX_CONTEXTUAL_INPUT_BYTES,
-    RuntimeAttempt, RuntimeCandidateDecision, RuntimeJobConstraints, RuntimeJobSnapshot,
-    RuntimeProvenance, RuntimeRoutingDecision, SoundEventDetectionPolicy, SoundEventOntology,
-    SoundEventProvenance, SoundEventSmoothingPolicy, SpeechPresence, SpeechPresenceStatus,
-    TEXT_EMBEDDING_INTENT, TRANSCRIPTION_INTENT, TextEmbeddingIntent, TextEmbeddingPayload,
-    TextEmbeddingProviderProvenance, TranscriptionIntent,
+    ALIGNMENT_INTENT, AUDIO_EMBEDDING_INTENT, AUDIO_EVENT_DETECTION_INTENT,
+    AUDIO_TEXT_QUERY_EMBEDDING_INTENT, AlignmentIntent, AlignmentItem, AlignmentPayload,
+    AudioAnalysisCoverage, AudioCoverageStatus, AudioEmbeddingPayload, AudioEventDetection,
+    AudioEventDetectionIntent, AudioTextQueryEmbeddingIntent, CONTEXTUAL_INTENT, ContextualIntent,
+    ContextualResponse, DetectedAudioEvent, EXPECTED_CONTRACT_VERSION, InferRuntimeClient,
+    InferRuntimeConfig, InferRuntimeError, InferRuntimeErrorKind, MAX_AUDIO_UPLOAD_BYTES,
+    MAX_CONTEXTUAL_INPUT_BYTES, RuntimeAttempt, RuntimeCandidateDecision, RuntimeJobConstraints,
+    RuntimeJobSnapshot, RuntimeProvenance, RuntimeRoutingDecision, SoundEventDetectionPolicy,
+    SoundEventOntology, SoundEventProvenance, SoundEventSmoothingPolicy, SpeechPresence,
+    SpeechPresenceStatus, TEXT_EMBEDDING_INTENT, TRANSCRIPTION_INTENT, TextEmbeddingIntent,
+    TextEmbeddingPayload, TextEmbeddingProviderProvenance, TranscriptionIntent,
 };
 pub use infer_runtime_credentials::{
     InferRuntimeCredentialError, InferRuntimeCredentialStore, infer_runtime_credential_available,
@@ -55,7 +58,7 @@ pub use long_audio::LONG_AUDIO_PLAN_VERSION;
 pub use scanner::{
     FolderScanner, ScanOutcome, add_root_and_scan, queue_scans_for_enabled_roots, scan_root,
 };
-pub use semantic_search::search as semantic_search;
+pub use search::search as semantic_search;
 pub use sound_events::{
     AUDIO_EVENTS_SCHEMA_VERSION, AudioEventChunk, AudioEventsEvidence, record_audio_events,
 };

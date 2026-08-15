@@ -44,6 +44,8 @@ pub enum JobKind {
     Contextual,
     /// Embeds the current bounded text-evidence document for semantic search.
     EmbedText,
+    /// Embeds one short, ASR-empty original in the independent CLAP space.
+    EmbedAudio,
 }
 
 /// Job lifecycle state.
@@ -464,6 +466,7 @@ pub(crate) const fn kind_text(kind: JobKind) -> &'static str {
         JobKind::Align => "align",
         JobKind::Contextual => "contextual",
         JobKind::EmbedText => "embed_text",
+        JobKind::EmbedAudio => "embed_audio",
     }
 }
 
@@ -478,6 +481,7 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
         "align" => Ok(JobKind::Align),
         "contextual" => Ok(JobKind::Contextual),
         "embed_text" => Ok(JobKind::EmbedText),
+        "embed_audio" => Ok(JobKind::EmbedAudio),
         other => Err(CatalogError::new(
             crate::error::CatalogErrorKind::Other,
             format!("unknown job kind {other}"),

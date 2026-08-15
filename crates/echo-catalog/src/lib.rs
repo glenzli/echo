@@ -17,6 +17,7 @@ mod analysis_recovery;
 mod asset_affinity;
 mod asset_path;
 mod asset_registration;
+mod audio_semantic_index;
 mod audio_space;
 mod catalog;
 mod contextual_facets;
@@ -61,6 +62,10 @@ pub use asset_path::{mark_asset_missing, mark_asset_present, relink_asset_by_has
 pub use asset_registration::{
     AssetLookup, AssetRegistrationInput, RegisterAsset, find_by_content_hash, find_by_id,
     list_assets, register_asset,
+};
+pub use audio_semantic_index::{
+    AudioSemanticSearchHit, AudioSemanticSource, list_audio_sources_needing_embedding,
+    search_audio_semantic_segments, upsert_audio_semantic_segment,
 };
 pub use audio_space::{AudioSpaceAsset, list_audio_space};
 pub use catalog::{Catalog, CatalogStats, open_catalog};

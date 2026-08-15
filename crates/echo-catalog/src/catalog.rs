@@ -11,6 +11,7 @@ use crate::{
     error::{CatalogError, CatalogErrorKind},
     schema::{
         ADJUSTMENT_EFFECTS_MIGRATION_SQL, ANCIENT_COMPATIBLE_SCHEMA_VERSION,
+        AUDIO_SEMANTIC_MIGRATION_SQL, AUDIO_SEMANTIC_PREDECESSOR_SCHEMA_VERSION,
         CHANNEL_REPAIR_MIGRATION_SQL, CHANNEL_REPAIR_SCHEMA_VERSION,
         CONVOLUTION_SPACE_MIGRATION_SQL, CONVOLUTION_SPACE_SCHEMA_VERSION,
         CREATIVE_VFX_MIGRATION_SQL, CREATIVE_VFX_SCHEMA_VERSION, CatalogSchemaRevision,
@@ -89,6 +90,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
     match stored_version {
         None => {
             connection.execute_batch(SCHEMA_SQL)?;
+            connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
             connection.execute(
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_version', ?1)",
                 [SCHEMA_VERSION.to_string()],
@@ -139,7 +141,15 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .is_ok_and(|revision| revision == SCHEMA_VERSION) =>
         {
             connection.execute_batch(SCHEMA_SQL)?;
+            connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == AUDIO_SEMANTIC_PREDECESSOR_SCHEMA_VERSION) =>
+        {
+            migrate_audio_semantic_schema(connection)?;
         }
         Some(version)
             if version
@@ -285,6 +295,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    Ok(())
+}
+
+fn migrate_audio_semantic_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    transaction.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
     Ok(())
 }
 

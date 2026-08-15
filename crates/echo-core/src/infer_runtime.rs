@@ -4,10 +4,15 @@
 //! loopback transport, redirects/proxies, common headers and error envelopes.
 //! Echo owns product constraints, evidence validation and persistence shapes.
 
+mod audio_embeddings;
 mod audio_events;
 mod embeddings;
 mod responses;
 
+pub use audio_embeddings::{
+    AUDIO_EMBEDDING_INTENT, AUDIO_TEXT_QUERY_EMBEDDING_INTENT, AudioEmbeddingPayload,
+    AudioTextQueryEmbeddingIntent,
+};
 pub use audio_events::{
     AUDIO_EVENT_DETECTION_INTENT, AudioAnalysisCoverage, AudioCoverageStatus, AudioEventDetection,
     AudioEventDetectionIntent, DetectedAudioEvent, SoundEventDetectionPolicy, SoundEventOntology,
@@ -30,10 +35,10 @@ use std::{
 };
 
 use infer_runtime_client::{
-    AlignmentResponse as SdkAlignmentResponse,
-    AudioEventDetectionResponse as SdkAudioEventDetectionResponse, Client, DiscoveryResolver,
-    Error as SdkError, JobSnapshot as SdkJobSnapshot, ResponsesRequest, ResponsesResult,
-    TextEmbeddingRequest, TextEmbeddingResponse, TranscriptionFormat,
+    AlignmentResponse as SdkAlignmentResponse, AudioEmbeddingResponse as SdkAudioEmbeddingResponse,
+    AudioEventDetectionResponse as SdkAudioEventDetectionResponse, AudioTextEmbeddingRequest,
+    Client, DiscoveryResolver, Error as SdkError, JobSnapshot as SdkJobSnapshot, ResponsesRequest,
+    ResponsesResult, TextEmbeddingRequest, TextEmbeddingResponse, TranscriptionFormat,
     TranscriptionResponse as SdkTranscriptionResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -49,6 +54,7 @@ const EXPECTED_APP_ID: &str = "echo";
 const TRANSCRIPTION_CAPABILITY: &str = "infer.audio.transcription@20260814.1";
 const ALIGNMENT_CAPABILITY: &str = "infer.audio.alignment@20260811.1";
 pub(crate) const AUDIO_EVENT_DETECTION_CAPABILITY: &str = "infer.audio.event-detection@20260813.2";
+pub(crate) const AUDIO_EMBEDDING_CAPABILITY: &str = "infer.audio.embedding@20260815.2";
 
 pub(crate) fn is_current_contract_version(version: &str) -> bool {
     version == EXPECTED_CONTRACT_VERSION
@@ -455,6 +461,18 @@ pub(crate) trait RuntimeTransport: fmt::Debug + Send + Sync {
         &self,
         request: &TextEmbeddingRequest,
     ) -> Result<(TextEmbeddingResponse, SdkJobSnapshot), InferRuntimeError>;
+
+    fn embed_audio(
+        &self,
+        source: &Path,
+        source_revision: &str,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(SdkAudioEmbeddingResponse, SdkJobSnapshot), InferRuntimeError>;
+
+    fn embed_audio_text(
+        &self,
+        request: &AudioTextEmbeddingRequest,
+    ) -> Result<(SdkAudioEmbeddingResponse, SdkJobSnapshot), InferRuntimeError>;
 }
 
 #[derive(Debug)]
@@ -556,6 +574,38 @@ impl RuntimeTransport for SdkTransport {
     ) -> Result<(TextEmbeddingResponse, SdkJobSnapshot), InferRuntimeError> {
         Self::run(async {
             let response = self.client.embed_text(request).await?;
+            let job = self.client.job(&response.id).await?;
+            Ok((response, job))
+        })
+    }
+
+    fn embed_audio(
+        &self,
+        source: &Path,
+        source_revision: &str,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(SdkAudioEmbeddingResponse, SdkJobSnapshot), InferRuntimeError> {
+        Self::run(async {
+            let response = self
+                .client
+                .embed_audio_file(
+                    source,
+                    audio_content_type(source),
+                    source_revision,
+                    metadata,
+                )
+                .await?;
+            let job = self.client.job(&response.id).await?;
+            Ok((response, job))
+        })
+    }
+
+    fn embed_audio_text(
+        &self,
+        request: &AudioTextEmbeddingRequest,
+    ) -> Result<(SdkAudioEmbeddingResponse, SdkJobSnapshot), InferRuntimeError> {
+        Self::run(async {
+            let response = self.client.embed_audio_text(request).await?;
             let job = self.client.job(&response.id).await?;
             Ok((response, job))
         })

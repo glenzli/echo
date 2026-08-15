@@ -126,6 +126,25 @@ impl RuntimeTransport for FakeTransport {
         assert_echo_constraints(&request.metadata);
         pop(&self.embeddings)
     }
+
+    fn embed_audio(
+        &self,
+        _source: &Path,
+        _source_revision: &str,
+        metadata: &BTreeMap<String, String>,
+    ) -> Result<(infer_runtime_client::AudioEmbeddingResponse, SdkJobSnapshot), InferRuntimeError>
+    {
+        assert_echo_constraints(metadata);
+        Err(protocol("unexpected_fake_audio_embedding"))
+    }
+
+    fn embed_audio_text(
+        &self,
+        _request: &infer_runtime_client::AudioTextEmbeddingRequest,
+    ) -> Result<(infer_runtime_client::AudioEmbeddingResponse, SdkJobSnapshot), InferRuntimeError>
+    {
+        Err(protocol("unexpected_fake_audio_text_embedding"))
+    }
 }
 
 fn pop<T>(queue: &Mutex<VecDeque<Result<T, InferRuntimeError>>>) -> Result<T, InferRuntimeError> {

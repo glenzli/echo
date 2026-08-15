@@ -97,6 +97,8 @@ fn valid_calendar_date(date: u32) -> bool {
     (1..=days_in_month).contains(&day)
 }
 
+pub(crate) const AUDIO_SEMANTIC_PREDECESSOR_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_813, 5);
 pub(crate) const PREVIOUS_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_811, 16);
 pub(crate) const CHANNEL_REPAIR_SCHEMA_VERSION: CatalogSchemaRevision =
@@ -145,9 +147,25 @@ pub(crate) const METADATA_CALIBRATION_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 3);
 pub(crate) const FREEZE_GRANULAR_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 4);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_813, 5);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 1);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260813.5-true-stereo-ir";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260815.1-clap-audio-semantic";
+
+pub(crate) const AUDIO_SEMANTIC_MIGRATION_SQL: &str = r"
+CREATE TABLE IF NOT EXISTS audio_semantic_segments (
+    asset_id           TEXT NOT NULL REFERENCES assets(id),
+    start_millis       INTEGER NOT NULL CHECK (start_millis >= 0),
+    end_millis         INTEGER NOT NULL CHECK (end_millis > start_millis),
+    source_revision    TEXT NOT NULL,
+    embedding_space    TEXT NOT NULL,
+    vector             BLOB NOT NULL CHECK (length(vector) = 2048),
+    runtime_json       TEXT NOT NULL CHECK (json_valid(runtime_json)),
+    updated_at_millis  INTEGER NOT NULL CHECK (updated_at_millis >= 0),
+    PRIMARY KEY (asset_id, start_millis, end_millis)
+);
+CREATE INDEX IF NOT EXISTS audio_semantic_segments_space
+    ON audio_semantic_segments (embedding_space, asset_id, start_millis);
+";
 pub(crate) const METADATA_CALIBRATION_MIGRATION_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS metadata_calibration_revisions (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
