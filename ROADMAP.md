@@ -710,6 +710,20 @@ InferenceBackend
     使用同一 source-anchored 语义。合成正弦覆盖区域内衰减、区域外保持、任意分块和尾部时长；离线导出
     契约覆盖真实消费链。画笔、修补、细粒度选择编辑和更丰富的区域参数面板仍须作为后续单独契约完成，
     不得把显示 cache 或像素坐标伪装成用户修复事实。
+  - 频谱工作层 P2（组合合同，待实现）：需要“擦除／克隆／修补”等破坏性频谱工具时，用户必须先显式
+    创建一个资产唯一的 `SpectralWorkingLayer`；它不是每笔操作新建的 Adjustment，也不是可写 Original。
+    创建时捕获精确的 `base_adjustment_revision`（未调整时为 identity base）；其后的普通调整从 identity
+    `post_adjustment_graph` 开始追加。因此可听结果的唯一顺序固定为
+    `Original → base AdjustmentGraph → SpectralWorkingLayer → post AdjustmentGraph → Output`。
+    工作层内部可连续进行破坏性笔刷与修补，并在局部 copy-on-write 时频 tile 上合并；产品默认只把它
+    呈现为一个可旁路、可整体移除、可保存版本的层，不以每一笔污染信号链。工作层仍保存 parent revision、
+    tile manifest、工具／算法版本和必要的笔画证据；预览／完整 render 是可删除的 derived cache，不能反过来
+    成为编辑事实。当前 base 一经捕获不可静默修改或 rebase：用户若要改变 base，必须保留旧工作层并
+    显式 fork 新工作层，避免把已烘焙的频域结果伪装成仍基于新调整的结果。创建工作层后，普通 UI 的新
+    调整只写 post graph；需要编辑 base 时进入历史并走 fork。AI／非确定性修补始终先产出 Candidate，
+    只有显式 Accept 才能合并进该工作层。首版不支持任意层插入、多个活动工作层、自动 rebase 或跨资产
+    复制；试听 A/B 必须至少提供 Original、base 与当前工作层＋post 结果，导出 provenance 同时记录
+    base revision、working-layer manifest 和 post revision。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，
