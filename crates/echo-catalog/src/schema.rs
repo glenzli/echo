@@ -147,9 +147,17 @@ pub(crate) const METADATA_CALIBRATION_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 3);
 pub(crate) const FREEZE_GRANULAR_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_813, 4);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 1);
+pub(crate) const ORIGINAL_FIRST_SPECTRAL_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_815, 1);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 2);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260815.1-clap-audio-semantic";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260815.2-original-first-spectral";
+
+pub(crate) const ORIGINAL_FIRST_SPECTRAL_MIGRATION_SQL: &str = r#"
+ALTER TABLE asset_adjustment_revisions
+    ADD COLUMN spectral_repair_json TEXT NOT NULL DEFAULT
+    '{"enabled":true,"regions":[]}';
+"#;
 
 pub(crate) const AUDIO_SEMANTIC_MIGRATION_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS audio_semantic_segments (
@@ -819,6 +827,8 @@ CREATE TABLE IF NOT EXISTS asset_adjustment_revisions (
                            '{\"mode\":\"algorithmic\",\"impulse_response\":null,\"convolution_mix_percent\":35,\"convolution_wet_gain_centibels\":0}',
     creative_vfx_json       TEXT NOT NULL DEFAULT
                            '{\"scene\":{\"character\":\"telephone\",\"enabled\":false,\"mix_percent\":100,\"intensity_percent\":50},\"delay\":{\"character\":\"slapback\",\"enabled\":false,\"slapback\":{\"delay_millis\":90,\"mix_percent\":22,\"high_cut_hertz\":7000},\"echo\":{\"delay_millis\":375,\"feedback_percent\":36,\"mix_percent\":28,\"high_cut_hertz\":6500,\"stereo_crossfeed_percent\":70}},\"modulation\":{\"character\":\"chorus\",\"enabled\":false,\"chorus\":{\"mix_percent\":35,\"rate_millihertz\":800,\"minimum_delay_microseconds\":8000,\"sweep_microseconds\":10000,\"stereo_phase_degrees\":90},\"flanger\":{\"mix_percent\":50,\"rate_millihertz\":250,\"minimum_delay_microseconds\":200,\"sweep_microseconds\":3500,\"feedback_percent\":35,\"stereo_phase_degrees\":180},\"phaser\":{\"mix_percent\":50,\"rate_millihertz\":350,\"sweep_low_hertz\":300,\"sweep_high_hertz\":2500,\"feedback_percent\":25,\"stereo_phase_degrees\":90},\"tremolo\":{\"rate_millihertz\":4000,\"depth_percent\":60,\"stereo_phase_degrees\":0}},\"transform\":{\"character\":\"robot\",\"enabled\":false,\"mix_percent\":100,\"amount_percent\":50}}',
+    spectral_repair_json     TEXT NOT NULL DEFAULT
+                           '{\"enabled\":true,\"regions\":[]}',
     restoration_json        TEXT NOT NULL DEFAULT
                            '{\"enabled\":true,\"de_plosive\":{\"enabled\":false,\"frequency_hertz\":140,\"sensitivity_percent\":50,\"reduction_centibels\":1200,\"release_millis\":160},\"noise_reduction\":{\"enabled\":false,\"reduction_centibels\":900,\"sensitivity_percent\":50,\"smoothing_millis\":240},\"de_esser\":{\"enabled\":false,\"frequency_hertz\":6500,\"threshold_centibels\":-2400,\"reduction_centibels\":600}}',
     de_hum_json             TEXT NOT NULL DEFAULT

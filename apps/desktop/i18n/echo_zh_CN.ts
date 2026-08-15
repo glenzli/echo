@@ -4864,8 +4864,16 @@
     </message>
     <message>
         <location filename="../qml/SpectrogramView.qml" line="64"/>
-        <source>Original · read-only overview</source>
-        <translation>原始音频 · 只读概览</translation>
+        <source>Original-first · non-destructive</source>
+        <translation>原始音频第一层 · 非破坏性</translation>
+    </message>
+    <message>
+        <source>Spectral adjustment</source>
+        <translation>频谱调整</translation>
+    </message>
+    <message>
+        <source>Bypassed</source>
+        <translation>已旁路</translation>
     </message>
     <message>
         <location filename="../qml/SpectrogramView.qml" line="75"/>

@@ -1,4 +1,4 @@
-//! Source-anchored, non-destructive spectral attenuation intent.
+//! Original-first, non-destructive spectral attenuation intent.
 //!
 //! Regions describe repair in Original time and Hertz, never in display
 //! pixels or cache-tile coordinates. The audio engine owns STFT execution;
@@ -32,16 +32,33 @@ pub struct SpectralAttenuationRegion {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpectralRepairSettings {
+    /// Bypasses the complete Original-first spectral adjustment layer without
+    /// discarding its authored regions.
+    #[serde(default = "spectral_repair_enabled_by_default")]
+    pub enabled: bool,
     #[serde(default)]
     pub regions: Vec<SpectralAttenuationRegion>,
+}
+
+const fn spectral_repair_enabled_by_default() -> bool {
+    true
 }
 
 impl SpectralRepairSettings {
     #[must_use]
     pub const fn identity() -> Self {
         Self {
+            enabled: true,
             regions: Vec::new(),
         }
+    }
+
+    /// Returns whether this Original-first layer contributes to playback or
+    /// export. Disabled layers retain their source-anchored intent for later
+    /// re-enablement.
+    #[must_use]
+    pub const fn is_enabled(&self) -> bool {
+        self.enabled
     }
 
     /// Validates a source-duration-bound spectral repair contract.

@@ -18,11 +18,13 @@ Rectangle {
     required property bool hasTimeSelection
     required property real selectionStartRatio
     required property real selectionEndRatio
+    required property bool layerEnabled
     required property var regions
 
     readonly property bool hasOverview: imageUrl.length > 0
 
     signal regionRequested(int startMillis, int endMillis, int lowHertz, int highHertz)
+    signal layerEnabledRequested(bool enabled)
     signal clearRequested
 
     implicitHeight: 230
@@ -51,15 +53,21 @@ Rectangle {
             }
 
             Text {
-                text: qsTr("Original · read-only overview")
+                text: qsTr("Original-first · non-destructive")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
+            }
+
+            Switch {
+                text: qsTr("Spectral adjustment")
+                checked: spectrogram.layerEnabled
+                onClicked: spectrogram.layerEnabledRequested(checked)
             }
 
             Item { Layout.fillWidth: true }
 
             Text {
-                text: hasOverview ? qsTr("%1 repairs").arg(regions.length)
+                text: hasOverview ? (layerEnabled ? qsTr("%1 repairs").arg(regions.length) : qsTr("Bypassed"))
                     : (loading ? qsTr("Loading…") : qsTr("Unavailable"))
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontMeta
@@ -127,7 +135,7 @@ Rectangle {
                     color: Theme.accentSurface
                     border.color: Theme.accent
                     opacity: 0.56
-                    visible: width > 0 && x < parent.width
+                    visible: spectrogram.layerEnabled && width > 0 && x < parent.width
                 }
             }
 
@@ -156,6 +164,7 @@ Rectangle {
 
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton
+                enabled: spectrogram.layerEnabled
                 cursorShape: Qt.CrossCursor
                 onPressed: function(mouse) {
                     pendingRegion.startX = mouse.x;

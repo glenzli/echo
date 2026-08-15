@@ -12,6 +12,9 @@ namespace {
 
 std::optional<std::vector<echo::audio::SpectralAttenuationRegion>>
 spectralRepairFromQml(const QVariantMap& value) {
+    if (!value.value(QStringLiteral("enabled"), true).toBool()) {
+        return std::vector<echo::audio::SpectralAttenuationRegion>{};
+    }
     const QVariantList values = value.value(QStringLiteral("regions")).toList();
     if (values.size() > 64) {
         return std::nullopt;

@@ -6,7 +6,8 @@ use echo_domain::{
     DelayVfxCharacter, DigitalDegradeVfxCharacter, EditSegment, EditSegmentState, EditTimeline,
     EffectChain, EffectMask, EffectNodeKind, FadeCurve, FadeCurves, LimiterSettings,
     ModulationVfxCharacter, NoiseReductionSettings, RestorationSettings, ReverbCharacter,
-    ReverbSettings, SceneVfxCharacter, SpaceMode, SpaceSettings, TransformVfxCharacter,
+    ReverbSettings, SceneVfxCharacter, SpaceMode, SpaceSettings, SpectralAttenuationRegion,
+    SpectralRepairSettings, TransformVfxCharacter,
 };
 
 use super::*;
@@ -132,6 +133,7 @@ fn revisions_are_append_only_and_identical_saves_are_idempotent() {
     assert_eq!(first.graph.channel_repair(), graph.channel_repair());
     assert_eq!(first.graph.reverb(), graph.reverb());
     assert_eq!(first.graph.creative_vfx(), graph.creative_vfx());
+    assert_eq!(first.graph.spectral_repair(), graph.spectral_repair());
     assert_eq!(first.graph.limiter(), graph.limiter());
     assert_eq!(first.graph.effect_chain(), graph.effect_chain());
     assert_eq!(first.graph.edit_timeline(), graph.edit_timeline());
@@ -450,8 +452,21 @@ fn fully_configured_graph() -> AdjustmentGraph {
             damping_percent: 52,
             low_cut_hertz: 150,
             high_cut_hertz: 9_000,
+            ducking: echo_domain::ReverbDuckingSettings::default(),
         })
         .with_creative_vfx(creative_vfx)
+        .with_spectral_repair(SpectralRepairSettings {
+            enabled: false,
+            regions: vec![SpectralAttenuationRegion {
+                start_millis: 2_000,
+                end_millis: 3_000,
+                low_hertz: 180,
+                high_hertz: 3_600,
+                attenuation_centibels: 2_400,
+                time_feather_millis: 24,
+                frequency_feather_hertz: 80,
+            }],
+        })
         .with_limiter(LimiterSettings {
             enabled: true,
             ceiling_centibels: -125,

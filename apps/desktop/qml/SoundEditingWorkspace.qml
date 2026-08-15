@@ -798,7 +798,9 @@ Rectangle {
                 hasTimeSelection: editorTimeline.hasTimeSelection
                 selectionStartRatio: adjustmentDraft.sourceDurationMillis > 0 ? editorTimeline.selectionStartMillis / adjustmentDraft.sourceDurationMillis : 0
                 selectionEndRatio: adjustmentDraft.sourceDurationMillis > 0 ? editorTimeline.selectionEndMillis / adjustmentDraft.sourceDurationMillis : 0
+                layerEnabled: adjustmentDraft.spectralRepair.enabled
                 regions: adjustmentDraft.spectralRepair.regions
+                onLayerEnabledRequested: enabled => adjustmentDraft.setSpectralRepairEnabled(enabled)
                 onRegionRequested: function(startMillis, endMillis, lowHertz, highHertz) {
                     adjustmentDraft.addSpectralRepairRegion(startMillis, endMillis, lowHertz, highHertz);
                 }

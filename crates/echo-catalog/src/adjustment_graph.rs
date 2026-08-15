@@ -5,7 +5,7 @@ use echo_domain::{
     AdjustmentEffects, AdjustmentGraph, AssetId, ChannelRepairSettings, CompressorSettings,
     CreativeVfxSettings, DeClickSettings, DeHumSettings, EditTimeline, EffectChain, EffectMask,
     FadeCurve, LimiterSettings, ParametricEqualizer, RestorationSettings, ReverbSettings,
-    SpaceSettings,
+    SpaceSettings, SpectralRepairSettings,
 };
 use rusqlite::{OptionalExtension, Transaction};
 
@@ -49,6 +49,7 @@ struct StoredAdjustment {
     limiter_ceiling: i64,
     limiter_release: i64,
     creative_vfx_json: String,
+    spectral_repair_json: String,
     created_at: i64,
 }
 
@@ -74,7 +75,7 @@ pub fn latest_adjustment_graph(
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, space_json, restoration_json, de_hum_json, \
              de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
-             limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, created_at_millis \
+             limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, spectral_repair_json, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
              ORDER BY id DESC LIMIT 1",
             [asset_id.to_string()],
@@ -115,7 +116,7 @@ pub fn adjustment_graph_at_revision(
              compressor_attack_millis, compressor_release_millis, \
              compressor_makeup_centibels, reverb_json, space_json, restoration_json, de_hum_json, \
              de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
-             limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, created_at_millis \
+             limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, spectral_repair_json, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 AND id = ?2",
             rusqlite::params![asset_id.to_string(), revision_id],
             stored_adjustment_from_row,
@@ -178,7 +179,8 @@ fn stored_adjustment_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Store
         limiter_ceiling: row.get(26)?,
         limiter_release: row.get(27)?,
         creative_vfx_json: row.get(28)?,
-        created_at: row.get(29)?,
+        spectral_repair_json: row.get(29)?,
+        created_at: row.get(30)?,
     })
 }
 
@@ -226,6 +228,7 @@ fn restore_adjustment_graph(
         .with_reverb(stored_reverb(&stored.reverb_json)?)
         .with_space(stored_space(&stored.space_json)?)
         .with_creative_vfx(stored_creative_vfx(&stored.creative_vfx_json)?)
+        .with_spectral_repair(stored_spectral_repair(&stored.spectral_repair_json)?)
         .with_effect_chain(stored_effect_chain(&stored.effect_chain_json)?)
         .with_edit_timeline(stored_edit_timeline(
             &stored.edit_timeline_json,
@@ -295,10 +298,10 @@ pub fn record_adjustment_graph(
          compressor_makeup_centibels, reverb_json, space_json, restoration_json, de_hum_json, \
          de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, \
          limiter_enabled, limiter_ceiling_centibels, \
-         limiter_release_millis, creative_vfx_json, created_at_millis) \
+         limiter_release_millis, creative_vfx_json, spectral_repair_json, created_at_millis) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, \
                  ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, \
-                 ?27, ?28, ?29, ?30, ?31, ?32, ?33)",
+                 ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34)",
         rusqlite::params![
             asset_id.to_string(),
             millis_i64(validated.trim_start_millis())?,
@@ -359,6 +362,7 @@ pub fn record_adjustment_graph(
             i64::from(validated.limiter().ceiling_centibels),
             i64::from(validated.limiter().release_millis),
             encoded_creative_vfx(validated.creative_vfx())?,
+            encoded_spectral_repair(validated.spectral_repair())?,
             now_millis,
         ],
     )?;
@@ -402,6 +406,7 @@ fn validated_adjustment_graph(
         .with_reverb(graph.reverb())
         .with_space(graph.space())
         .with_creative_vfx(graph.creative_vfx())
+        .with_spectral_repair(graph.spectral_repair().clone())
         .with_limiter(graph.limiter())
         .with_effect_chain(graph.effect_chain())
         .with_edit_timeline(graph.edit_timeline().clone())
@@ -452,11 +457,29 @@ fn stored_creative_vfx(value: &str) -> Result<CreativeVfxSettings, CatalogError>
     })
 }
 
+fn stored_spectral_repair(value: &str) -> Result<SpectralRepairSettings, CatalogError> {
+    serde_json::from_str(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("stored Original-first spectral repair is invalid: {error}"),
+        )
+    })
+}
+
 fn encoded_creative_vfx(value: CreativeVfxSettings) -> Result<String, CatalogError> {
     serde_json::to_string(&value).map_err(|error| {
         CatalogError::new(
             CatalogErrorKind::Other,
             format!("cannot encode creative VFX settings: {error}"),
+        )
+    })
+}
+
+fn encoded_spectral_repair(value: &SpectralRepairSettings) -> Result<String, CatalogError> {
+    serde_json::to_string(value).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::Other,
+            format!("cannot encode Original-first spectral repair: {error}"),
         )
     })
 }

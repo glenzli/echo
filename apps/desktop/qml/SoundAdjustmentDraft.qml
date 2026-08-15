@@ -71,7 +71,7 @@ QtObject {
     property var editSegments: defaultEditSegments(0, 0)
     property var effectMasks: []
     property var creativeVfx: ({})
-    property var spectralRepair: ({ regions: [] })
+    property var spectralRepair: ({ enabled: true, regions: [] })
 
     property var _savedSnapshot: ({})
     property var _history: []
@@ -226,7 +226,8 @@ QtObject {
     }
 
     function copySpectralRepair(value: var): var {
-        const regions = value && value.regions ? value.regions : [];
+        const source = value || {};
+        const regions = source.regions || [];
         const copied = [];
         for (let index = 0; index < regions.length && index < 64; ++index) {
             const region = regions[index];
@@ -240,7 +241,7 @@ QtObject {
             if (end > start && high > low)
                 copied.push({ startMillis: start, endMillis: end, lowHertz: low, highHertz: high, attenuationCentibels: attenuation, timeFeatherMillis: timeFeather, frequencyFeatherHertz: frequencyFeather });
         }
-        return { regions: copied };
+        return { enabled: source.enabled === undefined ? true : Boolean(source.enabled), regions: copied };
     }
 
     function spectralRepairValue(): var {
@@ -250,6 +251,12 @@ QtObject {
     function setSpectralRepairRegions(value: var): void {
         spectralRepair = copySpectralRepair(value);
         pushCurrent();
+    }
+
+    function setSpectralRepairEnabled(enabled: bool): void {
+        const next = copySpectralRepair(spectralRepair);
+        next.enabled = enabled;
+        setSpectralRepairRegions(next);
     }
 
     function addSpectralRepairRegion(startMillis: int, endMillis: int, lowHertz: int, highHertz: int): void {
@@ -263,7 +270,7 @@ QtObject {
     function clearSpectralRepairRegions(): void {
         if (spectralRepair.regions.length === 0)
             return;
-        setSpectralRepairRegions({ regions: [] });
+        setSpectralRepairRegions({ enabled: spectralRepair.enabled, regions: [] });
     }
 
     function creativeVfxFamily(name: string): var {
@@ -755,8 +762,8 @@ QtObject {
                 effectChain: defaultEffectChain(),
                 editSegments: [],
                 effectMasks: [],
-            creativeVfx: {},
-            spectralRepair: { regions: [] }
+                creativeVfx: {},
+                spectralRepair: { enabled: true, regions: [] }
             };
         }
         const duration = Math.max(0, Number(asset.durationMillis));
@@ -1836,7 +1843,7 @@ QtObject {
             editSegments: defaultEditSegments(0, sourceDurationMillis),
             effectMasks: [],
             creativeVfx: creativeVfxForOriginal(),
-            spectralRepair: { regions: [] }
+            spectralRepair: { enabled: true, regions: [] }
         });
         pushCurrent();
     }
