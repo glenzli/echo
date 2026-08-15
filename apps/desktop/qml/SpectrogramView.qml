@@ -2,6 +2,7 @@
 //! synchronized timeline viewport and any future repair gestures.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import EchoDesktop
 

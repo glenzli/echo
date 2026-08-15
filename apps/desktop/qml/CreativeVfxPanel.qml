@@ -199,7 +199,7 @@ Item {
                     }
                     Button {
                         text: "×"
-                        accessibleName: qsTr("Delete saved preset")
+                        Accessible.name: qsTr("Delete saved preset")
                         onClicked: creativeVfxPresets.removePreset(String(parent.modelData.name))
                     }
                 }
