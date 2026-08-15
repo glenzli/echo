@@ -722,13 +722,17 @@ InferenceBackend
     产出 Candidate，只有显式 Accept 才能合并进该工作层。首版不支持任意层插入、多个活动工作层、自动
     rebase 或跨资产复制；试听 A/B 至少提供 Original、工作层结果与当前完整结果，导出 provenance 同时
     记录 Original identity、working-layer manifest 和下游 adjustment revision。
-  - 渲染后频谱工作副本（独立合同，catalog P2 已落地）：绝大多数修复应在 VFX 之前完成；若用户确实要
+  - 渲染后频谱工作副本（独立合同，2026-08-15）：绝大多数修复应在 VFX 之前完成；若用户确实要
     擦除某个 VFX 或混音渲染所产生的伪影，不能把该操作塞回 Original-first `SpectralWorkingLayer`。显式的
-    `RenderedSpectralWorkingCopy` 现以内部 render 的内容 identity 和精确上游 adjustment revision 为不可变
+    `RenderedSpectralWorkingCopy` 以内部 render 的内容 identity 和精确上游 adjustment revision 为不可变
     parent；创建仅接受仍为当前 revision 的 render，改动该 parent 后旧副本保留并明确标为不可用，绝不静默
-    rebase。它已支持整体旁路和整体移除；内部 render cache、tile 实体、破坏性工具、fork／重渲染入口以及
-    试听／导出接线仍待实现。这个分支保持其后的调整可编辑，但不属于首版修复工作层，也不应以“任意位置插层”
-    弱化可追溯性。
+    rebase。桌面在后台把当前已保存的完整调整渲染到 content-addressed private cache；副本有不可变 parent
+    cache identity 和随确定性擦除提交原子替换的 current cache identity。用户在显式 Erase mode 中框选时，会
+    将至多 512 个带时频范围、96 dB 衰减及 feather 参数的操作追加到同一 manifest，而不是每笔创建 Adjustment；
+    当前 cache 和 manifest 一起提交。频谱预览可切换至该 cache，且提供明确的 rendered audition；整体旁路、
+    整体移除、上游失效与重新冻结均保持显式。首版采用完整缓存重渲染而非虚假的像素/时频 tile COW，因而
+    不能声称局部编辑的性能优势。导出 provenance 连接与“重新冻结为新副本”的显式菜单仍待后续切片完成；
+    这个分支不属于首版修复工作层，也不应以“任意位置插层”弱化可追溯性。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，
