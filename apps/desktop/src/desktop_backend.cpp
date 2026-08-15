@@ -92,7 +92,10 @@ QVariantMap spectralRepairForQml(const rust::String& encoded) {
     const QJsonDocument document =
         QJsonDocument::fromJson(QByteArray(encoded.data(), static_cast<qsizetype>(encoded.size())));
     if (!document.isObject()) {
-        return {{QStringLiteral("regions"), QVariantList{}}};
+        return {
+            {QStringLiteral("enabled"), true},
+            {QStringLiteral("regions"), QVariantList{}},
+        };
     }
     return document.object().toVariantMap();
 }
