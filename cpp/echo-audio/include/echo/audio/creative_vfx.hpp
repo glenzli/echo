@@ -1,5 +1,9 @@
 #pragma once
 
+#include "echo/audio/auto_wah_vfx_processor.hpp"
+#include "echo/audio/pitch_vfx_processor.hpp"
+#include "echo/audio/tape_vfx_processor.hpp"
+
 #include <cstdint>
 
 namespace echo::audio {
@@ -38,11 +42,21 @@ struct EchoAdjustment {
     std::uint8_t stereo_crossfeed_percent = 70;
 };
 
+/// Input-following wet-mix reduction for a repeat effect. This is not an
+/// external sidechain: the selected source signal supplies the envelope.
+struct DelayDuckingAdjustment {
+    bool enabled = false;
+    std::uint8_t amount_percent = 65;
+    std::uint16_t attack_millis = 10;
+    std::uint16_t release_millis = 250;
+};
+
 struct DelayVfxAdjustment {
     DelayVfxCharacter character = DelayVfxCharacter::Slapback;
     bool enabled = false;
     SlapbackAdjustment slapback;
     EchoAdjustment echo;
+    DelayDuckingAdjustment ducking;
 };
 
 enum class ModulationVfxCharacter : std::uint8_t {
@@ -197,6 +211,9 @@ struct CreativeVfxAdjustment {
     RotaryVfxAdjustment rotary;
     FreezeVfxAdjustment freeze;
     GranularVfxAdjustment granular;
+    TapeVfxParameters tape;
+    PitchVfxParameters pitch;
+    AutoWahVfxParameters auto_wah;
 };
 
 } // namespace echo::audio

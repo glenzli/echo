@@ -66,6 +66,10 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
     const int echo_cut = field(echo, "highCutHertz", "high_cut_hertz", 6500).toInt();
     const int echo_cross =
         field(echo, "stereoCrossfeedPercent", "stereo_crossfeed_percent", 70).toInt();
+    const QVariantMap ducking = nested(delay, "ducking");
+    const int ducking_amount = field(ducking, "amountPercent", "amount_percent", 65).toInt();
+    const int ducking_attack = field(ducking, "attackMillis", "attack_millis", 10).toInt();
+    const int ducking_release = field(ducking, "releaseMillis", "release_millis", 250).toInt();
 
     const QVariantMap modulation = nested(value, "modulation");
     const auto modulation_character = character(
@@ -169,14 +173,40 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
     const double required_history =
         static_cast<double>(lookback + scatter)
         + static_cast<double>(grain_millis) * std::max(1.0, pitch_ratio);
+    const QVariantMap tape = nested(value, "tape");
+    const int tape_mix = field(tape, "mixPercent", "mix_percent", 55).toInt();
+    const int tape_saturation = field(tape, "saturationPercent", "saturation_percent", 25).toInt();
+    const int tape_motion = field(tape, "wowFlutterPercent", "wow_flutter_percent", 30).toInt();
+    const int tape_dropout = field(tape, "dropoutPercent", "dropout_percent", 0).toInt();
+    const QVariantMap pitch_vfx = nested(value, "pitch");
+    const int pitch_mix = field(pitch_vfx, "mixPercent", "mix_percent", 100).toInt();
+    const int pitch_semitones = field(pitch_vfx, "pitchSemitones", "pitch_semitones", 0).toInt();
+    const int harmony_semitones =
+        field(pitch_vfx, "harmonySemitones", "harmony_semitones", 7).toInt();
+    const int harmony_mix =
+        field(pitch_vfx, "harmonyMixPercent", "harmony_mix_percent", 35).toInt();
+    const int formant_colour =
+        field(pitch_vfx, "formantColourSemitones", "formant_colour_semitones", 0).toInt();
+    const QVariantMap auto_wah =
+        nested(value, "auto_wah").isEmpty() ? nested(value, "autoWah") : nested(value, "auto_wah");
+    const int wah_mix = field(auto_wah, "mixPercent", "mix_percent", 70).toInt();
+    const int wah_sensitivity =
+        field(auto_wah, "sensitivityPercent", "sensitivity_percent", 55).toInt();
+    const int wah_minimum =
+        field(auto_wah, "minimumFrequencyHertz", "minimum_frequency_hertz", 280).toInt();
+    const int wah_maximum =
+        field(auto_wah, "maximumFrequencyHertz", "maximum_frequency_hertz", 2800).toInt();
+    const int wah_resonance = field(auto_wah, "resonanceTenths", "resonance_tenths", 18).toInt();
 
     if (!scene_character || scene_mix < 0 || scene_mix > 100 || scene_intensity < 0
         || scene_intensity > 100 || !delay_character || slapback_time < 30 || slapback_time > 180
         || slapback_mix < 0 || slapback_mix > 100 || slapback_cut < 1000 || slapback_cut > 20000
         || echo_time < 80 || echo_time > 2000 || echo_feedback < 0 || echo_feedback > 90
         || echo_mix < 0 || echo_mix > 100 || echo_cut < 1000 || echo_cut > 20000 || echo_cross < 0
-        || echo_cross > 100 || !modulation_character || chorus_mix < 0 || chorus_mix > 100
-        || chorus_rate < 50 || chorus_rate > 5000 || chorus_minimum < 5000 || chorus_minimum > 25000
+        || echo_cross > 100 || ducking_amount < 0 || ducking_amount > 100 || ducking_attack < 1
+        || ducking_attack > 200 || ducking_release < 20 || ducking_release > 2000
+        || !modulation_character || chorus_mix < 0 || chorus_mix > 100 || chorus_rate < 50
+        || chorus_rate > 5000 || chorus_minimum < 5000 || chorus_minimum > 25000
         || chorus_sweep < 500 || chorus_sweep > 20000 || chorus_minimum + chorus_sweep > 45000
         || chorus_phase < 0 || chorus_phase > 180 || flanger_mix < 0 || flanger_mix > 100
         || flanger_rate < 50 || flanger_rate > 10000 || flanger_minimum < 100
@@ -201,6 +231,15 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
         || density < 10 || density > 400 || lookback < 0 || lookback > 1500 || scatter < 0
         || scatter > 750 || pitch < -1200 || pitch > 1200 || spread < 0 || spread > 100 || !seed_ok
         || seed > std::numeric_limits<std::uint32_t>::max() || required_history > 2000.0) {
+        return std::nullopt;
+    }
+    if (tape_mix < 0 || tape_mix > 100 || tape_saturation < 0 || tape_saturation > 100
+        || tape_motion < 0 || tape_motion > 100 || tape_dropout < 0 || tape_dropout > 100
+        || pitch_mix < 0 || pitch_mix > 100 || pitch_semitones < -12 || pitch_semitones > 12
+        || harmony_semitones < -12 || harmony_semitones > 12 || harmony_mix < 0 || harmony_mix > 100
+        || formant_colour < -12 || formant_colour > 12 || wah_mix < 0 || wah_mix > 100
+        || wah_sensitivity < 0 || wah_sensitivity > 100 || wah_minimum < 80
+        || wah_maximum <= wah_minimum || wah_resonance < 5 || wah_resonance > 50) {
         return std::nullopt;
     }
 
@@ -229,6 +268,13 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
                         .mix_percent = static_cast<std::uint8_t>(echo_mix),
                         .high_cut_hertz = static_cast<std::uint16_t>(echo_cut),
                         .stereo_crossfeed_percent = static_cast<std::uint8_t>(echo_cross),
+                    },
+                .ducking =
+                    {
+                        .enabled = ducking.value(QStringLiteral("enabled"), false).toBool(),
+                        .amount_percent = static_cast<std::uint8_t>(ducking_amount),
+                        .attack_millis = static_cast<std::uint16_t>(ducking_attack),
+                        .release_millis = static_cast<std::uint16_t>(ducking_release),
                     },
             },
         .modulation =
@@ -312,16 +358,40 @@ CreativeVfxProjection::fromQml(const QVariantMap& value) {
                 .mix_percent = static_cast<std::uint8_t>(freeze_mix),
                 .capture_source_millis = static_cast<std::uint64_t>(freeze_anchor),
             },
-        .granular = {
-            .enabled = granular.value(QStringLiteral("enabled"), false).toBool(),
-            .mix_percent = static_cast<std::uint8_t>(granular_mix),
-            .grain_millis = static_cast<std::uint16_t>(grain_millis),
-            .density_tenths_hertz = static_cast<std::uint16_t>(density),
-            .lookback_millis = static_cast<std::uint16_t>(lookback),
-            .scatter_millis = static_cast<std::uint16_t>(scatter),
-            .pitch_cents = static_cast<std::int16_t>(pitch),
-            .stereo_spread_percent = static_cast<std::uint8_t>(spread),
-            .random_seed = static_cast<std::uint32_t>(seed),
+        .granular =
+            {
+                .enabled = granular.value(QStringLiteral("enabled"), false).toBool(),
+                .mix_percent = static_cast<std::uint8_t>(granular_mix),
+                .grain_millis = static_cast<std::uint16_t>(grain_millis),
+                .density_tenths_hertz = static_cast<std::uint16_t>(density),
+                .lookback_millis = static_cast<std::uint16_t>(lookback),
+                .scatter_millis = static_cast<std::uint16_t>(scatter),
+                .pitch_cents = static_cast<std::int16_t>(pitch),
+                .stereo_spread_percent = static_cast<std::uint8_t>(spread),
+                .random_seed = static_cast<std::uint32_t>(seed),
+            },
+        .tape =
+            {.enabled = tape.value(QStringLiteral("enabled"), false).toBool(),
+             .mix_percent = static_cast<std::uint8_t>(tape_mix),
+             .saturation_percent = static_cast<std::uint8_t>(tape_saturation),
+             .wow_flutter_percent = static_cast<std::uint8_t>(tape_motion),
+             .dropout_percent = static_cast<std::uint8_t>(tape_dropout)},
+        .pitch =
+            {.enabled = pitch_vfx.value(QStringLiteral("enabled"), false).toBool(),
+             .mix_percent = static_cast<std::uint8_t>(pitch_mix),
+             .pitch_semitones = static_cast<std::int8_t>(pitch_semitones),
+             .harmony_enabled =
+                 field(pitch_vfx, "harmonyEnabled", "harmony_enabled", false).toBool(),
+             .harmony_semitones = static_cast<std::int8_t>(harmony_semitones),
+             .harmony_mix_percent = static_cast<std::uint8_t>(harmony_mix),
+             .formant_colour_semitones = static_cast<std::int8_t>(formant_colour)},
+        .auto_wah = {
+            .enabled = auto_wah.value(QStringLiteral("enabled"), false).toBool(),
+            .mix_percent = static_cast<std::uint8_t>(wah_mix),
+            .sensitivity_percent = static_cast<std::uint8_t>(wah_sensitivity),
+            .minimum_frequency_hertz = static_cast<std::uint16_t>(wah_minimum),
+            .maximum_frequency_hertz = static_cast<std::uint16_t>(wah_maximum),
+            .resonance_tenths = static_cast<std::uint8_t>(wah_resonance)
         },
     };
 }
@@ -357,6 +427,15 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
             {QStringLiteral("highCutHertz"), adjustment.delay.echo.high_cut_hertz},
             {QStringLiteral("stereoCrossfeedPercent"),
              adjustment.delay.echo.stereo_crossfeed_percent},
+        }
+    );
+    delay.insert(
+        QStringLiteral("ducking"),
+        QVariantMap{
+            {QStringLiteral("enabled"), adjustment.delay.ducking.enabled},
+            {QStringLiteral("amountPercent"), adjustment.delay.ducking.amount_percent},
+            {QStringLiteral("attackMillis"), adjustment.delay.ducking.attack_millis},
+            {QStringLiteral("releaseMillis"), adjustment.delay.ducking.release_millis},
         }
     );
 
@@ -457,6 +536,30 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         {QStringLiteral("randomSeed"),
          QVariant::fromValue<qulonglong>(adjustment.granular.random_seed)},
     };
+    QVariantMap tape{
+        {QStringLiteral("enabled"), adjustment.tape.enabled},
+        {QStringLiteral("mixPercent"), adjustment.tape.mix_percent},
+        {QStringLiteral("saturationPercent"), adjustment.tape.saturation_percent},
+        {QStringLiteral("wowFlutterPercent"), adjustment.tape.wow_flutter_percent},
+        {QStringLiteral("dropoutPercent"), adjustment.tape.dropout_percent},
+    };
+    QVariantMap pitch{
+        {QStringLiteral("enabled"), adjustment.pitch.enabled},
+        {QStringLiteral("mixPercent"), adjustment.pitch.mix_percent},
+        {QStringLiteral("pitchSemitones"), adjustment.pitch.pitch_semitones},
+        {QStringLiteral("harmonyEnabled"), adjustment.pitch.harmony_enabled},
+        {QStringLiteral("harmonySemitones"), adjustment.pitch.harmony_semitones},
+        {QStringLiteral("harmonyMixPercent"), adjustment.pitch.harmony_mix_percent},
+        {QStringLiteral("formantColourSemitones"), adjustment.pitch.formant_colour_semitones},
+    };
+    QVariantMap auto_wah{
+        {QStringLiteral("enabled"), adjustment.auto_wah.enabled},
+        {QStringLiteral("mixPercent"), adjustment.auto_wah.mix_percent},
+        {QStringLiteral("sensitivityPercent"), adjustment.auto_wah.sensitivity_percent},
+        {QStringLiteral("minimumFrequencyHertz"), adjustment.auto_wah.minimum_frequency_hertz},
+        {QStringLiteral("maximumFrequencyHertz"), adjustment.auto_wah.maximum_frequency_hertz},
+        {QStringLiteral("resonanceTenths"), adjustment.auto_wah.resonance_tenths},
+    };
     digital_degrade.insert(
         QStringLiteral("sampleRateReduction"),
         QVariantMap{
@@ -474,6 +577,9 @@ QVariantMap CreativeVfxProjection::toQml(const echo::audio::CreativeVfxAdjustmen
         {QStringLiteral("rotary"), rotary},
         {QStringLiteral("freeze"), freeze},
         {QStringLiteral("granular"), granular},
+        {QStringLiteral("tape"), tape},
+        {QStringLiteral("pitch"), pitch},
+        {QStringLiteral("autoWah"), auto_wah},
     };
 }
 
@@ -527,8 +633,13 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
     QVariantMap echo = delay_params(nested(delay, "echo"));
     echo = snake(echo, "feedbackPercent", "feedback_percent");
     echo = snake(echo, "stereoCrossfeedPercent", "stereo_crossfeed_percent");
+    QVariantMap ducking = nested(delay, "ducking");
+    ducking = snake(ducking, "amountPercent", "amount_percent");
+    ducking = snake(ducking, "attackMillis", "attack_millis");
+    ducking = snake(ducking, "releaseMillis", "release_millis");
     delay[QStringLiteral("slapback")] = slapback;
     delay[QStringLiteral("echo")] = echo;
+    delay[QStringLiteral("ducking")] = ducking;
     auto common_modulation = [&](QVariantMap map) {
         map = snake(map, "rateMillihertz", "rate_millihertz");
         map = snake(map, "stereoPhaseDegrees", "stereo_phase_degrees");
@@ -583,6 +694,24 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
     granular = snake(granular, "pitchCents", "pitch_cents");
     granular = snake(granular, "stereoSpreadPercent", "stereo_spread_percent");
     granular = snake(granular, "randomSeed", "random_seed");
+    QVariantMap tape = nested(qml, "tape");
+    tape = snake(tape, "mixPercent", "mix_percent");
+    tape = snake(tape, "saturationPercent", "saturation_percent");
+    tape = snake(tape, "wowFlutterPercent", "wow_flutter_percent");
+    tape = snake(tape, "dropoutPercent", "dropout_percent");
+    QVariantMap pitch = nested(qml, "pitch");
+    pitch = snake(pitch, "mixPercent", "mix_percent");
+    pitch = snake(pitch, "pitchSemitones", "pitch_semitones");
+    pitch = snake(pitch, "harmonyEnabled", "harmony_enabled");
+    pitch = snake(pitch, "harmonySemitones", "harmony_semitones");
+    pitch = snake(pitch, "harmonyMixPercent", "harmony_mix_percent");
+    pitch = snake(pitch, "formantColourSemitones", "formant_colour_semitones");
+    QVariantMap auto_wah = nested(qml, "autoWah");
+    auto_wah = snake(auto_wah, "mixPercent", "mix_percent");
+    auto_wah = snake(auto_wah, "sensitivityPercent", "sensitivity_percent");
+    auto_wah = snake(auto_wah, "minimumFrequencyHertz", "minimum_frequency_hertz");
+    auto_wah = snake(auto_wah, "maximumFrequencyHertz", "maximum_frequency_hertz");
+    auto_wah = snake(auto_wah, "resonanceTenths", "resonance_tenths");
     return QJsonDocument::fromVariant(
                QVariantMap{
                    {QStringLiteral("scene"), scene},
@@ -594,6 +723,9 @@ QByteArray CreativeVfxProjection::toJson(const echo::audio::CreativeVfxAdjustmen
                    {QStringLiteral("rotary"), rotary},
                    {QStringLiteral("freeze"), freeze},
                    {QStringLiteral("granular"), granular},
+                   {QStringLiteral("tape"), tape},
+                   {QStringLiteral("pitch"), pitch},
+                   {QStringLiteral("auto_wah"), auto_wah},
                }
     )
         .toJson(QJsonDocument::Compact);

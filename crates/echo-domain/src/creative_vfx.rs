@@ -310,12 +310,37 @@ impl Default for EchoSettings {
     }
 }
 
+/// Input-following wet-mix reduction for the Delay VFX family.
+///
+/// The selected source signal is the only envelope source. It never introduces
+/// an external sidechain stream or changes delay feedback.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DelayDuckingSettings {
+    pub enabled: bool,
+    pub amount_percent: u8,
+    pub attack_millis: u16,
+    pub release_millis: u16,
+}
+
+impl Default for DelayDuckingSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            amount_percent: 65,
+            attack_millis: 10,
+            release_millis: 250,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct DelayVfxSettings {
     pub character: DelayVfxCharacter,
     pub enabled: bool,
     pub slapback: SlapbackSettings,
     pub echo: EchoSettings,
+    #[serde(default)]
+    pub ducking: DelayDuckingSettings,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -513,6 +538,75 @@ pub struct RotaryVfxSettings {
     pub stereo_width_percent: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TapeVfxSettings {
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub saturation_percent: u8,
+    pub wow_flutter_percent: u8,
+    pub dropout_percent: u8,
+}
+
+impl Default for TapeVfxSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            mix_percent: 55,
+            saturation_percent: 25,
+            wow_flutter_percent: 30,
+            dropout_percent: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PitchVfxSettings {
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub pitch_semitones: i8,
+    pub harmony_enabled: bool,
+    pub harmony_semitones: i8,
+    pub harmony_mix_percent: u8,
+    pub formant_colour_semitones: i8,
+}
+
+impl Default for PitchVfxSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            mix_percent: 100,
+            pitch_semitones: 0,
+            harmony_enabled: false,
+            harmony_semitones: 7,
+            harmony_mix_percent: 35,
+            formant_colour_semitones: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutoWahVfxSettings {
+    pub enabled: bool,
+    pub mix_percent: u8,
+    pub sensitivity_percent: u8,
+    pub minimum_frequency_hertz: u16,
+    pub maximum_frequency_hertz: u16,
+    pub resonance_tenths: u8,
+}
+
+impl Default for AutoWahVfxSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            mix_percent: 70,
+            sensitivity_percent: 55,
+            minimum_frequency_hertz: 280,
+            maximum_frequency_hertz: 2800,
+            resonance_tenths: 18,
+        }
+    }
+}
+
 impl Default for RotaryVfxSettings {
     fn default() -> Self {
         Self {
@@ -546,6 +640,12 @@ pub struct CreativeVfxSettings {
     pub freeze: FreezeVfxSettings,
     #[serde(default)]
     pub granular: GranularVfxSettings,
+    #[serde(default)]
+    pub tape: TapeVfxSettings,
+    #[serde(default)]
+    pub pitch: PitchVfxSettings,
+    #[serde(default)]
+    pub auto_wah: AutoWahVfxSettings,
 }
 
 impl CreativeVfxSettings {
@@ -572,6 +672,12 @@ impl CreativeVfxSettings {
                     mix_percent: 28,
                     high_cut_hertz: 6_500,
                     stereo_crossfeed_percent: 70,
+                },
+                ducking: DelayDuckingSettings {
+                    enabled: false,
+                    amount_percent: 65,
+                    attack_millis: 10,
+                    release_millis: 250,
                 },
             },
             modulation: ModulationVfxSettings {
@@ -638,6 +744,30 @@ impl CreativeVfxSettings {
             },
             freeze: FreezeVfxSettings::standard(),
             granular: GranularVfxSettings::standard(),
+            tape: TapeVfxSettings {
+                enabled: false,
+                mix_percent: 55,
+                saturation_percent: 25,
+                wow_flutter_percent: 30,
+                dropout_percent: 0,
+            },
+            pitch: PitchVfxSettings {
+                enabled: false,
+                mix_percent: 100,
+                pitch_semitones: 0,
+                harmony_enabled: false,
+                harmony_semitones: 7,
+                harmony_mix_percent: 35,
+                formant_colour_semitones: 0,
+            },
+            auto_wah: AutoWahVfxSettings {
+                enabled: false,
+                mix_percent: 70,
+                sensitivity_percent: 55,
+                minimum_frequency_hertz: 280,
+                maximum_frequency_hertz: 2_800,
+                resonance_tenths: 18,
+            },
         }
     }
 
@@ -663,6 +793,9 @@ impl CreativeVfxSettings {
             || self.delay.echo.high_cut_hertz < 1_000
             || self.delay.echo.high_cut_hertz > 20_000
             || self.delay.echo.stereo_crossfeed_percent > 100
+            || self.delay.ducking.amount_percent > 100
+            || !(1..=200).contains(&self.delay.ducking.attack_millis)
+            || !(20..=2_000).contains(&self.delay.ducking.release_millis)
         {
             return Err(CreativeVfxSettingsError::Delay);
         }
@@ -738,6 +871,30 @@ impl CreativeVfxSettings {
         if !self.granular.is_valid() {
             return Err(CreativeVfxSettingsError::Granular);
         }
+        if self.tape.mix_percent > 100
+            || self.tape.saturation_percent > 100
+            || self.tape.wow_flutter_percent > 100
+            || self.tape.dropout_percent > 100
+        {
+            return Err(CreativeVfxSettingsError::Tape);
+        }
+        if self.pitch.mix_percent > 100
+            || !(-12..=12).contains(&self.pitch.pitch_semitones)
+            || !(-12..=12).contains(&self.pitch.harmony_semitones)
+            || self.pitch.harmony_mix_percent > 100
+            || !(-12..=12).contains(&self.pitch.formant_colour_semitones)
+        {
+            return Err(CreativeVfxSettingsError::Pitch);
+        }
+        if self.auto_wah.mix_percent > 100
+            || self.auto_wah.sensitivity_percent > 100
+            || self.auto_wah.minimum_frequency_hertz < 80
+            || self.auto_wah.maximum_frequency_hertz <= self.auto_wah.minimum_frequency_hertz
+            || self.auto_wah.resonance_tenths < 5
+            || self.auto_wah.resonance_tenths > 50
+        {
+            return Err(CreativeVfxSettingsError::AutoWah);
+        }
         Ok(())
     }
 }
@@ -753,6 +910,9 @@ pub enum CreativeVfxSettingsError {
     Rotary,
     Freeze,
     Granular,
+    Tape,
+    Pitch,
+    AutoWah,
 }
 
 impl std::fmt::Display for CreativeVfxSettingsError {
@@ -767,6 +927,9 @@ impl std::fmt::Display for CreativeVfxSettingsError {
             Self::Rotary => "rotary",
             Self::Freeze => "freeze",
             Self::Granular => "granular",
+            Self::Tape => "tape",
+            Self::Pitch => "pitch",
+            Self::AutoWah => "auto-wah",
         };
         write!(
             formatter,

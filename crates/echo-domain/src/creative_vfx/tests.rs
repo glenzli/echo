@@ -7,6 +7,7 @@ fn defaults_are_disabled_and_valid() {
     settings.validate().expect("default VFX settings validate");
     assert!(!settings.scene.enabled);
     assert!(!settings.delay.enabled);
+    assert_eq!(settings.delay.ducking, DelayDuckingSettings::default());
     assert!(!settings.modulation.enabled);
     assert!(!settings.transform.enabled);
     assert!(!settings.digital_degrade.enabled);
@@ -14,6 +15,9 @@ fn defaults_are_disabled_and_valid() {
     assert!(!settings.rotary.enabled);
     assert!(!settings.freeze.enabled);
     assert!(!settings.granular.enabled);
+    assert!(!settings.tape.enabled);
+    assert!(!settings.pitch.enabled);
+    assert!(!settings.auto_wah.enabled);
 }
 
 #[test]
@@ -42,6 +46,10 @@ fn family_ranges_are_validated_independently() {
 
     let mut settings = CreativeVfxSettings::default();
     settings.delay.echo.feedback_percent = 91;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Delay));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.delay.ducking.release_millis = 2_001;
     assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Delay));
 
     let mut settings = CreativeVfxSettings::default();
@@ -83,6 +91,18 @@ fn family_ranges_are_validated_independently() {
     assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Granular));
 
     let mut settings = CreativeVfxSettings::default();
+    settings.tape.wow_flutter_percent = 101;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Tape));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.pitch.pitch_semitones = 13;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::Pitch));
+
+    let mut settings = CreativeVfxSettings::default();
+    settings.auto_wah.maximum_frequency_hertz = settings.auto_wah.minimum_frequency_hertz;
+    assert_eq!(settings.validate(), Err(CreativeVfxSettingsError::AutoWah));
+
+    let mut settings = CreativeVfxSettings::default();
     settings.granular.lookback_millis = 1_500;
     settings.granular.scatter_millis = 750;
     settings.granular.grain_millis = 250;
@@ -101,6 +121,12 @@ fn aggregate_json_preserves_typed_family_settings() {
         delay: DelayVfxSettings {
             character: DelayVfxCharacter::Echo,
             enabled: true,
+            ducking: DelayDuckingSettings {
+                enabled: true,
+                amount_percent: 72,
+                attack_millis: 15,
+                release_millis: 380,
+            },
             ..DelayVfxSettings::default()
         },
         modulation: ModulationVfxSettings {
@@ -153,6 +179,30 @@ fn aggregate_json_preserves_typed_family_settings() {
             stereo_spread_percent: 74,
             random_seed: 0x1234_5678,
         },
+        tape: TapeVfxSettings {
+            enabled: true,
+            mix_percent: 67,
+            saturation_percent: 48,
+            wow_flutter_percent: 36,
+            dropout_percent: 9,
+        },
+        pitch: PitchVfxSettings {
+            enabled: true,
+            mix_percent: 81,
+            pitch_semitones: -3,
+            harmony_enabled: true,
+            harmony_semitones: 7,
+            harmony_mix_percent: 42,
+            formant_colour_semitones: 2,
+        },
+        auto_wah: AutoWahVfxSettings {
+            enabled: true,
+            mix_percent: 73,
+            sensitivity_percent: 61,
+            minimum_frequency_hertz: 310,
+            maximum_frequency_hertz: 3_400,
+            resonance_tenths: 22,
+        },
     };
     let encoded = serde_json::to_string(&settings).expect("settings encode");
     let decoded: CreativeVfxSettings = serde_json::from_str(&encoded).expect("settings decode");
@@ -188,13 +238,19 @@ fn legacy_json_defaults_drive_and_rotary_to_disabled_identity() {
 }
 
 #[test]
-fn legacy_json_defaults_freeze_and_granular_to_disabled_identity() {
+fn legacy_json_defaults_new_creative_families_to_disabled_identity() {
     let mut value = serde_json::to_value(CreativeVfxSettings::default()).expect("settings encode");
     let object = value.as_object_mut().expect("settings object");
     object.remove("freeze");
     object.remove("granular");
+    object.remove("tape");
+    object.remove("pitch");
+    object.remove("auto_wah");
     let restored: CreativeVfxSettings =
         serde_json::from_value(value).expect("legacy settings decode");
     assert_eq!(restored.freeze, FreezeVfxSettings::default());
     assert_eq!(restored.granular, GranularVfxSettings::default());
+    assert_eq!(restored.tape, TapeVfxSettings::default());
+    assert_eq!(restored.pitch, PitchVfxSettings::default());
+    assert_eq!(restored.auto_wah, AutoWahVfxSettings::default());
 }

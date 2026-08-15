@@ -55,19 +55,20 @@ pub use adjustment::{
     MIN_NOISE_REDUCTION_SMOOTHING_MILLIS, MIN_REVERB_DECAY_MILLIS, MIN_REVERB_HIGH_CUT_HERTZ,
     MIN_REVERB_LOW_CUT_HERTZ, MIN_REVERB_SIZE_PERCENT, NoiseReductionSettings, ParametricEqualizer,
     ParametricEqualizerBand, RestorationSettings, ReverbCharacter, ReverbCharacterValueError,
-    ReverbSettings,
+    ReverbDuckingSettings, ReverbSettings,
 };
 pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,
 };
 pub use audio_asset::AudioAsset;
 pub use creative_vfx::{
-    BitcrusherSettings, ChorusSettings, CreativeVfxSettings, CreativeVfxSettingsError,
-    CreativeVfxValueError, DelayVfxCharacter, DelayVfxSettings, DigitalDegradeVfxCharacter,
-    DigitalDegradeVfxSettings, DriveVfxCharacter, DriveVfxSettings, EchoSettings, FlangerSettings,
-    ModulationVfxCharacter, ModulationVfxSettings, PhaserSettings, RotaryVfxSettings,
-    RotaryVfxSpeed, SampleRateReductionSettings, SceneVfxCharacter, SceneVfxSettings,
-    SlapbackSettings, TransformVfxCharacter, TransformVfxSettings, TremoloSettings,
+    AutoWahVfxSettings, BitcrusherSettings, ChorusSettings, CreativeVfxSettings,
+    CreativeVfxSettingsError, CreativeVfxValueError, DelayDuckingSettings, DelayVfxCharacter,
+    DelayVfxSettings, DigitalDegradeVfxCharacter, DigitalDegradeVfxSettings, DriveVfxCharacter,
+    DriveVfxSettings, EchoSettings, FlangerSettings, ModulationVfxCharacter, ModulationVfxSettings,
+    PhaserSettings, PitchVfxSettings, RotaryVfxSettings, RotaryVfxSpeed,
+    SampleRateReductionSettings, SceneVfxCharacter, SceneVfxSettings, SlapbackSettings,
+    TapeVfxSettings, TransformVfxCharacter, TransformVfxSettings, TremoloSettings,
 };
 pub use freeze_vfx::{FREEZE_CAPTURE_PRE_ROLL_MILLIS, FreezeVfxSettings};
 pub use granular_vfx::GranularVfxSettings;

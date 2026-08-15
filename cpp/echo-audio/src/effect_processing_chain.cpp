@@ -2,6 +2,7 @@
 
 #include "echo/audio/adaptive_noise_reducer.hpp"
 #include "echo/audio/algorithmic_reverb.hpp"
+#include "echo/audio/auto_wah_vfx_processor.hpp"
 #include "echo/audio/channel_repair_processor.hpp"
 #include "echo/audio/de_click_processor.hpp"
 #include "echo/audio/de_esser.hpp"
@@ -15,9 +16,11 @@
 #include "echo/audio/granular_vfx_processor.hpp"
 #include "echo/audio/modulation_vfx_processor.hpp"
 #include "echo/audio/parametric_equalizer.hpp"
+#include "echo/audio/pitch_vfx_processor.hpp"
 #include "echo/audio/rotary_vfx_processor.hpp"
 #include "echo/audio/scene_vfx_processor.hpp"
 #include "echo/audio/space_processor.hpp"
+#include "echo/audio/tape_vfx_processor.hpp"
 #include "echo/audio/transform_vfx_processor.hpp"
 
 #include <algorithm>
@@ -81,6 +84,9 @@ class EffectProcessingChain::Impl {
         rotary_vfx_(adjustment.creative_vfx().rotary, sample_rate, channel_count),
         freeze_vfx_(adjustment.creative_vfx().freeze, sample_rate, channel_count),
         granular_vfx_(adjustment.creative_vfx().granular, sample_rate, channel_count),
+        tape_vfx_(adjustment.creative_vfx().tape, sample_rate, channel_count),
+        pitch_vfx_(adjustment.creative_vfx().pitch, sample_rate, channel_count),
+        auto_wah_vfx_(adjustment.creative_vfx().auto_wah, sample_rate, channel_count),
         freeze_adjustment_(adjustment.creative_vfx().freeze),
         freeze_capture_source_frame_(
             adjustment.creative_vfx().freeze.capture_source_millis * sample_rate / 1000U
@@ -198,6 +204,9 @@ class EffectProcessingChain::Impl {
         rotary_vfx_.reset();
         freeze_vfx_.reset();
         granular_vfx_.reset();
+        tape_vfx_.reset();
+        pitch_vfx_.reset();
+        auto_wah_vfx_.reset();
         freeze_capture_handled_ = false;
         reset_compensation();
     }
@@ -297,6 +306,15 @@ class EffectProcessingChain::Impl {
     void update_granular_vfx(GranularVfxAdjustment adjustment) {
         granular_vfx_.update(adjustment);
     }
+    void update_tape_vfx(TapeVfxParameters parameters) {
+        tape_vfx_.update(parameters);
+    }
+    void update_pitch_vfx(PitchVfxParameters parameters) {
+        pitch_vfx_.update(parameters);
+    }
+    void update_auto_wah_vfx(AutoWahVfxParameters parameters) {
+        auto_wah_vfx_.update(parameters);
+    }
 
     [[nodiscard]] std::size_t latency_frames() const {
         return latency_frames_;
@@ -321,6 +339,8 @@ class EffectProcessingChain::Impl {
             return drive_vfx_.latency_frames();
         case EffectNodeKind::FreezeVfx:
             return freeze_vfx_.latency_frames();
+        case EffectNodeKind::PitchVfx:
+            return pitch_vfx_.latency_frames();
         case EffectNodeKind::Restoration:
         case EffectNodeKind::Equalizer:
         case EffectNodeKind::Dynamics:
@@ -334,6 +354,8 @@ class EffectProcessingChain::Impl {
         case EffectNodeKind::DigitalDegradeVfx:
         case EffectNodeKind::RotaryVfx:
         case EffectNodeKind::GranularVfx:
+        case EffectNodeKind::TapeVfx:
+        case EffectNodeKind::AutoWahVfx:
             return 0;
         }
         return 0;
@@ -421,6 +443,16 @@ class EffectProcessingChain::Impl {
                 break;
             case EffectNodeKind::GranularVfx:
                 granular_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::TapeVfx:
+                tape_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                break;
+            case EffectNodeKind::PitchVfx:
+                pitch_vfx_.process_interleaved(samples, frame_count, channel_count_);
+                delay_source_anchors(node, source_frames, frame_count);
+                break;
+            case EffectNodeKind::AutoWahVfx:
+                auto_wah_vfx_.process_interleaved(samples, frame_count, channel_count_);
                 break;
             case EffectNodeKind::Master:
                 break;
@@ -564,6 +596,9 @@ class EffectProcessingChain::Impl {
     RotaryVfxProcessor rotary_vfx_;
     FreezeVfxProcessor freeze_vfx_;
     GranularVfxProcessor granular_vfx_;
+    TapeVfxProcessor tape_vfx_;
+    PitchVfxProcessor pitch_vfx_;
+    AutoWahVfxProcessor auto_wah_vfx_;
     FreezeVfxAdjustment freeze_adjustment_;
     std::uint64_t freeze_capture_source_frame_ = 0;
     bool freeze_capture_configured_ = false;
@@ -695,6 +730,15 @@ void EffectProcessingChain::update_freeze_vfx(FreezeVfxAdjustment adjustment) {
 
 void EffectProcessingChain::update_granular_vfx(GranularVfxAdjustment adjustment) {
     impl_->update_granular_vfx(adjustment);
+}
+void EffectProcessingChain::update_tape_vfx(TapeVfxParameters parameters) {
+    impl_->update_tape_vfx(parameters);
+}
+void EffectProcessingChain::update_pitch_vfx(PitchVfxParameters parameters) {
+    impl_->update_pitch_vfx(parameters);
+}
+void EffectProcessingChain::update_auto_wah_vfx(AutoWahVfxParameters parameters) {
+    impl_->update_auto_wah_vfx(parameters);
 }
 
 void EffectProcessingChain::validate_restoration(
@@ -870,6 +914,30 @@ void EffectProcessingChain::validate_granular_vfx(
     std::size_t channel_count
 ) {
     [[maybe_unused]] const GranularVfxProcessor processor(adjustment, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_tape_vfx(
+    TapeVfxParameters parameters,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const TapeVfxProcessor processor(parameters, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_pitch_vfx(
+    PitchVfxParameters parameters,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const PitchVfxProcessor processor(parameters, sample_rate, channel_count);
+}
+
+void EffectProcessingChain::validate_auto_wah_vfx(
+    AutoWahVfxParameters parameters,
+    std::uint32_t sample_rate,
+    std::size_t channel_count
+) {
+    [[maybe_unused]] const AutoWahVfxProcessor processor(parameters, sample_rate, channel_count);
 }
 
 std::size_t EffectProcessingChain::latency_frames() const {

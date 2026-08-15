@@ -1294,6 +1294,11 @@
 </context>
 <context>
     <name>DelayVfxPanel</name>
+    <message><source>Input ducking</source><translation>输入闪避</translation></message>
+    <message><source>Reduces the repeats while the source is loud</source><translation>在原始声音较响时降低重复声</translation></message>
+    <message><source>Amount</source><translation>程度</translation></message>
+    <message><source>Attack</source><translation>起音</translation></message>
+    <message><source>Release</source><translation>释放</translation></message>
     <message>
         <location filename="../qml/DelayVfxPanel.qml" line="49"/>
         <location filename="../qml/DelayVfxPanel.qml" line="51"/>
@@ -4517,6 +4522,10 @@
 </context>
 <context>
     <name>SpaceReverbPanel</name>
+    <message><source>Input ducking</source><translation>输入闪避</translation></message>
+    <message><source>Ducking amount</source><translation>闪避程度</translation></message>
+    <message><source>Ducking attack</source><translation>闪避起音</translation></message>
+    <message><source>Ducking release</source><translation>闪避释放</translation></message>
     <message>
         <location filename="../qml/SpaceReverbPanel.qml" line="88"/>
         <source>Space</source>
@@ -4766,5 +4775,56 @@
         <source>Creates an exaggerated character. It does not clone a person or preserve a natural speaking identity.</source>
         <translation>塑造夸张的声音角色，不会克隆人物，也不以保留自然说话身份为目标。</translation>
     </message>
+</context>
+<context>
+    <name>AdvancedEffectsRack</name>
+    <message><source>Tape</source><translation>磁带</translation></message>
+    <message><source>Pitch</source><translation>音高</translation></message>
+    <message><source>Auto-Wah</source><translation>自动哇音</translation></message>
+    <message><source>Saturation · Wow &amp; flutter · Dropout</source><translation>饱和 · 哇音与颤动 · 掉带</translation></message>
+    <message><source>Pitch shift · Harmony · Formant colour</source><translation>音高变换 · 和声 · 共振峰色彩</translation></message>
+    <message><source>Envelope-following resonant filter</source><translation>包络跟随共振滤波器</translation></message>
+</context>
+<context>
+    <name>CreativeVfxPanel</name>
+    <message><source>Tape</source><translation>磁带</translation></message>
+    <message><source>Pitch</source><translation>音高</translation></message>
+    <message><source>Auto-Wah</source><translation>自动哇音</translation></message>
+    <message><source>Scenes</source><translation>场景</translation></message>
+    <message><source>Voice memo</source><translation>语音备忘</translation></message>
+    <message><source>Night drive</source><translation>夜间驾车</translation></message>
+    <message><source>Dream voice</source><translation>梦幻人声</translation></message>
+    <message><source>Applies an undoable effect recipe</source><translation>应用可撤销的效果配方</translation></message>
+</context>
+<context>
+    <name>TapeVfxPanel</name>
+    <message><source>Tape</source><translation>磁带</translation></message>
+    <message><source>Input-driven colour</source><translation>输入驱动的音色</translation></message>
+    <message><source>Mix</source><translation>混合</translation></message>
+    <message><source>Saturation</source><translation>饱和</translation></message>
+    <message><source>Wow &amp; flutter</source><translation>哇音与颤动</translation></message>
+    <message><source>Dropout</source><translation>掉带</translation></message>
+</context>
+<context>
+    <name>PitchVfxPanel</name>
+    <message><source>Pitch</source><translation>音高</translation></message>
+    <message><source>Harmony and formant colour</source><translation>和声与共振峰色彩</translation></message>
+    <message><source>Mix</source><translation>混合</translation></message>
+    <message><source>Pitch shift</source><translation>音高变换</translation></message>
+    <message><source>Harmony interval</source><translation>和声音程</translation></message>
+    <message><source>Harmony mix</source><translation>和声混合</translation></message>
+    <message><source>Formant colour</source><translation>共振峰色彩</translation></message>
+    <message><source>Harmony</source><translation>和声</translation></message>
+    <message><source>Pitch uses a fixed causal delay. Formant colour changes spectral character; it does not preserve or imitate a specific voice.</source><translation>音高处理使用固定因果延迟。共振峰色彩会改变频谱特性；它不保留或模仿特定声音身份。</translation></message>
+</context>
+<context>
+    <name>AutoWahVfxPanel</name>
+    <message><source>Auto-Wah</source><translation>自动哇音</translation></message>
+    <message><source>Envelope-following filter</source><translation>包络跟随滤波器</translation></message>
+    <message><source>Mix</source><translation>混合</translation></message>
+    <message><source>Sensitivity</source><translation>灵敏度</translation></message>
+    <message><source>Low frequency</source><translation>低频</translation></message>
+    <message><source>High frequency</source><translation>高频</translation></message>
+    <message><source>Resonance</source><translation>共振</translation></message>
 </context>
 </TS>

@@ -15,10 +15,12 @@ Item {
     property int familyKind: 8
     signal familySelected(int kind)
 
+    readonly property var presetTitles: [qsTr("Voice memo"), qsTr("Night drive"), qsTr("Dream voice")]
+
     readonly property var availableFamilies: {
         const choices = [];
-        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade"), qsTr("Drive"), qsTr("Rotary"), qsTr("Freeze"), qsTr("Granular")];
-        for (let kind = 8; kind <= 16; ++kind) {
+        const titles = [qsTr("Scene"), qsTr("Delay"), qsTr("Modulation"), qsTr("Transform"), qsTr("Degrade"), qsTr("Drive"), qsTr("Rotary"), qsTr("Freeze"), qsTr("Granular"), qsTr("Tape"), qsTr("Pitch"), qsTr("Auto-Wah")];
+        for (let kind = 8; kind <= 19; ++kind) {
             if (draft.effectChain.indexOf(kind) >= 0) {
                 choices.push({
                     kind: kind,
@@ -115,6 +117,52 @@ Item {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 26
+            spacing: 8
+
+            Text {
+                text: qsTr("Scenes")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontMeta
+                font.weight: Font.DemiBold
+            }
+
+            Repeater {
+                model: panel.presetTitles
+
+                delegate: Button {
+                    required property string modelData
+                    implicitHeight: 24
+                    leftPadding: 9
+                    rightPadding: 9
+                    topPadding: 0
+                    bottomPadding: 0
+                    focusPolicy: Qt.NoFocus
+                    onClicked: panel.draft.applyCreativePreset(index)
+
+                    background: Rectangle {
+                        radius: Theme.compactControlRadius
+                        color: parent.hovered ? Theme.buttonGhostHover : Theme.transparent
+                        border.width: 1
+                        border.color: Theme.border
+                    }
+
+                    contentItem: Text {
+                        text: parent.modelData
+                        color: Theme.textSecondary
+                        font.pixelSize: Theme.fontMeta
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+            Text { text: qsTr("Applies an undoable effect recipe"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+        }
+
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -170,6 +218,24 @@ Item {
             GranularVfxPanel {
                 anchors.fill: parent
                 visible: panel.familyKind === 16
+                draft: panel.draft
+            }
+
+            TapeVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 17
+                draft: panel.draft
+            }
+
+            PitchVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 18
+                draft: panel.draft
+            }
+
+            AutoWahVfxPanel {
+                anchors.fill: parent
+                visible: panel.familyKind === 19
                 draft: panel.draft
             }
         }

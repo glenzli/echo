@@ -22,7 +22,7 @@ enum class FadeCurve : std::uint8_t {
 };
 
 inline constexpr std::size_t kParametricEqualizerBandCount = 6;
-inline constexpr std::size_t kEffectNodeCount = 17;
+inline constexpr std::size_t kEffectNodeCount = 20;
 
 enum class EffectNodeKind : std::uint8_t {
     Restoration = 0,
@@ -42,6 +42,9 @@ enum class EffectNodeKind : std::uint8_t {
     RotaryVfx = 14,
     FreezeVfx = 15,
     GranularVfx = 16,
+    TapeVfx = 17,
+    PitchVfx = 18,
+    AutoWahVfx = 19,
 };
 
 enum class EditSegmentState : std::uint8_t {
@@ -183,6 +186,15 @@ enum class ReverbCharacter : std::uint8_t {
     Spring = 3,
 };
 
+/// Input-following wet-mix reduction for algorithmic space. The selected
+/// source is the envelope; Echo does not introduce an external sidechain.
+struct ReverbDuckingAdjustment {
+    bool enabled = false;
+    std::uint8_t amount_percent = 65;
+    std::uint16_t attack_millis = 10;
+    std::uint16_t release_millis = 250;
+};
+
 /// Algorithmic space controls in stable integer units.
 struct ReverbAdjustment {
     ReverbCharacter character = ReverbCharacter::Room;
@@ -194,6 +206,7 @@ struct ReverbAdjustment {
     std::uint8_t damping_percent = 45;
     std::uint16_t low_cut_hertz = 120;
     std::uint16_t high_cut_hertz = 10000;
+    ReverbDuckingAdjustment ducking;
 };
 
 enum class SpaceMode : std::uint8_t {
@@ -264,6 +277,9 @@ struct PlaybackAdjustment {
         EffectNodeKind::RotaryVfx,
         EffectNodeKind::FreezeVfx,
         EffectNodeKind::GranularVfx,
+        EffectNodeKind::TapeVfx,
+        EffectNodeKind::PitchVfx,
+        EffectNodeKind::AutoWahVfx,
     }};
     std::uint8_t effect_chain_count = 5;
     std::vector<EditSegment> edit_segments;

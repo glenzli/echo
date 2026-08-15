@@ -22,6 +22,12 @@ int main() {
         .high_cut_hertz = 5800,
         .stereo_crossfeed_percent = 82,
     };
+    authored.delay.ducking = {
+        .enabled = true,
+        .amount_percent = 72,
+        .attack_millis = 15,
+        .release_millis = 380,
+    };
     authored.modulation.character = echo::audio::ModulationVfxCharacter::Phaser;
     authored.modulation.enabled = true;
     authored.modulation.phaser = {
@@ -76,12 +82,38 @@ int main() {
         .stereo_spread_percent = 73,
         .random_seed = 0x12345678U,
     };
+    authored.tape = {
+        .enabled = true,
+        .mix_percent = 67,
+        .saturation_percent = 48,
+        .wow_flutter_percent = 36,
+        .dropout_percent = 9,
+    };
+    authored.pitch = {
+        .enabled = true,
+        .mix_percent = 81,
+        .pitch_semitones = -3,
+        .harmony_enabled = true,
+        .harmony_semitones = 7,
+        .harmony_mix_percent = 42,
+        .formant_colour_semitones = 2,
+    };
+    authored.auto_wah = {
+        .enabled = true,
+        .mix_percent = 73,
+        .sensitivity_percent = 61,
+        .minimum_frequency_hertz = 310,
+        .maximum_frequency_hertz = 3400,
+        .resonance_tenths = 22,
+    };
 
     const QVariantMap qml = CreativeVfxProjection::toQml(authored);
     const auto from_qml = CreativeVfxProjection::fromQml(qml);
     assert(from_qml.has_value());
     assert(from_qml->scene.character == echo::audio::SceneVfxCharacter::Underwater);
     assert(from_qml->delay.echo.feedback_percent == 44);
+    assert(from_qml->delay.ducking.amount_percent == 72);
+    assert(from_qml->delay.ducking.release_millis == 380);
     assert(from_qml->modulation.phaser.feedback_percent == -18);
     assert(from_qml->transform.character == echo::audio::TransformVfxCharacter::Ghost);
     assert(from_qml->digital_degrade.character == echo::audio::DigitalDegradeVfxCharacter::LoFi);
@@ -92,6 +124,10 @@ int main() {
     assert(from_qml->freeze.capture_source_millis == 2400);
     assert(from_qml->granular.pitch_cents == -350);
     assert(from_qml->granular.random_seed == 0x12345678U);
+    assert(from_qml->tape.wow_flutter_percent == 36);
+    assert(from_qml->pitch.harmony_enabled);
+    assert(from_qml->pitch.formant_colour_semitones == 2);
+    assert(from_qml->auto_wah.maximum_frequency_hertz == 3400);
 
     const QByteArray encoded = CreativeVfxProjection::toJson(authored);
     const QJsonObject json = QJsonDocument::fromJson(encoded).object();
@@ -119,6 +155,20 @@ int main() {
         json.value(QStringLiteral("granular")).toObject().value(QStringLiteral("pitch_cents"))
         == -350
     );
+    assert(
+        json.value(QStringLiteral("tape")).toObject().value(QStringLiteral("wow_flutter_percent"))
+        == 36
+    );
+    assert(json.value(QStringLiteral("pitch"))
+               .toObject()
+               .value(QStringLiteral("harmony_enabled"))
+               .toBool());
+    assert(
+        json.value(QStringLiteral("auto_wah"))
+            .toObject()
+            .value(QStringLiteral("maximum_frequency_hertz"))
+        == 3400
+    );
     const auto from_json = CreativeVfxProjection::fromJson(encoded);
     assert(from_json.has_value());
     assert(CreativeVfxProjection::toJson(*from_json) == encoded);
@@ -139,6 +189,8 @@ int main() {
     assert(defaults.has_value());
     assert(!defaults->scene.enabled);
     assert(!defaults->delay.enabled);
+    assert(!defaults->delay.ducking.enabled);
+    assert(defaults->delay.ducking.amount_percent == 65);
     assert(!defaults->modulation.enabled);
     assert(!defaults->transform.enabled);
     assert(!defaults->digital_degrade.enabled);
@@ -147,6 +199,17 @@ int main() {
     assert(!defaults->freeze.enabled);
     assert(defaults->freeze.capture_source_millis == 100);
     assert(!defaults->granular.enabled);
+    assert(!defaults->tape.enabled);
+    assert(!defaults->pitch.enabled);
+    assert(!defaults->auto_wah.enabled);
+
+    invalid = qml;
+    QVariantMap delay = invalid.value(QStringLiteral("delay")).toMap();
+    QVariantMap ducking = delay.value(QStringLiteral("ducking")).toMap();
+    ducking.insert(QStringLiteral("attackMillis"), 0);
+    delay.insert(QStringLiteral("ducking"), ducking);
+    invalid.insert(QStringLiteral("delay"), delay);
+    assert(!CreativeVfxProjection::fromQml(invalid).has_value());
 
     invalid = qml;
     QVariantMap freeze = invalid.value(QStringLiteral("freeze")).toMap();

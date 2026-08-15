@@ -114,4 +114,14 @@ int main() {
         rejected = true;
     }
     assert(rejected);
+
+    rejected = false;
+    try {
+        auto invalid = room;
+        invalid.ducking.attack_millis = 0;
+        echo::audio::AlgorithmicReverb invalid_reverb(invalid, kSampleRate, 2);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
 }

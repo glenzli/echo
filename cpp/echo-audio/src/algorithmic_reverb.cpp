@@ -16,6 +16,10 @@ namespace {
 
 constexpr std::array<double, 4> kDelayMilliseconds{29.7, 37.1, 41.1, 43.7};
 constexpr std::array<double, 4> kEarlyMilliseconds{5.0, 11.0, 17.0, 23.0};
+constexpr std::uint16_t kMinimumDuckingAttackMillis = 1;
+constexpr std::uint16_t kMaximumDuckingAttackMillis = 200;
+constexpr std::uint16_t kMinimumDuckingReleaseMillis = 20;
+constexpr std::uint16_t kMaximumDuckingReleaseMillis = 2000;
 
 std::size_t frames_for_millis(double millis, std::uint32_t sample_rate) {
     return std::max<std::size_t>(
@@ -26,6 +30,11 @@ std::size_t frames_for_millis(double millis, std::uint32_t sample_rate) {
 
 float finite(float sample) {
     return std::isfinite(sample) ? sample : 0.0F;
+}
+
+float envelope_alpha(std::uint16_t millis, std::uint32_t sample_rate) {
+    const float frames = static_cast<float>(sample_rate) * static_cast<float>(millis) / 1000.0F;
+    return std::exp(-1.0F / std::max(1.0F, frames));
 }
 
 } // namespace
@@ -240,7 +249,12 @@ void AlgorithmicReverb::validate(
         || adjustment.damping_percent > 100 || adjustment.low_cut_hertz < 20
         || adjustment.low_cut_hertz > 1000 || adjustment.high_cut_hertz < 1000
         || adjustment.high_cut_hertz > 20000
-        || adjustment.low_cut_hertz >= adjustment.high_cut_hertz) {
+        || adjustment.low_cut_hertz >= adjustment.high_cut_hertz
+        || adjustment.ducking.amount_percent > 100
+        || adjustment.ducking.attack_millis < kMinimumDuckingAttackMillis
+        || adjustment.ducking.attack_millis > kMaximumDuckingAttackMillis
+        || adjustment.ducking.release_millis < kMinimumDuckingReleaseMillis
+        || adjustment.ducking.release_millis > kMaximumDuckingReleaseMillis) {
         throw std::invalid_argument("reverb parameters are outside the supported range");
     }
 }
@@ -252,7 +266,11 @@ bool AlgorithmicReverb::same(ReverbAdjustment left, ReverbAdjustment right) {
            && left.decay_millis == right.decay_millis && left.size_percent == right.size_percent
            && left.damping_percent == right.damping_percent
            && left.low_cut_hertz == right.low_cut_hertz
-           && left.high_cut_hertz == right.high_cut_hertz;
+           && left.high_cut_hertz == right.high_cut_hertz
+           && left.ducking.enabled == right.ducking.enabled
+           && left.ducking.amount_percent == right.ducking.amount_percent
+           && left.ducking.attack_millis == right.ducking.attack_millis
+           && left.ducking.release_millis == right.ducking.release_millis;
 }
 
 void AlgorithmicReverb::begin_transition(ReverbAdjustment adjustment) {
@@ -282,10 +300,31 @@ void AlgorithmicReverb::process_interleaved(
         float& right = samples[frame * channel_count + (channel_count == 1 ? 0 : 1)];
         const float input_left = left;
         const float input_right = right;
-        const auto current = active_->process(input_left, input_right);
+        const ReverbDuckingAdjustment& envelope_adjustment = active_->adjustment.ducking;
+        const float target =
+            std::clamp(0.5F * (std::abs(input_left) + std::abs(input_right)), 0.0F, 1.0F);
+        const float alpha = target > ducking_envelope_
+                                ? envelope_alpha(envelope_adjustment.attack_millis, sample_rate_)
+                                : envelope_alpha(envelope_adjustment.release_millis, sample_rate_);
+        ducking_envelope_ = target + alpha * (ducking_envelope_ - target);
+        const auto apply_ducking = [&](std::array<float, 2> rendered, ReverbAdjustment adjustment) {
+            if (!adjustment.ducking.enabled) {
+                return rendered;
+            }
+            const float wet_gain = 1.0F
+                                   - static_cast<float>(adjustment.ducking.amount_percent) / 100.0F
+                                         * ducking_envelope_;
+            return std::array<float, 2>{
+                input_left + wet_gain * (rendered[0] - input_left),
+                input_right + wet_gain * (rendered[1] - input_right),
+            };
+        };
+        const auto current =
+            apply_ducking(active_->process(input_left, input_right), active_->adjustment);
         std::array<float, 2> output = current;
         if (next_ != nullptr) {
-            const auto next = next_->process(input_left, input_right);
+            const auto next =
+                apply_ducking(next_->process(input_left, input_right), next_->adjustment);
             const float progress = std::min(
                 1.0F,
                 static_cast<float>(transition_frame_) / static_cast<float>(transition_frames_)
@@ -315,6 +354,7 @@ void AlgorithmicReverb::reset() {
     active_->reset();
     next_.reset();
     pending_.reset();
+    ducking_envelope_ = 0.0F;
     transition_frame_ = 0;
 }
 

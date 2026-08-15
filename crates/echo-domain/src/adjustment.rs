@@ -55,6 +55,11 @@ pub const MIN_REVERB_LOW_CUT_HERTZ: u16 = 20;
 pub const MAX_REVERB_LOW_CUT_HERTZ: u16 = 1_000;
 pub const MIN_REVERB_HIGH_CUT_HERTZ: u16 = 1_000;
 pub const MAX_REVERB_HIGH_CUT_HERTZ: u16 = 20_000;
+pub const MAX_REVERB_DUCKING_AMOUNT_PERCENT: u8 = 100;
+pub const MIN_REVERB_DUCKING_ATTACK_MILLIS: u16 = 1;
+pub const MAX_REVERB_DUCKING_ATTACK_MILLIS: u16 = 200;
+pub const MIN_REVERB_DUCKING_RELEASE_MILLIS: u16 = 20;
+pub const MAX_REVERB_DUCKING_RELEASE_MILLIS: u16 = 2_000;
 pub const MAX_NOISE_REDUCTION_CENTIBELS: u16 = 2_400;
 pub const MAX_NOISE_REDUCTION_SENSITIVITY_PERCENT: u8 = 100;
 pub const MIN_NOISE_REDUCTION_SMOOTHING_MILLIS: u16 = 20;
@@ -83,7 +88,7 @@ pub const MAX_DE_CLICK_REPAIR_PERCENT: u8 = 100;
 pub const MIN_CHANNEL_BALANCE_PERCENT: i8 = -100;
 pub const MAX_CHANNEL_BALANCE_PERCENT: i8 = 100;
 /// Echo's authored chain is deliberately bounded to singleton effects.
-pub const EFFECT_NODE_COUNT: usize = 17;
+pub const EFFECT_NODE_COUNT: usize = 20;
 const STANDARD_EFFECT_NODE_COUNT: u8 = 5;
 
 const fn enabled_by_default() -> bool {
@@ -112,6 +117,9 @@ pub enum EffectNodeKind {
     RotaryVfx = 14,
     FreezeVfx = 15,
     GranularVfx = 16,
+    TapeVfx = 17,
+    PitchVfx = 18,
+    AutoWahVfx = 19,
 }
 
 impl EffectNodeKind {
@@ -144,6 +152,9 @@ impl EffectNodeKind {
             14 => Ok(Self::RotaryVfx),
             15 => Ok(Self::FreezeVfx),
             16 => Ok(Self::GranularVfx),
+            17 => Ok(Self::TapeVfx),
+            18 => Ok(Self::PitchVfx),
+            19 => Ok(Self::AutoWahVfx),
             _ => Err(EffectNodeKindValueError),
         }
     }
@@ -186,10 +197,10 @@ impl<'de> Deserialize<'de> for EffectChain {
         let legacy_node_count = stored.nodes.len();
         if !matches!(
             legacy_node_count,
-            5 | 7 | 8 | 12 | 13 | 15 | EFFECT_NODE_COUNT
+            5 | 7 | 8 | 12 | 13 | 15 | 17 | EFFECT_NODE_COUNT
         ) {
             return Err(D::Error::custom(
-                "effect chain must contain five, seven, eight, twelve, thirteen, fifteen, or seventeen stable nodes",
+                "effect chain has an unsupported stable node count",
             ));
         }
         let active_count = stored.active_count.unwrap_or(STANDARD_EFFECT_NODE_COUNT);
@@ -234,6 +245,9 @@ impl EffectChain {
                 EffectNodeKind::RotaryVfx,
                 EffectNodeKind::FreezeVfx,
                 EffectNodeKind::GranularVfx,
+                EffectNodeKind::TapeVfx,
+                EffectNodeKind::PitchVfx,
+                EffectNodeKind::AutoWahVfx,
             ],
             active_count: STANDARD_EFFECT_NODE_COUNT,
         }
@@ -647,6 +661,25 @@ impl std::error::Error for ReverbCharacterValueError {}
 /// Authored algorithmic space intent. The audio engine owns delay lines and
 /// filter coefficients; the Catalog only persists these stable controls.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReverbDuckingSettings {
+    pub enabled: bool,
+    pub amount_percent: u8,
+    pub attack_millis: u16,
+    pub release_millis: u16,
+}
+
+impl Default for ReverbDuckingSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            amount_percent: 65,
+            attack_millis: 10,
+            release_millis: 250,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReverbSettings {
     #[serde(default)]
     pub character: ReverbCharacter,
@@ -658,6 +691,8 @@ pub struct ReverbSettings {
     pub damping_percent: u8,
     pub low_cut_hertz: u16,
     pub high_cut_hertz: u16,
+    #[serde(default)]
+    pub ducking: ReverbDuckingSettings,
 }
 
 impl Default for ReverbSettings {
@@ -679,6 +714,12 @@ impl ReverbSettings {
             damping_percent: 45,
             low_cut_hertz: 120,
             high_cut_hertz: 10_000,
+            ducking: ReverbDuckingSettings {
+                enabled: false,
+                amount_percent: 65,
+                attack_millis: 10,
+                release_millis: 250,
+            },
         }
     }
 }
@@ -1218,6 +1259,11 @@ impl AdjustmentGraph {
             || !(MIN_REVERB_HIGH_CUT_HERTZ..=MAX_REVERB_HIGH_CUT_HERTZ)
                 .contains(&reverb.high_cut_hertz)
             || reverb.low_cut_hertz >= reverb.high_cut_hertz
+            || reverb.ducking.amount_percent > MAX_REVERB_DUCKING_AMOUNT_PERCENT
+            || !(MIN_REVERB_DUCKING_ATTACK_MILLIS..=MAX_REVERB_DUCKING_ATTACK_MILLIS)
+                .contains(&reverb.ducking.attack_millis)
+            || !(MIN_REVERB_DUCKING_RELEASE_MILLIS..=MAX_REVERB_DUCKING_RELEASE_MILLIS)
+                .contains(&reverb.ducking.release_millis)
         {
             return Err(AdjustmentGraphError::ReverbOutOfRange);
         }
@@ -1424,6 +1470,7 @@ fn validated_asset_regions(
                                 | EffectNodeKind::RotaryVfx
                                 | EffectNodeKind::FreezeVfx
                                 | EffectNodeKind::GranularVfx
+                                | EffectNodeKind::PitchVfx
                         )
                 })
         })

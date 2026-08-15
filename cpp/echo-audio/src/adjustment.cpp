@@ -54,7 +54,8 @@ bool valid_effect_chain(
         return false;
     }
     std::array<bool, kEffectNodeCount> seen{};
-    for (const EffectNodeKind node : nodes) {
+    for (std::size_t index = 0; index < active_count; ++index) {
+        const EffectNodeKind node = nodes[index];
         const auto value = static_cast<std::size_t>(node);
         if (value >= seen.size() || seen[value]) {
             return false;
@@ -147,7 +148,9 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
         || delay.echo.delay_millis < 80 || delay.echo.delay_millis > 2000
         || delay.echo.feedback_percent > 90 || delay.echo.mix_percent > 100
         || delay.echo.high_cut_hertz < 1000 || delay.echo.high_cut_hertz > 20000
-        || delay.echo.stereo_crossfeed_percent > 100) {
+        || delay.echo.stereo_crossfeed_percent > 100 || delay.ducking.amount_percent > 100
+        || delay.ducking.attack_millis < 1 || delay.ducking.attack_millis > 200
+        || delay.ducking.release_millis < 20 || delay.ducking.release_millis > 2000) {
         return false;
     }
 
@@ -185,6 +188,9 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
     const RotaryVfxAdjustment& rotary = creative.rotary;
     const FreezeVfxAdjustment& freeze = creative.freeze;
     const GranularVfxAdjustment& granular = creative.granular;
+    const TapeVfxParameters& tape = creative.tape;
+    const PitchVfxParameters& pitch = creative.pitch;
+    const AutoWahVfxParameters& auto_wah = creative.auto_wah;
     const double granular_pitch_ratio =
         std::exp2(static_cast<double>(granular.pitch_cents) / 1200.0);
     const double granular_required_history_millis =
@@ -207,7 +213,16 @@ bool valid_creative_vfx(const CreativeVfxAdjustment& creative) {
            && granular.density_tenths_hertz <= 400 && granular.lookback_millis <= 1500
            && granular.scatter_millis <= 750 && granular.pitch_cents >= -1200
            && granular.pitch_cents <= 1200 && granular.stereo_spread_percent <= 100
-           && granular_required_history_millis <= 2000.0;
+           && granular_required_history_millis <= 2000.0 && tape.mix_percent <= 100
+           && tape.saturation_percent <= 100 && tape.wow_flutter_percent <= 100
+           && tape.dropout_percent <= 100 && pitch.mix_percent <= 100
+           && pitch.pitch_semitones >= -12 && pitch.pitch_semitones <= 12
+           && pitch.harmony_semitones >= -12 && pitch.harmony_semitones <= 12
+           && pitch.harmony_mix_percent <= 100 && pitch.formant_colour_semitones >= -12
+           && pitch.formant_colour_semitones <= 12 && auto_wah.mix_percent <= 100
+           && auto_wah.sensitivity_percent <= 100 && auto_wah.minimum_frequency_hertz >= 80
+           && auto_wah.maximum_frequency_hertz > auto_wah.minimum_frequency_hertz
+           && auto_wah.resonance_tenths >= 5 && auto_wah.resonance_tenths <= 50;
 }
 
 float evaluate_curve(float progress, FadeCurve curve) {
@@ -338,7 +353,9 @@ PreparedAdjustment::PreparedAdjustment(
         || reverb.decay_millis > 12000 || reverb.size_percent < 10 || reverb.size_percent > 100
         || reverb.damping_percent > 100 || reverb.low_cut_hertz < 20 || reverb.low_cut_hertz > 1000
         || reverb.high_cut_hertz < 1000 || reverb.high_cut_hertz > 20000
-        || reverb.low_cut_hertz >= reverb.high_cut_hertz) {
+        || reverb.low_cut_hertz >= reverb.high_cut_hertz || reverb.ducking.amount_percent > 100
+        || reverb.ducking.attack_millis < 1 || reverb.ducking.attack_millis > 200
+        || reverb.ducking.release_millis < 20 || reverb.ducking.release_millis > 2000) {
         throw std::invalid_argument("adjustment reverb is outside the supported range");
     }
     if (authored.space.mode == SpaceMode::Convolution

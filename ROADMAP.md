@@ -673,6 +673,23 @@ InferenceBackend
     历史、处理方案、实时试听与离线导出已消费 Freeze／Granular；Space 的导入界面会显示 IR
     实际布局与来源／许可证据。此切片不包含云端 IR 浏览、捆绑第三方 IR、生成式环境声，或效果尾音
     超出 authored 声音时长的导出。
+  - 输入驱动 Creative VFX 扩展（2026-08-15）：Creative chain 追加默认关闭的 Tape、Pitch 与
+    Auto-Wah 三个独立 singleton。Tape 只以既有输入产生饱和、wow/flutter 与衰减式 dropout，不添加
+    独立噪声源；Pitch 提供固定因果延迟的移调、可选和声与明确标为 spectral colour 的 formant colour，
+    不作特定人声身份保持或模仿声明；Auto-Wah 是包络跟随共振滤波。三者都拥有类型化 JSON、处理方案、
+    Runtime／离线执行、桌面目录、草稿历史和中文面板；旧 revision 缺失字段恢复为 disabled defaults。
+    Pitch 因固定延迟不能使用局部 effect mask，Tape 与 Auto-Wah 可遵循普通可遮罩 insert 语义。
+  - Creative 场景与 Delay Ducking（2026-08-15）：Creative 页提供 Voice memo、Night drive 与
+    Dream voice 三个可撤销的参数宏；它们只应用既有确定性 VFX 参数与节点，不保存 `preset_id`，
+    不创建生成式声源。Delay VFX 增加默认关闭的输入包络 Ducking，使用被处理源自身的响度按
+    Amount／Attack／Release 降低湿声，既不接收外部 sidechain，也不改变 Echo feedback；类型化
+    JSON、实时试听、离线导出和桌面面板共享同一范围约束。Reverb 仍通过旧固定参数保存通道，
+    因此没有在本切片暴露半持久化的 Ducking 控件，留待专门的契约迁移。
+  - Reverb Ducking 契约迁移（2026-08-15）：算法 Space 的 Reverb 现以同一输入包络语义提供
+    默认关闭的 Ducking；Amount／Attack／Release 只缩放输出中的湿声贡献，不改变 Room、Hall、
+    Plate 或 Spring 的内部反馈。领域设置、Catalog JSON、桌面 ABI、播放／导出投影与 Space 面板
+    都保留同一组有界字段；旧 revision 缺失字段恢复为 disabled 默认值。桌面继续使用已有的原子
+    Space 参数 map 承载该算法空间专属控件，而不是延长历史固定参数信号。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，

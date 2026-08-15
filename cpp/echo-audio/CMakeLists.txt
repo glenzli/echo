@@ -5,6 +5,7 @@ pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavut
 add_library(
     echo-audio STATIC
     src/adaptive_noise_reducer.cpp
+    src/auto_wah_vfx_processor.cpp
     src/analysis_proxy.cpp
     src/algorithmic_reverb.cpp
     src/adjustment.cpp
@@ -40,6 +41,7 @@ add_library(
     src/output_limiter.cpp
     src/playback.cpp
     src/parametric_equalizer.cpp
+    src/pitch_vfx_processor.cpp
     src/phaser_vfx.cpp
     src/prepared_impulse_response.cpp
     src/rotary_vfx_processor.cpp
@@ -49,6 +51,7 @@ add_library(
     src/space_processor.cpp
     src/transform_vfx_processor.cpp
     src/tremolo_vfx.cpp
+    src/tape_vfx_processor.cpp
     src/waveform.cpp
     third_party/fftconvolver/FFTConvolver.cpp
     third_party/fftconvolver/Utilities.cpp
@@ -81,6 +84,21 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(echo-auto-wah-vfx-processor-test tests/auto_wah_vfx_processor_test.cpp)
+    target_link_libraries(echo-auto-wah-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-auto-wah-vfx-processor-test)
+    add_test(NAME echo-auto-wah-vfx-processor-test COMMAND echo-auto-wah-vfx-processor-test)
+
+    add_executable(echo-pitch-vfx-processor-test tests/pitch_vfx_processor_test.cpp)
+    target_link_libraries(echo-pitch-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-pitch-vfx-processor-test)
+    add_test(NAME echo-pitch-vfx-processor-test COMMAND echo-pitch-vfx-processor-test)
+
+    add_executable(echo-tape-vfx-processor-test tests/tape_vfx_processor_test.cpp)
+    target_link_libraries(echo-tape-vfx-processor-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-tape-vfx-processor-test)
+    add_test(NAME echo-tape-vfx-processor-test COMMAND echo-tape-vfx-processor-test)
+
     add_executable(echo-freeze-vfx-processor-test tests/freeze_vfx_processor_test.cpp)
     target_link_libraries(echo-freeze-vfx-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-freeze-vfx-processor-test)

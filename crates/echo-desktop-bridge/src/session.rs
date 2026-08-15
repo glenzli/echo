@@ -176,6 +176,10 @@ struct AdjustmentWireFields {
     reverb_damping_percent: u8,
     reverb_low_cut_hertz: u16,
     reverb_high_cut_hertz: u16,
+    reverb_ducking_enabled: bool,
+    reverb_ducking_amount_percent: u8,
+    reverb_ducking_attack_millis: u16,
+    reverb_ducking_release_millis: u16,
     space_mode: u8,
     impulse_response_import_id: String,
     impulse_response_source_hash: String,
@@ -556,6 +560,12 @@ fn adjustment_graph_from_wire(
             damping_percent: adjustment.reverb_damping_percent,
             low_cut_hertz: adjustment.reverb_low_cut_hertz,
             high_cut_hertz: adjustment.reverb_high_cut_hertz,
+            ducking: echo_domain::ReverbDuckingSettings {
+                enabled: adjustment.reverb_ducking_enabled,
+                amount_percent: adjustment.reverb_ducking_amount_percent,
+                attack_millis: adjustment.reverb_ducking_attack_millis,
+                release_millis: adjustment.reverb_ducking_release_millis,
+            },
         })
         .with_space(space_settings_from_wire(adjustment)?)
         .with_creative_vfx(creative_vfx_from_wire(&adjustment.creative_vfx_json)?)
@@ -645,6 +655,10 @@ fn adjustment_wire_fields(
             reverb_damping_percent: 45,
             reverb_low_cut_hertz: 120,
             reverb_high_cut_hertz: 10_000,
+            reverb_ducking_enabled: false,
+            reverb_ducking_amount_percent: 65,
+            reverb_ducking_attack_millis: 10,
+            reverb_ducking_release_millis: 250,
             space_mode: echo_domain::SpaceMode::Algorithmic.wire_value(),
             impulse_response_import_id: String::new(),
             impulse_response_source_hash: String::new(),
@@ -755,6 +769,10 @@ fn adjustment_wire_fields(
             reverb_damping_percent: revision.graph.reverb().damping_percent,
             reverb_low_cut_hertz: revision.graph.reverb().low_cut_hertz,
             reverb_high_cut_hertz: revision.graph.reverb().high_cut_hertz,
+            reverb_ducking_enabled: revision.graph.reverb().ducking.enabled,
+            reverb_ducking_amount_percent: revision.graph.reverb().ducking.amount_percent,
+            reverb_ducking_attack_millis: revision.graph.reverb().ducking.attack_millis,
+            reverb_ducking_release_millis: revision.graph.reverb().ducking.release_millis,
             space_mode: revision.graph.space().mode.wire_value(),
             impulse_response_import_id: revision
                 .graph
@@ -951,6 +969,10 @@ fn asset_summary_wire(
         reverb_damping_percent: adjustment.reverb_damping_percent,
         reverb_low_cut_hertz: adjustment.reverb_low_cut_hertz,
         reverb_high_cut_hertz: adjustment.reverb_high_cut_hertz,
+        reverb_ducking_enabled: adjustment.reverb_ducking_enabled,
+        reverb_ducking_amount_percent: adjustment.reverb_ducking_amount_percent,
+        reverb_ducking_attack_millis: adjustment.reverb_ducking_attack_millis,
+        reverb_ducking_release_millis: adjustment.reverb_ducking_release_millis,
         space_mode: adjustment.space_mode,
         impulse_response_import_id: adjustment.impulse_response_import_id,
         impulse_response_source_hash: adjustment.impulse_response_source_hash,

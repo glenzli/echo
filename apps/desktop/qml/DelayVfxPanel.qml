@@ -34,6 +34,14 @@ Rectangle {
         draft.setCreativeVfxFamily("delay", next);
     }
 
+    function updateDucking(name: string, value: var): void {
+        const next = draft.creativeVfxFamily("delay");
+        const ducking = draft.copyCreativeVfx(next.ducking || ({}));
+        ducking[name] = value;
+        next.ducking = ducking;
+        draft.setCreativeVfxFamily("delay", next);
+    }
+
     function frequency(value: real): string {
         return value >= 1000 ? (value / 1000).toFixed(value % 1000 === 0 ? 0 : 1) + " kHz" : Math.round(value) + " Hz";
     }
@@ -94,6 +102,43 @@ Rectangle {
                     from: 0; to: 100; stepSize: 1
                     value: Number(panel.parameters.stereoCrossfeedPercent || 0); valueText: Math.round(value) + "%"
                     onGestureStarted: panel.draft.beginGesture(); onEdited: value => panel.updateParameter("stereoCrossfeedPercent", Math.round(value)); onGestureFinished: panel.draft.endGesture()
+                }
+            }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+            RowLayout {
+                Layout.fillWidth: true; spacing: 8
+                Text { text: qsTr("Input ducking"); color: Theme.textPrimary; font.pixelSize: Theme.fontMeta; font.weight: Font.DemiBold }
+                Text { text: qsTr("Reduces the repeats while the source is loud"); color: Theme.textDisabled; font.pixelSize: Theme.fontMeta }
+                Item { Layout.fillWidth: true }
+                EchoSwitch {
+                    checked: Boolean(panel.family.ducking && panel.family.ducking.enabled)
+                    accessibleName: qsTr("Input ducking")
+                    onToggled: panel.updateDucking("enabled", checked)
+                }
+            }
+            GridLayout {
+                Layout.fillWidth: true; Layout.maximumWidth: 720
+                columns: 3; columnSpacing: 24; rowSpacing: 4
+                enabled: Boolean(panel.family.ducking && panel.family.ducking.enabled)
+                opacity: enabled ? 1.0 : 0.55
+                readonly property var ducking: panel.family.ducking || ({})
+                EchoParameterSlider {
+                    Layout.fillWidth: true; label: qsTr("Amount")
+                    from: 0; to: 100; stepSize: 1
+                    value: Number(parent.ducking.amountPercent ?? 65); valueText: Math.round(value) + "%"
+                    onGestureStarted: panel.draft.beginGesture(); onEdited: value => panel.updateDucking("amountPercent", Math.round(value)); onGestureFinished: panel.draft.endGesture()
+                }
+                EchoParameterSlider {
+                    Layout.fillWidth: true; label: qsTr("Attack")
+                    from: 1; to: 200; stepSize: 1
+                    value: Number(parent.ducking.attackMillis ?? 10); valueText: Math.round(value) + " ms"
+                    onGestureStarted: panel.draft.beginGesture(); onEdited: value => panel.updateDucking("attackMillis", Math.round(value)); onGestureFinished: panel.draft.endGesture()
+                }
+                EchoParameterSlider {
+                    Layout.fillWidth: true; label: qsTr("Release")
+                    from: 20; to: 2000; stepSize: 1
+                    value: Number(parent.ducking.releaseMillis ?? 250); valueText: Math.round(value) + " ms"
+                    onGestureStarted: panel.draft.beginGesture(); onEdited: value => panel.updateDucking("releaseMillis", Math.round(value)); onGestureFinished: panel.draft.endGesture()
                 }
             }
             Item { Layout.fillHeight: true }

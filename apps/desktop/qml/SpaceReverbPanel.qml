@@ -134,7 +134,7 @@ Rectangle {
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/reset-all.svg"
                 toolTipText: qsTr("Reset space")
-                enabled: panel.draft.reverbCharacter !== 0 || panel.draft.reverbEnabled || panel.draft.reverbMixPercent !== 18 || panel.draft.reverbPreDelayMillis !== 20 || panel.draft.reverbDecayMillis !== 1800 || panel.draft.reverbSizePercent !== 55 || panel.draft.reverbDampingPercent !== 45 || panel.draft.reverbLowCutHertz !== 120 || panel.draft.reverbHighCutHertz !== 10000
+                enabled: panel.draft.reverbCharacter !== 0 || panel.draft.reverbEnabled || panel.draft.reverbMixPercent !== 18 || panel.draft.reverbPreDelayMillis !== 20 || panel.draft.reverbDecayMillis !== 1800 || panel.draft.reverbSizePercent !== 55 || panel.draft.reverbDampingPercent !== 45 || panel.draft.reverbLowCutHertz !== 120 || panel.draft.reverbHighCutHertz !== 10000 || Boolean(panel.draft.space.reverbDuckingEnabled)
                 buttonSize: 25
                 iconSize: 14
                 onClicked: panel.draft.resetReverb()
@@ -174,6 +174,53 @@ Rectangle {
                     valueText: Math.round(value) + "%"
                     onGestureStarted: panel.draft.beginGesture()
                     onEdited: value => panel.draft.setReverbParameter("mix", value)
+                    onGestureFinished: panel.draft.endGesture()
+                }
+
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Text { text: qsTr("Input ducking"); color: Theme.textPrimary; font.pixelSize: Theme.fontMeta; font.weight: Font.DemiBold }
+                    Item { Layout.fillWidth: true }
+                    EchoSwitch {
+                        checked: Boolean(panel.draft.space.reverbDuckingEnabled)
+                        accessibleName: qsTr("Input ducking")
+                        onToggled: panel.draft.setReverbDuckingParameter("enabled", checked)
+                    }
+                }
+                EchoParameterSlider {
+                    Layout.fillWidth: true
+                    enabled: Boolean(panel.draft.space.reverbDuckingEnabled)
+                    label: qsTr("Ducking amount")
+                    from: 0; to: 100; stepSize: 1
+                    value: Number(panel.draft.space.reverbDuckingAmountPercent ?? 65)
+                    valueText: Math.round(value) + "%"
+                    onGestureStarted: panel.draft.beginGesture()
+                    onEdited: value => panel.draft.setReverbDuckingParameter("amount", value)
+                    onGestureFinished: panel.draft.endGesture()
+                }
+                EchoParameterSlider {
+                    Layout.fillWidth: true
+                    enabled: Boolean(panel.draft.space.reverbDuckingEnabled)
+                    label: qsTr("Ducking attack")
+                    from: 1; to: 200; stepSize: 1
+                    value: Number(panel.draft.space.reverbDuckingAttackMillis ?? 10)
+                    valueText: Math.round(value) + " ms"
+                    onGestureStarted: panel.draft.beginGesture()
+                    onEdited: value => panel.draft.setReverbDuckingParameter("attack", value)
+                    onGestureFinished: panel.draft.endGesture()
+                }
+                EchoParameterSlider {
+                    Layout.fillWidth: true
+                    enabled: Boolean(panel.draft.space.reverbDuckingEnabled)
+                    label: qsTr("Ducking release")
+                    from: 20; to: 2000; stepSize: 1
+                    value: Number(panel.draft.space.reverbDuckingReleaseMillis ?? 250)
+                    valueText: Math.round(value) + " ms"
+                    onGestureStarted: panel.draft.beginGesture()
+                    onEdited: value => panel.draft.setReverbDuckingParameter("release", value)
                     onGestureFinished: panel.draft.endGesture()
                 }
                 EchoParameterSlider {

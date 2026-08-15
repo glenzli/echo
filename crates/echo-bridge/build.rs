@@ -13,6 +13,7 @@ use std::{
 const ENGINE_SOURCES: &[&str] = &[
     "src/bridge/cxx_bridge.cpp",
     "src/adaptive_noise_reducer.cpp",
+    "src/auto_wah_vfx_processor.cpp",
     "src/analysis_proxy.cpp",
     "src/algorithmic_reverb.cpp",
     "src/adjustment.cpp",
@@ -48,6 +49,7 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/output_limiter.cpp",
     "src/playback.cpp",
     "src/parametric_equalizer.cpp",
+    "src/pitch_vfx_processor.cpp",
     "src/phaser_vfx.cpp",
     "src/prepared_impulse_response.cpp",
     "src/rotary_vfx_processor.cpp",
@@ -57,6 +59,7 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/space_processor.cpp",
     "src/transform_vfx_processor.cpp",
     "src/tremolo_vfx.cpp",
+    "src/tape_vfx_processor.cpp",
     "src/waveform.cpp",
     "third_party/fftconvolver/FFTConvolver.cpp",
     "third_party/fftconvolver/Utilities.cpp",
@@ -64,6 +67,7 @@ const ENGINE_SOURCES: &[&str] = &[
 
 const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/adaptive_noise_reducer.hpp",
+    "include/echo/audio/auto_wah_vfx_processor.hpp",
     "include/echo/audio/analysis_proxy.hpp",
     "include/echo/audio/algorithmic_reverb.hpp",
     "include/echo/audio/adjustment.hpp",
@@ -98,6 +102,7 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/output_limiter.hpp",
     "include/echo/audio/playback.hpp",
     "include/echo/audio/parametric_equalizer.hpp",
+    "include/echo/audio/pitch_vfx_processor.hpp",
     "include/echo/audio/prepared_impulse_response.hpp",
     "include/echo/audio/rotary_vfx_processor.hpp",
     "include/echo/audio/scene_vfx_processor.hpp",
@@ -105,6 +110,7 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/spring_space_reverb.hpp",
     "include/echo/audio/space_processor.hpp",
     "include/echo/audio/transform_vfx_processor.hpp",
+    "include/echo/audio/tape_vfx_processor.hpp",
     "include/echo/audio/waveform.hpp",
     "src/modulated_delay_vfx.hpp",
     "src/phaser_vfx.hpp",

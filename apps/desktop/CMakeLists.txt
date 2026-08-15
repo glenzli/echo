@@ -171,6 +171,9 @@ qt_add_qml_module(
         qml/DriveVfxPanel.qml
         qml/FreezeVfxPanel.qml
         qml/GranularVfxPanel.qml
+        qml/TapeVfxPanel.qml
+        qml/PitchVfxPanel.qml
+        qml/AutoWahVfxPanel.qml
         qml/ModulationVfxPanel.qml
         qml/TransformVfxPanel.qml
         qml/RotaryVfxPanel.qml

@@ -38,6 +38,9 @@ std::optional<EffectChainProjection> effectChainFromQml(const QVariantList& valu
         echo::audio::EffectNodeKind::RotaryVfx,
         echo::audio::EffectNodeKind::FreezeVfx,
         echo::audio::EffectNodeKind::GranularVfx,
+        echo::audio::EffectNodeKind::TapeVfx,
+        echo::audio::EffectNodeKind::PitchVfx,
+        echo::audio::EffectNodeKind::AutoWahVfx,
     };
     std::array<echo::audio::EffectNodeKind, echo::audio::kEffectNodeCount> result = standard;
     std::array<bool, echo::audio::kEffectNodeCount> seen{};
@@ -152,7 +155,7 @@ std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQmlImpl(
         for (const QVariant& node_value : nodes) {
             const int node = node_value.toInt();
             if (node < 0 || node >= static_cast<int>(echo::audio::kEffectNodeCount) || node == 4
-                || node == 6 || node == 11 || node == 13 || node == 14
+                || node == 6 || node == 11 || node == 13 || node == 14 || node == 18
                 || !active[static_cast<std::size_t>(node)]
                 || seen[static_cast<std::size_t>(node)]) {
                 return std::nullopt;
@@ -310,6 +313,17 @@ PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
         {QStringLiteral("dampingPercent"), asset.value(QStringLiteral("reverbDampingPercent"))},
         {QStringLiteral("lowCutHertz"), asset.value(QStringLiteral("reverbLowCutHertz"))},
         {QStringLiteral("highCutHertz"), asset.value(QStringLiteral("reverbHighCutHertz"))},
+        {QStringLiteral("ducking"),
+         QVariantMap{
+             {QStringLiteral("enabled"),
+              asset.value(QStringLiteral("reverbDuckingEnabled"), false)},
+             {QStringLiteral("amountPercent"),
+              asset.value(QStringLiteral("reverbDuckingAmountPercent"), 65)},
+             {QStringLiteral("attackMillis"),
+              asset.value(QStringLiteral("reverbDuckingAttackMillis"), 10)},
+             {QStringLiteral("releaseMillis"),
+              asset.value(QStringLiteral("reverbDuckingReleaseMillis"), 250)},
+         }},
         {QStringLiteral("mode"), asset.value(QStringLiteral("spaceMode"), 0)},
         {QStringLiteral("impulseResponseImportId"),
          asset.value(QStringLiteral("impulseResponseImportId"))},

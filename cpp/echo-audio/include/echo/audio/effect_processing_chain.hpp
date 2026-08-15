@@ -77,6 +77,9 @@ class EffectProcessingChain {
     void update_rotary_vfx(RotaryVfxAdjustment adjustment);
     void update_freeze_vfx(FreezeVfxAdjustment adjustment);
     void update_granular_vfx(GranularVfxAdjustment adjustment);
+    void update_tape_vfx(TapeVfxParameters parameters);
+    void update_pitch_vfx(PitchVfxParameters parameters);
+    void update_auto_wah_vfx(AutoWahVfxParameters parameters);
 
     static void validate_restoration(
         RestorationAdjustment adjustment,
@@ -156,6 +159,21 @@ class EffectProcessingChain {
     );
     static void validate_granular_vfx(
         GranularVfxAdjustment adjustment,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_tape_vfx(
+        TapeVfxParameters parameters,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_pitch_vfx(
+        PitchVfxParameters parameters,
+        std::uint32_t sample_rate,
+        std::size_t channel_count
+    );
+    static void validate_auto_wah_vfx(
+        AutoWahVfxParameters parameters,
         std::uint32_t sample_rate,
         std::size_t channel_count
     );

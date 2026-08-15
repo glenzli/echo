@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     DePlosiveSettings, EditSegment, EditSegmentState, EditTimeline, EffectMask, FadeCurve,
-    NoiseReductionSettings, ParametricEqualizerBand, ReverbCharacter,
+    NoiseReductionSettings, ParametricEqualizerBand, ReverbCharacter, ReverbDuckingSettings,
 };
 use uuid::Uuid;
 
@@ -166,6 +166,7 @@ fn source_processing_effects(gain_centibels: i16, low_cut_hertz: u16) -> Adjustm
         damping_percent: 48,
         low_cut_hertz: 140,
         high_cut_hertz: 9_400,
+        ducking: ReverbDuckingSettings::default(),
     })
     .with_creative_vfx(source_creative_vfx())
     .with_limiter(LimiterSettings {
@@ -220,7 +221,7 @@ fn graph_with_processing(
 
 #[test]
 fn default_components_are_complete_and_clip_local_controls_are_absent() {
-    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 18);
+    assert_eq!(DEFAULT_PROCESSING_COMPONENTS.len(), 21);
     for component in DEFAULT_PROCESSING_COMPONENTS.iter().copied() {
         assert_eq!(
             ProcessingComponent::from_wire_value(component.wire_value()),
@@ -228,7 +229,7 @@ fn default_components_are_complete_and_clip_local_controls_are_absent() {
         );
     }
     assert_eq!(
-        ProcessingComponent::from_wire_value(18),
+        ProcessingComponent::from_wire_value(21),
         Err(ProcessingComponentValueError)
     );
 }

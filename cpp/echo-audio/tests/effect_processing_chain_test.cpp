@@ -40,6 +40,9 @@ echo::audio::PlaybackAdjustment master_only() {
         echo::audio::EffectNodeKind::RotaryVfx,
         echo::audio::EffectNodeKind::FreezeVfx,
         echo::audio::EffectNodeKind::GranularVfx,
+        echo::audio::EffectNodeKind::TapeVfx,
+        echo::audio::EffectNodeKind::PitchVfx,
+        echo::audio::EffectNodeKind::AutoWahVfx,
     };
     adjustment.effect_chain_count = 1;
     return adjustment;
@@ -211,6 +214,15 @@ echo::audio::PlaybackAdjustment creative_only(echo::audio::EffectNodeKind node) 
         break;
     case echo::audio::EffectNodeKind::GranularVfx:
         adjustment.creative_vfx.granular.enabled = true;
+        break;
+    case echo::audio::EffectNodeKind::TapeVfx:
+        adjustment.creative_vfx.tape.enabled = true;
+        break;
+    case echo::audio::EffectNodeKind::PitchVfx:
+        adjustment.creative_vfx.pitch.enabled = true;
+        break;
+    case echo::audio::EffectNodeKind::AutoWahVfx:
+        adjustment.creative_vfx.auto_wah.enabled = true;
         break;
     case echo::audio::EffectNodeKind::Restoration:
     case echo::audio::EffectNodeKind::Equalizer:
@@ -560,6 +572,9 @@ int main() {
             echo::audio::EffectNodeKind::DigitalDegradeVfx,
             echo::audio::EffectNodeKind::DriveVfx,
             echo::audio::EffectNodeKind::RotaryVfx,
+            echo::audio::EffectNodeKind::TapeVfx,
+            echo::audio::EffectNodeKind::PitchVfx,
+            echo::audio::EffectNodeKind::AutoWahVfx,
             echo::audio::EffectNodeKind::GranularVfx,
         };
         delayed_anchor.effect_chain_count = 3;
@@ -614,7 +629,9 @@ int main() {
                 chain.latency_frames()
                 == (node == echo::audio::EffectNodeKind::TransformVfx
                         ? 2'400
-                        : (node == echo::audio::EffectNodeKind::DriveVfx ? 32 : 0))
+                        : (node == echo::audio::EffectNodeKind::DriveVfx
+                               ? 32
+                               : (node == echo::audio::EffectNodeKind::PitchVfx ? 576 : 0)))
             );
             const auto output = process_in_chunks(chain, input, 137);
             assert(output.size() == input.size());

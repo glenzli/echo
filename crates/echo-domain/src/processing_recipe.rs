@@ -39,12 +39,15 @@ pub enum ProcessingComponent {
     RotaryVfx = 15,
     FreezeVfx = 16,
     GranularVfx = 17,
+    TapeVfx = 18,
+    PitchVfx = 19,
+    AutoWahVfx = 20,
 }
 
 /// Echo's complete reusable processing surface.
 ///
 /// Clip-local trim, fades, and gain are intentionally absent.
-pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 18] = [
+pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 21] = [
     ProcessingComponent::LowCut,
     ProcessingComponent::Restoration,
     ProcessingComponent::DeHum,
@@ -62,6 +65,9 @@ pub const DEFAULT_PROCESSING_COMPONENTS: [ProcessingComponent; 18] = [
     ProcessingComponent::RotaryVfx,
     ProcessingComponent::FreezeVfx,
     ProcessingComponent::GranularVfx,
+    ProcessingComponent::TapeVfx,
+    ProcessingComponent::PitchVfx,
+    ProcessingComponent::AutoWahVfx,
     ProcessingComponent::Master,
 ];
 
@@ -96,6 +102,9 @@ impl ProcessingComponent {
             15 => Ok(Self::RotaryVfx),
             16 => Ok(Self::FreezeVfx),
             17 => Ok(Self::GranularVfx),
+            18 => Ok(Self::TapeVfx),
+            19 => Ok(Self::PitchVfx),
+            20 => Ok(Self::AutoWahVfx),
             _ => Err(ProcessingComponentValueError),
         }
     }
@@ -120,6 +129,9 @@ impl ProcessingComponent {
             Self::RotaryVfx => Some(EffectNodeKind::RotaryVfx),
             Self::FreezeVfx => Some(EffectNodeKind::FreezeVfx),
             Self::GranularVfx => Some(EffectNodeKind::GranularVfx),
+            Self::TapeVfx => Some(EffectNodeKind::TapeVfx),
+            Self::PitchVfx => Some(EffectNodeKind::PitchVfx),
+            Self::AutoWahVfx => Some(EffectNodeKind::AutoWahVfx),
         }
     }
 }
@@ -329,6 +341,15 @@ impl AdjustmentPatch {
         if self.contains(ProcessingComponent::GranularVfx) {
             effects.creative_vfx.granular = self.creative_vfx.granular;
         }
+        if self.contains(ProcessingComponent::TapeVfx) {
+            effects.creative_vfx.tape = self.creative_vfx.tape;
+        }
+        if self.contains(ProcessingComponent::PitchVfx) {
+            effects.creative_vfx.pitch = self.creative_vfx.pitch;
+        }
+        if self.contains(ProcessingComponent::AutoWahVfx) {
+            effects.creative_vfx.auto_wah = self.creative_vfx.auto_wah;
+        }
         if self.contains(ProcessingComponent::Master) {
             effects.limiter = self.limiter;
         }
@@ -359,7 +380,7 @@ impl AdjustmentPatch {
         if self.components.is_empty() {
             return Err(ProcessingRecipeError::EmptyComponents);
         }
-        let mut seen = [false; 18];
+        let mut seen = [false; 21];
         for component in &self.components {
             let index = usize::from(component.wire_value());
             if seen[index] {

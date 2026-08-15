@@ -82,7 +82,7 @@ QtObject {
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canUndo: _historyIndex > 0
     readonly property bool canRedo: _historyIndex >= 0 && _historyIndex < _history.length - 1
-    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(13) || !creativeVfxFamilyEnabled("drive")) && (!containsEffectNode(14) || !creativeVfxFamilyEnabled("rotary")) && (!containsEffectNode(15) || !creativeVfxFamilyEnabled("freeze")) && (!containsEffectNode(16) || !creativeVfxFamilyEnabled("granular")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
+    readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(13) || !creativeVfxFamilyEnabled("drive")) && (!containsEffectNode(14) || !creativeVfxFamilyEnabled("rotary")) && (!containsEffectNode(15) || !creativeVfxFamilyEnabled("freeze")) && (!containsEffectNode(16) || !creativeVfxFamilyEnabled("granular")) && (!containsEffectNode(17) || !creativeVfxFamilyEnabled("tape")) && (!containsEffectNode(18) || !creativeVfxFamilyEnabled("pitch")) && (!containsEffectNode(19) || !creativeVfxFamilyEnabled("autoWah")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0
     readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks, var creativeVfx, var space)
@@ -95,7 +95,11 @@ QtObject {
             impulseResponsePreparedHash: "",
             impulseResponsePreparedPath: "",
             convolutionMixPercent: 35,
-            convolutionWetGainCentibels: 0
+            convolutionWetGainCentibels: 0,
+            reverbDuckingEnabled: false,
+            reverbDuckingAmountPercent: 65,
+            reverbDuckingAttackMillis: 10,
+            reverbDuckingReleaseMillis: 250
         };
     }
 
@@ -108,14 +112,18 @@ QtObject {
             impulseResponsePreparedHash: String(source.impulseResponsePreparedHash || ""),
             impulseResponsePreparedPath: String(source.impulseResponsePreparedPath || ""),
             convolutionMixPercent: Math.round(clamp(Number(source.convolutionMixPercent ?? 35), 0, 100)),
-            convolutionWetGainCentibels: Math.round(clamp(Number(source.convolutionWetGainCentibels ?? 0), -2400, 1200))
+            convolutionWetGainCentibels: Math.round(clamp(Number(source.convolutionWetGainCentibels ?? 0), -2400, 1200)),
+            reverbDuckingEnabled: Boolean(source.reverbDuckingEnabled),
+            reverbDuckingAmountPercent: Math.round(clamp(Number(source.reverbDuckingAmountPercent ?? 65), 0, 100)),
+            reverbDuckingAttackMillis: Math.round(clamp(Number(source.reverbDuckingAttackMillis ?? 10), 1, 200)),
+            reverbDuckingReleaseMillis: Math.round(clamp(Number(source.reverbDuckingReleaseMillis ?? 250), 20, 2000))
         };
     }
 
     function sameSpace(left: var, right: var): bool {
         const a = copySpace(left);
         const b = copySpace(right);
-        return a.mode === b.mode && a.impulseResponseImportId === b.impulseResponseImportId && a.impulseResponseSourceHash === b.impulseResponseSourceHash && a.impulseResponsePreparedHash === b.impulseResponsePreparedHash && a.impulseResponsePreparedPath === b.impulseResponsePreparedPath && a.convolutionMixPercent === b.convolutionMixPercent && a.convolutionWetGainCentibels === b.convolutionWetGainCentibels;
+        return a.mode === b.mode && a.impulseResponseImportId === b.impulseResponseImportId && a.impulseResponseSourceHash === b.impulseResponseSourceHash && a.impulseResponsePreparedHash === b.impulseResponsePreparedHash && a.impulseResponsePreparedPath === b.impulseResponsePreparedPath && a.convolutionMixPercent === b.convolutionMixPercent && a.convolutionWetGainCentibels === b.convolutionWetGainCentibels && a.reverbDuckingEnabled === b.reverbDuckingEnabled && a.reverbDuckingAmountPercent === b.reverbDuckingAmountPercent && a.reverbDuckingAttackMillis === b.reverbDuckingAttackMillis && a.reverbDuckingReleaseMillis === b.reverbDuckingReleaseMillis;
     }
 
     function clamp(value: real, minimum: real, maximum: real): real {
@@ -174,13 +182,13 @@ QtObject {
     }
 
     function copyEffectChain(values: var): var {
-        if (!values || values.length < 1 || values.length > 15)
+        if (!values || values.length < 1 || values.length > 20)
             return defaultEffectChain();
         const result = [];
-        const seen = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+        const seen = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
         for (let index = 0; index < values.length; ++index) {
             const node = Math.round(Number(values[index]));
-            if (node < 0 || node > 14 || seen[node])
+            if (node < 0 || node > 19 || seen[node])
                 return defaultEffectChain();
             seen[node] = true;
             result.push(node);
@@ -242,6 +250,15 @@ QtObject {
                 randomSeed: 1162039375
             };
         }
+        if (name === "tape") {
+            return { enabled: false, mixPercent: 55, saturationPercent: 25, wowFlutterPercent: 30, dropoutPercent: 0 };
+        }
+        if (name === "pitch") {
+            return { enabled: false, mixPercent: 100, pitchSemitones: 0, harmonyEnabled: false, harmonySemitones: 7, harmonyMixPercent: 35, formantColourSemitones: 0 };
+        }
+        if (name === "autoWah") {
+            return { enabled: false, mixPercent: 70, sensitivityPercent: 55, minimumFrequencyHertz: 280, maximumFrequencyHertz: 2800, resonanceTenths: 18 };
+        }
         return null;
     }
 
@@ -251,7 +268,7 @@ QtObject {
 
     function creativeVfxForOriginal(): var {
         const value = copyCreativeVfx(creativeVfx);
-        const families = ["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary", "freeze", "granular"];
+        const families = ["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary", "freeze", "granular", "tape", "pitch", "autoWah"];
         for (let index = 0; index < families.length; ++index) {
             const family = families[index];
             if (value[family])
@@ -261,7 +278,7 @@ QtObject {
     }
 
     function setCreativeVfxFamily(name: string, value: var): void {
-        if (["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary", "freeze", "granular"].indexOf(name) < 0 || !value)
+        if (["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary", "freeze", "granular", "tape", "pitch", "autoWah"].indexOf(name) < 0 || !value)
             return;
         const next = copyCreativeVfx(creativeVfx);
         next[name] = copyCreativeVfx(value);
@@ -277,6 +294,40 @@ QtObject {
             return;
         family.enabled = enabled;
         setCreativeVfxFamily(name, family);
+    }
+
+    // Applies a bounded, undoable macro over existing deterministic VFX state.
+    // Presets are intentionally not persisted as a separate identity.
+    function applyCreativePreset(preset: int): void {
+        const next = copyCreativeVfx(creativeVfx);
+        const chain = copyEffectChain(effectChain);
+        const families = ["scene", "delay", "modulation", "transform", "digitalDegrade", "drive", "rotary", "freeze", "granular", "tape", "pitch", "autoWah"];
+        for (let index = 0; index < families.length; ++index) {
+            const family = families[index];
+            if (next[family])
+                next[family].enabled = false;
+        }
+        function enableFamily(name: string, kind: int, settings: var): void {
+            next[name] = settings;
+            if (chain.indexOf(kind) < 0)
+                chain.splice(chain.length - 1, 0, kind);
+        }
+        if (preset === 0) {
+            enableFamily("scene", 8, { character: 1, enabled: true, mixPercent: 72, intensityPercent: 58 });
+            enableFamily("tape", 17, { enabled: true, mixPercent: 48, saturationPercent: 28, wowFlutterPercent: 18, dropoutPercent: 3 });
+        } else if (preset === 1) {
+            enableFamily("delay", 9, { character: 1, enabled: true, slapback: next.delay ? next.delay.slapback : {}, echo: { delayMillis: 430, feedbackPercent: 48, mixPercent: 38, highCutHertz: 6200, stereoCrossfeedPercent: 78 }, ducking: { enabled: true, amountPercent: 68, attackMillis: 12, releaseMillis: 310 } });
+            enableFamily("autoWah", 19, { enabled: true, mixPercent: 52, sensitivityPercent: 45, minimumFrequencyHertz: 260, maximumFrequencyHertz: 2300, resonanceTenths: 16 });
+        } else if (preset === 2) {
+            enableFamily("pitch", 18, { enabled: true, mixPercent: 78, pitchSemitones: 0, harmonyEnabled: true, harmonySemitones: 7, harmonyMixPercent: 38, formantColourSemitones: -2 });
+            enableFamily("delay", 9, { character: 1, enabled: true, slapback: next.delay ? next.delay.slapback : {}, echo: { delayMillis: 560, feedbackPercent: 42, mixPercent: 31, highCutHertz: 5200, stereoCrossfeedPercent: 86 }, ducking: { enabled: true, amountPercent: 60, attackMillis: 16, releaseMillis: 420 } });
+        } else {
+            return;
+        }
+        creativeVfx = next;
+        effectChain = chain;
+        effectMasks = copyEffectMasks(effectMasks, effectChain, trimStartMillis, trimEndMillis);
+        pushCurrent();
     }
 
     function defaultEditSegments(startMillis: int, endMillis: int): var {
@@ -712,7 +763,11 @@ QtObject {
                 impulseResponsePreparedHash: asset.impulseResponsePreparedHash,
                 impulseResponsePreparedPath: asset.impulseResponsePreparedPath,
                 convolutionMixPercent: asset.convolutionMixPercent,
-                convolutionWetGainCentibels: asset.convolutionWetGainCentibels
+                convolutionWetGainCentibels: asset.convolutionWetGainCentibels,
+                reverbDuckingEnabled: asset.reverbDuckingEnabled,
+                reverbDuckingAmountPercent: asset.reverbDuckingAmountPercent,
+                reverbDuckingAttackMillis: asset.reverbDuckingAttackMillis,
+                reverbDuckingReleaseMillis: asset.reverbDuckingReleaseMillis
             }),
             limiterEnabled: Boolean(asset.limiterEnabled),
             limiterCeilingCentibels: clamp(Number(asset.limiterCeilingCentibels ?? -100), -600, 0),
@@ -1158,6 +1213,12 @@ QtObject {
             return creativeVfxFamilyEnabled("freeze");
         if (kind === 16)
             return creativeVfxFamilyEnabled("granular");
+        if (kind === 17)
+            return creativeVfxFamilyEnabled("tape");
+        if (kind === 18)
+            return creativeVfxFamilyEnabled("pitch");
+        if (kind === 19)
+            return creativeVfxFamilyEnabled("autoWah");
         return false;
     }
 
@@ -1205,6 +1266,15 @@ QtObject {
         } else if (kind === 16) {
             setCreativeVfxFamilyEnabled("granular", enabled);
             return;
+        } else if (kind === 17) {
+            setCreativeVfxFamilyEnabled("tape", enabled);
+            return;
+        } else if (kind === 18) {
+            setCreativeVfxFamilyEnabled("pitch", enabled);
+            return;
+        } else if (kind === 19) {
+            setCreativeVfxFamilyEnabled("autoWah", enabled);
+            return;
         } else
             return;
         pushCurrent();
@@ -1227,7 +1297,7 @@ QtObject {
     }
 
     function addEffectNode(kind: int): void {
-        if (kind < 0 || kind > 16 || kind === 4 || containsEffectNode(kind))
+        if (kind < 0 || kind > 19 || kind === 4 || containsEffectNode(kind))
             return;
         const next = copyEffectChain(effectChain);
         next.splice(next.length - 1, 0, kind);
@@ -1264,11 +1334,17 @@ QtObject {
             setCreativeVfxFamilyEnabled("freeze", true);
         else if (kind === 16)
             setCreativeVfxFamilyEnabled("granular", true);
+        else if (kind === 17)
+            setCreativeVfxFamilyEnabled("tape", true);
+        else if (kind === 18)
+            setCreativeVfxFamilyEnabled("pitch", true);
+        else if (kind === 19)
+            setCreativeVfxFamilyEnabled("autoWah", true);
         pushCurrent();
     }
 
     function removeEffectNode(kind: int): void {
-        if (kind < 0 || kind > 16 || kind === 4)
+        if (kind < 0 || kind > 19 || kind === 4)
             return;
         const next = copyEffectChain(effectChain);
         const index = next.indexOf(kind);
@@ -1562,6 +1638,22 @@ QtObject {
         pushCurrent();
     }
 
+    function setReverbDuckingParameter(parameter: string, value: var): void {
+        const next = copySpace(space);
+        if (parameter === "enabled")
+            next.reverbDuckingEnabled = Boolean(value);
+        else if (parameter === "amount")
+            next.reverbDuckingAmountPercent = Math.round(clamp(Number(value), 0, 100));
+        else if (parameter === "attack")
+            next.reverbDuckingAttackMillis = Math.round(clamp(Number(value), 1, 200));
+        else if (parameter === "release")
+            next.reverbDuckingReleaseMillis = Math.round(clamp(Number(value), 20, 2000));
+        else
+            return;
+        space = next;
+        pushCurrent();
+    }
+
     function resetReverb(): void {
         reverbCharacter = 0;
         reverbEnabled = false;
@@ -1572,6 +1664,12 @@ QtObject {
         reverbDampingPercent = 45;
         reverbLowCutHertz = 120;
         reverbHighCutHertz = 10000;
+        const next = copySpace(space);
+        next.reverbDuckingEnabled = false;
+        next.reverbDuckingAmountPercent = 65;
+        next.reverbDuckingAttackMillis = 10;
+        next.reverbDuckingReleaseMillis = 250;
+        space = next;
         space = defaultSpace();
         pushCurrent();
     }

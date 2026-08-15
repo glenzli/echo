@@ -98,7 +98,13 @@ Rectangle {
             sizePercent: hasAsset ? Number(asset.reverbSizePercent) : 55,
             dampingPercent: hasAsset ? Number(asset.reverbDampingPercent) : 45,
             lowCutHertz: hasAsset ? Number(asset.reverbLowCutHertz) : 120,
-            highCutHertz: hasAsset ? Number(asset.reverbHighCutHertz) : 10000
+            highCutHertz: hasAsset ? Number(asset.reverbHighCutHertz) : 10000,
+            ducking: ({
+                enabled: hasAsset ? Boolean(asset.reverbDuckingEnabled) : false,
+                amountPercent: hasAsset ? Number(asset.reverbDuckingAmountPercent ?? 65) : 65,
+                attackMillis: hasAsset ? Number(asset.reverbDuckingAttackMillis ?? 10) : 10,
+                releaseMillis: hasAsset ? Number(asset.reverbDuckingReleaseMillis ?? 250) : 250
+            })
         })
     readonly property bool limiterEnabled: hasAsset ? Boolean(asset.limiterEnabled) : false
     readonly property int limiterCeilingCentibels: hasAsset ? Number(asset.limiterCeilingCentibels) : -100

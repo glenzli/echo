@@ -675,6 +675,19 @@ QVariantList DesktopBackend::listAssets() const {
             QStringLiteral("reverbHighCutHertz"),
             static_cast<int>(asset.reverb_high_cut_hertz)
         );
+        entry.insert(QStringLiteral("reverbDuckingEnabled"), asset.reverb_ducking_enabled);
+        entry.insert(
+            QStringLiteral("reverbDuckingAmountPercent"),
+            static_cast<int>(asset.reverb_ducking_amount_percent)
+        );
+        entry.insert(
+            QStringLiteral("reverbDuckingAttackMillis"),
+            static_cast<int>(asset.reverb_ducking_attack_millis)
+        );
+        entry.insert(
+            QStringLiteral("reverbDuckingReleaseMillis"),
+            static_cast<int>(asset.reverb_ducking_release_millis)
+        );
         const QString impulse_import_id = QString::fromUtf8(
             asset.impulse_response_import_id.data(),
             asset.impulse_response_import_id.size()
@@ -1633,6 +1646,14 @@ bool DesktopBackend::setAssetAdjustment(
     const int convolution_mix = space.value(QStringLiteral("convolutionMixPercent"), 35).toInt();
     const int convolution_wet_gain =
         space.value(QStringLiteral("convolutionWetGainCentibels"), 0).toInt();
+    const bool reverb_ducking_enabled =
+        space.value(QStringLiteral("reverbDuckingEnabled"), false).toBool();
+    const int reverb_ducking_amount =
+        space.value(QStringLiteral("reverbDuckingAmountPercent"), 65).toInt();
+    const int reverb_ducking_attack =
+        space.value(QStringLiteral("reverbDuckingAttackMillis"), 10).toInt();
+    const int reverb_ducking_release =
+        space.value(QStringLiteral("reverbDuckingReleaseMillis"), 250).toInt();
     const QString impulse_import_id =
         space.value(QStringLiteral("impulseResponseImportId")).toString();
     const QString impulse_source_hash =
@@ -1672,7 +1693,9 @@ bool DesktopBackend::setAssetAdjustment(
         || reverbLowCutHertz < 20 || reverbLowCutHertz > 1000 || reverbHighCutHertz < 1000
         || reverbHighCutHertz > 20000 || reverbLowCutHertz >= reverbHighCutHertz || space_mode < 0
         || space_mode > 1 || convolution_mix < 0 || convolution_mix > 100
-        || convolution_wet_gain < -2400 || convolution_wet_gain > 1200
+        || convolution_wet_gain < -2400 || convolution_wet_gain > 1200 || reverb_ducking_amount < 0
+        || reverb_ducking_amount > 100 || reverb_ducking_attack < 1 || reverb_ducking_attack > 200
+        || reverb_ducking_release < 20 || reverb_ducking_release > 2000
         || (space_mode == 1
             && (impulse_import_id.isEmpty() || impulse_source_hash.isEmpty()
                 || impulse_prepared_hash.isEmpty()))) {
@@ -1754,6 +1777,11 @@ bool DesktopBackend::setAssetAdjustment(
         adjustment.reverb_damping_percent = static_cast<std::uint8_t>(reverbDampingPercent);
         adjustment.reverb_low_cut_hertz = static_cast<std::uint16_t>(reverbLowCutHertz);
         adjustment.reverb_high_cut_hertz = static_cast<std::uint16_t>(reverbHighCutHertz);
+        adjustment.reverb_ducking_enabled = reverb_ducking_enabled;
+        adjustment.reverb_ducking_amount_percent = static_cast<std::uint8_t>(reverb_ducking_amount);
+        adjustment.reverb_ducking_attack_millis = static_cast<std::uint16_t>(reverb_ducking_attack);
+        adjustment.reverb_ducking_release_millis =
+            static_cast<std::uint16_t>(reverb_ducking_release);
         adjustment.space_mode = static_cast<std::uint8_t>(space_mode);
         adjustment.impulse_response_import_id = impulse_import_id.toStdString();
         adjustment.impulse_response_source_hash = impulse_source_hash.toStdString();

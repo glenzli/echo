@@ -64,6 +64,12 @@ Item {
             return qsTr("Freeze");
         if (kind === 16)
             return qsTr("Granular");
+        if (kind === 17)
+            return qsTr("Tape");
+        if (kind === 18)
+            return qsTr("Pitch");
+        if (kind === 19)
+            return qsTr("Auto-Wah");
         return qsTr("Master");
     }
 
@@ -100,6 +106,12 @@ Item {
             return qsTr("Source-anchored spectral hold");
         if (kind === 16)
             return qsTr("Deterministic grain texture");
+        if (kind === 17)
+            return qsTr("Saturation · Wow & flutter · Dropout");
+        if (kind === 18)
+            return qsTr("Pitch shift · Harmony · Formant colour");
+        if (kind === 19)
+            return qsTr("Envelope-following resonant filter");
         return qsTr("Limiter · Loudness");
     }
 
@@ -124,11 +136,11 @@ Item {
     }
 
     function effectId(kind: int): string {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx"][kind];
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx", "tapeVfx", "pitchVfx", "autoWahVfx"][kind];
     }
 
     function effectKind(effectId: string): int {
-        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx"].indexOf(effectId);
+        return ["restoration", "equalizer", "dynamics", "space", "master", "dehum", "declick", "channelRepair", "sceneVfx", "delayVfx", "modulationVfx", "transformVfx", "digitalDegrade", "driveVfx", "rotaryVfx", "freezeVfx", "granularVfx", "tapeVfx", "pitchVfx", "autoWahVfx"].indexOf(effectId);
     }
 
     function buildChainModel(chain: var): var {
@@ -293,6 +305,33 @@ Item {
                 categoryTitle: qsTr("Creative"),
                 iconSource: nodeIcon(16),
                 available: chain.indexOf(16) < 0
+            },
+            {
+                effectId: "tapeVfx",
+                title: nodeTitle(17),
+                summary: nodeSummary(17),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(17),
+                available: chain.indexOf(17) < 0
+            },
+            {
+                effectId: "pitchVfx",
+                title: nodeTitle(18),
+                summary: nodeSummary(18),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(18),
+                available: chain.indexOf(18) < 0
+            },
+            {
+                effectId: "autoWahVfx",
+                title: nodeTitle(19),
+                summary: nodeSummary(19),
+                categoryId: "creative",
+                categoryTitle: qsTr("Creative"),
+                iconSource: nodeIcon(19),
+                available: chain.indexOf(19) < 0
             }
         ];
     }
@@ -474,7 +513,7 @@ Item {
 
                 CreativeVfxPanel {
                     anchors.fill: parent
-                    visible: rack.currentKind >= 8 && rack.currentKind <= 16
+                    visible: rack.currentKind >= 8 && rack.currentKind <= 19
                     draft: rack.draft
                     familyKind: rack.currentKind
                     onFamilySelected: kind => rack.selectedNodeId = rack.effectId(kind)

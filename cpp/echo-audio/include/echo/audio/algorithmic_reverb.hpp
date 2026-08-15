@@ -45,6 +45,7 @@ class AlgorithmicReverb {
     std::unique_ptr<Engine> active_;
     std::unique_ptr<Engine> next_;
     std::optional<ReverbAdjustment> pending_;
+    float ducking_envelope_ = 0.0F;
     std::size_t transition_frame_ = 0;
     std::size_t transition_frames_ = 1;
 };

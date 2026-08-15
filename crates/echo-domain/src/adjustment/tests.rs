@@ -89,6 +89,12 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
             damping_percent: 52,
             low_cut_hertz: 150,
             high_cut_hertz: 9_000,
+            ducking: ReverbDuckingSettings {
+                enabled: true,
+                amount_percent: 72,
+                attack_millis: 12,
+                release_millis: 310,
+            },
         })
         .with_limiter(LimiterSettings {
             enabled: true,
@@ -126,6 +132,7 @@ fn graph_preserves_authored_millisecond_and_centibel_units() {
     assert_eq!(graph.reverb().decay_millis, 2_400);
     assert_eq!(graph.reverb().mix_percent, 24);
     assert_eq!(graph.reverb().character, ReverbCharacter::Hall);
+    assert!(graph.reverb().ducking.enabled);
     assert_eq!(graph.limiter().ceiling_centibels, -125);
     assert_eq!(graph.effect_chain().nodes()[0], EffectNodeKind::DeHum);
 }
@@ -152,6 +159,23 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]),
         Err(EffectChainError)
     );
+
+    let error = AdjustmentGraph::new(
+        1_000,
+        0,
+        1_000,
+        0,
+        0,
+        AdjustmentEffects::default().with_reverb(ReverbSettings {
+            ducking: ReverbDuckingSettings {
+                release_millis: MAX_REVERB_DUCKING_RELEASE_MILLIS + 1,
+                ..ReverbDuckingSettings::default()
+            },
+            ..ReverbSettings::default()
+        }),
+    )
+    .expect_err("invalid reverb ducking must fail closed");
+    assert_eq!(error, AdjustmentGraphError::ReverbOutOfRange);
     assert_eq!(
         EffectChain::new([
             EffectNodeKind::Master,
@@ -180,7 +204,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
     let encoded = serde_json::to_string(&reduced).expect("reduced chain encodes");
     let encoded_value: serde_json::Value =
         serde_json::from_str(&encoded).expect("encoded chain is JSON");
-    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(17));
+    assert_eq!(encoded_value["nodes"].as_array().map(Vec::len), Some(20));
     assert_eq!(encoded_value["active_count"], 3);
     let decoded: EffectChain = serde_json::from_str(&encoded).expect("reduced chain decodes");
     assert_eq!(decoded, reduced);
@@ -204,7 +228,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
         ]
     );
     let normalized = serde_json::to_value(legacy_reduced).expect("legacy chain normalizes");
-    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(17));
+    assert_eq!(normalized["nodes"].as_array().map(Vec::len), Some(20));
     assert_eq!(normalized["active_count"], 3);
 
     assert_eq!(
@@ -220,7 +244,7 @@ fn effect_chain_has_bounded_singleton_identity_and_fixed_master_tail() {
 }
 
 #[test]
-fn effect_node_wire_values_append_freeze_and_granular_without_renumbering() {
+fn effect_node_wire_values_append_creative_vfx_without_renumbering() {
     for (node, expected) in [
         (EffectNodeKind::Space, 3),
         (EffectNodeKind::DeHum, 5),
@@ -235,13 +259,16 @@ fn effect_node_wire_values_append_freeze_and_granular_without_renumbering() {
         (EffectNodeKind::RotaryVfx, 14),
         (EffectNodeKind::FreezeVfx, 15),
         (EffectNodeKind::GranularVfx, 16),
+        (EffectNodeKind::TapeVfx, 17),
+        (EffectNodeKind::PitchVfx, 18),
+        (EffectNodeKind::AutoWahVfx, 19),
     ] {
         assert_eq!(node.wire_value(), expected);
         assert_eq!(EffectNodeKind::from_wire_value(expected), Ok(node));
     }
-    assert_eq!(EFFECT_NODE_COUNT, 17);
+    assert_eq!(EFFECT_NODE_COUNT, 20);
     assert_eq!(
-        EffectNodeKind::from_wire_value(17),
+        EffectNodeKind::from_wire_value(20),
         Err(EffectNodeKindValueError)
     );
 }
@@ -273,7 +300,7 @@ fn thirteen_node_chain_json_migrates_with_drive_and_rotary_tail() {
 }
 
 #[test]
-fn fifteen_node_chain_json_migrates_with_disabled_freeze_and_granular_tail() {
+fn fifteen_node_chain_json_migrates_with_disabled_creative_vfx_tail() {
     let mut stored = serde_json::to_value(EffectChain::standard()).expect("chain encodes");
     stored["nodes"]
         .as_array_mut()
@@ -284,9 +311,12 @@ fn fifteen_node_chain_json_migrates_with_disabled_freeze_and_granular_tail() {
     assert_eq!(restored.nodes(), EffectChain::standard().nodes());
     let normalized = serde_json::to_value(restored).expect("normalized chain encodes");
     let nodes = normalized["nodes"].as_array().expect("nodes array");
-    assert_eq!(nodes.len(), 17);
+    assert_eq!(nodes.len(), 20);
     assert_eq!(nodes[15], "freeze_vfx");
     assert_eq!(nodes[16], "granular_vfx");
+    assert_eq!(nodes[17], "tape_vfx");
+    assert_eq!(nodes[18], "pitch_vfx");
+    assert_eq!(nodes[19], "auto_wah_vfx");
 }
 
 #[test]

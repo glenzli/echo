@@ -178,5 +178,33 @@ int main() {
         assert(rejected);
     }
 
+    {
+        const std::size_t delay_frames = 90 * kSampleRate / 1000;
+        std::vector<float> dry(delay_frames * 3, 0.0F);
+        std::vector<float> ducked = dry;
+        std::fill_n(dry.begin(), delay_frames * 2, 1.0F);
+        std::fill_n(ducked.begin(), delay_frames * 2, 1.0F);
+
+        auto standard = slapback();
+        auto reduced = standard;
+        reduced.ducking =
+            {.enabled = true, .amount_percent = 100, .attack_millis = 1, .release_millis = 250};
+        echo::audio::DelayVfxProcessor standard_processor(standard, kSampleRate, 1);
+        echo::audio::DelayVfxProcessor ducked_processor(reduced, kSampleRate, 1);
+        standard_processor.process_interleaved(dry.data(), dry.size(), 1);
+        ducked_processor.process_interleaved(ducked.data(), ducked.size(), 1);
+        assert(dry[delay_frames * 2] > 0.85F);
+        assert(std::abs(ducked[delay_frames * 2]) < 0.4F);
+
+        bool rejected = false;
+        reduced.ducking.attack_millis = 0;
+        try {
+            echo::audio::DelayVfxProcessor processor(reduced, kSampleRate, 1);
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        assert(rejected);
+    }
+
     return 0;
 }
