@@ -13,7 +13,6 @@ Rectangle {
     required property var asset
 
     property var waveformLevels: []
-    property var spectrogramArtifact: ({})
     property string loadedPath: ""
     property string loadedBaseAdjustmentKey: ""
     property string loadedAdjustmentKey: ""
@@ -119,11 +118,11 @@ Rectangle {
 
     function refreshAsset(): void {
         waveformLevels = [];
-        spectrogramArtifact = ({});
+        spectrogramPreview.clear();
         if (!asset || !asset.id || asset.pathStatus === "missing")
             return;
         waveformLevels = backend.waveformForAsset(asset.id);
-        spectrogramArtifact = backend.spectrogramForAsset(asset.id);
+        spectrogramPreview.request(asset.id);
     }
 
     function playFrom(millis: int): void {
@@ -788,7 +787,8 @@ Rectangle {
                 SplitView.preferredHeight: 226
                 SplitView.minimumHeight: 150
                 SplitView.maximumHeight: 360
-                artifact: workspace.spectrogramArtifact
+                imageUrl: spectrogramPreview.imageUrl
+                loading: spectrogramPreview.running
                 sourceDurationMillis: adjustmentDraft.sourceDurationMillis
                 viewStartRatio: editorTimeline.viewStartRatio
                 viewEndRatio: editorTimeline.viewEndRatio

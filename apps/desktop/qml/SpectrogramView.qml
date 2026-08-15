@@ -9,7 +9,8 @@ import EchoDesktop
 Rectangle {
     id: spectrogram
 
-    required property var artifact
+    required property string imageUrl
+    required property bool loading
     required property int sourceDurationMillis
     required property real viewStartRatio
     required property real viewEndRatio
@@ -19,11 +20,7 @@ Rectangle {
     required property real selectionEndRatio
     required property var regions
 
-    readonly property int timeColumns: Number(artifact.timeColumns || 0)
-    readonly property int frequencyBins: Number(artifact.frequencyBins || 0)
-    readonly property var magnitudes: artifact.magnitudes || []
-    readonly property bool hasOverview: timeColumns > 0 && frequencyBins > 0
-        && magnitudes.length === timeColumns * frequencyBins
+    readonly property bool hasOverview: imageUrl.length > 0
 
     signal regionRequested(int startMillis, int endMillis, int lowHertz, int highHertz)
     signal clearRequested
@@ -37,25 +34,6 @@ Rectangle {
     function clamp(value: real, minimum: real, maximum: real): real {
         return Math.max(minimum, Math.min(maximum, value));
     }
-
-    function colorForMagnitude(value: int): var {
-        const normalized = clamp(value / 255, 0, 1);
-        const red = Math.round(14 + 241 * Math.pow(normalized, 1.55));
-        const green = Math.round(10 + 218 * Math.pow(Math.max(0, normalized - 0.30) / 0.70, 1.2));
-        const blue = Math.round(30 + 194 * Math.pow(Math.max(0, normalized - 0.08) / 0.92, 0.62));
-        return [red, green, blue];
-    }
-
-    function requestSpectrumPaint(): void {
-        if (spectrumCanvas && spectrumCanvas.available)
-            spectrumCanvas.requestPaint();
-    }
-
-    onArtifactChanged: requestSpectrumPaint()
-    onViewStartRatioChanged: requestSpectrumPaint()
-    onViewEndRatioChanged: requestSpectrumPaint()
-    onWidthChanged: requestSpectrumPaint()
-    onHeightChanged: requestSpectrumPaint()
 
     ColumnLayout {
         anchors.fill: parent
@@ -81,7 +59,8 @@ Rectangle {
             Item { Layout.fillWidth: true }
 
             Text {
-                text: hasOverview ? qsTr("%1 repairs").arg(regions.length) : qsTr("Loading…")
+                text: hasOverview ? qsTr("%1 repairs").arg(regions.length)
+                    : (loading ? qsTr("Loading…") : qsTr("Unavailable"))
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontMeta
             }
@@ -102,61 +81,24 @@ Rectangle {
             border.color: Theme.border
             clip: true
 
-            Canvas {
-                id: spectrumCanvas
-
+            Image {
+                id: spectrumImage
                 anchors.fill: parent
-                renderTarget: Canvas.Image
-                renderStrategy: Canvas.Immediate
-
-                Component.onCompleted: spectrogram.requestSpectrumPaint()
-                onAvailableChanged: {
-                    if (available)
-                        spectrogram.requestSpectrumPaint();
-                }
-                onWidthChanged: spectrogram.requestSpectrumPaint()
-                onHeightChanged: spectrogram.requestSpectrumPaint()
-
-                onPaint: {
-                    const context = getContext("2d");
-                    context.reset();
-                    context.clearRect(0, 0, width, height);
-                    if (!spectrogram.hasOverview || width <= 0 || height <= 0)
-                        return;
-
-                    const visibleStart = Math.floor(spectrogram.clamp(spectrogram.viewStartRatio, 0, 1) * spectrogram.timeColumns);
-                    const visibleEnd = Math.max(visibleStart + 1, Math.ceil(spectrogram.clamp(spectrogram.viewEndRatio, 0, 1) * spectrogram.timeColumns));
-                    const sourceColumns = Math.max(1, visibleEnd - visibleStart);
-                    const outputColumns = Math.max(1, Math.round(width));
-                    const outputRows = Math.max(1, Math.round(height));
-                    const image = context.createImageData(outputColumns, outputRows);
-                    for (let y = 0; y < outputRows; ++y) {
-                        const frequencyStart = Math.floor((outputRows - y - 1) * spectrogram.frequencyBins / outputRows);
-                        const frequencyEnd = Math.max(frequencyStart + 1, Math.ceil((outputRows - y) * spectrogram.frequencyBins / outputRows));
-                        for (let x = 0; x < outputColumns; ++x) {
-                            const timeStart = visibleStart + Math.floor(x * sourceColumns / outputColumns);
-                            const timeEnd = Math.min(visibleEnd, Math.max(timeStart + 1, visibleStart + Math.ceil((x + 1) * sourceColumns / outputColumns)));
-                            let magnitude = 0;
-                            for (let column = timeStart; column < timeEnd; ++column) {
-                                for (let bin = frequencyStart; bin < frequencyEnd; ++bin)
-                                    magnitude = Math.max(magnitude, Number(spectrogram.magnitudes[column * spectrogram.frequencyBins + bin] || 0));
-                            }
-                            const color = spectrogram.colorForMagnitude(magnitude);
-                            const offset = (y * outputColumns + x) * 4;
-                            image.data[offset] = color[0];
-                            image.data[offset + 1] = color[1];
-                            image.data[offset + 2] = color[2];
-                            image.data[offset + 3] = 255;
-                        }
-                    }
-                    context.putImageData(image, 0, 0);
-                }
+                source: spectrogram.imageUrl
+                fillMode: Image.Stretch
+                smooth: true
+                sourceClipRect: Qt.rect(
+                    Math.floor(spectrogram.clamp(spectrogram.viewStartRatio, 0, 1) * sourceSize.width),
+                    0,
+                    Math.max(1, Math.ceil((spectrogram.clamp(spectrogram.viewEndRatio, 0, 1) - spectrogram.clamp(spectrogram.viewStartRatio, 0, 1)) * sourceSize.width)),
+                    sourceSize.height
+                )
             }
 
             Text {
                 anchors.centerIn: parent
                 visible: !spectrogram.hasOverview
-                text: qsTr("Spectrogram overview unavailable")
+                text: spectrogram.loading ? qsTr("Loading…") : qsTr("Spectrogram overview unavailable")
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontMeta
             }

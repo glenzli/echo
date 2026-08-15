@@ -10,6 +10,7 @@
 #include "playback_controller.hpp"
 #include "render_export_controller.hpp"
 #include "semantic_search_controller.hpp"
+#include "spectrogram_preview_controller.hpp"
 #include "ui_preferences.hpp"
 
 #if defined(Q_OS_MACOS)
@@ -83,6 +84,10 @@ int main(int argc, char* argv[]) {
             QString::fromStdString(catalog),
             inference_prefs.runtimeEndpoint()
         );
+        SpectrogramPreviewController spectrogram_preview(
+            QString::fromStdString(catalog),
+            QString::fromStdString(cache_root)
+        );
         QObject::connect(
             &inference_prefs,
             &InferencePreferences::runtimeEndpointChanged,
@@ -124,6 +129,10 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(
             QStringLiteral("semanticSearch"),
             &semantic_search
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("spectrogramPreview"),
+            &spectrogram_preview
         );
         ui_prefs.attachEngine(engine);
         engine.loadFromModule("EchoDesktop", "Main");

@@ -4873,6 +4873,11 @@
         <translation>正在加载…</translation>
     </message>
     <message>
+        <location filename="../qml/SpectrogramView.qml" line="63"/>
+        <source>Unavailable</source>
+        <translation>不可用</translation>
+    </message>
+    <message>
         <location filename="../qml/SpectrogramView.qml" line="138"/>
         <source>Spectrogram overview unavailable</source>
         <translation>频谱概览不可用</translation>

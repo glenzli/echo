@@ -513,6 +513,14 @@ mod ffi {
             query: &str,
             limit: u64,
         ) -> Result<Vec<SemanticSearchHitWire>>;
+        /// Loads or builds one bounded spectrogram overview through a
+        /// short-lived catalog attachment. Desktop preview work calls this
+        /// from a background worker so a cold derived cache never blocks QML.
+        fn spectrogram_artifact_for_catalog(
+            catalog_path: &str,
+            cache_root: &str,
+            asset_id: &str,
+        ) -> Result<SpectrogramArtifactWire>;
         /// Opens (creating if needed) the catalog and cache at the given
         /// roots.
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
@@ -631,12 +639,6 @@ mod ffi {
             self: &LibrarySession,
             asset_id: &str,
         ) -> Result<WaveformArtifactWire>;
-        /// Returns the bounded spectrogram overview for an asset, building and
-        /// caching it when absent.
-        fn session_spectrogram_artifact(
-            self: &LibrarySession,
-            asset_id: &str,
-        ) -> Result<SpectrogramArtifactWire>;
         /// Returns every transcript evidence record for an asset, newest
         /// first.
         fn session_transcripts(
@@ -767,6 +769,32 @@ fn semantic_search_catalog(
 pub fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>, String> {
     session::open_session(path, cache_root)
         .map(Box::new)
+        .map_err(|error| error.message)
+}
+
+/// Loads or builds one display-only spectrogram through an independent catalog
+/// attachment. The catalog serializes its own access, while this keeps an
+/// expensive cold-cache decode outside the Qt main thread.
+///
+/// # Errors
+///
+/// Returns the session error message when the catalog or source cannot be
+/// opened, or the derived artifact is unavailable.
+pub fn spectrogram_artifact_for_catalog(
+    catalog_path: &str,
+    cache_root: &str,
+    asset_id: &str,
+) -> Result<ffi::SpectrogramArtifactWire, String> {
+    session::open_session(catalog_path, cache_root)
+        .and_then(|session| session.spectrogram_artifact(asset_id))
+        .map(|payload| ffi::SpectrogramArtifactWire {
+            canonical_sample_rate: payload.canonical_sample_rate,
+            window_frames: payload.window_frames,
+            hop_frames: payload.hop_frames,
+            time_columns: payload.time_columns,
+            frequency_bins: payload.frequency_bins,
+            magnitudes: payload.magnitudes,
+        })
         .map_err(|error| error.message)
 }
 
@@ -987,21 +1015,6 @@ impl LibrarySession {
         asset_id: &str,
     ) -> Result<ffi::WaveformArtifactWire, String> {
         self.waveform_artifact(asset_id)
-            .map_err(|error| error.message)
-    }
-
-    /// Returns the bounded spectrogram overview for an asset, building and
-    /// caching it when absent.
-    ///
-    /// # Errors
-    ///
-    /// Returns the session error message when the artifact cannot be built,
-    /// read, or decoded.
-    fn session_spectrogram_artifact(
-        &self,
-        asset_id: &str,
-    ) -> Result<ffi::SpectrogramArtifactWire, String> {
-        self.spectrogram_artifact(asset_id)
             .map_err(|error| error.message)
     }
 

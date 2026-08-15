@@ -1871,30 +1871,6 @@ QVariantList DesktopBackend::waveformForAsset(const QString& id) const {
     return levels;
 }
 
-QVariantMap DesktopBackend::spectrogramForAsset(const QString& id) const {
-    QVariantMap artifact;
-    try {
-        const auto wire = session_->session_spectrogram_artifact(id.toStdString());
-        QVariantList magnitudes;
-        magnitudes.reserve(static_cast<qsizetype>(wire.magnitudes.size()));
-        for (const auto magnitude : wire.magnitudes) {
-            magnitudes.append(static_cast<int>(magnitude));
-        }
-        artifact.insert(
-            QStringLiteral("canonicalSampleRate"),
-            static_cast<int>(wire.canonical_sample_rate)
-        );
-        artifact.insert(QStringLiteral("windowFrames"), static_cast<int>(wire.window_frames));
-        artifact.insert(QStringLiteral("hopFrames"), static_cast<int>(wire.hop_frames));
-        artifact.insert(QStringLiteral("timeColumns"), static_cast<int>(wire.time_columns));
-        artifact.insert(QStringLiteral("frequencyBins"), static_cast<int>(wire.frequency_bins));
-        artifact.insert(QStringLiteral("magnitudes"), magnitudes);
-    } catch (const rust::Error& error) {
-        qWarning("spectrogram query failed for %s: %s", qPrintable(id), error.what());
-    }
-    return artifact;
-}
-
 QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {
     QVariantList transcripts;
     rust::Vec<echo::desktop::TranscriptWire> wires;

@@ -127,6 +127,8 @@ qt_add_executable(
     src/qt_render_byte_sink.hpp
     src/semantic_search_controller.cpp
     src/semantic_search_controller.hpp
+    src/spectrogram_preview_controller.cpp
+    src/spectrogram_preview_controller.hpp
     src/reverb_projection.cpp
     src/reverb_projection.hpp
     src/restoration_projection.cpp
