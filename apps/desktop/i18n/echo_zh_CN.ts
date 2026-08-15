@@ -4917,10 +4917,6 @@
         <translation>创建工作副本</translation>
     </message>
     <message>
-        <source>Frozen from the current saved adjustment. Upstream changes require a new copy.</source>
-        <translation>已从当前保存的调整冻结；修改前序调整需要创建新副本。</translation>
-    </message>
-    <message>
         <source>Save adjustments before creating a post-effect repair copy.</source>
         <translation>请先保存调整，再创建效果后修复副本。</translation>
     </message>
