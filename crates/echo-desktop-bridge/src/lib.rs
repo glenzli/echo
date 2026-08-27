@@ -708,6 +708,16 @@ mod ffi {
             adjustment_revision_id: i64,
             evidence: &RenderExportWire,
         ) -> Result<i64>;
+        /// Records a delivery rendered from one verified post-effect spectral
+        /// working copy and snapshots its mutable manifest into provenance.
+        fn session_record_rendered_spectral_working_copy_export(
+            self: &LibrarySession,
+            asset_id: &str,
+            adjustment_revision_id: i64,
+            working_copy_id: i64,
+            rendered_source_path: &str,
+            evidence: &RenderExportWire,
+        ) -> Result<i64>;
         /// Moves one completed private render into the content-addressed cache
         /// and atomically records it as a frozen spectral working-copy parent.
         fn session_create_rendered_spectral_working_copy(
@@ -1194,6 +1204,32 @@ impl LibrarySession {
         self.record_render_export(
             asset_id,
             adjustment_revision_id,
+            &evidence.output_path,
+            &evidence.format,
+            evidence.sample_rate,
+            evidence.channel_count,
+            evidence.bit_depth,
+            evidence.frame_count,
+            evidence.size_bytes,
+            evidence.integrated_lufs,
+            evidence.true_peak_dbtp,
+        )
+        .map_err(|error| error.message)
+    }
+
+    fn session_record_rendered_spectral_working_copy_export(
+        &self,
+        asset_id: &str,
+        adjustment_revision_id: i64,
+        working_copy_id: i64,
+        rendered_source_path: &str,
+        evidence: &ffi::RenderExportWire,
+    ) -> Result<i64, String> {
+        self.record_rendered_spectral_working_copy_export(
+            asset_id,
+            adjustment_revision_id,
+            working_copy_id,
+            rendered_source_path,
             &evidence.output_path,
             &evidence.format,
             evidence.sample_rate,

@@ -110,3 +110,109 @@ fn publication_round_trips_and_rejects_stale_adjustment() {
     assert_eq!(error.kind, CatalogErrorKind::Constraint);
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn rendered_working_copy_export_snapshots_mutable_repair_provenance() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-rendered-working-copy-export-{}",
+        std::process::id()
+    ));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    let asset = catalog
+        .with_transaction(|transaction| {
+            let registered = crate::register_asset(
+                transaction,
+                &AssetRegistrationInput {
+                    content_hash: ContentHash::new([4; 32]),
+                    path: Path::new("/source.wav"),
+                    size_bytes: 20,
+                    codec: Some("pcm"),
+                    duration_millis: Some(1_000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )?;
+            Ok::<_, CatalogError>(match registered {
+                RegisterAsset::Created(asset) | RegisterAsset::Existed(asset) => asset,
+            })
+        })
+        .expect("asset registers");
+    let revision = catalog
+        .with_transaction(|transaction| {
+            record_adjustment_graph(
+                transaction,
+                asset.id,
+                AdjustmentGraph::new(
+                    1_000,
+                    0,
+                    1_000,
+                    0,
+                    0,
+                    AdjustmentEffects::new(FadeCurves::default(), 0, 0),
+                )
+                .expect("graph validates"),
+                2,
+            )
+        })
+        .expect("adjustment records");
+    let copy = catalog
+        .with_transaction(|transaction| {
+            crate::create_rendered_spectral_working_copy(
+                transaction,
+                crate::CreateRenderedSpectralWorkingCopy {
+                    asset_id: asset.id,
+                    parent_adjustment_revision_id: revision.revision_id,
+                    parent_render_content_hash: ContentHash::new([7; 32]),
+                    created_at_millis: 3,
+                },
+            )
+        })
+        .expect("working copy records");
+    let evidence = RecordRenderExport {
+        asset_id: asset.id,
+        adjustment_revision_id: revision.revision_id,
+        output_path: PathBuf::from("/exports/repaired.wav"),
+        format: RenderExportFormat::WavPcm24,
+        sample_rate: 48_000,
+        channel_count: 2,
+        bit_depth: 24,
+        frame_count: 48_000,
+        content_hash: ContentHash::new([8; 32]),
+        size_bytes: 288_044,
+        integrated_lufs: -18.0,
+        true_peak_dbtp: -1.0,
+        created_at_millis: 4,
+    };
+    let record = catalog
+        .with_transaction(|transaction| {
+            record_rendered_spectral_working_copy_export(transaction, &evidence, copy.id)
+        })
+        .expect("working-copy export records");
+    let snapshot = catalog
+        .with_transaction(|transaction| {
+            Ok::<_, CatalogError>(transaction.query_row(
+                "SELECT working_copy_id, original_content_hash, parent_render_content_hash, \
+                 working_render_content_hash, tile_manifest_json, tool_version \
+                 FROM render_export_working_copy_provenance WHERE render_export_id = ?1",
+                [record.id],
+                |row| {
+                    Ok::<_, rusqlite::Error>((
+                        row.get::<_, i64>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                        row.get::<_, String>(4)?,
+                        row.get::<_, String>(5)?,
+                    ))
+                },
+            )?)
+        })
+        .expect("provenance snapshot reads");
+    assert_eq!(snapshot.0, copy.id);
+    assert_eq!(snapshot.1, ContentHash::new([4; 32]).to_string());
+    assert_eq!(snapshot.2, ContentHash::new([7; 32]).to_string());
+    assert_eq!(snapshot.3, ContentHash::new([7; 32]).to_string());
+    assert_eq!(snapshot.4, r#"{"schema":1,"operations":[]}"#);
+    assert_eq!(snapshot.5, "rendered-spectral-working-copy-v1");
+    let _ = std::fs::remove_dir_all(root);
+}

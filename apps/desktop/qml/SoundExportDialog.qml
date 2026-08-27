@@ -12,8 +12,10 @@ Popup {
     required property var asset
     required property var draft
     required property var exporter
+    required property var renderedWorkingCopy
 
     property url destination
+    property bool exportRenderedWorkingCopy: false
 
     parent: Overlay.overlay
     x: Math.round((parent.width - width) / 2)
@@ -27,6 +29,7 @@ Popup {
 
     function present(): void {
         destination = "";
+        exportRenderedWorkingCopy = renderedWorkingCopy !== null && renderedWorkingCopy !== undefined;
         open();
     }
 
@@ -36,8 +39,12 @@ Popup {
     }
 
     function startExport(): void {
-        if (!asset || draft.dirty || destination.toString().length === 0)
+        if (!asset || (!exportRenderedWorkingCopy && draft.dirty) || destination.toString().length === 0)
             return;
+        if (exportRenderedWorkingCopy && renderedWorkingCopy) {
+            exporter.exportRenderedSpectralWorkingCopy(asset.id, Number(asset.adjustmentRevision || 0), Number(renderedWorkingCopy.id), renderedWorkingCopy.cachePath, destination);
+            return;
+        }
         exporter.exportAdjusted(asset.id, Number(asset.adjustmentRevision || 0), asset.path, destination, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.channelRepairValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks, draft.creativeVfxValue());
     }
 
@@ -168,10 +175,28 @@ Popup {
 
             Text {
                 Layout.fillWidth: true
-                visible: dialog.draft.dirty
+                visible: dialog.draft.dirty && !dialog.exportRenderedWorkingCopy
                 text: qsTr("Save the current adjustments before exporting so the file keeps an exact source revision.")
                 color: Theme.warningText
                 font.pixelSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+            }
+
+            CheckBox {
+                Layout.fillWidth: true
+                visible: dialog.renderedWorkingCopy !== null && dialog.renderedWorkingCopy !== undefined
+                enabled: !dialog.exporter.running
+                checked: dialog.exportRenderedWorkingCopy
+                text: qsTr("Export rendered repair copy (%1 repairs)").arg(dialog.renderedWorkingCopy ? Number(dialog.renderedWorkingCopy.operationCount) : 0)
+                onToggled: dialog.exportRenderedWorkingCopy = checked
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: dialog.exportRenderedWorkingCopy
+                text: qsTr("This preserves the frozen rendered repair exactly and records its repair manifest with the delivery.")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontMeta
                 wrapMode: Text.WordWrap
             }
 
@@ -244,7 +269,7 @@ Popup {
                 EchoButton {
                     visible: !dialog.exporter.running
                     text: qsTr("Export WAV")
-                    enabled: !dialog.draft.dirty && dialog.destination.toString().length > 0 && dialog.asset && dialog.asset.pathStatus !== "missing"
+                    enabled: (dialog.exportRenderedWorkingCopy || !dialog.draft.dirty) && dialog.destination.toString().length > 0 && dialog.asset && dialog.asset.pathStatus !== "missing"
                     onClicked: dialog.startExport()
                 }
             }

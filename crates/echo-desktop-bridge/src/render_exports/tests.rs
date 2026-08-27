@@ -52,5 +52,45 @@ fn session_records_verified_original_render() {
         )
         .expect("render records");
     assert!(id > 0);
+    let working_source = root.join("working.wav");
+    let repaired_output = root.join("repaired-output.wav");
+    fs::write(&working_source, b"frozen-render").expect("working source writes");
+    fs::write(&repaired_output, b"repaired-delivery").expect("repaired output writes");
+    let copy = session
+        .create_rendered_spectral_working_copy(
+            &asset.id.to_string(),
+            0,
+            working_source.to_str().expect("utf8 path"),
+        )
+        .expect("working copy records");
+    let repaired_id = session
+        .record_rendered_spectral_working_copy_export(
+            &asset.id.to_string(),
+            0,
+            copy.record.id,
+            copy.cache_path.to_str().expect("utf8 path"),
+            repaired_output.to_str().expect("utf8 path"),
+            "wav_pcm24",
+            48_000,
+            2,
+            24,
+            1,
+            17,
+            -18.0,
+            -1.0,
+        )
+        .expect("working-copy export records");
+    let provenance_count: i64 = session
+        .catalog()
+        .with_transaction(|transaction| {
+            Ok::<_, echo_catalog::CatalogError>(transaction.query_row(
+                "SELECT COUNT(*) FROM render_export_working_copy_provenance \
+                 WHERE render_export_id = ?1 AND working_copy_id = ?2",
+                (repaired_id, copy.record.id),
+                |row| row.get(0),
+            )?)
+        })
+        .expect("working-copy provenance reads");
+    assert_eq!(provenance_count, 1);
     let _ = fs::remove_dir_all(root);
 }

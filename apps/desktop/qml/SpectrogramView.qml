@@ -21,6 +21,7 @@ Rectangle {
     required property bool layerEnabled
     required property var regions
     required property bool canCreateRenderedWorkingCopy
+    required property bool hasRenderedWorkingCopy
     required property bool renderedWorkingCopyRunning
     required property bool renderedWorkingCopyReady
     required property string renderedWorkingCopyError
@@ -104,7 +105,8 @@ Rectangle {
 
             Button {
                 text: spectrogram.renderedWorkingCopyRunning ? qsTr("Freezing render…")
-                    : (spectrogram.renderedWorkingCopyReady ? qsTr("Rendered repair ready") : qsTr("Create working copy"))
+                    : (spectrogram.renderedWorkingCopyReady ? qsTr("Rendered repair ready")
+                       : (spectrogram.hasRenderedWorkingCopy ? qsTr("Freeze new working copy") : qsTr("Create working copy")))
                 enabled: spectrogram.canCreateRenderedWorkingCopy && !spectrogram.renderedWorkingCopyRunning
                     && !spectrogram.renderedWorkingCopyReady
                 onClicked: spectrogram.renderedWorkingCopyRequested()

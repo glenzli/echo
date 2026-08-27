@@ -153,10 +153,12 @@ pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_SCHEMA_VERSION: CatalogSchemaRev
     CatalogSchemaRevision::new(20_260_815, 2);
 pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EDIT_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_815, 3);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 4);
+pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EXPORT_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_815, 4);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 5);
 
 pub(crate) const SCHEMA_IDENTITY: &str =
-    "echo-catalog-20260815.4-rendered-spectral-working-copy-edits";
+    "echo-catalog-20260815.5-rendered-spectral-working-copy-export";
 
 pub(crate) const ORIGINAL_FIRST_SPECTRAL_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions
@@ -193,6 +195,18 @@ UPDATE rendered_spectral_working_copies
 UPDATE rendered_spectral_working_copies
    SET tile_manifest_json = '{"schema":1,"operations":[]}'
  WHERE tile_manifest_json = '{"schema":1,"tiles":[]}';
+"#;
+
+pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EXPORT_MIGRATION_SQL: &str = r#"
+CREATE TABLE IF NOT EXISTS render_export_working_copy_provenance (
+    render_export_id              INTEGER PRIMARY KEY REFERENCES render_exports(id),
+    working_copy_id               INTEGER NOT NULL REFERENCES rendered_spectral_working_copies(id),
+    original_content_hash         TEXT NOT NULL,
+    parent_render_content_hash    TEXT NOT NULL,
+    working_render_content_hash   TEXT NOT NULL,
+    tile_manifest_json            TEXT NOT NULL CHECK (json_valid(tile_manifest_json)),
+    tool_version                  TEXT NOT NULL CHECK (length(trim(tool_version)) > 0)
+);
 "#;
 
 pub(crate) const AUDIO_SEMANTIC_MIGRATION_SQL: &str = r"
@@ -1055,6 +1069,16 @@ CREATE TABLE IF NOT EXISTS rendered_spectral_working_copies (
 
 CREATE INDEX IF NOT EXISTS rendered_spectral_working_copies_asset_created
     ON rendered_spectral_working_copies (asset_id, created_at_millis DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS render_export_working_copy_provenance (
+    render_export_id              INTEGER PRIMARY KEY REFERENCES render_exports(id),
+    working_copy_id               INTEGER NOT NULL REFERENCES rendered_spectral_working_copies(id),
+    original_content_hash         TEXT NOT NULL,
+    parent_render_content_hash    TEXT NOT NULL,
+    working_render_content_hash   TEXT NOT NULL,
+    tile_manifest_json            TEXT NOT NULL CHECK (json_valid(tile_manifest_json)),
+    tool_version                  TEXT NOT NULL CHECK (length(trim(tool_version)) > 0)
+);
 
 CREATE TABLE IF NOT EXISTS asset_source_metadata (
     asset_id           TEXT PRIMARY KEY REFERENCES assets(id),

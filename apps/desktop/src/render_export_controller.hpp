@@ -95,6 +95,16 @@ class RenderExportController : public QObject {
         const QVariantList& effectMasks,
         const QVariantMap& creativeVfx
     );
+    /// Publishes the active rendered repair copy itself. It deliberately uses
+    /// an empty downstream adjustment so post-freeze effects are never applied
+    /// twice.
+    Q_INVOKABLE void exportRenderedSpectralWorkingCopy(
+        const QString& assetId,
+        qint64 adjustmentRevisionId,
+        qint64 workingCopyId,
+        const QString& renderedSourcePath,
+        const QUrl& destination
+    );
     Q_INVOKABLE void cancel();
 
     [[nodiscard]] bool running() const;

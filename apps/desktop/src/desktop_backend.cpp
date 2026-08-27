@@ -2156,6 +2156,45 @@ QString DesktopBackend::recordRenderExport(
     }
 }
 
+QString DesktopBackend::recordRenderedSpectralWorkingCopyExport(
+    const QString& assetId,
+    qint64 adjustmentRevisionId,
+    qint64 workingCopyId,
+    const QString& renderedSourcePath,
+    const QString& outputPath,
+    const QString& format,
+    quint32 sampleRate,
+    quint32 channelCount,
+    quint16 bitDepth,
+    quint64 frameCount,
+    quint64 sizeBytes,
+    float integratedLufs,
+    float truePeakDbtp
+) const {
+    try {
+        echo::desktop::RenderExportWire evidence;
+        evidence.output_path = outputPath.toStdString();
+        evidence.format = format.toStdString();
+        evidence.sample_rate = sampleRate;
+        evidence.channel_count = channelCount;
+        evidence.bit_depth = bitDepth;
+        evidence.frame_count = frameCount;
+        evidence.size_bytes = sizeBytes;
+        evidence.integrated_lufs = integratedLufs;
+        evidence.true_peak_dbtp = truePeakDbtp;
+        session_->session_record_rendered_spectral_working_copy_export(
+            assetId.toStdString(),
+            adjustmentRevisionId,
+            workingCopyId,
+            renderedSourcePath.toStdString(),
+            evidence
+        );
+        return {};
+    } catch (const rust::Error& error) {
+        return QString::fromUtf8(error.what());
+    }
+}
+
 QVariantMap DesktopBackend::createRenderedSpectralWorkingCopy(
     const QString& assetId,
     qint64 adjustmentRevisionId,

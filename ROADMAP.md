@@ -730,9 +730,11 @@ InferenceBackend
     cache identity 和随确定性擦除提交原子替换的 current cache identity。用户在显式 Erase mode 中框选时，会
     将至多 512 个带时频范围、96 dB 衰减及 feather 参数的操作追加到同一 manifest，而不是每笔创建 Adjustment；
     当前 cache 和 manifest 一起提交。频谱预览可切换至该 cache，且提供明确的 rendered audition；整体旁路、
-    整体移除、上游失效与重新冻结均保持显式。首版采用完整缓存重渲染而非虚假的像素/时频 tile COW，因而
-    不能声称局部编辑的性能优势。导出 provenance 连接与“重新冻结为新副本”的显式菜单仍待后续切片完成；
-    这个分支不属于首版修复工作层，也不应以“任意位置插层”弱化可追溯性。
+    整体移除、上游失效与重新冻结均保持显式。交付时可明确选择渲染修复副本；publication provenance 快照
+    Original identity、working-copy parent/current render、manifest 与工具版本，因而后续擦除不会重写已交付
+    文件的来源。上游失效后界面明确提供“冻结新的工作副本”。首版采用完整缓存重渲染而非虚假的像素/时频
+    tile COW，因而不能声称局部编辑的性能优势；这个分支不属于首版修复工作层，也不应以“任意位置插层”
+    弱化可追溯性。
   - 受约束参数工作台切片（2026-08-11）：编辑页保持“时间轨道在上、信号链在左、选中节点参数
     在右”的结构，但不再要求每个面板横向铺满窗口。信号链使用窄而稳定的轨道，普通恢复页、
     Dynamics、Space 与 Master 各自采用与内容匹配的可读宽度；只有 EQ 响应图获得更宽的可视区域，

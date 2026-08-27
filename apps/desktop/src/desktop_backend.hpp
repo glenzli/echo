@@ -259,6 +259,23 @@ class DesktopBackend : public QObject {
         float integratedLufs,
         float truePeakDbtp
     ) const;
+    /// Records a user delivery from a verified post-effect repair copy and
+    /// persists an immutable snapshot of that copy's current provenance.
+    [[nodiscard]] QString recordRenderedSpectralWorkingCopyExport(
+        const QString& assetId,
+        qint64 adjustmentRevisionId,
+        qint64 workingCopyId,
+        const QString& renderedSourcePath,
+        const QString& outputPath,
+        const QString& format,
+        quint32 sampleRate,
+        quint32 channelCount,
+        quint16 bitDepth,
+        quint64 frameCount,
+        quint64 sizeBytes,
+        float integratedLufs,
+        float truePeakDbtp
+    ) const;
     /// Worker-thread admission after a private full render completes. The
     /// returned map names only a verified content-addressed cache path.
     [[nodiscard]] QVariantMap createRenderedSpectralWorkingCopy(

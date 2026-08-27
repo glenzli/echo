@@ -416,6 +416,7 @@ Rectangle {
         asset: workspace.asset
         draft: adjustmentDraft
         exporter: renderExporter
+        renderedWorkingCopy: workspace.activeRenderedSpectralWorkingCopy()
     }
 
     Connections {
@@ -840,6 +841,7 @@ Rectangle {
                 layerEnabled: adjustmentDraft.spectralRepair.enabled
                 regions: adjustmentDraft.spectralRepair.regions
                 canCreateRenderedWorkingCopy: workspace.hasAsset && workspace.asset.pathStatus !== "missing" && !workspace.dirty
+                hasRenderedWorkingCopy: workspace.renderedSpectralWorkingCopies.length > 0
                 renderedWorkingCopyRunning: renderedSpectralWorkingCopy.running
                 renderedWorkingCopyReady: workspace.renderedSpectralWorkingCopies.some(function(copy) {
                     return copy.enabled && copy.upstreamCurrent && copy.cachePath.length > 0;

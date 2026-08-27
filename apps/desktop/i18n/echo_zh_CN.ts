@@ -3781,6 +3781,14 @@
         <translation>请先保存当前调整，再进行导出，以便文件保留准确的来源版本。</translation>
     </message>
     <message>
+        <source>Export rendered repair copy (%1 repairs)</source>
+        <translation>导出渲染后的修复副本（%1 个修复）</translation>
+    </message>
+    <message>
+        <source>This preserves the frozen rendered repair exactly and records its repair manifest with the delivery.</source>
+        <translation>这会精确保留已冻结的渲染修复，并随交付文件记录其修复清单。</translation>
+    </message>
+    <message>
         <location filename="../qml/SoundExportDialog.qml" line="187"/>
         <source>Rendering in the background…</source>
         <translation>正在后台渲染…</translation>
@@ -4915,6 +4923,10 @@
     <message>
         <source>Create working copy</source>
         <translation>创建工作副本</translation>
+    </message>
+    <message>
+        <source>Freeze new working copy</source>
+        <translation>冻结新的工作副本</translation>
     </message>
     <message>
         <source>Save adjustments before creating a post-effect repair copy.</source>

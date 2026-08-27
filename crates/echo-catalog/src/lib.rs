@@ -118,7 +118,7 @@ pub use processing_recipe::{
 };
 pub use render_export::{
     RecordRenderExport, RenderExportFormat, RenderExportRecord, list_render_exports,
-    record_render_export,
+    record_render_export, record_rendered_spectral_working_copy_export,
 };
 pub use rendered_spectral_working_copy::{
     CommitRenderedSpectralErase, CreateRenderedSpectralWorkingCopy, RenderedSpectralWorkingCopy,

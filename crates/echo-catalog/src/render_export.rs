@@ -43,6 +43,101 @@ pub struct RenderExportRecord {
     pub evidence: RecordRenderExport,
 }
 
+/// Records a delivery rendered from one active post-effect spectral working
+/// copy. The snapshot belongs to the publication, not the mutable cache: later
+/// destructive operations must not rewrite what an already-exported file means.
+pub fn record_rendered_spectral_working_copy_export(
+    transaction: &Transaction<'_>,
+    evidence: &RecordRenderExport,
+    working_copy_id: i64,
+) -> Result<RenderExportRecord, CatalogError> {
+    if working_copy_id <= 0 {
+        return Err(invalid(
+            "rendered spectral working-copy identity is invalid",
+        ));
+    }
+    let original_content_hash: String = transaction.query_row(
+        "SELECT content_hash FROM assets WHERE id = ?1",
+        [evidence.asset_id.to_string()],
+        |row| row.get(0),
+    )?;
+    let (
+        parent_adjustment_revision_id,
+        parent_render_content_hash,
+        working_render_content_hash,
+        tile_manifest_json,
+        tool_version,
+        enabled,
+    ): (Option<i64>, String, String, String, String, i64) = transaction.query_row(
+        "SELECT parent_adjustment_revision_id, parent_render_content_hash, \
+         working_render_content_hash, tile_manifest_json, tool_version, enabled \
+         FROM rendered_spectral_working_copies WHERE id = ?1 AND asset_id = ?2",
+        rusqlite::params![working_copy_id, evidence.asset_id.to_string()],
+        |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+            ))
+        },
+    )?;
+    if enabled != 1 || parent_adjustment_revision_id.unwrap_or(0) != evidence.adjustment_revision_id
+    {
+        return Err(invalid(
+            "rendered spectral working copy is not the active current render",
+        ));
+    }
+
+    let record = record_render_export(transaction, evidence)?;
+    let existing = transaction
+        .query_row(
+            "SELECT working_copy_id, original_content_hash, parent_render_content_hash, \
+             working_render_content_hash, tile_manifest_json, tool_version \
+             FROM render_export_working_copy_provenance WHERE render_export_id = ?1",
+            [record.id],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, String>(5)?,
+                ))
+            },
+        )
+        .optional()?;
+    let snapshot = (
+        working_copy_id,
+        original_content_hash,
+        parent_render_content_hash,
+        working_render_content_hash,
+        tile_manifest_json,
+        tool_version,
+    );
+    if let Some(existing) = existing {
+        if existing != snapshot {
+            return Err(invalid(
+                "render export already has different rendered spectral working-copy provenance",
+            ));
+        }
+        return Ok(record);
+    }
+    transaction.execute(
+        "INSERT INTO render_export_working_copy_provenance \
+         (render_export_id, working_copy_id, original_content_hash, parent_render_content_hash, \
+          working_render_content_hash, tile_manifest_json, tool_version) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![
+            record.id, snapshot.0, snapshot.1, snapshot.2, snapshot.3, snapshot.4, snapshot.5,
+        ],
+    )?;
+    Ok(record)
+}
+
 /// Records a render only when its adjustment revision is still the newest
 /// saved graph for the source asset.
 ///

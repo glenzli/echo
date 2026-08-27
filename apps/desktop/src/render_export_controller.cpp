@@ -319,6 +319,156 @@ void RenderExportController::exportAdjusted(
     });
 }
 
+void RenderExportController::exportRenderedSpectralWorkingCopy(
+    const QString& assetId,
+    qint64 adjustmentRevisionId,
+    qint64 workingCopyId,
+    const QString& renderedSourcePath,
+    const QUrl& destination
+) {
+    if (assetId.isEmpty() || adjustmentRevisionId < 0 || workingCopyId <= 0
+        || renderedSourcePath.isEmpty()) {
+        reject(QStringLiteral("rendered working-copy identity is invalid"));
+        return;
+    }
+    if (!destination.isLocalFile()) {
+        reject(QStringLiteral("render destination must be a local file"));
+        return;
+    }
+    const QString output_path = normalized_destination(destination);
+    if (output_path.isEmpty() || same_file(renderedSourcePath, output_path)) {
+        reject(QStringLiteral("render destination cannot replace the rendered working copy"));
+        return;
+    }
+
+    stopWorker();
+    const std::uint64_t generation = generation_.fetch_add(1) + 1;
+    running_ = true;
+    has_result_ = false;
+    progress_ = 0.0;
+    output_path_.clear();
+    error_text_.clear();
+    emit stateChanged();
+    emit progressChanged();
+
+    const std::string source_path = renderedSourcePath.toStdString();
+    worker_ = std::jthread([this,
+                            generation,
+                            assetId,
+                            adjustmentRevisionId,
+                            workingCopyId,
+                            renderedSourcePath,
+                            source_path,
+                            output_path](std::stop_token stop_token) {
+        QSaveFile output(output_path);
+        output.setDirectWriteFallback(false);
+        try {
+            if (!output.open(QIODevice::WriteOnly)) {
+                throw std::runtime_error(output.errorString().toStdString());
+            }
+            QtRenderByteSink sink(output);
+            auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
+            const echo::audio::PlaybackAdjustment no_downstream_adjustment;
+            const auto result = echo::audio::OfflineWavRenderer::render(
+                source_path,
+                no_downstream_adjustment,
+                sink,
+                {
+                    .cancelled = [&stop_token] { return stop_token.stop_requested(); },
+                    .progress =
+                        [this, generation, &last_progress](double value) {
+                            const auto now = std::chrono::steady_clock::now();
+                            if (value < 1.0
+                                && now - last_progress < std::chrono::milliseconds(80)) {
+                                return;
+                            }
+                            last_progress = now;
+                            QMetaObject::invokeMethod(
+                                this,
+                                [this, generation, value] {
+                                    if (generation_.load() == generation) {
+                                        progress_ = value;
+                                        emit progressChanged();
+                                    }
+                                },
+                                Qt::QueuedConnection
+                            );
+                        },
+                }
+            );
+            if (stop_token.stop_requested()) {
+                throw echo::audio::OfflineRenderCancelled();
+            }
+            if (!output.commit()) {
+                throw std::runtime_error(output.errorString().toStdString());
+            }
+            const QString publication_error = backend_.recordRenderedSpectralWorkingCopyExport(
+                assetId,
+                adjustmentRevisionId,
+                workingCopyId,
+                renderedSourcePath,
+                output_path,
+                QStringLiteral("wav_pcm24"),
+                result.sample_rate,
+                result.channel_count,
+                result.bit_depth,
+                result.frame_count,
+                result.size_bytes,
+                result.integrated_lufs,
+                result.true_peak_dbtp
+            );
+            QMetaObject::invokeMethod(
+                this,
+                [this, generation, output_path, result, publication_error] {
+                    if (generation_.load() != generation) {
+                        return;
+                    }
+                    running_ = false;
+                    has_result_ = true;
+                    progress_ = 1.0;
+                    output_path_ = output_path;
+                    integrated_lufs_ = result.integrated_lufs;
+                    true_peak_dbtp_ = result.true_peak_dbtp;
+                    error_text_ = publication_error;
+                    emit progressChanged();
+                    emit stateChanged();
+                },
+                Qt::QueuedConnection
+            );
+        } catch (const echo::audio::OfflineRenderCancelled&) {
+            output.cancelWriting();
+            QMetaObject::invokeMethod(
+                this,
+                [this, generation] {
+                    if (generation_.load() == generation) {
+                        running_ = false;
+                        has_result_ = false;
+                        progress_ = 0.0;
+                        emit progressChanged();
+                        emit stateChanged();
+                    }
+                },
+                Qt::QueuedConnection
+            );
+        } catch (const std::exception& error) {
+            output.cancelWriting();
+            const QString message = QString::fromUtf8(error.what());
+            QMetaObject::invokeMethod(
+                this,
+                [this, generation, message] {
+                    if (generation_.load() == generation) {
+                        running_ = false;
+                        has_result_ = false;
+                        error_text_ = message;
+                        emit stateChanged();
+                    }
+                },
+                Qt::QueuedConnection
+            );
+        }
+    });
+}
+
 void RenderExportController::cancel() {
     if (worker_.joinable()) {
         worker_.request_stop();
