@@ -251,6 +251,8 @@ qt_add_qml_module(
         qml/SoundSelectionToolbar.qml
         qml/SoundSemanticTag.qml
         qml/SoundSemantics.qml
+        qml/SoundTapeSegment.qml
+        qml/SoundTapeView.qml
         qml/SoundWall.qml
         qml/SoundWallBottomBar.qml
         qml/Theme.qml
@@ -267,6 +269,7 @@ qt_add_qml_module(
         icons/folder.svg
         icons/review-grid.svg
         icons/filmstrip.svg
+        icons/tape.svg
         icons/assembly.svg
         icons/filter.svg
         icons/filter-off.svg

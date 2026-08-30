@@ -240,8 +240,11 @@ Rectangle {
     }
 
     onAssetChanged: {
-        if (asset && loadedPath.length > 0 && loadedPath !== asset.path) {
+        const nextPath = asset && asset.path ? asset.path : "";
+        if (active && loadedPath.length > 0 && loadedPath !== nextPath) {
             player.stop();
+        }
+        if (loadedPath !== nextPath) {
             loadedPath = "";
             loadedAdjustmentKey = "";
         }
@@ -251,6 +254,12 @@ Rectangle {
     onActiveChanged: {
         if (active) {
             Qt.callLater(refreshAsset);
+        } else {
+            if (ownsActivePlayback()) {
+                player.stop();
+            }
+            loadedPath = "";
+            loadedAdjustmentKey = "";
         }
     }
 

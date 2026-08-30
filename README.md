@@ -25,7 +25,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 
 ### 当前可体验
 
-- **资料库与重温**：导入本地文件夹，通过声音墙、波形、胶片带、搜索、复合筛选、Like、评分和声音相册整理录音；继续聆听、往年今日、最近聆听和新内容由可追溯的本地状态生成。
+- **资料库与重温**：导入本地文件夹，通过声音墙、声音带、单音详情、搜索、复合筛选、Like、评分和声音相册整理录音；声音带将当前结果虚拟首尾相接以连续试听，不生成新的拼接文件；继续聆听、往年今日、最近聆听和新内容由可追溯的本地状态生成。
 - **声音理解**：导入后在后台渐进提取文字、时间对齐、声音事件与情境信息，并允许用户校准展示结果；精确文字检索、基于证据的自然语言检索，以及面向短、无文字录音的有限 CLAP 检索彼此保留独立证据空间。
 - **非破坏性调整**：独立的声音调整工作区提供裁剪、淡入淡出、增益、EQ、Dynamics、响度测量、录制缺陷修复、空间处理、效果顺序与局部作用范围，并支持 Original／Adjusted A/B、撤销重做和显式保存版本。
 - **确定性 Creative VFX**：Scene、Delay、Modulation、Tape、Pitch、Freeze、Granular 等处理与恢复性调整分域，可独立启用、旁路和保存，不把生成内容伪装成原录音。
@@ -82,7 +82,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 
 ### Available in the current build
 
-- **Library and Revisit**: import local folders and organize recordings through the Sound Wall, waveforms, filmstrip, search, compound filters, Likes, ratings, and sound albums. Continue Listening, On This Day, Recently Played, and new additions are derived from traceable local state.
+- **Library and Revisit**: import local folders and organize recordings through the Sound Wall, Sound Tape, single-sound detail, search, compound filters, Likes, ratings, and sound albums. Sound Tape virtually joins the current results for continuous listening without creating a concatenated file. Continue Listening, On This Day, Recently Played, and new additions are derived from traceable local state.
 - **Sound understanding**: progressively extract text, alignment, sound events, and contextual information in the background, with user calibration over the displayed result. Exact text retrieval, evidence-based natural-language retrieval, and limited CLAP retrieval for short recordings without text remain separate evidence spaces.
 - **Non-destructive adjustment**: a dedicated workspace provides trim, fades, gain, EQ, dynamics, loudness measurement, recording repair, space processing, effect ordering, and bounded effect regions, with Original/Adjusted A/B, undo/redo, and explicit version saving.
 - **Deterministic Creative VFX**: Scene, Delay, Modulation, Tape, Pitch, Freeze, Granular, and related processing remain separate from restoration. Each can be enabled, bypassed, and saved without presenting generated material as the original recording.

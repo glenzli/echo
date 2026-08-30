@@ -571,12 +571,12 @@
         <translation>正在后台理解这个声音…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="472"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="481"/>
         <source>Retry sound understanding</source>
         <translation>重试声音理解</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="300"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="309"/>
         <source>Select a recording</source>
         <translation>选择一段录音</translation>
     </message>
@@ -611,97 +611,97 @@
         <translation>这段声音中未检测到人声</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="309"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="318"/>
         <source>The waveform, playback controls, and extracted text stay together in this workspace.</source>
         <translation>波形、播放控制和提取的文字会始终集中在这个工作区中。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="358"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="367"/>
         <source>Missing</source>
         <translation>缺失</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="358"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="367"/>
         <source>Original preserved</source>
         <translation>原始文件已保留</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="358"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="367"/>
         <source>Saved version</source>
         <translation>已保存版本</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="403"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="412"/>
         <source>Original file is unavailable</source>
         <translation>原始文件当前不可用</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="403"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="412"/>
         <source>Preparing waveform…</source>
         <translation>正在准备波形…</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="415"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="424"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="415"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="424"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="430"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="439"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="438"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="447"/>
         <source>Continue at %1</source>
         <translation>从 %1 继续</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="459"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="468"/>
         <source>Text</source>
         <translation>文字</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="472"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="481"/>
         <source>Retry timing analysis</source>
         <translation>重试时间对齐</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="472"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="481"/>
         <source>Retry analysis</source>
         <translation>重试分析</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>Echo is extracting text from this sound through Infer Runtime.</source>
         <translation>Echo 正在通过 Infer Runtime 从这段声音中提取文字。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>Echo will resume when Infer Runtime is available.</source>
         <translation>Infer Runtime 恢复可用后，Echo 会继续分析。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>Reconnect the Original before analysis can continue.</source>
         <translation>重新连接原始文件后才能继续分析。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>No speech was detected. Echo is identifying audible events.</source>
         <translation>未检测到人声，Echo 正在识别可听见的声音事件。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>No speech was detected in this sound.</source>
         <translation>这段声音中未检测到人声。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>Text has been cleared by the user.</source>
         <translation>用户已清空这段声音的文字。</translation>
     </message>
@@ -716,17 +716,17 @@
         <translation>文字会自动提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="472"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="481"/>
         <source>Retry text extraction</source>
         <translation>重试文字提取</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>Background text extraction did not complete. You can retry this sound.</source>
         <translation>后台文字提取未完成，你可以重试这段声音。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioPlaybackWorkspace.qml" line="495"/>
+        <location filename="../qml/AudioPlaybackWorkspace.qml" line="504"/>
         <source>Text is extracted automatically after import.</source>
         <translation>导入后会自动提取文字。</translation>
     </message>
@@ -749,127 +749,127 @@
 <context>
     <name>AudioSpaceWorkspace</name>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="253"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="254"/>
         <source>Revisit</source>
         <translation>重温</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="209"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="210"/>
         <source>%1 updated · %2 unchanged · %3 failed</source>
         <translation>已更新 %1 个 · 无变化 %2 个 · 失败 %3 个</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="170"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="171"/>
         <source>Current results · %1 sounds</source>
         <translation>当前结果 · %1 个声音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="206"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="207"/>
         <source>The processing recipe could not be applied.</source>
         <translation>无法应用处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="230"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="231"/>
         <source>%1 restored · %2 conflicts · %3 failed</source>
         <translation>已恢复 %1 个 · 冲突 %2 个 · 失败 %3 个</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="174"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="175"/>
         <source>Selected sounds · %1</source>
         <translation>已选声音 · %1 个</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="257"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="258"/>
         <source>Recently listened</source>
         <translation>最近聆听</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="466"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="467"/>
         <source>Analysis restarted. Completed stages were kept.</source>
         <translation>已重新开始分析，并保留已完成阶段。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="466"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="467"/>
         <source>This analysis stage could not be restarted.</source>
         <translation>无法重新开始这个分析阶段。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="474"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="475"/>
         <source>%1 analysis job(s) restarted. Completed stages were kept.</source>
         <translation>已重新开始 %1 个分析任务，并保留已完成阶段。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="474"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="475"/>
         <source>No manually recoverable analysis was found.</source>
         <translation>没有需要人工恢复的分析。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="791"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="808"/>
         <source>Processing recipe renamed.</source>
         <translation>处理方案已重命名。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="802"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="819"/>
         <source>Processing recipe version %1 added.</source>
         <translation>已添加处理方案版本 %1。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="812"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="829"/>
         <source>Processing recipe archived.</source>
         <translation>处理方案已归档。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="793"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="810"/>
         <source>The processing recipe could not be renamed.</source>
         <translation>无法重命名处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="804"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="821"/>
         <source>The processing recipe could not be updated.</source>
         <translation>无法更新处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="814"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="831"/>
         <source>The processing recipe could not be archived.</source>
         <translation>无法归档处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="228"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="229"/>
         <source>The processing recipe application could not be undone.</source>
         <translation>无法撤销本次处理方案应用。</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="863"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="880"/>
         <source>Undo batch</source>
         <translation>撤销本批次</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="276"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="277"/>
         <source>All sounds</source>
         <translation>所有声音</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="255"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="256"/>
         <source>Recently added</source>
         <translation>最近加入</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="259"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="260"/>
         <source>Liked</source>
         <translation>喜欢</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="261"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="262"/>
         <source>5 stars</source>
         <translation>5 星</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="263"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="264"/>
         <source>With speech</source>
         <translation>包含人声</translation>
     </message>
     <message>
-        <location filename="../qml/AudioSpaceWorkspace.qml" line="265"/>
+        <location filename="../qml/AudioSpaceWorkspace.qml" line="266"/>
         <source>Missing originals</source>
         <translation>原始文件缺失</translation>
     </message>
@@ -2287,12 +2287,12 @@
         <translation>声音空间</translation>
     </message>
     <message>
-        <location filename="../qml/MainTitleBar.qml" line="133"/>
+        <location filename="../qml/MainTitleBar.qml" line="159"/>
         <source>Sound Assembly</source>
         <translation>声音编排</translation>
     </message>
     <message>
-        <location filename="../qml/MainTitleBar.qml" line="158"/>
+        <location filename="../qml/MainTitleBar.qml" line="133"/>
         <source>Sound Adjustments</source>
         <translation>声音调整</translation>
     </message>
@@ -3792,27 +3792,27 @@
 <context>
     <name>SoundAssemblyController</name>
     <message>
-        <location filename="../src/sound_assembly_controller.cpp" line="179"/>
+        <location filename="../src/sound_assembly_controller.cpp" line="203"/>
         <source>Cannot create the private assembly preview directory.</source>
         <translation>无法创建编排试听的私有目录。</translation>
     </message>
     <message>
-        <location filename="../src/sound_assembly_controller.cpp" line="193"/>
+        <location filename="../src/sound_assembly_controller.cpp" line="217"/>
         <source>The assembly destination must be a local file.</source>
         <translation>编排输出位置必须是本地文件。</translation>
     </message>
     <message>
-        <location filename="../src/sound_assembly_controller.cpp" line="205"/>
+        <location filename="../src/sound_assembly_controller.cpp" line="229"/>
         <source>The assembly destination is invalid.</source>
         <translation>编排输出位置无效。</translation>
     </message>
     <message>
-        <location filename="../src/sound_assembly_controller.cpp" line="211"/>
+        <location filename="../src/sound_assembly_controller.cpp" line="243"/>
         <source>The mixdown cannot replace an immutable Original.</source>
         <translation>混音文件不能覆盖不可变的原始文件。</translation>
     </message>
     <message>
-        <location filename="../src/sound_assembly_controller.cpp" line="220"/>
+        <location filename="../src/sound_assembly_controller.cpp" line="252"/>
         <source>Cannot create the private assembly preparation directory.</source>
         <translation>无法创建编排准备所需的私有目录。</translation>
     </message>
@@ -3841,17 +3841,17 @@
         <translation>增益</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyTrack.qml" line="126"/>
+        <location filename="../qml/SoundAssemblyTrack.qml" line="129"/>
         <source>Pan</source>
         <translation>声像</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyTrack.qml" line="212"/>
+        <location filename="../qml/SoundAssemblyTrack.qml" line="218"/>
         <source>Clip %1</source>
         <translation>片段 %1</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyTrack.qml" line="221"/>
+        <location filename="../qml/SoundAssemblyTrack.qml" line="227"/>
         <source> s</source>
         <translation> 秒</translation>
     </message>
@@ -3859,250 +3859,250 @@
 <context>
     <name>SoundAssemblyWorkspace</name>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="53"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="79"/>
         <source>The assembly could not be opened.</source>
         <translation>无法打开该编排。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="124"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="151"/>
         <source>The assembly version could not be saved.</source>
         <translation>无法保存编排版本。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="283"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="311"/>
         <source>Place the playhead inside the selected clip before splitting.</source>
         <translation>请先将播放头移到所选片段内部再分割。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="323"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="351"/>
         <source>Track %1</source>
         <translation>轨道 %1</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="358"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="386"/>
         <source>This sound has no usable duration.</source>
         <translation>该声音没有可用的时长。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="413"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="441"/>
         <source>Assemblies</source>
         <translation>编排</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="421"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="449"/>
         <source>Refresh assemblies</source>
         <translation>刷新编排</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="430"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="458"/>
         <source>Create from one or more selected Library sounds. Each clip keeps its exact source version.</source>
         <translation>从一个或多个资料库声音创建。每个片段都会固定其准确来源版本。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="471"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="499"/>
         <source>%1 tracks · %2 clips · v%3</source>
         <translation>%1 条轨道 · %2 个片段 · 版本 %3</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="506"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="534"/>
         <source>Assembly name</source>
         <translation>编排名称</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="514"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="542"/>
         <source>Add sound</source>
         <translation>添加声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="524"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="552"/>
         <source>Add track</source>
         <translation>添加轨道</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="534"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="562"/>
         <source>Preparing %1%</source>
         <translation>正在准备 %1%</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="540"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="568"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="541"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="569"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="541"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="569"/>
         <source>Preview</source>
         <translation>试听</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="558"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="586"/>
         <source>Mixdown…</source>
         <translation>混音导出…</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="565"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="593"/>
         <source>Assembly actions</source>
         <translation>编排操作</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="574"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="602"/>
         <source>Archive assembly</source>
         <translation>归档编排</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="581"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="610"/>
         <source>The assembly could not be archived.</source>
         <translation>无法归档该编排。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="723"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="752"/>
         <source>Zoom</source>
         <translation>缩放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="758"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="787"/>
         <source>Clip inspector</source>
         <translation>片段检查器</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="758"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="787"/>
         <source>Master output</source>
         <translation>总输出</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="781"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="810"/>
         <source>Split</source>
         <translation>分割</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="782"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="811"/>
         <source>Duplicate</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="784"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="813"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="794"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="823"/>
         <source>Track ↑</source>
         <translation>移至上一轨</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="800"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="829"/>
         <source>Track ↓</source>
         <translation>移至下一轨</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="807"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="836"/>
         <source>Clip gain</source>
         <translation>片段增益</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="815"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="847"/>
         <source>Clip pan</source>
         <translation>片段声像</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="825"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="860"/>
         <source>Fade in (ms)</source>
         <translation>淡入（毫秒）</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="837"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="872"/>
         <source>Fade out (ms)</source>
         <translation>淡出（毫秒）</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="849"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="884"/>
         <source>Fade-in curve</source>
         <translation>淡入曲线</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="852"/>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="863"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="887"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="899"/>
         <source>Linear</source>
         <translation>线性</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="852"/>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="863"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="887"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="899"/>
         <source>Smooth</source>
         <translation>平滑</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="852"/>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="863"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="887"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="899"/>
         <source>Equal power</source>
         <translation>等功率</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="860"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="896"/>
         <source>Fade-out curve</source>
         <translation>淡出曲线</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="871"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="908"/>
         <source>Muted</source>
         <translation>已静音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="888"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="925"/>
         <source>Master gain</source>
         <translation>总增益</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="898"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="938"/>
         <source>Limiter</source>
         <translation>限制器</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="907"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="947"/>
         <source>Ceiling (0.01 dB)</source>
         <translation>上限（0.01 dB）</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="919"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="959"/>
         <source>Last mix: %1 LUFS · %2 dBTP</source>
         <translation>上次混音：%1 LUFS · %2 dBTP</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="949"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="989"/>
         <source>Build a sound sequence or layered scene</source>
         <translation>构建声音序列或分层场景</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="957"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="997"/>
         <source>Select sounds in Audio Space, then choose Sequence or Layer. Existing assemblies remain available in the sidebar.</source>
         <translation>在声音空间选择声音，然后选择“序列”或“分层”。已有编排会保留在侧边栏中。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="971"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1011"/>
         <source>Add Library sound</source>
         <translation>添加资料库声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1002"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1042"/>
         <source> s</source>
         <translation> 秒</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1009"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1049"/>
         <source>Add</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1022"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1062"/>
         <source>Export assembly mixdown</source>
         <translation>导出编排混音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1024"/>
+        <location filename="../qml/SoundAssemblyWorkspace.qml" line="1064"/>
         <source>WAV audio (*.wav)</source>
         <translation>WAV 音频 (*.wav)</translation>
     </message>
@@ -4716,6 +4716,11 @@
         <translation>%1 段记忆</translation>
     </message>
     <message>
+        <location filename="../qml/SoundPresentationToolbar.qml" line="176"/>
+        <source>Sound tape</source>
+        <translation>声音带</translation>
+    </message>
+    <message>
         <location filename="../qml/SoundPresentationToolbar.qml" line="265"/>
         <source>Revisit home</source>
         <translation>重温首页</translation>
@@ -4764,11 +4769,6 @@
         <location filename="../qml/SoundPresentationToolbar.qml" line="166"/>
         <source>Grid view</source>
         <translation>网格视图</translation>
-    </message>
-    <message>
-        <location filename="../qml/SoundPresentationToolbar.qml" line="176"/>
-        <source>Single sound with filmstrip</source>
-        <translation>单声音与胶片带</translation>
     </message>
     <message>
         <location filename="../qml/SoundPresentationToolbar.qml" line="214"/>
@@ -4950,6 +4950,44 @@
         <location filename="../qml/SoundSignalChain.qml" line="428"/>
         <source>Limiter · loudness</source>
         <translation>限制器 · 响度</translation>
+    </message>
+</context>
+<context>
+    <name>SoundTapeView</name>
+    <message>
+        <location filename="../qml/SoundTapeView.qml" line="264"/>
+        <source>Sound tape</source>
+        <translation>声音带</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundTapeView.qml" line="273"/>
+        <source>%1 playable · %2 total · follows current result order</source>
+        <translation>可播放 %1 段 · 总时长 %2 · 按当前结果排序</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundTapeView.qml" line="274"/>
+        <source>No playable sounds in the current results</source>
+        <translation>当前结果中没有可播放的声音</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundTapeView.qml" line="282"/>
+        <source>Add current to assembly</source>
+        <translation>将当前声音加入编排</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundTapeView.qml" line="324"/>
+        <source>Pause sound tape</source>
+        <translation>暂停声音带</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundTapeView.qml" line="324"/>
+        <source>Play sound tape</source>
+        <translation>播放声音带</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundTapeView.qml" line="334"/>
+        <source>Stop sound tape</source>
+        <translation>停止声音带</translation>
     </message>
 </context>
 <context>

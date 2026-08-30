@@ -171,13 +171,13 @@ ToolBar {
                 }
 
                 EchoIconButton {
-                    source: "qrc:/EchoDesktop/icons/filmstrip.svg"
-                    selected: toolbar.viewMode === "focus"
-                    toolTipText: qsTr("Single sound with filmstrip")
+                    source: "qrc:/EchoDesktop/icons/tape.svg"
+                    selected: toolbar.viewMode === "tape"
+                    toolTipText: qsTr("Sound tape")
                     accessibleName: toolTipText
                     buttonSize: 28
                     iconSize: 15
-                    onClicked: toolbar.viewModeRequested("focus")
+                    onClicked: toolbar.viewModeRequested("tape")
                 }
             }
         }

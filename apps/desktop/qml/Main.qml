@@ -115,6 +115,16 @@ ApplicationWindow {
         audioSpace.setSearchText(text);
     }
 
+    function debugOpenSoundTape(): void {
+        showAudioSpace();
+        audioSpace.debugOpenSoundTape();
+    }
+
+    function debugPlaySoundTape(): void {
+        showAudioSpace();
+        audioSpace.debugPlaySoundTape();
+    }
+
     function debugExportSound(destination: url): void {
         if (audioSpace.selectedAsset === null)
             return;

@@ -195,6 +195,18 @@ int main(int argc, char* argv[]) {
                 QMetaObject::invokeMethod(root, "debugSearch", Q_ARG(QString, query));
             });
         }
+        if (std::getenv("ECHO_DEBUG_OPEN_TAPE") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(750, root, [root] {
+                QMetaObject::invokeMethod(root, "debugOpenSoundTape");
+            });
+        }
+        if (std::getenv("ECHO_DEBUG_PLAY_TAPE") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(1'200, root, [root] {
+                QMetaObject::invokeMethod(root, "debugPlaySoundTape");
+            });
+        }
         if (std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr) {
             QObject* root = engine.rootObjects().first();
             QTimer::singleShot(750, root, [root] {
@@ -327,6 +339,8 @@ int main(int argc, char* argv[]) {
                                      || std::getenv("ECHO_DEBUG_OPEN_ALBUM") != nullptr
                                      || std::getenv("ECHO_DEBUG_CREATE_ALBUM") != nullptr
                                      || std::getenv("ECHO_DEBUG_SEARCH") != nullptr
+                                     || std::getenv("ECHO_DEBUG_OPEN_TAPE") != nullptr
+                                     || std::getenv("ECHO_DEBUG_PLAY_TAPE") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_ASSEMBLY") != nullptr
                                      || std::getenv("ECHO_DEBUG_CREATE_ASSEMBLY") != nullptr

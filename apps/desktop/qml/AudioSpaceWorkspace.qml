@@ -1,6 +1,7 @@
 //! Audio Space is the Sound Wall projection controller. It owns collection
 //! admission, search/sort, selected identity and browse presentation routing;
-//! sidebar, wall, focus view, filter state and inspector remain independent.
+//! sidebar, wall, sound tape, focus view, filter state and inspector remain
+//! independent.
 
 import QtQuick
 import QtQuick.Controls
@@ -531,6 +532,20 @@ Item {
         batchExportDialog.present();
     }
 
+    function debugOpenSoundTape(): void {
+        selectedFilter = "all";
+        refilter();
+        viewMode = "tape";
+    }
+
+    function debugPlaySoundTape(): void {
+        debugOpenSoundTape();
+        Qt.callLater(() => {
+            if (soundTape.entries.length > 0)
+                soundTape.startIndex(0, 0);
+        });
+    }
+
     function debugBatchExport(destination: url, format: string): void {
         batchExportDialog.destination = destination;
         batchExportDialog.selectedFormat = format;
@@ -664,7 +679,7 @@ Item {
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    currentIndex: workspace.revisitActive ? 0 : workspace.viewMode === "grid" ? 1 : 2
+                    currentIndex: workspace.revisitActive ? 0 : workspace.viewMode === "grid" ? 1 : workspace.viewMode === "tape" ? 2 : 3
 
                     RevisitDashboard {
                         Layout.fillWidth: true
@@ -706,6 +721,22 @@ Item {
                             workspace.setAlbumMembership(asset, album, included);
                         }
                         onCreateAlbumRequested: librarySidebar.beginCreate(workspace.selectedAsset !== null ? [workspace.selectedAsset.id] : [])
+                    }
+
+                    SoundTapeView {
+                        id: soundTape
+
+                        Layout.fillHeight: true
+                        Layout.fillWidth: true
+                        assets: workspace.filteredAssets
+                        selectedAsset: workspace.selectedAsset
+                        jobStats: workspace.jobStats
+                        active: workspace.viewMode === "tape" && !workspace.revisitActive
+                        onAssetSelected: asset => workspace.selectAssetOnly(asset)
+                        onAssetOpened: asset => workspace.openAsset(asset)
+                        onAssemblyRequested: function (assetIds, layout) {
+                            workspace.assemblyRequested(assetIds, layout);
+                        }
                     }
 
                     SoundFocusView {
