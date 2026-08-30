@@ -229,6 +229,7 @@ qt_add_qml_module(
         qml/ImpulseResponseImportDialog.qml
         qml/SoundEditorTimeline.qml
         qml/SourceEditTimeline.qml
+        qml/SourceRegionInspector.qml
         qml/EffectMaskEditor.qml
         qml/SoundEditingWorkspace.qml
         qml/SoundExportDialog.qml

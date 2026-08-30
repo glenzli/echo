@@ -448,18 +448,7 @@ impl EffectMask {
         }
         let mut seen = [false; EFFECT_NODE_COUNT];
         for node in &effect_nodes {
-            if matches!(
-                node,
-                EffectNodeKind::Master
-                    | EffectNodeKind::DeClick
-                    | EffectNodeKind::TransformVfx
-                    | EffectNodeKind::DriveVfx
-                    | EffectNodeKind::RotaryVfx
-                    | EffectNodeKind::FreezeVfx
-                    | EffectNodeKind::GranularVfx
-                    | EffectNodeKind::PitchVfx
-                    | EffectNodeKind::BeatRepeatVfx
-            ) {
+            if !node.supports_effect_mask() {
                 return Err(EffectMaskError::UnsupportedEffectNode);
             }
             let index = *node as usize;

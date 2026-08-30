@@ -460,6 +460,12 @@ QtObject {
         return true;
     }
 
+    function effectNodeSupportsMask(kind: int): bool {
+        const node = Number(kind);
+        return node >= 0 && node <= 21
+            && [4, 6, 11, 13, 14, 15, 16, 18, 21].indexOf(node) < 0;
+    }
+
     function copyEffectMasks(values: var, chain: var, rangeStart: int, rangeEnd: int): var {
         if (!values || values.length > 64)
             return [];
@@ -475,7 +481,7 @@ QtObject {
             const nodes = [];
             for (let chainIndex = 0; chainIndex < order.length; ++chainIndex) {
                 const node = Number(order[chainIndex]);
-                if (node === 4 || node === 6 || node === 11 || value.effectNodes.indexOf(node) < 0)
+                if (!effectNodeSupportsMask(node) || value.effectNodes.indexOf(node) < 0)
                     continue;
                 nodes.push(node);
             }
@@ -1057,6 +1063,17 @@ QtObject {
         pushCurrent();
     }
 
+    function splitAt(millis: int): void {
+        const point = Math.round(clamp(millis, trimStartMillis, trimEndMillis));
+        if (point <= trimStartMillis || point >= trimEndMillis)
+            return;
+        const next = splitSegmentsAt(editSegments, point);
+        if (sameEditSegments(next, editSegments))
+            return;
+        editSegments = next;
+        pushCurrent();
+    }
+
     function setSelectionState(startMillis: int, endMillis: int, state: int): void {
         const start = Math.round(clamp(startMillis, trimStartMillis, trimEndMillis));
         const end = Math.round(clamp(endMillis, trimStartMillis, trimEndMillis));
@@ -1140,6 +1157,34 @@ QtObject {
         pushCurrent();
     }
 
+    function setSegmentEnvelope(index: int, centibels: int, fadeInMillis: int, fadeOutMillis: int, fadeInCurve: int, fadeOutCurve: int): bool {
+        if (index < 0 || index >= editSegments.length)
+            return false;
+        const next = copyEditSegments(editSegments, trimStartMillis, trimEndMillis);
+        const segment = cloneEditSegment(next[index]);
+        const duration = Number(segment.sourceEndMillis) - Number(segment.sourceStartMillis);
+        const gain = Math.round(clamp(centibels, -2400, 1200));
+        const fadeIn = Math.round(clamp(fadeInMillis, 0, duration));
+        const fadeOut = Math.round(clamp(fadeOutMillis, 0, Math.max(0, duration - fadeIn)));
+        const inCurve = Math.round(clamp(fadeInCurve, 0, 2));
+        const outCurve = Math.round(clamp(fadeOutCurve, 0, 2));
+        if (Number(segment.gainCentibels) === gain
+                && Number(segment.fadeInMillis) === fadeIn
+                && Number(segment.fadeOutMillis) === fadeOut
+                && Number(segment.fadeInCurve) === inCurve
+                && Number(segment.fadeOutCurve) === outCurve)
+            return false;
+        segment.gainCentibels = gain;
+        segment.fadeInMillis = fadeIn;
+        segment.fadeOutMillis = fadeOut;
+        segment.fadeInCurve = inCurve;
+        segment.fadeOutCurve = outCurve;
+        next[index] = segment;
+        editSegments = next;
+        pushCurrent();
+        return true;
+    }
+
     function addEffectMask(startMillis: int, endMillis: int, featherMillis: int, effectNodes: var): void {
         const values = effectMasks.slice();
         values.push({
@@ -1173,6 +1218,42 @@ QtObject {
         values.splice(index, 1);
         effectMasks = values;
         pushCurrent();
+    }
+
+    function scopeEffectNodeToSelection(kind: int, startMillis: int, endMillis: int): bool {
+        const node = Math.round(Number(kind));
+        const start = Math.round(clamp(startMillis, trimStartMillis, trimEndMillis));
+        const end = Math.round(clamp(endMillis, trimStartMillis, trimEndMillis));
+        if (!effectNodeSupportsMask(node) || !containsEffectNode(node) || end <= start)
+            return false;
+        const values = effectMasks.slice();
+        for (let index = 0; index < values.length; ++index) {
+            const mask = values[index];
+            if (Number(mask.startMillis) !== start || Number(mask.endMillis) !== end)
+                continue;
+            if (mask.effectNodes.indexOf(node) >= 0)
+                return true;
+            const updated = {
+                startMillis: start,
+                endMillis: end,
+                featherMillis: Number(mask.featherMillis),
+                effectNodes: mask.effectNodes.slice()
+            };
+            updated.effectNodes.push(node);
+            values[index] = updated;
+            effectMasks = copyEffectMasks(values, effectChain, trimStartMillis, trimEndMillis);
+            pushCurrent();
+            return true;
+        }
+        values.push({
+            startMillis: start,
+            endMillis: end,
+            featherMillis: 10,
+            effectNodes: [node]
+        });
+        effectMasks = copyEffectMasks(values, effectChain, trimStartMillis, trimEndMillis);
+        pushCurrent();
+        return true;
     }
 
     function setFades(fadeIn: int, fadeOut: int): void {

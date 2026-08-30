@@ -34,6 +34,31 @@ echo::audio::PlaybackAdjustment masked() {
 } // namespace
 
 int main() {
+    for (const auto node : {
+             echo::audio::EffectNodeKind::SceneVfx,
+             echo::audio::EffectNodeKind::DelayVfx,
+             echo::audio::EffectNodeKind::ModulationVfx,
+             echo::audio::EffectNodeKind::DigitalDegradeVfx,
+             echo::audio::EffectNodeKind::TapeVfx,
+             echo::audio::EffectNodeKind::AutoWahVfx,
+             echo::audio::EffectNodeKind::StereoVfx,
+         }) {
+        assert(echo::audio::effect_node_supports_mask(node));
+    }
+    for (const auto node : {
+             echo::audio::EffectNodeKind::Master,
+             echo::audio::EffectNodeKind::DeClick,
+             echo::audio::EffectNodeKind::TransformVfx,
+             echo::audio::EffectNodeKind::DriveVfx,
+             echo::audio::EffectNodeKind::RotaryVfx,
+             echo::audio::EffectNodeKind::FreezeVfx,
+             echo::audio::EffectNodeKind::GranularVfx,
+             echo::audio::EffectNodeKind::PitchVfx,
+             echo::audio::EffectNodeKind::BeatRepeatVfx,
+         }) {
+        assert(!echo::audio::effect_node_supports_mask(node));
+    }
+
     {
         const auto adjustment = masked();
         const echo::audio::PreparedAdjustment prepared(adjustment, 1000, kSampleRate);

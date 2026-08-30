@@ -131,6 +131,25 @@ impl EffectNodeKind {
         self as u8
     }
 
+    /// Whether this insert can be mixed by an Original-time effect mask.
+    /// Terminal and history/latency-dependent processors require full-source
+    /// context and therefore cannot be scoped to a local selection.
+    #[must_use]
+    pub const fn supports_effect_mask(self) -> bool {
+        !matches!(
+            self,
+            Self::Master
+                | Self::DeClick
+                | Self::TransformVfx
+                | Self::DriveVfx
+                | Self::RotaryVfx
+                | Self::FreezeVfx
+                | Self::GranularVfx
+                | Self::PitchVfx
+                | Self::BeatRepeatVfx
+        )
+    }
+
     /// Restores the stable desktop wire representation.
     ///
     /// # Errors
@@ -1490,19 +1509,7 @@ fn validated_asset_regions(
             mask.start_millis() < trim_start_millis
                 || mask.end_millis() > trim_end_millis
                 || mask.effect_nodes().iter().any(|node| {
-                    !effects.effect_chain.nodes().contains(node)
-                        || matches!(
-                            node,
-                            EffectNodeKind::Master
-                                | EffectNodeKind::DeClick
-                                | EffectNodeKind::TransformVfx
-                                | EffectNodeKind::DriveVfx
-                                | EffectNodeKind::RotaryVfx
-                                | EffectNodeKind::FreezeVfx
-                                | EffectNodeKind::GranularVfx
-                                | EffectNodeKind::PitchVfx
-                                | EffectNodeKind::BeatRepeatVfx
-                        )
+                    !effects.effect_chain.nodes().contains(node) || !node.supports_effect_mask()
                 })
         })
     {

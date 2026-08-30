@@ -572,6 +572,18 @@ InferenceBackend
     参数副本、分支图、发送总线或外部素材组合；Master 与带固有前视延迟的 DeClick 暂不接受局部
     遮罩。试听、整段分析与离线导出必须消费同一个 prepared source-edit／mask plan，并严格保持
     隐藏、静音、空隙、片段增益和局部效果的帧数及边界一致。
+  - 单轨专业操作补齐切片（2026-08-30）：Echo 借用成熟波形编辑器的区域操作语法，但仍保持
+    Library-first 的单资产非破坏性边界。时间选区可用 `S` 建立区域边界，`Delete` 以可恢复的隐藏
+    语义闭合所选时间，`M` 保留时长静音，`R` 恢复来源；播放头无选区时也可用 `S` 精确分割。
+    一个完整来源区域可打开独立检查器，原位精调区域增益、淡入／淡出时长和 Linear／Smooth／
+    Equal Power 曲线；区域带直接绘制同一 authored envelope，草稿 Undo／Redo、试听、整段分析与
+    离线导出继续消费既有 `EditSegment`／`SourceEditPlan` 合同，不复制另一套波形处理实现。
+    Scene、Delay、Modulation、Digital Degrade、Tape、Auto-Wah 与 Stereo 等输入驱动 Creative
+    节点可从当前时间选区直接建立 Original-time effect mask；Master、DeClick、Transform、Drive、
+    Rotary、Freeze、Granular、Pitch 与 Beat Repeat 因终端或完整历史／固定延迟要求，在 Domain、
+    C++ 执行计划和桌面投影中统一拒绝局部遮罩。此切片不把 Echo 扩张为多轨 DAW：外部素材拼接、
+    region 移动／复制粘贴、交叉淡化、自动化关键帧、录音编排、发送总线和第三方插件宿主仍不在
+    当前单轨修复工作区的产品合同内。
   - 爆破音修复切片（2026-08-11）：`AdjustmentGraph` 与 Catalog `20260811.15` 在既有
     Restoration 节点内增加默认旁路的 De-plosive authored intent，稳定保存低频边界、灵敏度、
     最大抑制度与释放时间；它在宽带降噪和 De-esser 之前处理话筒近讲产生的短促低频爆发，继续随

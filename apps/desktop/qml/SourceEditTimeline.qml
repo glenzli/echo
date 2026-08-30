@@ -16,6 +16,7 @@ Item {
     required property var timeline
 
     readonly property bool hasSelection: timeline.hasTimeSelection && timeline.selectionEndMillis > timeline.selectionStartMillis
+    readonly property int selectedSegmentIndex: selectionExactSegmentIndex()
 
     function nodeTitle(kind: int): string {
         if (kind === 0)
@@ -28,6 +29,22 @@ Item {
             return qsTr("Space");
         if (kind === 5)
             return qsTr("De-hum");
+        if (kind === 7)
+            return qsTr("Channel repair");
+        if (kind === 8)
+            return qsTr("Scene VFX");
+        if (kind === 9)
+            return qsTr("Delay VFX");
+        if (kind === 10)
+            return qsTr("Modulation VFX");
+        if (kind === 12)
+            return qsTr("Digital Degrade");
+        if (kind === 17)
+            return qsTr("Tape");
+        if (kind === 19)
+            return qsTr("Auto-Wah");
+        if (kind === 20)
+            return qsTr("Stereo");
         return qsTr("Effect");
     }
 
@@ -47,6 +64,18 @@ Item {
                 return true;
         }
         return false;
+    }
+
+    function selectionExactSegmentIndex(): int {
+        if (!hasSelection)
+            return -1;
+        for (let index = 0; index < draft.editSegments.length; ++index) {
+            const segment = draft.editSegments[index];
+            if (Number(segment.sourceStartMillis) === timeline.selectionStartMillis
+                    && Number(segment.sourceEndMillis) === timeline.selectionEndMillis)
+                return index;
+        }
+        return -1;
     }
 
     function selectRange(startMillis: int, endMillis: int): void {
@@ -231,6 +260,12 @@ Item {
         draft: sourceEdit.draft
     }
 
+    SourceRegionInspector {
+        id: regionInspector
+        draft: sourceEdit.draft
+        timeline: sourceEdit.timeline
+    }
+
     Repeater {
         model: sourceEdit.draft.effectMasks
 
@@ -295,6 +330,10 @@ Item {
             readonly property int sourceEndMillis: Number(modelData.sourceEndMillis)
             readonly property int segmentState: Number(modelData.state)
             readonly property int gainCentibels: Number(modelData.gainCentibels)
+            readonly property int fadeInMillis: Number(modelData.fadeInMillis)
+            readonly property int fadeOutMillis: Number(modelData.fadeOutMillis)
+            readonly property int fadeInCurve: Number(modelData.fadeInCurve)
+            readonly property int fadeOutCurve: Number(modelData.fadeOutCurve)
             readonly property int gapAfterMillis: Number(modelData.gapAfterMillis)
 
             x: sourceEdit.timeline.timeToX(sourceStartMillis)
@@ -309,6 +348,54 @@ Item {
             visible: x + width >= 0 && x <= sourceEdit.width
             z: 7
             clip: false
+
+            Canvas {
+                id: regionEnvelope
+
+                anchors.fill: parent
+                anchors.margins: 2
+                visible: segmentBand.segmentState === 0 && segmentBand.width > 24
+                opacity: 0.8
+                antialiasing: true
+                renderStrategy: Canvas.Immediate
+
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                onPaint: {
+                    const context = getContext("2d");
+                    context.reset();
+                    context.clearRect(0, 0, width, height);
+                    if (width <= 0 || height <= 0)
+                        return;
+                    const duration = Math.max(1, segmentBand.sourceEndMillis - segmentBand.sourceStartMillis);
+                    const gainY = 3 + (1200 - Math.max(-2400, Math.min(1200, segmentBand.gainCentibels))) / 3600 * Math.max(1, height - 6);
+                    const silenceY = height - 2;
+                    const fadeInX = width * Math.min(1, segmentBand.fadeInMillis / duration);
+                    const fadeOutX = width * (1 - Math.min(1, segmentBand.fadeOutMillis / duration));
+                    context.strokeStyle = Theme.accent;
+                    context.lineWidth = 1.5;
+                    context.beginPath();
+                    context.moveTo(0, segmentBand.fadeInMillis > 0 ? silenceY : gainY);
+                    if (segmentBand.fadeInMillis > 0) {
+                        for (let step = 1; step <= 12; ++step) {
+                            const progress = step / 12;
+                            const amplitude = sourceEdit.timeline.curveValue(progress, segmentBand.fadeInCurve);
+                            context.lineTo(fadeInX * progress, silenceY + (gainY - silenceY) * amplitude);
+                        }
+                    }
+                    context.lineTo(fadeOutX, gainY);
+                    if (segmentBand.fadeOutMillis > 0) {
+                        for (let step = 1; step <= 12; ++step) {
+                            const progress = step / 12;
+                            const amplitude = sourceEdit.timeline.curveValue(1 - progress, segmentBand.fadeOutCurve);
+                            context.lineTo(fadeOutX + (width - fadeOutX) * progress, silenceY + (gainY - silenceY) * amplitude);
+                        }
+                    } else {
+                        context.lineTo(width, gainY);
+                    }
+                    context.stroke();
+                }
+            }
 
             Canvas {
                 anchors.fill: parent
@@ -418,14 +505,30 @@ Item {
                 text: qsTr("Split")
                 ghost: true
                 implicitHeight: 26
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Create region boundaries at the selection edges · S")
                 onClicked: sourceEdit.perform("split")
             }
 
             EchoButton {
-                objectName: "hideSourceButton"
-                text: qsTr("Hide")
+                id: regionButton
+                objectName: "editSourceRegionButton"
+                text: qsTr("Region")
                 ghost: true
                 implicitHeight: 26
+                enabled: sourceEdit.selectedSegmentIndex >= 0
+                ToolTip.visible: hovered
+                ToolTip.text: enabled ? qsTr("Edit region gain and fades") : qsTr("Split the selection first to edit it as one region.")
+                onClicked: regionInspector.present(regionButton, sourceEdit.selectedSegmentIndex)
+            }
+
+            EchoButton {
+                objectName: "hideSourceButton"
+                text: qsTr("Ripple remove")
+                ghost: true
+                implicitHeight: 26
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Close the selected time without changing the Original · Delete")
                 onClicked: sourceEdit.perform("hide")
             }
 
@@ -434,6 +537,8 @@ Item {
                 text: qsTr("Mute")
                 ghost: true
                 implicitHeight: 26
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Keep the selected duration but silence its audio · M")
                 onClicked: sourceEdit.perform("mute")
             }
 
@@ -443,6 +548,8 @@ Item {
                 ghost: true
                 implicitHeight: 26
                 enabled: sourceEdit.selectionTouchesState(1) || sourceEdit.selectionTouchesState(2)
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Restore muted or ripple-removed source time · R")
                 onClicked: sourceEdit.perform("restore")
             }
 

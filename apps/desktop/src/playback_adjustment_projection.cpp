@@ -194,8 +194,10 @@ std::optional<std::vector<echo::audio::EffectMask>> effectMasksFromQmlImpl(
         std::array<bool, echo::audio::kEffectNodeCount> seen{};
         for (const QVariant& node_value : nodes) {
             const int node = node_value.toInt();
-            if (node < 0 || node >= static_cast<int>(echo::audio::kEffectNodeCount) || node == 4
-                || node == 6 || node == 11 || node == 13 || node == 14 || node == 18 || node == 21
+            if (node < 0 || node >= static_cast<int>(echo::audio::kEffectNodeCount)
+                || !echo::audio::effect_node_supports_mask(
+                    static_cast<echo::audio::EffectNodeKind>(node)
+                )
                 || !active[static_cast<std::size_t>(node)]
                 || seen[static_cast<std::size_t>(node)]) {
                 return std::nullopt;

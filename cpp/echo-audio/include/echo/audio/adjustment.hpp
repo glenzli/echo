@@ -50,6 +50,23 @@ enum class EffectNodeKind : std::uint8_t {
     BeatRepeatVfx = 21,
 };
 
+[[nodiscard]] inline constexpr bool effect_node_supports_mask(EffectNodeKind node) {
+    switch (node) {
+    case EffectNodeKind::Master:
+    case EffectNodeKind::DeClick:
+    case EffectNodeKind::TransformVfx:
+    case EffectNodeKind::DriveVfx:
+    case EffectNodeKind::RotaryVfx:
+    case EffectNodeKind::FreezeVfx:
+    case EffectNodeKind::GranularVfx:
+    case EffectNodeKind::PitchVfx:
+    case EffectNodeKind::BeatRepeatVfx:
+        return false;
+    default:
+        return true;
+    }
+}
+
 enum class EditSegmentState : std::uint8_t {
     Audible = 0,
     Muted = 1,

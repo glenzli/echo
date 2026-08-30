@@ -1682,6 +1682,9 @@
 </context>
 <context>
     <name>EffectMaskEditor</name>
+    <message><source>Tape</source><translation>磁带</translation></message>
+    <message><source>Auto-Wah</source><translation>自动哇音</translation></message>
+    <message><source>Stereo</source><translation>立体声</translation></message>
     <message>
         <location filename="../qml/EffectMaskEditor.qml" line="43"/>
         <source>Channel repair</source>
@@ -4402,6 +4405,22 @@
 </context>
 <context>
     <name>SourceEditTimeline</name>
+    <message><source>Channel repair</source><translation>声道修复</translation></message>
+    <message><source>Scene VFX</source><translation>场景特效</translation></message>
+    <message><source>Delay VFX</source><translation>延迟特效</translation></message>
+    <message><source>Modulation VFX</source><translation>调制特效</translation></message>
+    <message><source>Digital Degrade</source><translation>数字降质</translation></message>
+    <message><source>Tape</source><translation>磁带</translation></message>
+    <message><source>Auto-Wah</source><translation>自动哇音</translation></message>
+    <message><source>Stereo</source><translation>立体声</translation></message>
+    <message><source>Create region boundaries at the selection edges · S</source><translation>在选区边缘建立区域边界 · S</translation></message>
+    <message><source>Region</source><translation>区域</translation></message>
+    <message><source>Edit region gain and fades</source><translation>编辑区域增益和淡化</translation></message>
+    <message><source>Split the selection first to edit it as one region.</source><translation>请先分割选区，再将其作为一个区域编辑。</translation></message>
+    <message><source>Ripple remove</source><translation>波纹删除</translation></message>
+    <message><source>Close the selected time without changing the Original · Delete</source><translation>闭合所选时间且不改动 Original · Delete</translation></message>
+    <message><source>Keep the selected duration but silence its audio · M</source><translation>保留所选时长，但将其中的音频静音 · M</translation></message>
+    <message><source>Restore muted or ripple-removed source time · R</source><translation>恢复已静音或波纹删除的源时间 · R</translation></message>
     <message>
         <location filename="../qml/SourceEditTimeline.qml" line="442"/>
         <source>Restore</source>
@@ -4516,11 +4535,6 @@
         <location filename="../qml/SourceEditTimeline.qml" line="418"/>
         <source>Split</source>
         <translation>分割</translation>
-    </message>
-    <message>
-        <location filename="../qml/SourceEditTimeline.qml" line="426"/>
-        <source>Hide</source>
-        <translation>隐藏</translation>
     </message>
     <message>
         <location filename="../qml/SourceEditTimeline.qml" line="434"/>
@@ -4813,6 +4827,27 @@
     <message><source>Night drive</source><translation>夜间驾车</translation></message>
     <message><source>Dream voice</source><translation>梦幻人声</translation></message>
     <message><source>Applies an undoable effect recipe</source><translation>应用可撤销的效果配方</translation></message>
+    <message><source>Selection only</source><translation>仅作用于选区</translation></message>
+    <message><source>Enable this effect only inside the current time selection.</source><translation>仅在当前时间选区内启用此效果。</translation></message>
+    <message><source>This effect needs full-source history and cannot use a local mask.</source><translation>此效果需要完整的源音频历史，不能使用局部遮罩。</translation></message>
+</context>
+<context>
+    <name>SourceRegionInspector</name>
+    <message><source>Region settings</source><translation>区域设置</translation></message>
+    <message><source>%1 — %2 · %3</source><translation>%1 — %2 · %3</translation></message>
+    <message><source>Gain and fades stay anchored to this original-time region.</source><translation>增益和淡化始终锚定到这个原始时间区域。</translation></message>
+    <message><source>Gain</source><translation>增益</translation></message>
+    <message><source>Region gain</source><translation>区域增益</translation></message>
+    <message><source>Fade in</source><translation>淡入</translation></message>
+    <message><source>Region fade in</source><translation>区域淡入</translation></message>
+    <message><source>Fade out</source><translation>淡出</translation></message>
+    <message><source>Region fade out</source><translation>区域淡出</translation></message>
+    <message><source>Linear</source><translation>线性</translation></message>
+    <message><source>Smooth</source><translation>平滑</translation></message>
+    <message><source>Equal power</source><translation>等功率</translation></message>
+    <message><source>Reset region</source><translation>重置区域</translation></message>
+    <message><source>Cancel</source><translation>取消</translation></message>
+    <message><source>Apply</source><translation>应用</translation></message>
 </context>
 <context>
     <name>TapeVfxPanel</name>

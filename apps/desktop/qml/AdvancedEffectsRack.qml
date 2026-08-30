@@ -542,6 +542,9 @@ Item {
                     visible: rack.currentKind >= 8 && rack.currentKind <= 21
                     draft: rack.draft
                     familyKind: rack.currentKind
+                    hasTimeSelection: rack.hasTimeSelection
+                    selectionStartMillis: rack.selectionStartMillis
+                    selectionEndMillis: rack.selectionEndMillis
                     onFamilySelected: kind => rack.selectedNodeId = rack.effectId(kind)
                 }
             }

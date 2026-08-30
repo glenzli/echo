@@ -13,13 +13,26 @@ Item {
 
     required property var draft
     property int familyKind: 8
+    property bool hasTimeSelection: false
+    property int selectionStartMillis: 0
+    property int selectionEndMillis: 0
     signal familySelected(int kind)
 
     readonly property var presetTitles: [qsTr("Voice memo"), qsTr("Night drive"), qsTr("Dream voice")]
+    readonly property bool familySupportsSelection: draft.effectNodeSupportsMask(familyKind)
 
     function saveNamedPreset(): void {
         if (creativeVfxPresets.savePreset(namedPresetField.text, panel.draft.creativeVfxValue(), panel.draft.copyEffectChain(panel.draft.effectChain)))
             namedPresetField.clear();
+    }
+
+    function scopeFamilyToSelection(): void {
+        if (!hasTimeSelection || selectionEndMillis <= selectionStartMillis || !familySupportsSelection)
+            return;
+        draft.beginGesture();
+        draft.setEffectNodeEnabled(familyKind, true);
+        draft.scopeEffectNodeToSelection(familyKind, selectionStartMillis, selectionEndMillis);
+        draft.endGesture();
     }
 
     readonly property var availableFamilies: {
@@ -120,6 +133,7 @@ Item {
                 color: Theme.textDisabled
                 font.pixelSize: Theme.fontMeta
             }
+
         }
 
         RowLayout {
@@ -162,6 +176,18 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                     }
                 }
+            }
+
+            EchoButton {
+                visible: panel.hasTimeSelection
+                objectName: "scopeCreativeFamilyToSelectionButton"
+                text: qsTr("Selection only")
+                ghost: true
+                implicitHeight: 24
+                enabled: panel.familySupportsSelection && panel.selectionEndMillis > panel.selectionStartMillis
+                ToolTip.visible: hovered
+                ToolTip.text: enabled ? qsTr("Enable this effect only inside the current time selection.") : qsTr("This effect needs full-source history and cannot use a local mask.")
+                onClicked: panel.scopeFamilyToSelection()
             }
 
             Item { Layout.fillWidth: true }

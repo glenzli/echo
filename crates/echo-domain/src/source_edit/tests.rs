@@ -171,4 +171,33 @@ fn effect_mask_wire_and_structural_bounds_are_stable() {
         EffectMask::new(2_000, 3_000, 10, vec![EffectNodeKind::PitchVfx]),
         Err(EffectMaskError::UnsupportedEffectNode)
     );
+    assert_eq!(
+        EffectMask::new(2_000, 3_000, 10, vec![EffectNodeKind::BeatRepeatVfx]),
+        Err(EffectMaskError::UnsupportedEffectNode)
+    );
+    for node in [
+        EffectNodeKind::SceneVfx,
+        EffectNodeKind::DelayVfx,
+        EffectNodeKind::ModulationVfx,
+        EffectNodeKind::DigitalDegradeVfx,
+        EffectNodeKind::TapeVfx,
+        EffectNodeKind::AutoWahVfx,
+        EffectNodeKind::StereoVfx,
+    ] {
+        assert!(node.supports_effect_mask());
+        assert!(EffectMask::new(2_000, 3_000, 10, vec![node]).is_ok());
+    }
+    for node in [
+        EffectNodeKind::Master,
+        EffectNodeKind::DeClick,
+        EffectNodeKind::TransformVfx,
+        EffectNodeKind::DriveVfx,
+        EffectNodeKind::RotaryVfx,
+        EffectNodeKind::FreezeVfx,
+        EffectNodeKind::GranularVfx,
+        EffectNodeKind::PitchVfx,
+        EffectNodeKind::BeatRepeatVfx,
+    ] {
+        assert!(!node.supports_effect_mask());
+    }
 }

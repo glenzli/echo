@@ -53,6 +53,12 @@ Popup {
             return qsTr("Drive");
         if (kind === 14)
             return qsTr("Rotary");
+        if (kind === 17)
+            return qsTr("Tape");
+        if (kind === 19)
+            return qsTr("Auto-Wah");
+        if (kind === 20)
+            return qsTr("Stereo");
         return qsTr("Effect");
     }
 
@@ -74,7 +80,7 @@ Popup {
         effectModel.clear();
         for (let index = 0; index < draft.effectChain.length; ++index) {
             const kind = Number(draft.effectChain[index]);
-            if (kind === 4 || kind === 6 || kind === 11 || kind === 13 || kind === 14)
+            if (!draft.effectNodeSupportsMask(kind))
                 continue;
             effectModel.append({
                 kind: kind,

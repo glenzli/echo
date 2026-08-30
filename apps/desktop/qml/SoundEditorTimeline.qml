@@ -230,6 +230,26 @@ Rectangle {
         loopSelection = false;
     }
 
+    function runSourceEditCommand(command: string): bool {
+        if (command !== "split" && !hasTimeSelection)
+            return false;
+        draft.beginGesture();
+        if (command === "split") {
+            if (hasTimeSelection)
+                draft.splitSelection(selectionStartMillis, selectionEndMillis);
+            else
+                draft.splitAt(playbackPositionMillis);
+        } else if (command === "hide") {
+            draft.setSelectionState(selectionStartMillis, selectionEndMillis, 2);
+        } else if (command === "mute") {
+            draft.setSelectionState(selectionStartMillis, selectionEndMillis, 1);
+        } else if (command === "restore") {
+            draft.setSelectionState(selectionStartMillis, selectionEndMillis, 0);
+        }
+        draft.endGesture();
+        return true;
+    }
+
     function setSelectionBoundary(millis: int, isStart: bool): void {
         const value = Math.round(clamp(millis, trimStartMillis, trimEndMillis));
         if (!hasTimeSelection) {
@@ -266,6 +286,7 @@ Rectangle {
     }
 
     Keys.onPressed: function (event) {
+        const noModifiers = event.modifiers === Qt.NoModifier;
         if (event.key === Qt.Key_Space) {
             timeline.playPauseRequested();
             event.accepted = true;
@@ -284,6 +305,14 @@ Rectangle {
             else
                 timeline.undoRequested();
             event.accepted = true;
+        } else if (event.key === Qt.Key_S && noModifiers) {
+            event.accepted = timeline.runSourceEditCommand("split");
+        } else if ((event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) && noModifiers) {
+            event.accepted = timeline.runSourceEditCommand("hide");
+        } else if (event.key === Qt.Key_M && noModifiers) {
+            event.accepted = timeline.runSourceEditCommand("mute");
+        } else if (event.key === Qt.Key_R && noModifiers) {
+            event.accepted = timeline.runSourceEditCommand("restore");
         }
     }
 
