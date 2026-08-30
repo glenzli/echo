@@ -1,5 +1,5 @@
 //! Echo application shell. Workspace chrome, page routing, and process-level
-//! lifecycle live here; Audio Space, Sound Adjustments, and Audio Library own
+//! lifecycle live here; Audio Space, Sound Adjustments, Sound Assembly, and Audio Library own
 //! their presentation and interaction internally.
 
 import QtQuick
@@ -51,6 +51,26 @@ ApplicationWindow {
         }
     }
 
+    function showSoundAssembly(): void {
+        workspaceIndex = 3;
+        soundAssembly.refreshAssemblies();
+    }
+
+    function createSoundAssembly(assetIds: var, layout: string): void {
+        if (!assetIds || assetIds.length === 0)
+            return;
+        const defaultName = layout === "layered"
+            ? qsTr("Layered assembly") : qsTr("Sound sequence");
+        const created = backend.createSoundAssembly(defaultName, assetIds, layout);
+        if (created.error) {
+            soundAssembly.presentError(created.error);
+            showSoundAssembly();
+            return;
+        }
+        showSoundAssembly();
+        soundAssembly.loadRevision(created);
+    }
+
     function debugReplaySoundEditor(): void {
         if (audioSpace.selectedAsset === null)
             return;
@@ -59,6 +79,18 @@ ApplicationWindow {
         debugEqualizerTimer.start();
         debugReplayTimer.start();
         debugAnalysisTimer.start();
+    }
+
+    function debugCreateSoundAssembly(): void {
+        if (audioSpace.selectedAsset === null)
+            return;
+        createSoundAssembly([audioSpace.selectedAsset.id], "sequence");
+    }
+
+    function debugExportSoundAssembly(destination: url): void {
+        if (!soundAssembly.hasDocument)
+            return;
+        soundAssemblyController.exportAssembly(soundAssembly.document, destination);
     }
 
     function debugOpenExportDialog(): void {
@@ -100,7 +132,11 @@ ApplicationWindow {
         audioSpace.debugBatchExport(destination, format);
     }
 
-    onWorkspaceIndexChanged: player.stop()
+    onWorkspaceIndexChanged: {
+        player.stop();
+        if (workspaceIndex !== 3 && soundAssemblyController.running)
+            soundAssemblyController.cancel();
+    }
 
     EchoSettingsDialog {
         id: settingsDialog
@@ -109,12 +145,14 @@ ApplicationWindow {
     header: MainTitleBar {
         hostWindow: window
         editor: soundEditor
+        assembly: soundAssembly
         workspaceIndex: window.workspaceIndex
         editorAvailable: audioSpace.selectedAsset !== null
         jobsActive: window.jobsActive
         activeJobCount: window.jobSnapshot.pending + window.jobSnapshot.running
         onSoundWallRequested: window.showAudioSpace()
         onSoundEditorRequested: window.showSoundEditor()
+        onSoundAssemblyRequested: window.showSoundAssembly()
         onSettingsRequested: window.openSettings()
     }
 
@@ -147,6 +185,14 @@ ApplicationWindow {
             jobStats: window.jobSnapshot
             onCloseRequested: window.showAudioSpace()
         }
+
+
+        SoundAssemblyWorkspace {
+            id: soundAssembly
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+        }
     }
 
     Connections {
@@ -156,6 +202,14 @@ ApplicationWindow {
             if (window.workspaceIndex === 1 && audioSpace.selectedAsset === null) {
                 window.showAudioSpace();
             }
+        }
+    }
+
+    Connections {
+        target: audioSpace
+
+        function onAssemblyRequested(assetIds, layout): void {
+            window.createSoundAssembly(assetIds, layout);
         }
     }
 

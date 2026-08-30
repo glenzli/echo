@@ -4,11 +4,11 @@
 
 ## 1. 产品定义
 
-> Echo 是一个 local-first、source-anchored 的声音记忆系统。它负责保存、理解、索引、修复和重新聆听真实发生过的声音，而不是创造新的声音作品。
+> Echo 是一个 local-first、source-anchored 的声音记忆系统。它负责保存、理解、索引、修复、重新聆听，并允许用户用资料库中的真实录音形成可追溯的声音编排。
 
-Echo 不是 DAW，不是 Audacity + AI，不是 TTS Playground。
+Echo 不以空白工程、多轨录音、音乐制作或插件宿主为核心；它不是 Audacity + AI，也不是 TTS Playground。跨资产编排必须从 Library 中的真实录音出发，永远保留来源与调整版本，不把 Echo 扩张为通用 DAW。
 
-能力划分为五个域：
+能力划分为六个域：
 
 ```text
 Preserve   原始记录、provenance、非破坏性版本
@@ -16,6 +16,7 @@ Understand ASR、人物、情绪、声音事件、语义索引
 Restore    降噪、响度、EQ、去混响、修复录制缺陷
 Revisit    声音空间 / 声音相册（最高层）
 Creative   对所选真实录音做显式、可旁路的确定性场景与角色化处理
+Assemble   用多个 Library 资产形成非破坏性、可追溯的声音编排与交付
 ```
 
 关键定位：**Library 是一等公民，Editor 是 Library 的能力，而不是反过来。**
@@ -34,6 +35,11 @@ Creative   对所选真实录音做显式、可旁路的确定性场景与角色
    既有录音，默认关闭、可旁路、静音不生声、不改词、不克隆具体人物、不覆盖 Original，也不冒充
    Restoration。语音生成、目标人物换声、改词、音乐生成、提示词 SFX 与其他生成式能力仍属于未来
    Audio Studio；AI 降噪、源分离和神经修复继续等待独立 InferenceBackend 里程碑。
+7. **编排独立**：单资产 `AdjustmentGraph` 始终只拥有 Original／源时间调整；跨资产轨道、
+   Clip 放置、混合时间、编排版本和 Mixdown provenance 由独立 `SoundAssembly` owner 负责。
+   Clip 引用 Library 资产及一个明确调整 revision；播放与导出先把该 revision 确定性准备为
+   线性声音来源，再在编排时间混合。外部文件必须先进入 Library，编排结果是可追溯的派生交付，
+   不伪装成 immutable Original。
 
 ## 3. 技术架构
 
@@ -265,6 +271,10 @@ InferenceBackend
   Audio Space 中进入 Waveform / 播放 / 文字的单声音视图。Audio Space 的网格与单声音视图都只
   负责浏览、证据检查和试听；恢复性 Adjustment 位于标题栏并列的独立“声音调整”工作区，继承
   当前选中声音，并以显式、可收敛的版本面板区分草稿预览与版本保存，任何浏览行为都不隐式改参。
+- “声音编排”与 Audio Space、“声音调整”并列为第三个顶层工作区。它从 Library 选择创建或打开
+  一个持久编排文档；左侧管理编排与轨道，中间时间轴直接操作 Clip，右侧检查选中轨道或 Clip，
+  顶部继续复用统一的 Undo／Redo／保存版本语法。编排工作区不得接管单资产恢复参数，也不得让
+  临时播放准备或导出任务成为 QML 隐藏生命周期。
 - 桌面窗口只保留一条与 Shadow 同构的融合标题工具栏：品牌、工作区导航、当前工作区工具、
   设置与原生窗口拖动共享一个 chrome owner；内容区域不得重复绘制第二条伪标题栏。
 - 当前集合、结果计数、内容搜索、网格／单声音视图与卡片密度属于内容呈现状态，沿用 Shadow 的
@@ -776,7 +786,28 @@ InferenceBackend
     成员。AI 建议仍由时间、地点、事件和人物证据动态投影，情绪不参与相册规则；“保存建议”在
     单一事务中创建用户相册并快照当时的成员，后续模型重分析不会静默增删已确认成员。本切片不做
     人物身份合并、地理邻近聚类、规则持续同步、共享相册或跨设备同步。
-- **M5 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
+- **M5 Sound Assembly**：从 Library 资产创建独立的多轨声音编排，保存不可变 revision，试听和
+  离线导出消费同一准备／混合合同，并把每个 Clip 的 Original 与调整版本写入交付 provenance。
+  - 首个完整编排模块（2026-08-31）：`SoundAssembly` 是独立于 `AdjustmentGraph` 的用户文档；
+    一个文档包含最多 8 条有序音轨和 256 个 Clip，Clip 引用 Library `AssetId`、明确的 adjustment
+    revision、该 revision 线性结果中的来源区间，以及编排时间位置、增益、声像、淡入／淡出和静音
+    状态。轨道保存名称、增益、声像、Mute／Solo；Master 保存增益与可旁路 limiter。每次保存追加
+    immutable assembly revision，旧 revision 与已经发布的 Mixdown 含义不随后续编辑改变。
+    编排总长限制为 4 小时，使合法文档的 48 kHz stereo PCM24 输出始终落在 classic RIFF/WAVE
+    的 32-bit data chunk 上限内；支持 RF64 前不接受只能保存、不能交付的超长文档。
+  - 资料库多选可按“顺序”或“分层”创建编排；编排工作区提供文档列表、轨道增删／重命名、Clip
+    移动、跨轨、复制、分割、裁剪、删除、增益／声像／淡化、轨道 Mute／Solo、时间轴缩放／滚动、
+    播放头定位、完整 Undo／Redo、显式保存版本和 WAV Mixdown。重叠 Clip 作为普通可叠加声音参与
+    混合；用户用两侧淡化形成 Linear／Smooth／Equal Power crossfade，不引入隐式顶层覆盖规则。
+  - 每个唯一 `(AssetId, adjustment revision)` 在非实时准备阶段确定性渲染为私有 canonical 48 kHz
+    stereo 来源；编排播放回调只从预混 SPSC ring 读取，离线 Mixdown 使用同一 `AssemblyPlan`、Clip
+    包络、轨道／Master 增益、声像和 limiter。准备、播放与导出均可取消，失败不会发布半成品；输出
+    经原子提交后才记录 assembly revision、所有 Original content hash、调整 revision 与最终文件
+    hash。缺失 Original 或失效 revision 必须显式阻止准备，不静默改用最新版本。
+  - 本里程碑不提供输入监听／录音、MIDI、节拍与速度网格、拉伸、插件宿主、发送总线、任意路由、
+    Track effect rack、自动化关键帧或视频同步；这些不能通过空控件或被动 schema 预建。外部声音先
+    作为普通资产进入 Library，编排结果作为派生交付存在，不改写任何输入 Original。
+- **M6 Memory Contract**：只读 memory/render API 向上层开放（echo://asset/{uuid} 契约族；Shadow/Video 同契约，各自实现）。
 
 ### 当前状态校准（2026-08-13）
 
@@ -786,6 +817,10 @@ Echo 处于 **M0 已收口、M1 Runtime 音频证据链与长录音分层理解�
 提示或展示维度，不应被描述为已经具备完整识别和关系系统；用户保存建议只确认当时的成员快照，
 不反向确认人物身份或地点关系。M4 的成熟仍需要音频信号语义索引、人物关系和更完整的 Revisit
 体验。
+
+M5 的完成标准不是出现多条空轨道，而是一个编排可以从 Library 创建、保存、退出后重新打开、
+试听、修改并原子导出；相同 revision 的试听与 Mixdown 必须使用相同 Clip／轨道／Master 数学，
+Catalog 能完整解释输出引用的每个 Original 与 adjustment revision。
 
 不把直接模型调用的数量当作里程碑进度；当前 text-evidence embedding 只能描述为 provisional
 自然语言检索，不把它夸大为原始声音语义搜索；在 M3 前，不在实时播放路径加入任何 AI effect。
@@ -800,6 +835,16 @@ Echo 处于 **M0 已收口、M1 Runtime 音频证据链与长录音分层理解�
 → 声音墙并行浏览、点击文字定位声音
 → 搜索一句自然语言
 → 找到并播放真实片段
+```
+
+```text
+从 Library 选择多段真实录音
+→ 创建顺序或分层声音编排
+→ 移动、裁剪、叠放并用淡化形成 crossfade
+→ 保存 immutable assembly revision
+→ 退出并重新打开同一版本
+→ 试听与 WAV Mixdown 使用同一混合计划
+→ Catalog 可追溯每个 Clip 的 Original 与 adjustment revision
 ```
 
 ## 11. 工程约定

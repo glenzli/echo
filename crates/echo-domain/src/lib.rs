@@ -6,6 +6,8 @@
 //! - `original` owns the immutable original reference and content identity;
 //! - `adjustment` owns validated non-destructive restoration intent;
 //! - `source_edit` owns original-time edit segments and effect masks;
+//! - `assembly` owns multi-asset tracks, clips, composition time, and master
+//!   output intent without widening the asset-local adjustment aggregate;
 //! - `processing_recipe` owns reusable processing snapshots and their
 //!   deterministic asset-local materialization;
 //! - `analysis` owns progressive analysis levels and evidence contracts
@@ -20,6 +22,7 @@
 
 mod adjustment;
 mod analysis;
+mod assembly;
 mod audio_asset;
 mod creative_vfx;
 mod freeze_vfx;
@@ -61,6 +64,11 @@ pub use adjustment::{
 pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,
 };
+pub use assembly::{
+    AssemblyClip, AssemblyMaster, AssemblyTrack, MAX_ASSEMBLY_CLIPS, MAX_ASSEMBLY_DURATION_MILLIS,
+    MAX_ASSEMBLY_NAME_CHARACTERS, MAX_ASSEMBLY_PAN_PERCENT, MAX_ASSEMBLY_TRACK_NAME_CHARACTERS,
+    MAX_ASSEMBLY_TRACKS, MIN_ASSEMBLY_PAN_PERCENT, SoundAssembly, SoundAssemblyError,
+};
 pub use audio_asset::AudioAsset;
 pub use creative_vfx::{
     AutoWahVfxSettings, BeatRepeatVfxSettings, BitcrusherSettings, ChorusSettings,
@@ -74,7 +82,10 @@ pub use creative_vfx::{
 };
 pub use freeze_vfx::{FREEZE_CAPTURE_PRE_ROLL_MILLIS, FreezeVfxSettings};
 pub use granular_vfx::GranularVfxSettings;
-pub use ids::{AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId};
+pub use ids::{
+    AssemblyClipId, AssemblyTrackId, AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId,
+    SoundAssemblyId,
+};
 pub use metadata_calibration::{
     MAX_METADATA_CAPTION_CHARACTERS, MAX_METADATA_KEYWORDS, MAX_METADATA_LABEL_CHARACTERS,
     MAX_METADATA_SUMMARY_CHARACTERS, MAX_METADATA_TEXT_CHARACTERS, MetadataCalibration,

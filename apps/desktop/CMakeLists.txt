@@ -129,6 +129,8 @@ qt_add_executable(
     src/qt_render_byte_sink.hpp
     src/semantic_search_controller.cpp
     src/semantic_search_controller.hpp
+    src/sound_assembly_controller.cpp
+    src/sound_assembly_controller.hpp
     src/spectrogram_preview_controller.cpp
     src/spectrogram_preview_controller.hpp
     src/reverb_projection.cpp
@@ -223,6 +225,8 @@ qt_add_qml_module(
         qml/SoundAlbumState.qml
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
+        qml/SoundAssemblyTrack.qml
+        qml/SoundAssemblyWorkspace.qml
         qml/SpaceReverbPanel.qml
         qml/SpectrogramView.qml
         qml/StereoVfxPanel.qml

@@ -284,6 +284,40 @@ mod ffi {
         true_peak_dbtp: f32,
     }
 
+    /// Compact top-level Sound Assembly workspace projection.
+    #[derive(Debug)]
+    struct SoundAssemblySummaryWire {
+        assembly_id: String,
+        name: String,
+        revision_id: i64,
+        revision_number: u32,
+        duration_millis: u64,
+        track_count: u32,
+        clip_count: u32,
+        updated_at_millis: i64,
+    }
+
+    /// One resolved clip source pinned to its exact asset adjustment revision.
+    #[derive(Debug)]
+    struct SoundAssemblyClipSourceWire {
+        clip_id: String,
+        path: String,
+        adjustment_revision_id: i64,
+        impulse_response_prepared_path: String,
+        adjustment: AssetAdjustmentWire,
+    }
+
+    /// One immutable assembly document plus engine preparation inputs.
+    #[derive(Debug)]
+    struct SoundAssemblyRevisionWire {
+        assembly_id: String,
+        revision_id: i64,
+        revision_number: u32,
+        document_json: String,
+        clip_sources: Vec<SoundAssemblyClipSourceWire>,
+        created_at_millis: i64,
+    }
+
     /// One desktop projection of a frozen post-effect spectral working copy.
     #[derive(Debug)]
     struct RenderedSpectralWorkingCopyWire {
@@ -542,6 +576,35 @@ mod ffi {
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
         /// Lists registered assets, newest import first.
         fn session_list_assets(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
+        /// Lists active multi-asset assembly documents.
+        fn session_sound_assemblies(self: &LibrarySession)
+        -> Result<Vec<SoundAssemblySummaryWire>>;
+        /// Creates a sequence (0) or layered (1) assembly from Library assets.
+        fn session_create_sound_assembly(
+            self: &LibrarySession,
+            name: &str,
+            asset_ids: &[String],
+            layout: u8,
+        ) -> Result<SoundAssemblyRevisionWire>;
+        /// Reads the newest immutable assembly revision and exact source inputs.
+        fn session_sound_assembly(
+            self: &LibrarySession,
+            assembly_id: &str,
+        ) -> Result<SoundAssemblyRevisionWire>;
+        /// Validates and appends one complete authored document snapshot.
+        fn session_save_sound_assembly(
+            self: &LibrarySession,
+            document_json: &str,
+        ) -> Result<SoundAssemblyRevisionWire>;
+        /// Archives an assembly without deleting revision or export history.
+        fn session_archive_sound_assembly(self: &LibrarySession, assembly_id: &str) -> Result<()>;
+        /// Records one verified PCM24 mixdown and generated provenance.
+        fn session_record_sound_assembly_export(
+            self: &LibrarySession,
+            assembly_id: &str,
+            assembly_revision_id: i64,
+            evidence: &RenderExportWire,
+        ) -> Result<i64>;
         /// Lists contextual keyword facets by descending asset count.
         fn session_keyword_facets(self: &LibrarySession) -> Result<Vec<KeywordFacetWire>>;
         /// Lists explainable cross-asset album candidates.
@@ -890,6 +953,51 @@ impl LibrarySession {
     /// Returns the session error message when the catalog read fails.
     fn session_list_assets(&self) -> Result<Vec<ffi::AssetSummaryWire>, String> {
         self.list_assets().map_err(|error| error.message)
+    }
+
+    fn session_sound_assemblies(&self) -> Result<Vec<ffi::SoundAssemblySummaryWire>, String> {
+        self.sound_assemblies().map_err(|error| error.message)
+    }
+
+    fn session_create_sound_assembly(
+        &self,
+        name: &str,
+        asset_ids: &[String],
+        layout: u8,
+    ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
+        self.create_sound_assembly(name, asset_ids, layout)
+            .map_err(|error| error.message)
+    }
+
+    fn session_sound_assembly(
+        &self,
+        assembly_id: &str,
+    ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
+        self.sound_assembly(assembly_id)
+            .map_err(|error| error.message)
+    }
+
+    fn session_save_sound_assembly(
+        &self,
+        document_json: &str,
+    ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
+        self.save_sound_assembly(document_json)
+            .map_err(|error| error.message)
+    }
+
+    fn session_archive_sound_assembly(&self, assembly_id: &str) -> Result<(), String> {
+        self.archive_sound_assembly(assembly_id)
+            .map_err(|error| error.message)
+    }
+
+    fn session_record_sound_assembly_export(
+        &self,
+        assembly_id: &str,
+        assembly_revision_id: i64,
+        evidence: &ffi::RenderExportWire,
+    ) -> Result<i64, String> {
+        self.record_sound_assembly_export(assembly_id, assembly_revision_id, evidence)
+            .map_err(|error| error.message)
     }
 
     /// Lists contextual keyword facets by descending asset count.

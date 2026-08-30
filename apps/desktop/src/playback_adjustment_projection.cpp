@@ -304,6 +304,15 @@ std::optional<echo::audio::PlaybackAdjustment>
 PlaybackAdjustmentProjection::fromAssetMap(const QVariantMap& asset) {
     const QVariantMap restoration{
         {QStringLiteral("enabled"), asset.value(QStringLiteral("restorationEnabled"), true)},
+        {QStringLiteral("dePlosiveEnabled"), asset.value(QStringLiteral("dePlosiveEnabled"))},
+        {QStringLiteral("dePlosiveFrequencyHertz"),
+         asset.value(QStringLiteral("dePlosiveFrequencyHertz"), 140)},
+        {QStringLiteral("dePlosiveSensitivityPercent"),
+         asset.value(QStringLiteral("dePlosiveSensitivityPercent"), 50)},
+        {QStringLiteral("dePlosiveReductionCentibels"),
+         asset.value(QStringLiteral("dePlosiveReductionCentibels"), 1200)},
+        {QStringLiteral("dePlosiveReleaseMillis"),
+         asset.value(QStringLiteral("dePlosiveReleaseMillis"), 160)},
         {QStringLiteral("noiseEnabled"), asset.value(QStringLiteral("noiseReductionEnabled"))},
         {QStringLiteral("noiseReductionCentibels"),
          asset.value(QStringLiteral("noiseReductionCentibels"))},

@@ -11,6 +11,7 @@
 #include "render_export_controller.hpp"
 #include "rendered_spectral_working_copy_controller.hpp"
 #include "semantic_search_controller.hpp"
+#include "sound_assembly_controller.hpp"
 #include "spectrogram_preview_controller.hpp"
 #include "ui_preferences.hpp"
 
@@ -74,6 +75,7 @@ int main(int argc, char* argv[]) {
 
         DesktopBackend backend(std::move(session));
         PlaybackController player;
+        SoundAssemblyController sound_assembly(backend, player);
         LoudnessAnalysisController loudness_analyzer;
         RenderExportController render_exporter(backend);
         RenderedSpectralWorkingCopyController rendered_spectral_working_copy(backend);
@@ -106,6 +108,10 @@ int main(int argc, char* argv[]) {
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("soundAssemblyController"),
+            &sound_assembly
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("loudnessAnalyzer"),
             &loudness_analyzer
@@ -203,6 +209,41 @@ int main(int argc, char* argv[]) {
                 QMetaObject::invokeMethod(root, "showSoundEditor");
             });
         }
+        if (std::getenv("ECHO_DEBUG_OPEN_ASSEMBLY") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(750, root, [root] {
+                QMetaObject::invokeMethod(root, "showSoundAssembly");
+            });
+        }
+        if (std::getenv("ECHO_DEBUG_CREATE_ASSEMBLY") != nullptr) {
+            QObject* root = engine.rootObjects().first();
+            QTimer::singleShot(900, root, [root] {
+                QMetaObject::invokeMethod(root, "debugCreateSoundAssembly");
+            });
+        }
+        if (const char* assembly_export_path = std::getenv("ECHO_DEBUG_ASSEMBLY_EXPORT")) {
+            QObject* root = engine.rootObjects().first();
+            const QUrl destination = QUrl::fromLocalFile(QString::fromUtf8(assembly_export_path));
+            QObject::connect(
+                &sound_assembly,
+                &SoundAssemblyController::stateChanged,
+                &application,
+                [&sound_assembly] {
+                    if (!sound_assembly.running()
+                        && (sound_assembly.hasResult() || !sound_assembly.errorText().isEmpty())) {
+                        QGuiApplication::exit(sound_assembly.hasResult() ? 0 : 1);
+                    }
+                }
+            );
+            QTimer::singleShot(1'200, root, [root, destination] {
+                QMetaObject::invokeMethod(
+                    root,
+                    "debugExportSoundAssembly",
+                    Q_ARG(QUrl, destination)
+                );
+            });
+            QTimer::singleShot(120'000, &application, [] { QGuiApplication::exit(2); });
+        }
         if (std::getenv("ECHO_DEBUG_REPLAY_EDITOR") != nullptr) {
             QObject* root = engine.rootObjects().first();
             QTimer::singleShot(750, root, [root] {
@@ -295,6 +336,8 @@ int main(int argc, char* argv[]) {
                                      || std::getenv("ECHO_DEBUG_CREATE_ALBUM") != nullptr
                                      || std::getenv("ECHO_DEBUG_SEARCH") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
+                                     || std::getenv("ECHO_DEBUG_OPEN_ASSEMBLY") != nullptr
+                                     || std::getenv("ECHO_DEBUG_CREATE_ASSEMBLY") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EXPORT") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_BATCH_EXPORT") != nullptr
                                      || replay_editor;

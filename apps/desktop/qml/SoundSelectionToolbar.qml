@@ -15,6 +15,7 @@ Rectangle {
     signal affinityRequested(bool liked, int rating)
     signal albumMembershipRequested(var album, bool included)
     signal createAlbumRequested
+    signal assembleRequested
 
     visible: asset !== null
     implicitWidth: operations.implicitWidth + 20
@@ -99,6 +100,18 @@ Rectangle {
                     size: 14
                 }
             }
+        }
+
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 20
+            color: Theme.border
+        }
+
+        EchoButton {
+            text: qsTr("Assemble")
+            ghost: true
+            onClicked: toolbar.assembleRequested()
         }
 
         Rectangle {

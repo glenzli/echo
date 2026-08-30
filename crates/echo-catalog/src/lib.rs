@@ -39,6 +39,7 @@ mod schema;
 mod search;
 mod semantic_search;
 mod smart_albums;
+mod sound_assembly;
 mod source_metadata;
 mod user_albums;
 
@@ -141,6 +142,12 @@ pub use semantic_search::{
 };
 pub use smart_albums::{
     SmartAlbumCandidate, SmartAlbumEvidence, SmartAlbumFacet, list_smart_album_candidates,
+};
+pub use sound_assembly::{
+    RecordSoundAssemblyExport, SoundAssemblyExportFormat, SoundAssemblyExportRecord,
+    SoundAssemblyRevision, SoundAssemblySummary, archive_sound_assembly, latest_sound_assembly,
+    list_sound_assemblies, record_sound_assembly, record_sound_assembly_export,
+    sound_assembly_at_revision,
 };
 pub use source_metadata::{
     SourceMetadata, SourceMetadataEntry, list_assets_missing_source_metadata,

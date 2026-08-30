@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QString>
+#include <QUuid>
 
 #include <array>
 #include <utility>
@@ -157,6 +158,251 @@ QVariantList effectChainForQml(const rust::Vec<std::uint8_t>& chain) {
     for (const std::uint8_t node : chain) {
         result.append(static_cast<int>(node));
     }
+    return result;
+}
+
+QVariantList editSegmentsForQml(const rust::Vec<echo::desktop::EditSegmentWire>& segments);
+QVariantList effectMasksForQml(const rust::Vec<echo::desktop::EffectMaskWire>& masks);
+
+QVariantMap adjustmentForQml(
+    const echo::desktop::AssetAdjustmentWire& wire,
+    const rust::String& impulseResponsePreparedPath
+) {
+    QVariantMap value;
+    value.insert(QStringLiteral("trimStartMillis"), static_cast<qlonglong>(wire.trim_start_millis));
+    value.insert(QStringLiteral("trimEndMillis"), static_cast<qlonglong>(wire.trim_end_millis));
+    value.insert(QStringLiteral("fadeInMillis"), static_cast<qlonglong>(wire.fade_in_millis));
+    value.insert(QStringLiteral("fadeOutMillis"), static_cast<qlonglong>(wire.fade_out_millis));
+    value.insert(QStringLiteral("fadeInCurve"), static_cast<int>(wire.fade_in_curve));
+    value.insert(QStringLiteral("fadeOutCurve"), static_cast<int>(wire.fade_out_curve));
+    value.insert(QStringLiteral("gainCentibels"), static_cast<int>(wire.gain_centibels));
+    value.insert(QStringLiteral("lowCutHertz"), static_cast<int>(wire.low_cut_hertz));
+    value.insert(QStringLiteral("restorationEnabled"), wire.restoration_enabled);
+    value.insert(QStringLiteral("dePlosiveEnabled"), wire.de_plosive_enabled);
+    value.insert(
+        QStringLiteral("dePlosiveFrequencyHertz"),
+        static_cast<int>(wire.de_plosive_frequency_hertz)
+    );
+    value.insert(
+        QStringLiteral("dePlosiveSensitivityPercent"),
+        static_cast<int>(wire.de_plosive_sensitivity_percent)
+    );
+    value.insert(
+        QStringLiteral("dePlosiveReductionCentibels"),
+        static_cast<int>(wire.de_plosive_reduction_centibels)
+    );
+    value.insert(
+        QStringLiteral("dePlosiveReleaseMillis"),
+        static_cast<int>(wire.de_plosive_release_millis)
+    );
+    value.insert(QStringLiteral("noiseReductionEnabled"), wire.noise_reduction_enabled);
+    value.insert(
+        QStringLiteral("noiseReductionCentibels"),
+        static_cast<int>(wire.noise_reduction_centibels)
+    );
+    value.insert(
+        QStringLiteral("noiseReductionSensitivityPercent"),
+        static_cast<int>(wire.noise_reduction_sensitivity_percent)
+    );
+    value.insert(
+        QStringLiteral("noiseReductionSmoothingMillis"),
+        static_cast<int>(wire.noise_reduction_smoothing_millis)
+    );
+    value.insert(QStringLiteral("deEsserEnabled"), wire.de_esser_enabled);
+    value.insert(
+        QStringLiteral("deEsserFrequencyHertz"),
+        static_cast<int>(wire.de_esser_frequency_hertz)
+    );
+    value.insert(
+        QStringLiteral("deEsserThresholdCentibels"),
+        static_cast<int>(wire.de_esser_threshold_centibels)
+    );
+    value.insert(
+        QStringLiteral("deEsserReductionCentibels"),
+        static_cast<int>(wire.de_esser_reduction_centibels)
+    );
+    value.insert(QStringLiteral("deHumEnabled"), wire.de_hum_enabled);
+    value.insert(
+        QStringLiteral("deHumFundamentalHertz"),
+        static_cast<int>(wire.de_hum_fundamental_hertz)
+    );
+    value.insert(
+        QStringLiteral("deHumHarmonicCount"),
+        static_cast<int>(wire.de_hum_harmonic_count)
+    );
+    value.insert(
+        QStringLiteral("deHumQualityTenths"),
+        static_cast<int>(wire.de_hum_quality_tenths)
+    );
+    value.insert(
+        QStringLiteral("deHumDepthCentibels"),
+        static_cast<int>(wire.de_hum_depth_centibels)
+    );
+    value.insert(QStringLiteral("deClickEnabled"), wire.de_click_enabled);
+    value.insert(
+        QStringLiteral("deClickSensitivityPercent"),
+        static_cast<int>(wire.de_click_sensitivity_percent)
+    );
+    value.insert(
+        QStringLiteral("deClickMaximumClickMicroseconds"),
+        static_cast<int>(wire.de_click_maximum_click_microseconds)
+    );
+    value.insert(
+        QStringLiteral("deClickRepairPercent"),
+        static_cast<int>(wire.de_click_repair_percent)
+    );
+    value.insert(QStringLiteral("channelRepairEnabled"), wire.channel_repair_enabled);
+    value.insert(QStringLiteral("channelRepairInvertLeft"), wire.channel_repair_invert_left);
+    value.insert(QStringLiteral("channelRepairInvertRight"), wire.channel_repair_invert_right);
+    value.insert(QStringLiteral("channelRepairSwapChannels"), wire.channel_repair_swap_channels);
+    value.insert(QStringLiteral("channelRepairMonoFoldDown"), wire.channel_repair_mono_fold_down);
+    value.insert(
+        QStringLiteral("channelRepairBalancePercent"),
+        static_cast<int>(wire.channel_repair_balance_percent)
+    );
+    value.insert(QStringLiteral("equalizerEnabled"), wire.equalizer_enabled);
+    value.insert(QStringLiteral("equalizerBands"), equalizerBandsForQml(wire.equalizer_bands));
+    value.insert(QStringLiteral("compressorEnabled"), wire.compressor_enabled);
+    value.insert(
+        QStringLiteral("compressorThresholdCentibels"),
+        static_cast<int>(wire.compressor_threshold_centibels)
+    );
+    value.insert(
+        QStringLiteral("compressorRatioTenths"),
+        static_cast<int>(wire.compressor_ratio_tenths)
+    );
+    value.insert(
+        QStringLiteral("compressorAttackMillis"),
+        static_cast<int>(wire.compressor_attack_millis)
+    );
+    value.insert(
+        QStringLiteral("compressorReleaseMillis"),
+        static_cast<int>(wire.compressor_release_millis)
+    );
+    value.insert(
+        QStringLiteral("compressorMakeupCentibels"),
+        static_cast<int>(wire.compressor_makeup_centibels)
+    );
+    value.insert(QStringLiteral("reverbCharacter"), static_cast<int>(wire.reverb_character));
+    value.insert(QStringLiteral("reverbEnabled"), wire.reverb_enabled);
+    value.insert(QStringLiteral("reverbMixPercent"), static_cast<int>(wire.reverb_mix_percent));
+    value.insert(
+        QStringLiteral("reverbPreDelayMillis"),
+        static_cast<int>(wire.reverb_pre_delay_millis)
+    );
+    value.insert(QStringLiteral("reverbDecayMillis"), static_cast<int>(wire.reverb_decay_millis));
+    value.insert(QStringLiteral("reverbSizePercent"), static_cast<int>(wire.reverb_size_percent));
+    value.insert(
+        QStringLiteral("reverbDampingPercent"),
+        static_cast<int>(wire.reverb_damping_percent)
+    );
+    value.insert(QStringLiteral("reverbLowCutHertz"), static_cast<int>(wire.reverb_low_cut_hertz));
+    value.insert(
+        QStringLiteral("reverbHighCutHertz"),
+        static_cast<int>(wire.reverb_high_cut_hertz)
+    );
+    value.insert(QStringLiteral("reverbDuckingEnabled"), wire.reverb_ducking_enabled);
+    value.insert(
+        QStringLiteral("reverbDuckingAmountPercent"),
+        static_cast<int>(wire.reverb_ducking_amount_percent)
+    );
+    value.insert(
+        QStringLiteral("reverbDuckingAttackMillis"),
+        static_cast<int>(wire.reverb_ducking_attack_millis)
+    );
+    value.insert(
+        QStringLiteral("reverbDuckingReleaseMillis"),
+        static_cast<int>(wire.reverb_ducking_release_millis)
+    );
+    value.insert(QStringLiteral("spaceMode"), static_cast<int>(wire.space_mode));
+    value.insert(
+        QStringLiteral("impulseResponseImportId"),
+        QString::fromUtf8(
+            wire.impulse_response_import_id.data(),
+            wire.impulse_response_import_id.size()
+        )
+    );
+    value.insert(
+        QStringLiteral("impulseResponseSourceHash"),
+        QString::fromUtf8(
+            wire.impulse_response_source_hash.data(),
+            wire.impulse_response_source_hash.size()
+        )
+    );
+    value.insert(
+        QStringLiteral("impulseResponsePreparedHash"),
+        QString::fromUtf8(
+            wire.impulse_response_prepared_hash.data(),
+            wire.impulse_response_prepared_hash.size()
+        )
+    );
+    value.insert(
+        QStringLiteral("impulseResponsePreparedPath"),
+        QString::fromUtf8(impulseResponsePreparedPath.data(), impulseResponsePreparedPath.size())
+    );
+    value.insert(
+        QStringLiteral("convolutionMixPercent"),
+        static_cast<int>(wire.convolution_mix_percent)
+    );
+    value.insert(
+        QStringLiteral("convolutionWetGainCentibels"),
+        static_cast<int>(wire.convolution_wet_gain_centibels)
+    );
+    value.insert(QStringLiteral("creativeVfx"), creativeVfxForQml(wire.creative_vfx_json));
+    value.insert(QStringLiteral("spectralRepair"), spectralRepairForQml(wire.spectral_repair_json));
+    value.insert(QStringLiteral("limiterEnabled"), wire.limiter_enabled);
+    value.insert(
+        QStringLiteral("limiterCeilingCentibels"),
+        static_cast<int>(wire.limiter_ceiling_centibels)
+    );
+    value.insert(
+        QStringLiteral("limiterReleaseMillis"),
+        static_cast<int>(wire.limiter_release_millis)
+    );
+    value.insert(QStringLiteral("effectChain"), effectChainForQml(wire.effect_chain));
+    value.insert(QStringLiteral("editSegments"), editSegmentsForQml(wire.edit_segments));
+    value.insert(QStringLiteral("effectMasks"), effectMasksForQml(wire.effect_masks));
+    return value;
+}
+
+QVariantMap soundAssemblyRevisionForQml(const echo::desktop::SoundAssemblyRevisionWire& wire) {
+    const QJsonDocument encoded = QJsonDocument::fromJson(
+        QByteArray(wire.document_json.data(), static_cast<qsizetype>(wire.document_json.size()))
+    );
+    if (!encoded.isObject()) {
+        return {{QStringLiteral("error"), QStringLiteral("assembly document is invalid")}};
+    }
+    QVariantMap result = encoded.object().toVariantMap();
+    result.insert(
+        QStringLiteral("assemblyId"),
+        QString::fromUtf8(wire.assembly_id.data(), wire.assembly_id.size())
+    );
+    result.insert(QStringLiteral("revisionId"), static_cast<qlonglong>(wire.revision_id));
+    result.insert(QStringLiteral("revisionNumber"), static_cast<quint32>(wire.revision_number));
+    result.insert(
+        QStringLiteral("createdAtMillis"),
+        static_cast<qlonglong>(wire.created_at_millis)
+    );
+    QVariantList sources;
+    sources.reserve(static_cast<qsizetype>(wire.clip_sources.size()));
+    for (const auto& source : wire.clip_sources) {
+        QVariantMap value =
+            adjustmentForQml(source.adjustment, source.impulse_response_prepared_path);
+        value.insert(
+            QStringLiteral("clipId"),
+            QString::fromUtf8(source.clip_id.data(), source.clip_id.size())
+        );
+        value.insert(
+            QStringLiteral("path"),
+            QString::fromUtf8(source.path.data(), source.path.size())
+        );
+        value.insert(
+            QStringLiteral("adjustmentRevisionId"),
+            static_cast<qlonglong>(source.adjustment_revision_id)
+        );
+        sources.append(value);
+    }
+    result.insert(QStringLiteral("clipSources"), sources);
     return result;
 }
 
@@ -779,6 +1025,108 @@ QVariantList DesktopBackend::listAssets() const {
         list.append(entry);
     }
     return list;
+}
+
+QVariantList DesktopBackend::listSoundAssemblies() const {
+    QVariantList result;
+    try {
+        for (const auto& wire : session_->session_sound_assemblies()) {
+            QVariantMap value;
+            value.insert(
+                QStringLiteral("assemblyId"),
+                QString::fromUtf8(wire.assembly_id.data(), wire.assembly_id.size())
+            );
+            value.insert(
+                QStringLiteral("name"),
+                QString::fromUtf8(wire.name.data(), wire.name.size())
+            );
+            value.insert(QStringLiteral("revisionId"), static_cast<qlonglong>(wire.revision_id));
+            value.insert(
+                QStringLiteral("revisionNumber"),
+                static_cast<quint32>(wire.revision_number)
+            );
+            value.insert(
+                QStringLiteral("durationMillis"),
+                static_cast<qlonglong>(wire.duration_millis)
+            );
+            value.insert(QStringLiteral("trackCount"), static_cast<quint32>(wire.track_count));
+            value.insert(QStringLiteral("clipCount"), static_cast<quint32>(wire.clip_count));
+            value.insert(
+                QStringLiteral("updatedAtMillis"),
+                static_cast<qlonglong>(wire.updated_at_millis)
+            );
+            result.append(value);
+        }
+    } catch (const rust::Error& error) {
+        qWarning("cannot list sound assemblies: %s", error.what());
+    }
+    return result;
+}
+
+QVariantMap DesktopBackend::createSoundAssembly(
+    const QString& name,
+    const QVariantList& assetIds,
+    const QString& layout
+) {
+    rust::Vec<rust::String> ids;
+    for (const QVariant& value : assetIds) {
+        const QString id = value.toString();
+        if (!id.isEmpty()) {
+            ids.push_back(id.toStdString());
+        }
+    }
+    const std::uint8_t layout_value = layout == QStringLiteral("layered") ? 1U : 0U;
+    try {
+        const auto id_slice = rust::Slice<const rust::String>(ids.data(), ids.size());
+        const auto revision =
+            session_->session_create_sound_assembly(name.toStdString(), id_slice, layout_value);
+        emit soundAssembliesChanged();
+        return soundAssemblyRevisionForQml(revision);
+    } catch (const rust::Error& error) {
+        return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
+    }
+}
+
+QVariantMap DesktopBackend::soundAssembly(const QString& assemblyId) const {
+    try {
+        return soundAssemblyRevisionForQml(
+            session_->session_sound_assembly(assemblyId.toStdString())
+        );
+    } catch (const rust::Error& error) {
+        return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
+    }
+}
+
+QVariantMap DesktopBackend::saveSoundAssembly(const QVariantMap& document) {
+    QVariantMap authored = document;
+    authored.remove(QStringLiteral("assemblyId"));
+    authored.remove(QStringLiteral("revisionId"));
+    authored.remove(QStringLiteral("revisionNumber"));
+    authored.remove(QStringLiteral("createdAtMillis"));
+    authored.remove(QStringLiteral("clipSources"));
+    const QByteArray encoded = QJsonDocument::fromVariant(authored).toJson(QJsonDocument::Compact);
+    try {
+        const auto revision = session_->session_save_sound_assembly(encoded.toStdString());
+        emit soundAssembliesChanged();
+        return soundAssemblyRevisionForQml(revision);
+    } catch (const rust::Error& error) {
+        return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
+    }
+}
+
+bool DesktopBackend::archiveSoundAssembly(const QString& assemblyId) {
+    try {
+        session_->session_archive_sound_assembly(assemblyId.toStdString());
+        emit soundAssembliesChanged();
+        return true;
+    } catch (const rust::Error& error) {
+        qWarning("cannot archive sound assembly: %s", error.what());
+        return false;
+    }
+}
+
+QString DesktopBackend::newAssemblyObjectId() const {
+    return QUuid::createUuid().toString(QUuid::WithoutBraces);
 }
 
 QVariantList DesktopBackend::listImpulseResponses() const {
@@ -2150,6 +2498,40 @@ QString DesktopBackend::recordRenderExport(
         evidence.true_peak_dbtp = truePeakDbtp;
         session_
             ->session_record_render_export(assetId.toStdString(), adjustmentRevisionId, evidence);
+        return {};
+    } catch (const rust::Error& error) {
+        return QString::fromUtf8(error.what());
+    }
+}
+
+QString DesktopBackend::recordSoundAssemblyExport(
+    const QString& assemblyId,
+    qint64 assemblyRevisionId,
+    const QString& outputPath,
+    quint32 sampleRate,
+    quint32 channelCount,
+    quint16 bitDepth,
+    quint64 frameCount,
+    quint64 sizeBytes,
+    float integratedLufs,
+    float truePeakDbtp
+) const {
+    try {
+        echo::desktop::RenderExportWire evidence;
+        evidence.output_path = outputPath.toStdString();
+        evidence.format = std::string("wav_pcm24");
+        evidence.sample_rate = sampleRate;
+        evidence.channel_count = channelCount;
+        evidence.bit_depth = bitDepth;
+        evidence.frame_count = frameCount;
+        evidence.size_bytes = sizeBytes;
+        evidence.integrated_lufs = integratedLufs;
+        evidence.true_peak_dbtp = truePeakDbtp;
+        session_->session_record_sound_assembly_export(
+            assemblyId.toStdString(),
+            assemblyRevisionId,
+            evidence
+        );
         return {};
     } catch (const rust::Error& error) {
         return QString::fromUtf8(error.what());

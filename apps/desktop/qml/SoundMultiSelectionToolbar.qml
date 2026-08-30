@@ -14,6 +14,8 @@ Rectangle {
     property bool busy: false
 
     signal applyRecipeRequested
+    signal sequenceAssemblyRequested
+    signal layeredAssemblyRequested
     signal clearRequested
 
     visible: selectedCount > 0
@@ -56,6 +58,20 @@ Rectangle {
             Layout.preferredWidth: 1
             Layout.preferredHeight: 20
             color: Theme.border
+        }
+
+        EchoButton {
+            text: qsTr("Sequence")
+            ghost: true
+            enabled: !toolbar.busy && toolbar.selectedCount > 0
+            onClicked: toolbar.sequenceAssemblyRequested()
+        }
+
+        EchoButton {
+            text: qsTr("Layer")
+            ghost: true
+            enabled: !toolbar.busy && toolbar.selectedCount > 1 && toolbar.selectedCount <= 8
+            onClicked: toolbar.layeredAssemblyRequested()
         }
 
         EchoButton {

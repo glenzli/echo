@@ -1,17 +1,67 @@
 use std::str::FromStr;
 
-use super::{CatalogSchemaRevision, SCHEMA_VERSION};
+use super::{CatalogSchemaRevision, SCHEMA_VERSION, SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION};
 use crate::{CatalogError, CatalogErrorKind, open_catalog};
 
 #[test]
 fn revision_round_trips_in_date_dot_sequence_form() {
-    assert_eq!(SCHEMA_VERSION.to_string(), "20260815.5");
+    assert_eq!(SCHEMA_VERSION.to_string(), "20260831.1");
     assert_eq!(
         CatalogSchemaRevision::from_str("20260815.5"),
-        Ok(SCHEMA_VERSION)
+        Ok(SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION)
     );
-    assert_eq!(SCHEMA_VERSION.date(), 20_260_815);
-    assert_eq!(SCHEMA_VERSION.daily_sequence(), 5);
+    assert_eq!(SCHEMA_VERSION.date(), 20_260_831);
+    assert_eq!(SCHEMA_VERSION.daily_sequence(), 1);
+}
+
+#[test]
+fn sound_assembly_predecessor_migrates_atomically() {
+    let root = std::env::temp_dir().join(format!(
+        "echo-sound-assembly-migration-{}-{}",
+        std::process::id(),
+        uuid::Uuid::now_v7()
+    ));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("catalog opens");
+    catalog
+        .with_transaction(|transaction| -> Result<(), CatalogError> {
+            transaction.execute_batch(
+                "DROP TABLE sound_assembly_exports;
+                 DROP TABLE sound_assembly_clip_sources;
+                 DROP TABLE sound_assembly_revisions;
+                 DROP TABLE sound_assemblies;",
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
+                [SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION.to_string()],
+            )?;
+            Ok(())
+        })
+        .expect("predecessor fixture writes");
+    drop(catalog);
+
+    let migrated = open_catalog(&path).expect("predecessor migrates");
+    migrated
+        .with_transaction(|transaction| -> Result<(), CatalogError> {
+            let version: String = transaction.query_row(
+                "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+                [],
+                |row| row.get(0),
+            )?;
+            let table_count: i64 = transaction.query_row(
+                "SELECT COUNT(*) FROM sqlite_master
+                 WHERE type = 'table' AND name IN (
+                    'sound_assemblies', 'sound_assembly_revisions',
+                    'sound_assembly_clip_sources', 'sound_assembly_exports')",
+                [],
+                |row| row.get(0),
+            )?;
+            assert_eq!(version, SCHEMA_VERSION.to_string());
+            assert_eq!(table_count, 4);
+            Ok(())
+        })
+        .expect("migrated schema reads");
+    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
@@ -49,7 +99,7 @@ fn catalog_persists_only_the_canonical_revision_text() {
                 .map_err(CatalogError::from)
         })
         .expect("revision reads");
-    assert_eq!(stored, "20260815.5");
+    assert_eq!(stored, "20260831.1");
 
     catalog
         .with_transaction(|transaction| -> Result<(), CatalogError> {

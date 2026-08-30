@@ -41,8 +41,10 @@ Item {
     readonly property int incompleteAnalysisCount: allAssets.filter(asset => asset.analysisState !== "done").length
     readonly property int failedAnalysisCount: allAssets.filter(asset => asset.analysisState === "failed" || asset.analysisState === "cancelled").length
     readonly property int manualAnalysisCount: allAssets.filter(asset => asset.analysisRecovery === "manual").length
+    readonly property var selectedAssetIds: soundSelection.selectedIds
 
     signal openLibraryRequested
+    signal assemblyRequested(var assetIds, string layout)
 
     SoundFilterState {
         id: advancedFilterState
@@ -693,6 +695,9 @@ Item {
                         }
                         onAssetOpened: asset => workspace.openAsset(asset)
                         onProcessingRecipeRequested: workspace.presentSelectedProcessingRecipes()
+                        onAssemblyRequested: function (assetIds, layout) {
+                            workspace.assemblyRequested(assetIds, layout);
+                        }
                         onSelectionClearRequested: soundSelection.collapseToPrimary()
                         onAffinityRequested: function (asset, liked, rating) {
                             workspace.updateAffinity(asset, liked, rating);

@@ -35,6 +35,7 @@ add_library(
     src/modulated_delay_vfx.cpp
     src/modulation_vfx_processor.cpp
     src/offline_loudness_analyzer.cpp
+    src/offline_assembly_wav_renderer.cpp
     src/offline_flac_renderer.cpp
     src/offline_render.cpp
     src/offline_wav_renderer.cpp
@@ -351,6 +352,17 @@ add_test(NAME echo-spectral-repair-processor-test COMMAND echo-spectral-repair-p
     add_executable(
         echo-offline-loudness-analyzer-test
         tests/offline_loudness_analyzer_test.cpp
+    )
+
+    add_executable(
+        echo-offline-assembly-wav-renderer-test
+        tests/offline_assembly_wav_renderer_test.cpp
+    )
+    target_link_libraries(echo-offline-assembly-wav-renderer-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-offline-assembly-wav-renderer-test)
+    add_test(
+        NAME echo-offline-assembly-wav-renderer-test
+        COMMAND echo-offline-assembly-wav-renderer-test
     )
 
     add_executable(

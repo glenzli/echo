@@ -35,8 +35,10 @@ use crate::{
         RENDERED_SPECTRAL_WORKING_COPY_MIGRATION_SQL,
         RENDERED_SPECTRAL_WORKING_COPY_SCHEMA_VERSION, RESTORATION_CHAIN_MIGRATION_SQL,
         RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
-        SEMANTIC_SEARCH_MIGRATION_SQL, SOURCE_EDIT_MIGRATION_SQL, SOURCE_EDIT_SCHEMA_VERSION,
-        SPACE_CHARACTERS_SCHEMA_VERSION, TRUE_STEREO_IR_MIGRATION_SQL, USER_ALBUMS_MIGRATION_SQL,
+        SEMANTIC_SEARCH_MIGRATION_SQL, SOUND_ASSEMBLY_MIGRATION_SQL,
+        SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION, SOURCE_EDIT_MIGRATION_SQL,
+        SOURCE_EDIT_SCHEMA_VERSION, SPACE_CHARACTERS_SCHEMA_VERSION, TRUE_STEREO_IR_MIGRATION_SQL,
+        USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -97,6 +99,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         None => {
             connection.execute_batch(SCHEMA_SQL)?;
             connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
+            connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
             connection.execute(
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_version', ?1)",
                 [SCHEMA_VERSION.to_string()],
@@ -105,6 +108,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_identity', ?1)",
                 [SCHEMA_IDENTITY.to_string()],
             )?;
+        }
+        Some(version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION) =>
+        {
+            migrate_sound_assembly_schema(connection)?;
         }
         Some(version)
             if version
@@ -124,6 +134,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         {
             connection.execute_batch(SCHEMA_SQL)?;
             connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
+            connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version)
@@ -184,6 +195,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         {
             connection.execute_batch(SCHEMA_SQL)?;
             connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
+            connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version)
@@ -343,6 +355,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
 fn migrate_audio_semantic_schema(connection: &Connection) -> Result<(), CatalogError> {
     let transaction = connection.unchecked_transaction()?;
     transaction.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
+    finish_migration(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn migrate_sound_assembly_schema(connection: &Connection) -> Result<(), CatalogError> {
+    let transaction = connection.unchecked_transaction()?;
+    apply_sound_assembly_migration(&transaction)?;
     finish_migration(&transaction)?;
     transaction.commit()?;
     Ok(())
@@ -635,6 +655,7 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
     apply_rendered_spectral_working_copy_migration(transaction)?;
     apply_rendered_spectral_working_copy_edit_migration(transaction)?;
     apply_rendered_spectral_working_copy_export_migration(transaction)?;
+    apply_sound_assembly_migration(transaction)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],
@@ -644,6 +665,29 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         [SCHEMA_IDENTITY],
     )?;
+    Ok(())
+}
+
+fn apply_sound_assembly_migration(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(), CatalogError> {
+    let table_count: i64 = transaction.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN \
+         ('sound_assemblies', 'sound_assembly_revisions', \
+          'sound_assembly_clip_sources', 'sound_assembly_exports')",
+        [],
+        |row| row.get(0),
+    )?;
+    match table_count {
+        0 => transaction.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?,
+        4 => {}
+        _ => {
+            return Err(CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                "catalog has a partial sound-assembly schema",
+            ));
+        }
+    }
     Ok(())
 }
 

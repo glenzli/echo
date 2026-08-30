@@ -155,10 +155,72 @@ pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EDIT_SCHEMA_VERSION: CatalogSche
     CatalogSchemaRevision::new(20_260_815, 3);
 pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EXPORT_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_815, 4);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_815, 5);
+pub(crate) const SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_815, 5);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_831, 1);
 
-pub(crate) const SCHEMA_IDENTITY: &str =
-    "echo-catalog-20260815.5-rendered-spectral-working-copy-export";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260831.1-sound-assembly";
+
+pub(crate) const SOUND_ASSEMBLY_MIGRATION_SQL: &str = r"
+CREATE TABLE IF NOT EXISTS sound_assemblies (
+    id                 TEXT PRIMARY KEY,
+    created_at_millis  INTEGER NOT NULL CHECK (created_at_millis >= 0),
+    updated_at_millis  INTEGER NOT NULL CHECK (updated_at_millis >= created_at_millis),
+    archived_at_millis INTEGER CHECK (archived_at_millis >= updated_at_millis)
+);
+
+CREATE TABLE IF NOT EXISTS sound_assembly_revisions (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    assembly_id           TEXT NOT NULL REFERENCES sound_assemblies(id),
+    revision_number       INTEGER NOT NULL CHECK (revision_number > 0),
+    name                  TEXT NOT NULL CHECK (length(trim(name)) > 0),
+    document_json         TEXT NOT NULL CHECK (json_valid(document_json)),
+    duration_millis       INTEGER NOT NULL CHECK (duration_millis > 0),
+    track_count           INTEGER NOT NULL CHECK (track_count BETWEEN 1 AND 8),
+    clip_count            INTEGER NOT NULL CHECK (clip_count BETWEEN 1 AND 256),
+    created_at_millis     INTEGER NOT NULL CHECK (created_at_millis >= 0),
+    UNIQUE (assembly_id, revision_number)
+);
+
+CREATE INDEX IF NOT EXISTS sound_assembly_revisions_latest
+    ON sound_assembly_revisions (assembly_id, revision_number DESC);
+
+CREATE TABLE IF NOT EXISTS sound_assembly_clip_sources (
+    assembly_revision_id  INTEGER NOT NULL REFERENCES sound_assembly_revisions(id),
+    track_id              TEXT NOT NULL,
+    clip_id               TEXT NOT NULL,
+    asset_id              TEXT NOT NULL REFERENCES assets(id),
+    adjustment_revision_id INTEGER REFERENCES asset_adjustment_revisions(id),
+    source_start_millis   INTEGER NOT NULL CHECK (source_start_millis >= 0),
+    source_end_millis     INTEGER NOT NULL CHECK (source_end_millis > source_start_millis),
+    timeline_start_millis INTEGER NOT NULL CHECK (timeline_start_millis >= 0),
+    PRIMARY KEY (assembly_revision_id, clip_id)
+);
+
+CREATE INDEX IF NOT EXISTS sound_assembly_clip_sources_asset
+    ON sound_assembly_clip_sources (asset_id, adjustment_revision_id);
+
+CREATE TABLE IF NOT EXISTS sound_assembly_exports (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    assembly_id           TEXT NOT NULL REFERENCES sound_assemblies(id),
+    assembly_revision_id  INTEGER NOT NULL REFERENCES sound_assembly_revisions(id),
+    output_path           TEXT NOT NULL,
+    format                TEXT NOT NULL CHECK (format = 'wav_pcm24'),
+    sample_rate           INTEGER NOT NULL CHECK (sample_rate > 0),
+    channel_count         INTEGER NOT NULL CHECK (channel_count IN (1, 2)),
+    bit_depth             INTEGER NOT NULL CHECK (bit_depth = 24),
+    frame_count           INTEGER NOT NULL CHECK (frame_count > 0),
+    content_hash          TEXT NOT NULL,
+    size_bytes            INTEGER NOT NULL CHECK (size_bytes > 0),
+    integrated_lufs       REAL NOT NULL,
+    true_peak_dbtp        REAL NOT NULL,
+    provenance_json       TEXT NOT NULL CHECK (json_valid(provenance_json)),
+    created_at_millis     INTEGER NOT NULL CHECK (created_at_millis >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS sound_assembly_exports_created
+    ON sound_assembly_exports (assembly_id, created_at_millis DESC, id DESC);
+";
 
 pub(crate) const ORIGINAL_FIRST_SPECTRAL_MIGRATION_SQL: &str = r#"
 ALTER TABLE asset_adjustment_revisions

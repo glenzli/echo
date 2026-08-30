@@ -22,6 +22,7 @@ Rectangle {
     signal assetSelectionRequested(var asset, int modifiers)
     signal assetOpened(var asset)
     signal processingRecipeRequested
+    signal assemblyRequested(var assetIds, string layout)
     signal selectionClearRequested
     signal affinityRequested(var asset, bool liked, int rating)
     signal albumMembershipRequested(var asset, var album, bool included)
@@ -129,6 +130,7 @@ Rectangle {
             wall.albumMembershipRequested(wall.selectedAsset, album, included);
         }
         onCreateAlbumRequested: wall.createAlbumRequested()
+        onAssembleRequested: wall.assemblyRequested([wall.selectedAsset.id], "sequence")
     }
 
     SoundMultiSelectionToolbar {
@@ -142,6 +144,8 @@ Rectangle {
         visible: selectedCount > 1
         z: 20
         onApplyRecipeRequested: wall.processingRecipeRequested()
+        onSequenceAssemblyRequested: wall.assemblyRequested(wall.selectedAssetIds.slice(), "sequence")
+        onLayeredAssemblyRequested: wall.assemblyRequested(wall.selectedAssetIds.slice(), "layered")
         onClearRequested: wall.selectionClearRequested()
     }
 }

@@ -10,3 +10,10 @@ opens SQLite; every Library read flows through this crate.
 
 User-authored album lists and mutations cross the ABI as one explicit contract;
 the Catalog keeps them separate from rebuildable smart-album candidates.
+
+Sound Assembly uses the same boundary without leaking QML into SQLite. The
+session creates Library-driven sequence or layered documents, validates and
+appends immutable revisions, resolves every clip's exact Original and
+adjustment revision for native preparation, rejects destinations that would
+replace an Original, and records a verified mixdown plus source provenance
+only after the output exists.

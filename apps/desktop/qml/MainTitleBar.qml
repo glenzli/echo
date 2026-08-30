@@ -13,6 +13,7 @@ ToolBar {
 
     required property var hostWindow
     required property var editor
+    required property var assembly
     required property int workspaceIndex
     required property bool editorAvailable
     required property bool jobsActive
@@ -20,6 +21,7 @@ ToolBar {
 
     signal soundWallRequested()
     signal soundEditorRequested()
+    signal soundAssemblyRequested()
     signal settingsRequested()
 
     objectName: "titleToolBar"
@@ -127,6 +129,31 @@ ToolBar {
                     anchors.centerIn: parent
                     buttonSize: 30
                     iconSize: 18
+                    source: "qrc:/EchoDesktop/icons/filmstrip.svg"
+                    toolTipText: qsTr("Sound Assembly")
+                    selected: titleBar.workspaceIndex === 3
+                    onClicked: titleBar.soundAssemblyRequested()
+                }
+
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    width: 24
+                    height: 2
+                    radius: 1
+                    visible: titleBar.workspaceIndex === 3
+                    color: Theme.accent
+                }
+            }
+
+            Item {
+                width: 46
+                height: parent.height
+
+                EchoIconButton {
+                    anchors.centerIn: parent
+                    buttonSize: 30
+                    iconSize: 18
                     source: "qrc:/EchoDesktop/icons/edit.svg"
                     toolTipText: qsTr("Sound Adjustments")
                     enabled: titleBar.editorAvailable
@@ -168,8 +195,10 @@ ToolBar {
             }
 
             Row {
-                visible: titleBar.workspaceIndex === 1
-                    && titleBar.editor !== null && titleBar.editor !== undefined
+                readonly property var activeEditor: titleBar.workspaceIndex === 3
+                    ? titleBar.assembly : titleBar.editor
+                visible: (titleBar.workspaceIndex === 1 || titleBar.workspaceIndex === 3)
+                    && activeEditor !== null && activeEditor !== undefined
                 spacing: 6
                 Layout.rightMargin: 3
 
@@ -178,14 +207,14 @@ ToolBar {
                     width: 7
                     height: 7
                     radius: width / 2
-                    color: titleBar.editor.dirty
+                    color: parent.activeEditor.dirty
                         ? Theme.warningText : Theme.accentSelectionText
                 }
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: titleBar.editor.dirty ? qsTr("Draft") : qsTr("Saved")
-                    color: titleBar.editor.dirty
+                    text: parent.activeEditor.dirty ? qsTr("Draft") : qsTr("Saved")
+                    color: parent.activeEditor.dirty
                         ? Theme.warningText : Theme.accentSelectionText
                     font.pixelSize: 9
                     font.weight: Font.DemiBold
@@ -194,35 +223,41 @@ ToolBar {
             }
 
             EchoIconButton {
-                visible: titleBar.workspaceIndex === 1
+                readonly property var activeEditor: titleBar.workspaceIndex === 3
+                    ? titleBar.assembly : titleBar.editor
+                visible: titleBar.workspaceIndex === 1 || titleBar.workspaceIndex === 3
                 source: "qrc:/EchoDesktop/icons/undo.svg"
                 toolTipText: qsTr("Undo")
-                enabled: titleBar.editor !== null && titleBar.editor !== undefined
-                    && titleBar.editor.canUndo
+                enabled: activeEditor !== null && activeEditor !== undefined
+                    && activeEditor.canUndo
                 buttonSize: 28
                 iconSize: 16
-                onClicked: titleBar.editor.undo()
+                onClicked: activeEditor.undo()
             }
 
             EchoIconButton {
-                visible: titleBar.workspaceIndex === 1
+                readonly property var activeEditor: titleBar.workspaceIndex === 3
+                    ? titleBar.assembly : titleBar.editor
+                visible: titleBar.workspaceIndex === 1 || titleBar.workspaceIndex === 3
                 source: "qrc:/EchoDesktop/icons/redo.svg"
                 toolTipText: qsTr("Redo")
-                enabled: titleBar.editor !== null && titleBar.editor !== undefined
-                    && titleBar.editor.canRedo
+                enabled: activeEditor !== null && activeEditor !== undefined
+                    && activeEditor.canRedo
                 buttonSize: 28
                 iconSize: 16
-                onClicked: titleBar.editor.redo()
+                onClicked: activeEditor.redo()
             }
 
             EchoButton {
-                visible: titleBar.workspaceIndex === 1
+                readonly property var activeEditor: titleBar.workspaceIndex === 3
+                    ? titleBar.assembly : titleBar.editor
+                visible: titleBar.workspaceIndex === 1 || titleBar.workspaceIndex === 3
                 text: qsTr("Save version")
-                enabled: titleBar.editor !== null && titleBar.editor !== undefined
-                    && titleBar.editor.dirty
+                enabled: activeEditor !== null && activeEditor !== undefined
+                    && activeEditor.dirty
                 implicitWidth: 82
                 implicitHeight: 27
-                onClicked: titleBar.editor.save()
+                onClicked: activeEditor.save()
             }
 
             EchoIconButton {

@@ -3,6 +3,7 @@
 
 mod processing_recipe;
 mod rendered_spectral_working_copy;
+mod sound_assembly;
 
 use std::{
     collections::HashMap,
@@ -849,6 +850,84 @@ fn adjustment_wire_fields(
                 .collect(),
         },
     )
+}
+
+#[allow(clippy::too_many_lines)] // Exhaustive CXX value projection is intentional.
+fn asset_adjustment_wire(fields: AdjustmentWireFields) -> crate::ffi::AssetAdjustmentWire {
+    crate::ffi::AssetAdjustmentWire {
+        trim_start_millis: fields.trim_start_millis,
+        trim_end_millis: fields.trim_end_millis,
+        fade_in_millis: fields.fade_in_millis,
+        fade_out_millis: fields.fade_out_millis,
+        fade_in_curve: fields.fade_in_curve,
+        fade_out_curve: fields.fade_out_curve,
+        gain_centibels: fields.gain_centibels,
+        low_cut_hertz: fields.low_cut_hertz,
+        restoration_enabled: fields.restoration_enabled,
+        de_plosive_enabled: fields.de_plosive_enabled,
+        de_plosive_frequency_hertz: fields.de_plosive_frequency_hertz,
+        de_plosive_sensitivity_percent: fields.de_plosive_sensitivity_percent,
+        de_plosive_reduction_centibels: fields.de_plosive_reduction_centibels,
+        de_plosive_release_millis: fields.de_plosive_release_millis,
+        noise_reduction_enabled: fields.noise_reduction_enabled,
+        noise_reduction_centibels: fields.noise_reduction_centibels,
+        noise_reduction_sensitivity_percent: fields.noise_reduction_sensitivity_percent,
+        noise_reduction_smoothing_millis: fields.noise_reduction_smoothing_millis,
+        de_esser_enabled: fields.de_esser_enabled,
+        de_esser_frequency_hertz: fields.de_esser_frequency_hertz,
+        de_esser_threshold_centibels: fields.de_esser_threshold_centibels,
+        de_esser_reduction_centibels: fields.de_esser_reduction_centibels,
+        de_hum_enabled: fields.de_hum_enabled,
+        de_hum_fundamental_hertz: fields.de_hum_fundamental_hertz,
+        de_hum_harmonic_count: fields.de_hum_harmonic_count,
+        de_hum_quality_tenths: fields.de_hum_quality_tenths,
+        de_hum_depth_centibels: fields.de_hum_depth_centibels,
+        de_click_enabled: fields.de_click_enabled,
+        de_click_sensitivity_percent: fields.de_click_sensitivity_percent,
+        de_click_maximum_click_microseconds: fields.de_click_maximum_click_microseconds,
+        de_click_repair_percent: fields.de_click_repair_percent,
+        channel_repair_enabled: fields.channel_repair_enabled,
+        channel_repair_invert_left: fields.channel_repair_invert_left,
+        channel_repair_invert_right: fields.channel_repair_invert_right,
+        channel_repair_swap_channels: fields.channel_repair_swap_channels,
+        channel_repair_mono_fold_down: fields.channel_repair_mono_fold_down,
+        channel_repair_balance_percent: fields.channel_repair_balance_percent,
+        equalizer_enabled: fields.equalizer_enabled,
+        equalizer_bands: fields.equalizer_bands,
+        compressor_enabled: fields.compressor_enabled,
+        compressor_threshold_centibels: fields.compressor_threshold_centibels,
+        compressor_ratio_tenths: fields.compressor_ratio_tenths,
+        compressor_attack_millis: fields.compressor_attack_millis,
+        compressor_release_millis: fields.compressor_release_millis,
+        compressor_makeup_centibels: fields.compressor_makeup_centibels,
+        reverb_character: fields.reverb_character,
+        reverb_enabled: fields.reverb_enabled,
+        reverb_mix_percent: fields.reverb_mix_percent,
+        reverb_pre_delay_millis: fields.reverb_pre_delay_millis,
+        reverb_decay_millis: fields.reverb_decay_millis,
+        reverb_size_percent: fields.reverb_size_percent,
+        reverb_damping_percent: fields.reverb_damping_percent,
+        reverb_low_cut_hertz: fields.reverb_low_cut_hertz,
+        reverb_high_cut_hertz: fields.reverb_high_cut_hertz,
+        reverb_ducking_enabled: fields.reverb_ducking_enabled,
+        reverb_ducking_amount_percent: fields.reverb_ducking_amount_percent,
+        reverb_ducking_attack_millis: fields.reverb_ducking_attack_millis,
+        reverb_ducking_release_millis: fields.reverb_ducking_release_millis,
+        space_mode: fields.space_mode,
+        impulse_response_import_id: fields.impulse_response_import_id,
+        impulse_response_source_hash: fields.impulse_response_source_hash,
+        impulse_response_prepared_hash: fields.impulse_response_prepared_hash,
+        convolution_mix_percent: fields.convolution_mix_percent,
+        convolution_wet_gain_centibels: fields.convolution_wet_gain_centibels,
+        creative_vfx_json: fields.creative_vfx_json,
+        spectral_repair_json: fields.spectral_repair_json,
+        limiter_enabled: fields.limiter_enabled,
+        limiter_ceiling_centibels: fields.limiter_ceiling_centibels,
+        limiter_release_millis: fields.limiter_release_millis,
+        effect_chain: fields.effect_chain,
+        edit_segments: fields.edit_segments,
+        effect_masks: fields.effect_masks,
+    }
 }
 
 struct AnalysisWireFields {

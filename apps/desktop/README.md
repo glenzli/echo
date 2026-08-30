@@ -50,6 +50,18 @@ duplicate global history commands. Pointer movement never
 persists or recompiles playback; the prepared graph is rebuilt only when the
 user explicitly auditions the changed draft.
 
+Sound Assembly is a third peer workspace. `SoundAssemblyWorkspace.qml` owns
+the versioned document, bounded undo/redo history, timeline commands, clip and
+master inspectors, preview, and mixdown presentation; `SoundAssemblyTrack.qml`
+owns one track's mix controls and direct clip placement, trim, and selection.
+Library selection creates a sequence or layered document. Every clip pins an
+exact asset adjustment revision. `SoundAssemblyController` first renders each
+unique pinned revision through the existing single-sound offline renderer,
+then feeds the resulting canonical 48 kHz stereo sources to one shared native
+assembly plan for preview and PCM24 WAV mixdown. Catalog publication happens
+only after an atomic output commit and records the assembly revision, Original
+hashes, pinned adjustment revisions, and output hash.
+
 QML never opens SQLite, calls FFmpeg, or interprets cache paths. Theme tokens
 live in [`qml/Theme.qml`](qml/Theme.qml); components follow the series naming
 convention (`EchoButton`, ...) shared with Shadow.
@@ -76,6 +88,12 @@ Headless smoke: `ECHO_DEBUG_SCREENSHOT=/tmp/echo.png ../.echo-local-build/deskto
 
 Set `ECHO_DEBUG_OPEN_EDITOR=1` with `ECHO_DEBUG_SCREENSHOT` to capture the
 selected sound in the adjustment workspace after the catalog has loaded.
+Set `ECHO_DEBUG_OPEN_ASSEMBLY=1` to capture the assembly workspace, or
+`ECHO_DEBUG_CREATE_ASSEMBLY=1` to create a single-clip sequence from the
+initially selected Library sound before capture.
+Add `ECHO_DEBUG_ASSEMBLY_EXPORT=/path/mix.wav` to exercise exact-revision
+preparation, assembly mixdown, atomic publication, and Catalog provenance in
+one isolated smoke run.
 Set `ECHO_DEBUG_REPLAY_EDITOR=1` to start, stop, and restart that adjusted
 sound before capture; the transport timestamp proves the replacement session
 is consumed by the packaged audio sink.

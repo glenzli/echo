@@ -27,6 +27,13 @@ class DesktopBackend : public QObject {
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE QVariantList listAssets() const;
+    Q_INVOKABLE QVariantList listSoundAssemblies() const;
+    Q_INVOKABLE QVariantMap
+    createSoundAssembly(const QString& name, const QVariantList& assetIds, const QString& layout);
+    Q_INVOKABLE QVariantMap soundAssembly(const QString& assemblyId) const;
+    Q_INVOKABLE QVariantMap saveSoundAssembly(const QVariantMap& document);
+    Q_INVOKABLE bool archiveSoundAssembly(const QString& assemblyId);
+    Q_INVOKABLE QString newAssemblyObjectId() const;
     Q_INVOKABLE QVariantList listImpulseResponses() const;
     [[nodiscard]] QVariantMap importImpulseResponse(
         const QString& sourcePath,
@@ -259,6 +266,18 @@ class DesktopBackend : public QObject {
         float integratedLufs,
         float truePeakDbtp
     ) const;
+    [[nodiscard]] QString recordSoundAssemblyExport(
+        const QString& assemblyId,
+        qint64 assemblyRevisionId,
+        const QString& outputPath,
+        quint32 sampleRate,
+        quint32 channelCount,
+        quint16 bitDepth,
+        quint64 frameCount,
+        quint64 sizeBytes,
+        float integratedLufs,
+        float truePeakDbtp
+    ) const;
     /// Records a user delivery from a verified post-effect repair copy and
     /// persists an immutable snapshot of that copy's current provenance.
     [[nodiscard]] QString recordRenderedSpectralWorkingCopyExport(
@@ -308,6 +327,7 @@ class DesktopBackend : public QObject {
 
   signals:
     void assetsChanged();
+    void soundAssembliesChanged();
     void albumsChanged();
     void processingRecipesChanged();
     void jobsChanged();
