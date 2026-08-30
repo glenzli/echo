@@ -105,6 +105,8 @@ qt_add_executable(
     echo-desktop
     MACOSX_BUNDLE
     src/main.cpp
+    src/application_paths.cpp
+    src/application_paths.hpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
     src/impulse_response_controller.cpp
@@ -351,6 +353,20 @@ qt_add_translations(
 )
 
 if(BUILD_TESTING)
+    add_executable(
+        echo-application-paths-test
+        src/application_paths.cpp
+        tests/application_paths_test.cpp
+    )
+    target_compile_features(echo-application-paths-test PRIVATE cxx_std_20)
+    target_include_directories(
+        echo-application-paths-test
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(echo-application-paths-test PRIVATE Qt6::Core)
+    echo_audio_enable_warnings(echo-application-paths-test)
+    add_test(NAME echo-application-paths-test COMMAND echo-application-paths-test)
+
     add_executable(
         echo-creative-vfx-projection-test
         src/creative_vfx_projection.cpp

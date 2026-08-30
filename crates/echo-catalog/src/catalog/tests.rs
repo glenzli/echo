@@ -385,10 +385,7 @@ fn freeze_granular_revision_preserves_metadata_listening_ir_and_authored_bytes()
                 |row| row.get(0),
             )?;
             assert_eq!(version, SCHEMA_VERSION.to_string());
-            assert_eq!(
-                identity,
-                SCHEMA_IDENTITY
-            );
+            assert_eq!(identity, SCHEMA_IDENTITY);
             assert_eq!(
                 transaction.query_row(
                     "SELECT creative_vfx_json FROM asset_adjustment_revisions WHERE id = ?1",
@@ -788,10 +785,7 @@ fn deterministic_vfx_revision_preserves_listening_state_and_legacy_json() {
         })
         .expect("migrated deterministic VFX reads");
     assert_eq!(version, SCHEMA_VERSION.to_string());
-    assert_eq!(
-        identity,
-        SCHEMA_IDENTITY
-    );
+    assert_eq!(identity, SCHEMA_IDENTITY);
     assert_eq!(listening_columns, 2);
     assert_eq!(listening_values, (987_654_321, 640));
     assert_eq!(stored_creative, legacy_creative);
@@ -2360,10 +2354,7 @@ fn rendered_spectral_working_copy_revision_adds_frozen_copy_table() {
         })
         .expect("rendered working-copy migration reads");
     assert_eq!(version, SCHEMA_VERSION.to_string());
-    assert_eq!(
-        identity,
-        SCHEMA_IDENTITY
-    );
+    assert_eq!(identity, SCHEMA_IDENTITY);
     assert_eq!(table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }

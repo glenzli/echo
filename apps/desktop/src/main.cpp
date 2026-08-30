@@ -1,6 +1,7 @@
 //! Process startup: open the Library session, register the desktop backend,
 //! playback controller, and UI preferences, then load the Audio Space shell.
 
+#include "application_paths.hpp"
 #include "batch_export_controller.hpp"
 #include "creative_vfx_presets.hpp"
 #include "desktop_backend.hpp"
@@ -34,18 +35,6 @@
 #include "echo-desktop-bridge/src/lib.rs.h"
 #include "rust/cxx.h"
 
-namespace {
-
-std::string default_catalog_path() {
-    return "catalogs/demo.sqlite";
-}
-
-std::string default_cache_root() {
-    return "cache";
-}
-
-} // namespace
-
 int main(int argc, char* argv[]) {
     QGuiApplication application(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("Echo"));
@@ -66,8 +55,11 @@ int main(int argc, char* argv[]) {
         "InferencePreferences is created by the host application"
     );
 
-    const std::string catalog = argc > 1 ? std::string(argv[1]) : default_catalog_path();
-    const std::string cache_root = argc > 2 ? std::string(argv[2]) : default_cache_root();
+    const ApplicationPaths default_paths = defaultApplicationPaths();
+    const std::string catalog =
+        argc > 1 ? std::string(argv[1]) : default_paths.catalog_path.toStdString();
+    const std::string cache_root =
+        argc > 2 ? std::string(argv[2]) : default_paths.cache_root.toStdString();
 
     try {
         rust::Box<echo::desktop::LibrarySession> session =

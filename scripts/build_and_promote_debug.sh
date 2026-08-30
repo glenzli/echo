@@ -71,6 +71,10 @@ validation_label=${1:-"canonical-debug-fast-$(git -C "$repository_root" rev-pars
 )
 cmake --preset desktop-dev -B "$build_directory"
 cmake --build "$build_directory" --target echo-desktop --parallel 6
+if command -v codesign >/dev/null 2>&1; then
+    codesign --force --sign - "$candidate_app"
+    codesign --verify --deep --strict "$candidate_app"
+fi
 
 smoke_root=$(mktemp -d "${TMPDIR:-/tmp}/echo-canonical-debug.XXXXXX")
 cleanup() {
@@ -79,11 +83,20 @@ cleanup() {
     esac
 }
 trap cleanup EXIT HUP INT TERM
-mkdir -p "$smoke_root/cache"
-QT_QPA_PLATFORM=offscreen \
-ECHO_DEBUG_SCREENSHOT="$smoke_root/startup.png" \
-    "$candidate_executable" "$smoke_root/catalog.sqlite" "$smoke_root/cache"
+mkdir -p "$smoke_root/home"
+(
+    cd /
+    HOME="$smoke_root/home" \
+    CFFIXED_USER_HOME="$smoke_root/home" \
+    QT_QPA_PLATFORM=offscreen \
+    ECHO_DEBUG_SCREENSHOT="$smoke_root/startup.png" \
+        "$candidate_executable"
+)
 [ -s "$smoke_root/startup.png" ] || fail "packaged offscreen startup produced no screenshot"
+catalog_count=$(
+    find "$smoke_root/home" -type f -name catalog.sqlite -print | wc -l | tr -d ' '
+)
+[ "$catalog_count" -eq 1 ] || fail "no-argument startup did not create one isolated catalog"
 
 "$repository_root/scripts/promote_debug_build.sh" "$candidate_app" "$validation_label"
 "$repository_root/scripts/run_debug.sh" --check

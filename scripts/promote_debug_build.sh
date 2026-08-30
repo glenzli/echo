@@ -38,6 +38,9 @@ fi
 if command -v plutil >/dev/null 2>&1; then
     plutil -lint "$candidate_app/Contents/Info.plist" >/dev/null
 fi
+if command -v codesign >/dev/null 2>&1; then
+    codesign --verify --deep --strict "$candidate_app"
+fi
 
 incoming_release=
 next_link=
@@ -92,6 +95,9 @@ fi
 
 mkdir "$incoming_release"
 ditto "$candidate_app" "$incoming_release/Echo.app"
+if command -v codesign >/dev/null 2>&1; then
+    codesign --verify --deep --strict "$incoming_release/Echo.app"
+fi
 
 echo_digest=$(shasum -a 256 "$echo_executable" | awk '{print $1}')
 copied_executable="$incoming_release/Echo.app/Contents/MacOS/Echo"
