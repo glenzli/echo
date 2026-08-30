@@ -980,7 +980,7 @@ Rectangle {
 
         EchoIcon {
             Layout.alignment: Qt.AlignHCenter
-            source: "qrc:/EchoDesktop/icons/filmstrip.svg"
+            source: "qrc:/EchoDesktop/icons/assembly.svg"
             size: 34
             color: Theme.textDisabled
         }

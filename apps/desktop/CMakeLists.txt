@@ -267,6 +267,7 @@ qt_add_qml_module(
         icons/folder.svg
         icons/review-grid.svg
         icons/filmstrip.svg
+        icons/assembly.svg
         icons/filter.svg
         icons/filter-off.svg
         icons/edit.svg

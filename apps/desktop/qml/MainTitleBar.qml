@@ -129,31 +129,6 @@ ToolBar {
                     anchors.centerIn: parent
                     buttonSize: 30
                     iconSize: 18
-                    source: "qrc:/EchoDesktop/icons/filmstrip.svg"
-                    toolTipText: qsTr("Sound Assembly")
-                    selected: titleBar.workspaceIndex === 3
-                    onClicked: titleBar.soundAssemblyRequested()
-                }
-
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    width: 24
-                    height: 2
-                    radius: 1
-                    visible: titleBar.workspaceIndex === 3
-                    color: Theme.accent
-                }
-            }
-
-            Item {
-                width: 46
-                height: parent.height
-
-                EchoIconButton {
-                    anchors.centerIn: parent
-                    buttonSize: 30
-                    iconSize: 18
                     source: "qrc:/EchoDesktop/icons/edit.svg"
                     toolTipText: qsTr("Sound Adjustments")
                     enabled: titleBar.editorAvailable
@@ -168,6 +143,31 @@ ToolBar {
                     height: 2
                     radius: 1
                     visible: titleBar.workspaceIndex === 1
+                    color: Theme.accent
+                }
+            }
+
+            Item {
+                width: 46
+                height: parent.height
+
+                EchoIconButton {
+                    anchors.centerIn: parent
+                    buttonSize: 30
+                    iconSize: 18
+                    source: "qrc:/EchoDesktop/icons/assembly.svg"
+                    toolTipText: qsTr("Sound Assembly")
+                    selected: titleBar.workspaceIndex === 3
+                    onClicked: titleBar.soundAssemblyRequested()
+                }
+
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    width: 24
+                    height: 2
+                    radius: 1
+                    visible: titleBar.workspaceIndex === 3
                     color: Theme.accent
                 }
             }
