@@ -178,7 +178,7 @@ playback, whole-preview loudness analysis and single-file export. The catalog's 
 projection restores the complete saved graph, including bypassed repair regions.
 Source-band listening creates temporary diagnostic filters; it never writes an adjustment.
 Spectral edits invalidate old audition identity. Source-preserving
-attenuation remains distinct from future context healing, noise-print reduction and
+attenuation remains distinct from future context healing and
 note-level pitch correction. Interaction references: [Audacity spectral selection](https://manual.audacityteam.org/man/spectral_selection_toolbar.html)
 and [Audition spectral ranges](https://helpx.adobe.com/ie/audition/desktop/editing-audio-files/selecting-audio.html).
 
@@ -191,3 +191,25 @@ with explicitly injected interference. `scripts/verify_spectral_demo.py` checks 
 hashes, exported frequency attenuation, untouched audio outside the repair and catalog
 integrity. Real mouse gestures and numerical controls are covered separately by
 `tests/qml/tst_SpectralRepair.qml`.
+
+`NoiseReductionPanel.qml` owns explicit noise capture, enable/bypass and parameter
+controls within the spectral inspector. `NoiseProfileController` owns the cancellable,
+bounded Original-only analysis job; `NoiseProfileProjection` and `NoiseProfileEditing.js`
+preserve its complete versioned evidence across native playback and draft history.
+`profiled_noise_reduction` learns a canonical power spectrum and computes shared stereo
+gains in the existing spectral stream. `NoiseProfileSettings` stores the 1025 quantized
+bins, source interval and processing parameters; absent profiles leave legacy JSON intact.
+The temporary residue monitor never enters the saved graph or export path.
+Streaming and in-place spectral processing share the same padded overlap kernel;
+short sources, seek boundaries and first/last samples retain their source positions
+without dividing edited Hann edges by near-zero weights.
+
+`scripts/prepare_noise_profile_demo.py` prepares analytical noise/tone fixtures and a
+noisy copy of a supplied synthetic narration. Set `ECHO_DEBUG_NOISE_ROOT` and
+`ECHO_DEBUG_NOISE_REPORT` to run `NoiseWorkflowSmoke.qml` in the packaged app. It checks
+stale learning results, capture without applying, native audition, saved readback,
+loudness/export parity and diagnostic isolation. `scripts/verify_noise_profile_demo.py`
+measures the actual WAV outputs against immutable source hashes and the clean narration.
+The interaction follows the explicit sample/preview/residue workflow documented by
+[Audacity](https://manual.audacityteam.org/man/noise_reduction.html) and
+[Audition](https://helpx.adobe.com/audition/desktop/effects-reference/noise-reduction-restoration-effects.html).

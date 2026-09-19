@@ -37,6 +37,12 @@ class PlaybackController : public QObject {
     ~PlaybackController() override;
 
     Q_INVOKABLE void play(const QString& path);
+    Q_INVOKABLE void playNoiseResidue(
+        const QString& path,
+        qint64 startMillis,
+        qint64 endMillis,
+        const QVariantMap& profile
+    );
     Q_INVOKABLE void playSpectralBand(
         const QString& path,
         qint64 startMillis,

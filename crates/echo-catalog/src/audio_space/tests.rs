@@ -342,6 +342,16 @@ fn spectral_repairs_survive_library_projection_and_bypass() {
             for enabled in [true, false] {
                 let effects = echo_domain::AdjustmentEffects::default().with_spectral_repair(
                     echo_domain::SpectralRepairSettings {
+                        noise_profile: Some(echo_domain::NoiseProfileSettings {
+                            algorithm_version: 1,
+                            enabled,
+                            capture_start_millis: 0,
+                            capture_end_millis: 1000,
+                            power_centibels: vec![-6000; 1025],
+                            reduction_centibels: 1800,
+                            sensitivity_centibels: 600,
+                            smoothing_bins: 3,
+                        }),
                         enabled,
                         regions: vec![echo_domain::SpectralAttenuationRegion {
                             start_millis: 1200,

@@ -32,7 +32,12 @@ Rectangle {
     property var renderedSpectralWorkingCopies: []
     property bool renderedSpectralEraseMode: false
     property bool spectralFocus: false
-    property bool listeningToSourceBand: false
+    property string diagnosticMode: ""
+    readonly property bool listeningToSourceBand: diagnosticMode==="source-band"
+    property int noiseCaptureSequence: 0
+    property string noiseCaptureIdentity: ""
+    property var noiseCaptureSnapshot: null
+    property bool noiseCaptureObsolete: false
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
     readonly property bool dirty: adjustmentDraft.dirty
@@ -108,7 +113,7 @@ Rectangle {
         if(bandOnly) {
             editorTimeline.loopSelection=false;
             player.playSpectralBand(asset.path,selection.startMillis,selection.endMillis,selection.lowHertz,selection.highHertz);
-            listeningToSourceBand=true;
+            diagnosticMode="source-band";
             loadedPath=asset.path; loadedBaseAdjustmentKey="source-band"; loadedAdjustmentKey=adjustmentKey();
         } else {
             auditionOriginal=false;
@@ -123,10 +128,41 @@ Rectangle {
 
     onSpectralFocusChanged: refreshSpectrogramPreview()
     onVisibleChanged: {
-        if(!visible) {spectrogramPreview.clear(); spectralPreviewTimer.stop(); if(listeningToSourceBand) player.stop();}
+        if(!visible) {spectrogramPreview.clear(); spectralPreviewTimer.stop(); noiseProfile.cancel(); noiseCaptureIdentity=""; if(diagnosticMode.length) player.stop();}
         else refreshSpectrogramPreview();
     }
     Timer { id: spectralPreviewTimer; interval: 160; onTriggered: workspace.requestSpectrogramViewport() }
+
+    function captureNoise(startMillis: int, endMillis: int): void {
+        if(!hasAsset || asset.pathStatus==="missing" || renderedSpectralEraseMode) return;
+        noiseCaptureObsolete=false;
+        noiseCaptureIdentity=sourceIdentity+":"+(++noiseCaptureSequence);
+        noiseCaptureSnapshot=adjustmentDraft.snapshot();
+        noiseProfile.capture(asset.path,noiseCaptureIdentity,startMillis,endMillis);
+    }
+
+    function auditionNoise(residue: bool): void {
+        const profile=adjustmentDraft.spectralRepair.noiseProfile;
+        if(!hasAsset || !profile) return;
+        if(!residue) { auditionOriginal=false; playFrom(defaultPlaybackStart()); return; }
+        editorTimeline.loopSelection=false;
+        player.playNoiseResidue(asset.path,adjustmentDraft.trimStartMillis,adjustmentDraft.trimEndMillis,profile);
+        player.seek(defaultPlaybackStart());
+        diagnosticMode="noise-residue";
+        loadedPath=asset.path; loadedBaseAdjustmentKey="noise-residue"; loadedAdjustmentKey=adjustmentKey();
+    }
+
+    Connections {
+        target: noiseProfile
+        function onProfileReady(identity,profile): void {
+            if(identity!==workspace.noiseCaptureIdentity || !workspace.visible) return;
+            workspace.noiseCaptureIdentity="";
+            if(!adjustmentDraft.sameSnapshot(workspace.noiseCaptureSnapshot,adjustmentDraft.snapshot())) {
+                workspace.noiseCaptureObsolete=true; return;
+            }
+            adjustmentDraft.setNoiseProfile(profile);
+        }
+    }
 
     function playbackBaseAdjustmentKey(): string {
         const prefix = auditionOriginal ? "original" : "adjusted";
@@ -193,7 +229,7 @@ Rectangle {
     function playFrom(millis: int): void {
         if (!asset || asset.pathStatus === "missing")
             return;
-        listeningToSourceBand=false;
+        diagnosticMode="";
         player.playAdjusted(asset.path, adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis, auditionOriginal ? 0 : adjustmentDraft.fadeInMillis, auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis, auditionOriginal ? 0 : adjustmentDraft.fadeInCurve, auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve, auditionOriginal ? 0 : adjustmentDraft.gainCentibels, auditionOriginal ? 0 : adjustmentDraft.lowCutHertz, auditionOriginal ? {
             enabled: false,
             dePlosiveEnabled: false,
@@ -273,7 +309,7 @@ Rectangle {
     function togglePlayback(): void {
         if (!hasAsset || asset.pathStatus === "missing")
             return;
-        if (listeningToSourceBand || !ownsActivePlayback()) {
+        if (diagnosticMode.length>0 || !ownsActivePlayback()) {
             playFrom(defaultPlaybackStart());
         } else {
             player.togglePause();
@@ -405,12 +441,13 @@ Rectangle {
         const key=hasAsset ? JSON.stringify([asset.id,asset.path,asset.pathStatus,asset.durationMillis,asset.adjustmentRevision,projectClipId]) : "";
         if(key===sourceIdentity) return;
         sourceIdentity=key;
+        noiseProfile.cancel(); noiseCaptureIdentity=""; noiseCaptureObsolete=false;
         player.stop();
         loudnessAnalyzer.cancel();
         renderExporter.cancel();
         renderedSpectralWorkingCopy.cancel();
         renderedSpectralEraseMode = false;
-        listeningToSourceBand = false;
+        diagnosticMode = "";
         spectralView.resetSelection();
         auditionOriginal = false;
         loadedPath = "";
@@ -492,7 +529,7 @@ Rectangle {
             workspace.scheduleEffectsPreview();
         }
         function onSpectralRepairChanged(): void {
-            if(workspace.hasAsset && workspace.loadedPath===workspace.asset.path && !workspace.auditionOriginal) {
+            if(workspace.hasAsset && workspace.loadedPath===workspace.asset.path && (!workspace.auditionOriginal || workspace.diagnosticMode.length>0)) {
                 player.stop(); workspace.loadedAdjustmentKey="";
             }
         }
@@ -684,7 +721,7 @@ Rectangle {
     Timer {
         interval: 40
         repeat: true
-        running: !workspace.listeningToSourceBand && workspace.hasAsset && player.playing && editorTimeline.loopSelection && editorTimeline.hasTimeSelection && workspace.loadedPath === workspace.asset.path
+        running: workspace.diagnosticMode.length===0 && workspace.hasAsset && player.playing && editorTimeline.loopSelection && editorTimeline.hasTimeSelection && workspace.loadedPath === workspace.asset.path
         onTriggered: {
             if (player.position >= editorTimeline.selectionEndMillis - 40) {
                 player.seek(editorTimeline.selectionStartMillis);
@@ -787,7 +824,7 @@ Rectangle {
             }
 
             Text {
-                text: workspace.listeningToSourceBand && player.active ? qsTr("Listening to original frequency band") : workspace.technicalDetails()
+                text: workspace.diagnosticMode.length>0 && player.active ? (workspace.listeningToSourceBand ? qsTr("Listening to original frequency band") : qsTr("Listening to removed noise")) : workspace.technicalDetails()
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
                 elide: Text.ElideRight
@@ -942,6 +979,15 @@ Rectangle {
                     return copy ? Number(copy.operationCount) : 0;
                 }
                 onLayerEnabledRequested: enabled => adjustmentDraft.setSpectralRepairEnabled(enabled)
+                noiseSettings: adjustmentDraft.spectralRepair.noiseProfile || null
+                noiseLearning: noiseProfile.running
+                noiseLearningError: workspace.noiseCaptureObsolete ? 3 : noiseProfile.error
+                noiseAvailable: workspace.hasAsset && workspace.asset.pathStatus!=="missing"
+                onNoiseCaptureRequested: (start,end) => workspace.captureNoise(start,end)
+                onNoiseCancelRequested: { noiseProfile.cancel(); workspace.noiseCaptureIdentity=""; }
+                onNoiseEdited: (key,value) => adjustmentDraft.editNoiseProfile(key,value)
+                onNoiseClearRequested: { noiseProfile.cancel(); workspace.noiseCaptureIdentity=""; adjustmentDraft.setNoiseProfile(null); }
+                onNoiseAuditionRequested: residue => workspace.auditionNoise(residue)
                 onViewportChanged: workspace.refreshSpectrogramPreview()
                 onRegionUpdated: (index,value) => adjustmentDraft.updateSpectralRepairRegion(index,value)
                 onRegionsAppended: values => adjustmentDraft.appendSpectralRepairRegions(values)

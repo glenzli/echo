@@ -62,6 +62,14 @@ ApplicationWindow {
         fixtureRoot: spectralSmokeRoot
     }
 
+    readonly property alias noiseSmokeReport: noiseSmoke.reportJson
+    readonly property alias noiseSmokeStage: noiseSmoke.stage
+    NoiseWorkflowSmoke {
+        id: noiseSmoke
+        shell: window; editor: soundEditor; library: audioSpace
+        fixtureRoot: noiseSmokeRoot
+    }
+
     property var jobSnapshot: ({
             pending: 0,
             running: 0,
@@ -96,6 +104,7 @@ ApplicationWindow {
         showSoundEditor();soundEditor.spectralFocus=true;
         Qt.callLater(()=>{
             const regions=soundEditor.adjustment.spectralRepair.regions;
+            soundEditor.spectralEditor.noiseTools=!!soundEditor.adjustment.spectralRepair.noiseProfile;
             if(regions.length) soundEditor.spectralEditor.setSelection(regions[0],0);
             soundEditor.spectralEditor.lowHertz=200;soundEditor.spectralEditor.highHertz=8000;
         });

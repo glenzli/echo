@@ -107,7 +107,9 @@ pub use space::{
     ImpulseResponseSelection, MAX_CONVOLUTION_WET_GAIN_CENTIBELS,
     MIN_CONVOLUTION_WET_GAIN_CENTIBELS, SpaceMode, SpaceModeValueError, SpaceSettings,
 };
-pub use spectral_repair::{SpectralAttenuationRegion, SpectralRepairError, SpectralRepairSettings};
+pub use spectral_repair::{
+    NoiseProfileSettings, SpectralAttenuationRegion, SpectralRepairError, SpectralRepairSettings,
+};
 
 #[cfg(test)]
 mod tests;

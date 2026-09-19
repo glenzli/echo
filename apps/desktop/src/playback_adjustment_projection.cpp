@@ -1,6 +1,7 @@
 #include "playback_adjustment_projection.hpp"
 
 #include "creative_vfx_projection.hpp"
+#include "noise_profile_projection.hpp"
 #include "parametric_equalizer_projection.hpp"
 #include "restoration_projection.hpp"
 #include "reverb_projection.hpp"
@@ -474,6 +475,16 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
     const auto channelRepair = channelRepairFromQml(channelRepairValue);
     const auto creativeVfx = CreativeVfxProjection::fromQml(creativeVfxValue);
     const auto spectralRepair = spectralRepairFromQml(spectralRepairValue);
+    std::optional<echo::audio::ProfiledNoiseReduction> noiseProfile;
+    const auto noiseValue = spectralRepairValue.value(QStringLiteral("noiseProfile"));
+    if (noiseValue.isValid() && !noiseValue.isNull()) {
+        noiseProfile = NoiseProfileProjection::fromQml(noiseValue.toMap());
+        if (!noiseProfile)
+            return std::nullopt;
+        noiseProfile->enabled =
+            noiseProfile->enabled
+            && spectralRepairValue.value(QStringLiteral("enabled"), true).toBool();
+    }
     const auto effectChain = effectChainFromQml(effectChainValue);
     auto editSegments = editSegmentsFromQmlImpl(editSegmentsValue, trimStartMillis, trimEndMillis);
     const auto space =
@@ -517,6 +528,7 @@ std::optional<echo::audio::PlaybackAdjustment> PlaybackAdjustmentProjection::fro
         .space = *space,
         .creative_vfx = *creativeVfx,
         .spectral_repair = std::move(*spectralRepair),
+        .profiled_noise_reduction = std::move(noiseProfile),
         .limiter =
             {
                 .enabled = limiterEnabled,

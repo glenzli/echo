@@ -86,68 +86,31 @@ void SpectralRepairProcessor::process_interleaved(
     if (samples == nullptr || frame_count == 0 || channel_count == 0 || regions.empty()) {
         return;
     }
+    if (sample_rate == 0)
+        throw std::invalid_argument("spectral repair sample rate is invalid");
     const auto duration_millis = static_cast<std::uint64_t>(
         std::ceil(static_cast<double>(first_source_frame + frame_count) * 1000.0 / sample_rate)
     );
     validate_regions(regions, duration_millis, sample_rate);
 
-    audiofft::AudioFFT fft;
-    fft.init(kWindowFrames);
-    std::vector<float> window(kWindowFrames);
-    std::vector<float> real(kSpectrumBins);
-    std::vector<float> imaginary(kSpectrumBins);
-    std::vector<float> output(frame_count, 0.0F);
-    std::vector<float> normalization(frame_count, 0.0F);
-    for (std::size_t frame = 0; frame < kWindowFrames; ++frame) {
-        const float phase = 2.0F * std::numbers::pi_v<float>
-                            * static_cast<float>(frame) / static_cast<float>(kWindowFrames);
-        window[frame] = 0.5F - 0.5F * std::cos(phase);
-    }
-    for (std::size_t channel = 0; channel < channel_count; ++channel) {
-        std::fill(output.begin(), output.end(), 0.0F);
-        std::fill(normalization.begin(), normalization.end(), 0.0F);
-        for (std::size_t start = 0; start < frame_count; start += kHopFrames) {
-            std::vector<float> frame(kWindowFrames, 0.0F);
-            for (std::size_t index = 0; index < kWindowFrames && start + index < frame_count;
-                 ++index) {
-                frame[index] = samples[(start + index) * channel_count + channel] * window[index];
-            }
-            fft.fft(frame.data(), real.data(), imaginary.data());
-            const float source_millis =
-                static_cast<float>(first_source_frame + start + kWindowFrames / 2) * 1000.0F
-                / static_cast<float>(sample_rate);
-            for (std::size_t bin = 0; bin < kSpectrumBins; ++bin) {
-                const float gain = bin_gain(
-                    source_millis,
-                    static_cast<float>(bin) * static_cast<float>(sample_rate)
-                        / static_cast<float>(kWindowFrames),
-                    regions
-                );
-                real[bin] *= gain;
-                imaginary[bin] *= gain;
-            }
-            fft.ifft(frame.data(), real.data(), imaginary.data());
-            for (std::size_t index = 0; index < kWindowFrames && start + index < frame_count;
-                 ++index) {
-                output[start + index] += frame[index] * window[index];
-                normalization[start + index] += window[index] * window[index];
-            }
-        }
-        for (std::size_t frame = 0; frame < frame_count; ++frame) {
-            samples[frame * channel_count + channel] =
-                normalization[frame] > 1.0E-6F ? output[frame] / normalization[frame] : 0.0F;
-        }
-    }
+    SpectralRepairStream stream(sample_rate, channel_count, regions);
+    stream.push_interleaved(samples, frame_count, first_source_frame);
+    stream.finish();
+    if (stream.drain_interleaved(samples, nullptr, frame_count) != frame_count)
+        throw std::logic_error("spectral repair did not preserve source duration");
 }
 
 SpectralRepairStream::SpectralRepairStream(
     std::uint32_t sample_rate,
     std::size_t channel_count,
-    std::vector<SpectralAttenuationRegion> regions
+    std::vector<SpectralAttenuationRegion> regions,
+    std::optional<ProfiledNoiseReduction> noise_reduction
 ) : sample_rate_(sample_rate), channel_count_(channel_count), regions_(std::move(regions)) {
     if (sample_rate_ == 0 || channel_count_ == 0) {
         throw std::invalid_argument("spectral repair stream format is invalid");
     }
+    if (noise_reduction && noise_reduction->enabled)
+        noise_reducer_ = std::make_unique<ProfiledNoiseReducer>(std::move(*noise_reduction));
     window_.resize(SpectralRepairProcessor::kWindowFrames);
     for (std::size_t frame = 0; frame < window_.size(); ++frame) {
         const float phase = 2.0F * std::numbers::pi_v<float>
@@ -160,7 +123,10 @@ SpectralRepairStream::SpectralRepairStream(
 }
 
 void SpectralRepairStream::reset() {
+    if (noise_reducer_)
+        noise_reducer_->reset();
     input_frames_ = 0;
+    priming_frames_ = 0;
     std::fill(overlap_add_.begin(), overlap_add_.end(), 0.0F);
     std::fill(normalization_.begin(), normalization_.end(), 0.0F);
     ready_.clear();
@@ -186,6 +152,12 @@ void SpectralRepairStream::push_interleaved(
     }
     if (!started_) {
         started_ = true;
+        // Complete the overlap history before emitting the first real sample.
+        // A lone Hann edge otherwise amplifies spectral edits when normalized.
+        priming_frames_ =
+            SpectralRepairProcessor::kWindowFrames - SpectralRepairProcessor::kHopFrames;
+        input_frames_ = priming_frames_;
+        std::fill(input_.begin(), input_.end(), 0.0F);
         next_input_source_frame_ = first_source_frame;
         next_output_source_frame_ = first_source_frame;
         received_end_source_frame_ = first_source_frame;
@@ -235,34 +207,47 @@ void SpectralRepairStream::process_window() {
     audiofft::AudioFFT fft;
     fft.init(SpectralRepairProcessor::kWindowFrames);
     std::vector<float> frame(SpectralRepairProcessor::kWindowFrames);
-    std::vector<float> real(kSpectrumBins);
-    std::vector<float> imaginary(kSpectrumBins);
+    std::vector<float> real(kSpectrumBins * channel_count_);
+    std::vector<float> imaginary(kSpectrumBins * channel_count_);
+    std::vector<float> powers(kSpectrumBins, 0);
+    constexpr float scale = 4.0F / static_cast<float>(SpectralRepairProcessor::kWindowFrames);
     const float source_millis =
-        static_cast<float>(next_output_source_frame_ + SpectralRepairProcessor::kWindowFrames / 2)
+        static_cast<float>(
+            static_cast<double>(next_output_source_frame_)
+            + SpectralRepairProcessor::kWindowFrames / 2 - static_cast<double>(priming_frames_)
+        )
         * 1000.0F / static_cast<float>(sample_rate_);
     for (std::size_t channel = 0; channel < channel_count_; ++channel) {
-        for (std::size_t index = 0; index < SpectralRepairProcessor::kWindowFrames; ++index) {
+        for (std::size_t index = 0; index < frame.size(); ++index)
             frame[index] = input_[index * channel_count_ + channel] * window_[index];
-        }
-        fft.fft(frame.data(), real.data(), imaginary.data());
+        auto* re = real.data() + channel * kSpectrumBins;
+        auto* im = imaginary.data() + channel * kSpectrumBins;
+        fft.fft(frame.data(), re, im);
+        for (std::size_t bin = 0; bin < kSpectrumBins; ++bin)
+            powers[bin] =
+                std::max(powers[bin], (re[bin] * re[bin] + im[bin] * im[bin]) * scale * scale);
+    }
+    const auto noise_gains = noise_reducer_ ? noise_reducer_->gains(powers) : std::vector<float>{};
+    for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+        auto* re = real.data() + channel * kSpectrumBins;
+        auto* im = imaginary.data() + channel * kSpectrumBins;
         for (std::size_t bin = 0; bin < kSpectrumBins; ++bin) {
             const float gain = bin_gain(
-                source_millis,
-                static_cast<float>(bin) * static_cast<float>(sample_rate_)
-                    / static_cast<float>(SpectralRepairProcessor::kWindowFrames),
-                regions_
-            );
-            real[bin] *= gain;
-            imaginary[bin] *= gain;
+                                   source_millis,
+                                   static_cast<float>(bin) * static_cast<float>(sample_rate_)
+                                       / static_cast<float>(SpectralRepairProcessor::kWindowFrames),
+                                   regions_
+                               )
+                               * (noise_gains.empty() ? 1.0F : noise_gains[bin]);
+            re[bin] *= gain;
+            im[bin] *= gain;
         }
-        fft.ifft(frame.data(), real.data(), imaginary.data());
-        for (std::size_t index = 0; index < SpectralRepairProcessor::kWindowFrames; ++index) {
+        fft.ifft(frame.data(), re, im);
+        for (std::size_t index = 0; index < frame.size(); ++index)
             overlap_add_[index * channel_count_ + channel] += frame[index] * window_[index];
-        }
     }
-    for (std::size_t index = 0; index < SpectralRepairProcessor::kWindowFrames; ++index) {
+    for (std::size_t index = 0; index < frame.size(); ++index)
         normalization_[index] += window_[index] * window_[index];
-    }
 }
 
 void SpectralRepairStream::emit_hop() {
@@ -270,11 +255,12 @@ void SpectralRepairStream::emit_hop() {
         ready_first_source_frame_ = next_output_source_frame_;
     }
     const std::size_t emitted_frames =
-        finished_ ? static_cast<std::size_t>(std::min<std::uint64_t>(
-                        SpectralRepairProcessor::kHopFrames,
-                        received_end_source_frame_ - next_output_source_frame_
-                    ))
-                  : SpectralRepairProcessor::kHopFrames;
+        priming_frames_ > 0 ? 0
+        : finished_         ? static_cast<std::size_t>(std::min<std::uint64_t>(
+                                  SpectralRepairProcessor::kHopFrames,
+                                  received_end_source_frame_ - next_output_source_frame_
+                              ))
+                            : SpectralRepairProcessor::kHopFrames;
     const std::size_t ready_frames = ready_.size() / channel_count_;
     ready_.resize((ready_frames + emitted_frames) * channel_count_);
     for (std::size_t frame = 0; frame < emitted_frames; ++frame) {
@@ -311,7 +297,10 @@ void SpectralRepairStream::emit_hop() {
         0.0F
     );
     input_frames_ -= SpectralRepairProcessor::kHopFrames;
-    next_output_source_frame_ += SpectralRepairProcessor::kHopFrames;
+    if (priming_frames_ > 0)
+        priming_frames_ -= SpectralRepairProcessor::kHopFrames;
+    else
+        next_output_source_frame_ += emitted_frames;
 }
 
 std::size_t SpectralRepairStream::drain_interleaved(

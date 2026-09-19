@@ -49,6 +49,7 @@ add_library(
     src/source_edit_plan.cpp
     src/spectrogram.cpp
     src/spectrogram_detail.cpp
+    src/profiled_noise_reduction.cpp
     src/spectral_repair_processor.cpp
     src/spring_space_reverb.cpp
     src/stereo_vfx_processor.cpp
@@ -88,6 +89,11 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(echo-profiled-noise-reduction-test tests/profiled_noise_reduction_test.cpp)
+    target_link_libraries(echo-profiled-noise-reduction-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-profiled-noise-reduction-test)
+    add_test(NAME echo-profiled-noise-reduction-test COMMAND echo-profiled-noise-reduction-test)
+
     add_executable(echo-auto-wah-vfx-processor-test tests/auto_wah_vfx_processor_test.cpp)
     target_link_libraries(echo-auto-wah-vfx-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-auto-wah-vfx-processor-test)

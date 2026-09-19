@@ -386,6 +386,9 @@ PreparedAdjustment::PreparedAdjustment(
         sample_rate
     );
 
+    if (authored.profiled_noise_reduction.has_value())
+        validate_noise_profile(*authored.profiled_noise_reduction, source_duration_millis);
+
     if (authored.creative_vfx.freeze.enabled) {
         const std::uint64_t capture_frame =
             milliseconds_to_frames(authored.creative_vfx.freeze.capture_source_millis, sample_rate);

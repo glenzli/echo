@@ -1,7 +1,11 @@
 #pragma once
 
+#include "echo/audio/profiled_noise_reduction.hpp"
+
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <vector>
 
 namespace echo::audio {
@@ -22,7 +26,7 @@ struct SpectralAttenuationRegion {
 /// place and is intentionally separate from display-tile generation.
 class SpectralRepairProcessor {
   public:
-    static constexpr std::size_t kWindowFrames = 2'048;
+    static constexpr std::size_t kWindowFrames = kNoiseProfileWindowFrames;
     static constexpr std::size_t kHopFrames = 512;
 
     /// Validates bounded source-time attenuation regions for one canonical
@@ -56,7 +60,8 @@ class SpectralRepairStream {
     SpectralRepairStream(
         std::uint32_t sample_rate,
         std::size_t channel_count,
-        std::vector<SpectralAttenuationRegion> regions
+        std::vector<SpectralAttenuationRegion> regions,
+        std::optional<ProfiledNoiseReduction> noise_reduction = std::nullopt
     );
 
     /// Drops analysis and overlap-add history, as required on a source seek.
@@ -88,9 +93,11 @@ class SpectralRepairStream {
     std::uint32_t sample_rate_ = 0;
     std::size_t channel_count_ = 0;
     std::vector<SpectralAttenuationRegion> regions_;
+    std::unique_ptr<ProfiledNoiseReducer> noise_reducer_;
     std::vector<float> window_;
     std::vector<float> input_;
     std::size_t input_frames_ = 0;
+    std::size_t priming_frames_ = 0;
     std::vector<float> overlap_add_;
     std::vector<float> normalization_;
     std::vector<float> ready_;

@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -281,6 +282,7 @@ struct PlaybackAdjustment {
     /// Source-anchored spectral attenuation intent, applied before edit-plan
     /// muting and insert effects by the eventual streaming repair stage.
     std::vector<SpectralAttenuationRegion> spectral_repair;
+    std::optional<ProfiledNoiseReduction> profiled_noise_reduction;
     LimiterAdjustment limiter;
     std::array<EffectNodeKind, kEffectNodeCount> effect_chain{{
         EffectNodeKind::Restoration,

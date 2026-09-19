@@ -33,6 +33,18 @@ Rectangle {
     property int selectedIndex: -1
     property var selection: null
     property bool showPostEffects: false
+    property bool noiseTools: false
+    property var noiseSettings: null
+    property bool noiseLearning: false
+    property int noiseLearningError: 0
+    property bool noiseAvailable: true
+    readonly property int noiseStartMillis: selection ? selection.startMillis : (hasTimeSelection ? Math.round(selectionStartRatio*sourceDurationMillis) : -1)
+    readonly property int noiseEndMillis: selection ? selection.endMillis : (hasTimeSelection ? Math.round(selectionEndRatio*sourceDurationMillis) : -1)
+    signal noiseCaptureRequested(int startMillis, int endMillis)
+    signal noiseCancelRequested()
+    signal noiseEdited(string key, var value)
+    signal noiseClearRequested()
+    signal noiseAuditionRequested(bool residue)
     readonly property bool hasOverview: imageUrl.length>0
     readonly property bool hasSelection: selection!==null
     signal viewportChanged()
@@ -147,6 +159,24 @@ Rectangle {
                 contentWidth: availableWidth
                 ColumnLayout {
                     width: parent.width; spacing: 8
+                    EchoSegmentedControl {
+                        Layout.fillWidth: true; model: [qsTr("Selection"),qsTr("Noise reduction")]
+                        currentIndex: spectrogram.noiseTools ? 1 : 0
+                        onActivated: index => spectrogram.noiseTools=index===1
+                    }
+                    NoiseReductionPanel {
+                        Layout.fillWidth: true; visible: spectrogram.noiseTools
+                        profile: spectrogram.noiseSettings; running: spectrogram.noiseLearning; errorCode: spectrogram.noiseLearningError
+                        captureStartMillis: spectrogram.noiseStartMillis; captureEndMillis: spectrogram.noiseEndMillis
+                        available: spectrogram.noiseAvailable && !spectrogram.renderedEraseMode
+                        onCaptureRequested: spectrogram.noiseCaptureRequested(captureStartMillis,captureEndMillis)
+                        onCancelRequested: spectrogram.noiseCancelRequested()
+                        onProfileEdited: (key,value) => spectrogram.noiseEdited(key,value)
+                        onClearRequested: spectrogram.noiseClearRequested()
+                        onGestureStarted: spectrogram.gestureStarted(); onGestureFinished: spectrogram.gestureFinished()
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true; visible: !spectrogram.noiseTools; spacing: 8
                     EchoComboBox {
                         objectName: 'spectralRegionPicker'; Layout.fillWidth: true
                         selectionIndex: spectrogram.selectedIndex+1
@@ -190,13 +220,16 @@ Rectangle {
                         SpinBox { id: harmonicCount; from: 2; to: 8; value: 4; editable: true; Layout.preferredWidth: 105 }
                     }
                     Button { Layout.fillWidth: true; text: qsTr("Delete selected repair"); enabled: spectrogram.selectedIndex>=0 && !spectrogram.renderedEraseMode; onClicked: spectrogram.regionRemoved(spectrogram.selectedIndex) }
+                    }
                 }
             }
         }
         RowLayout {
             Layout.fillWidth: true
-                    Button { text: qsTr("Listen to source band"); enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode; onClicked: spectrogram.auditionRequested(spectrogram.selection,true) }
-                    Button { text: qsTr("Audition repaired range"); enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode; onClicked: spectrogram.auditionRequested(spectrogram.selection,false) }
+                    Button { visible: !spectrogram.noiseTools; text: qsTr("Listen to source band"); enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode; onClicked: spectrogram.auditionRequested(spectrogram.selection,true) }
+                    Button { visible: !spectrogram.noiseTools; text: qsTr("Audition repaired range"); enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode; onClicked: spectrogram.auditionRequested(spectrogram.selection,false) }
+            Button { visible: spectrogram.noiseTools; text: qsTr("Listen to removed sound"); enabled: spectrogram.noiseSettings!==null && !spectrogram.renderedEraseMode; onClicked: spectrogram.noiseAuditionRequested(true) }
+            Button { visible: spectrogram.noiseTools; text: qsTr("Audition reduction"); enabled: spectrogram.noiseSettings!==null && spectrogram.noiseSettings.enabled && spectrogram.layerEnabled && !spectrogram.renderedEraseMode; onClicked: spectrogram.noiseAuditionRequested(false) }
             Button { text: spectrogram.showPostEffects ? qsTr("Hide post-effect tools") : qsTr("Post-effect repair"); onClicked: spectrogram.showPostEffects=!spectrogram.showPostEffects }
             Text { Layout.fillWidth: true; text: spectrogram.regions.length>=64 ? qsTr("Repair limit reached. Edit or remove an existing region.") : qsTr("Repairs keep the original intact. The image shows the source; audition to compare."); color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight }
         }

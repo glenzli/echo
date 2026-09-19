@@ -6,6 +6,9 @@
 
 use serde::{Deserialize, Serialize};
 
+mod noise_profile;
+pub use noise_profile::NoiseProfileSettings;
+
 pub const MAX_SPECTRAL_REPAIR_REGIONS: usize = 64;
 pub const MIN_SPECTRAL_FREQUENCY_HERTZ: u16 = 20;
 pub const MAX_SPECTRAL_FREQUENCY_HERTZ: u16 = 24_000;
@@ -38,6 +41,8 @@ pub struct SpectralRepairSettings {
     pub enabled: bool,
     #[serde(default)]
     pub regions: Vec<SpectralAttenuationRegion>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub noise_profile: Option<NoiseProfileSettings>,
 }
 
 const fn spectral_repair_enabled_by_default() -> bool {
@@ -50,6 +55,7 @@ impl SpectralRepairSettings {
         Self {
             enabled: true,
             regions: Vec::new(),
+            noise_profile: None,
         }
     }
 
@@ -63,6 +69,9 @@ impl SpectralRepairSettings {
 
     /// Validates a source-duration-bound spectral repair contract.
     pub fn validate(&self, source_duration_millis: u64) -> Result<(), SpectralRepairError> {
+        if let Some(profile) = &self.noise_profile {
+            profile.validate(source_duration_millis)?;
+        }
         if self.regions.len() > MAX_SPECTRAL_REPAIR_REGIONS {
             return Err(SpectralRepairError::TooManyRegions);
         }
@@ -98,6 +107,7 @@ pub enum SpectralRepairError {
     InvalidFrequencyRange,
     InvalidAttenuation,
     InvalidFeather,
+    InvalidNoiseProfile,
 }
 
 impl std::fmt::Display for SpectralRepairError {
@@ -112,6 +122,7 @@ impl std::fmt::Display for SpectralRepairError {
                 formatter.write_str("spectral repair attenuation is invalid")
             }
             Self::InvalidFeather => formatter.write_str("spectral repair feather is invalid"),
+            Self::InvalidNoiseProfile => formatter.write_str("learned noise profile is invalid"),
         }
     }
 }

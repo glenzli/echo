@@ -136,6 +136,10 @@ qt_add_executable(
     src/assembly_waveform_controller.hpp
     src/sound_assembly_controller.cpp
     src/sound_assembly_controller.hpp
+    src/noise_profile_controller.cpp
+    src/noise_profile_controller.hpp
+    src/noise_profile_projection.cpp
+    src/noise_profile_projection.hpp
     src/spectrogram_preview_controller.cpp
     src/spectrogram_preview_controller.hpp
     src/reverb_projection.cpp
@@ -238,6 +242,7 @@ qt_add_qml_module(
         qml/MemoryWorkflowSmoke.qml
         qml/MultitrackWorkflowSmoke.qml
         qml/SpectralWorkflowSmoke.qml
+        qml/NoiseWorkflowSmoke.qml
         qml/MemorySourceReferences.qml
         qml/SoundPlaybackSource.qml
         qml/SoundSourceBrowser.qml
@@ -245,6 +250,8 @@ qt_add_qml_module(
         qml/SpaceReverbPanel.qml
         qml/SpectrogramView.qml
         qml/SpectralRepairSurface.qml
+        qml/NoiseProfileEditing.js
+        qml/NoiseReductionPanel.qml
         qml/SpectralEditing.js
         qml/StereoVfxPanel.qml
         qml/ImpulseResponseImportDialog.qml

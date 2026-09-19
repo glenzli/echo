@@ -106,5 +106,27 @@ int main() {
         std::cerr << "streaming attenuation did not remain source-anchored\n";
         return 1;
     }
+    // The stream must reconstruct even a one-frame source or a seek boundary.
+    for (const std::size_t count : {1U, 511U, 512U, 513U, 1536U, 2049U}) {
+        echo::audio::SpectralRepairStream identity(sample_rate, 1, {});
+        for (const std::uint64_t origin : {0U, 48'000U}) {
+            identity.reset();
+            std::vector<float> input(count, 0.125F), output(count);
+            std::vector<std::uint64_t> positions(count);
+            identity.push_interleaved(input.data(), count, origin);
+            identity.finish();
+            if (identity.drain_interleaved(output.data(), positions.data(), count) != count) {
+                std::cerr << "short stream changed duration after reset\n";
+                return 1;
+            }
+            for (std::size_t frame = 0; frame < count; ++frame) {
+                if (std::abs(output[frame] - input[frame]) > 0.000002F
+                    || positions[frame] != origin + frame) {
+                    std::cerr << "boundary reconstruction lost samples or source positions\n";
+                    return 1;
+                }
+            }
+        }
+    }
     return 0;
 }

@@ -3,6 +3,7 @@
 //! position timer (main thread) observes end-of-stream and drives UI state.
 
 #include "playback_controller.hpp"
+#include "noise_profile_projection.hpp"
 
 #include <QAudioFormat>
 #include <QDebug>
@@ -38,6 +39,24 @@ PlaybackController::~PlaybackController() {
 
 void PlaybackController::play(const QString& path) {
     startSession(path, {});
+}
+
+void PlaybackController::playNoiseResidue(
+    const QString& path,
+    qint64 startMillis,
+    qint64 endMillis,
+    const QVariantMap& profile
+) {
+    auto noise = NoiseProfileProjection::fromQml(profile);
+    if (!noise || startMillis < 0 || endMillis <= startMillis)
+        return;
+    noise->enabled = true;
+    noise->residue = true;
+    echo::audio::PlaybackAdjustment adjustment;
+    adjustment.trim_start_millis = static_cast<std::uint64_t>(startMillis);
+    adjustment.trim_end_millis = static_cast<std::uint64_t>(endMillis);
+    adjustment.profiled_noise_reduction = std::move(noise);
+    startSession(path, adjustment);
 }
 
 void PlaybackController::playSpectralBand(

@@ -291,11 +291,14 @@ class PlaybackSession::Impl {
             fail("cannot initialize resampler: " + av_error_text(result));
         }
         channel_count_ = kPlaybackChannels;
-        if (!adjustment.spectral_repair.empty()) {
+        if (!adjustment.spectral_repair.empty()
+            || (adjustment.profiled_noise_reduction
+                && adjustment.profiled_noise_reduction->enabled)) {
             spectral_repair_stream_ = std::make_unique<SpectralRepairStream>(
                 kCanonicalSampleRate,
                 channel_count_,
-                adjustment.spectral_repair
+                adjustment.spectral_repair,
+                adjustment.profiled_noise_reduction
             );
             spectral_scratch_.resize(4096 * channel_count_);
             spectral_source_frames_.resize(4096, kNoSourceFrame);

@@ -9,6 +9,7 @@
 #include "impulse_response_controller.hpp"
 #include "inference_preferences.hpp"
 #include "loudness_analysis_controller.hpp"
+#include "noise_profile_controller.hpp"
 #include "playback_controller.hpp"
 #include "render_export_controller.hpp"
 #include "rendered_spectral_working_copy_controller.hpp"
@@ -90,6 +91,7 @@ int main(int argc, char* argv[]) {
             inference_prefs.runtimeEndpoint()
         );
         SpectrogramPreviewController spectrogram_preview;
+        NoiseProfileController noise_profile;
         QObject::connect(
             &inference_prefs,
             &InferencePreferences::runtimeEndpointChanged,
@@ -110,6 +112,7 @@ int main(int argc, char* argv[]) {
             &assembly_waveforms
         );
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
+        engine.rootContext()->setContextProperty(QStringLiteral("noiseProfile"), &noise_profile);
         engine.rootContext()->setContextProperty(
             QStringLiteral("materialPlayer"),
             &material_player
@@ -165,6 +168,10 @@ int main(int argc, char* argv[]) {
             QStringLiteral("spectralSmokeRoot"),
             qEnvironmentVariable("ECHO_DEBUG_SPECTRAL_ROOT")
         );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("noiseSmokeRoot"),
+            qEnvironmentVariable("ECHO_DEBUG_NOISE_ROOT")
+        );
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {
             std::cerr << "Echo QML shell failed to load" << std::endl;
@@ -180,11 +187,13 @@ int main(int argc, char* argv[]) {
 #endif
         // Optional fixture-driven memory workflow. Readiness comes from QML and
         // real catalog/render results; each distinct page is captured once.
+        const bool noise_smoke = !qEnvironmentVariable("ECHO_DEBUG_NOISE_REPORT").isEmpty();
         const bool spectral_smoke = !qEnvironmentVariable("ECHO_DEBUG_SPECTRAL_REPORT").isEmpty();
         const bool multitrack_smoke =
             !qEnvironmentVariable("ECHO_DEBUG_MULTITRACK_REPORT").isEmpty();
         if (const auto report_path = qEnvironmentVariable(
-                spectral_smoke     ? "ECHO_DEBUG_SPECTRAL_REPORT"
+                noise_smoke        ? "ECHO_DEBUG_NOISE_REPORT"
+                : spectral_smoke   ? "ECHO_DEBUG_SPECTRAL_REPORT"
                 : multitrack_smoke ? "ECHO_DEBUG_MULTITRACK_REPORT"
                                    : "ECHO_DEBUG_MEMORY_REPORT"
             );
@@ -196,9 +205,15 @@ int main(int argc, char* argv[]) {
                 timer,
                 &QTimer::timeout,
                 root,
-                [root, report_path, multitrack_smoke, spectral_smoke, last_stage = -1]() mutable {
+                [root,
+                 report_path,
+                 multitrack_smoke,
+                 spectral_smoke,
+                 noise_smoke,
+                 last_stage = -1]() mutable {
                     const int stage = root->property(
-                                              spectral_smoke     ? "spectralSmokeStage"
+                                              noise_smoke        ? "noiseSmokeStage"
+                                              : spectral_smoke   ? "spectralSmokeStage"
                                               : multitrack_smoke ? "multitrackSmokeStage"
                                                                  : "memorySmokeStage"
                     )
@@ -211,7 +226,8 @@ int main(int argc, char* argv[]) {
                         last_stage = stage;
                     }
                     const auto report = root->property(
-                                                spectral_smoke     ? "spectralSmokeReport"
+                                                noise_smoke        ? "noiseSmokeReport"
+                                                : spectral_smoke   ? "spectralSmokeReport"
                                                 : multitrack_smoke ? "multitrackSmokeReport"
                                                                    : "memorySmokeReport"
                     )
@@ -219,7 +235,7 @@ int main(int argc, char* argv[]) {
                                             .toUtf8();
                     if (report.isEmpty())
                         return;
-                    if (spectral_smoke) {
+                    if (spectral_smoke || noise_smoke) {
                         if (auto* window = qobject_cast<QQuickWindow*>(root))
                             window->grabWindow().save(
                                 report_path + QStringLiteral(".complete.png")

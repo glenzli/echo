@@ -456,6 +456,7 @@ fn fully_configured_graph() -> AdjustmentGraph {
         })
         .with_creative_vfx(creative_vfx)
         .with_spectral_repair(SpectralRepairSettings {
+            noise_profile: None,
             enabled: false,
             regions: vec![SpectralAttenuationRegion {
                 start_millis: 2_000,

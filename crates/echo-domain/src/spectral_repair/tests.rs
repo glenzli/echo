@@ -17,6 +17,7 @@ fn identity_and_bounded_region_are_valid() {
     assert!(SpectralRepairSettings::identity().validate(1_000).is_ok());
     assert!(
         SpectralRepairSettings {
+            noise_profile: None,
             enabled: true,
             regions: vec![region()]
         }
@@ -31,6 +32,7 @@ fn regions_fail_closed_outside_the_source_or_frequency_contract() {
     invalid.end_millis = 1_001;
     assert_eq!(
         SpectralRepairSettings {
+            noise_profile: None,
             enabled: true,
             regions: vec![invalid]
         }
@@ -41,6 +43,7 @@ fn regions_fail_closed_outside_the_source_or_frequency_contract() {
     invalid.low_hertz = 10;
     assert_eq!(
         SpectralRepairSettings {
+            noise_profile: None,
             enabled: true,
             regions: vec![invalid]
         }
@@ -52,6 +55,7 @@ fn regions_fail_closed_outside_the_source_or_frequency_contract() {
 #[test]
 fn json_is_camel_case_and_legacy_settings_default_to_identity() {
     let encoded = serde_json::to_value(SpectralRepairSettings {
+        noise_profile: None,
         enabled: false,
         regions: vec![region()],
     })
@@ -66,9 +70,18 @@ fn json_is_camel_case_and_legacy_settings_default_to_identity() {
 #[test]
 fn disabled_layer_retains_regions_without_contributing() {
     let settings = SpectralRepairSettings {
+        noise_profile: None,
         enabled: false,
         regions: vec![region()],
     };
     assert!(settings.validate(1_000).is_ok());
     assert!(!settings.is_enabled());
+}
+
+#[test]
+fn absent_noise_profile_keeps_legacy_serialization_bytes() {
+    let legacy = r#"{"enabled":true,"regions":[]}"#;
+    let decoded: SpectralRepairSettings = serde_json::from_str(legacy).unwrap();
+    assert!(decoded.noise_profile.is_none());
+    assert_eq!(serde_json::to_string(&decoded).unwrap(), legacy);
 }
