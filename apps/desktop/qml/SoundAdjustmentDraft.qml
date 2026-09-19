@@ -11,6 +11,8 @@ QtObject {
 
     required property var asset
     property string _loadedAssetKey: ""
+    property bool retainHistoryOnSave: false
+    readonly property bool gestureActive: _gestureStart !== null
 
     property int trimStartMillis: 0
     property int trimEndMillis: 0
@@ -1977,15 +1979,22 @@ QtObject {
 
     function markSaved(): void {
         _savedSnapshot = copySnapshot(snapshot());
-        _history = [copySnapshot(snapshot())];
-        _historyIndex = 0;
+        if (!retainHistoryOnSave) {
+            _history = [copySnapshot(snapshot())];
+            _historyIndex = 0;
+        }
         _gestureStart = null;
     }
 
     function synchronizeAsset(): void {
         const key=asset ? JSON.stringify([asset.id,asset.path,asset.durationMillis,asset.adjustmentRevision]) : "";
         if(key===_loadedAssetKey) return;
+        const previous = _loadedAssetKey ? JSON.parse(_loadedAssetKey) : [];
         _loadedAssetKey=key;
+        if (retainHistoryOnSave && asset && previous[0]===asset.id && previous[1]===asset.path && previous[2]===asset.durationMillis && sameSnapshot(snapshot(),assetSnapshot())) {
+            _savedSnapshot=copySnapshot(snapshot());
+            return;
+        }
         resetFromAsset();
     }
 

@@ -8,6 +8,12 @@ the `extern "Rust"` surface; [`src/session.rs`](src/session.rs) owns the
 `LibrarySession` lifecycle (one catalog attachment per process). QML never
 opens SQLite; every Library read flows through this crate.
 
+`editor_session.rs` owns explicit audio intake into an isolated editing session.
+It reuses the editing services while disabling scan roots and background Library
+jobs. `editor_project.rs` owns portable `.echo` snapshots: project-owned resources
+are streamed into SQLite, verified on reopen, and restored under relative paths.
+Neither owner attaches the user's Library catalog.
+
 User-authored album lists and mutations cross the ABI as one explicit contract;
 the Catalog keeps them separate from rebuildable smart-album candidates.
 

@@ -11,11 +11,13 @@ import "SoundAssemblyEditing.js" as Editing
 Rectangle {
     id: workspace
 
+    readonly property bool independentMode: backend.independentEditing === true
     property var document: ({})
     property var assemblies: []
     property var libraryAssets: []
     property string selectedClipId: ""
     property int selectedTrackIndex: -1
+    property bool fitPending: false
     property real pixelsPerSecond: 90
     readonly property real trackHeaderWidth: 208
     property real playheadMillis: 0
@@ -110,6 +112,7 @@ Rectangle {
         dirty = false;
         errorText = "";
         refreshAssemblies();
+        fitPending = true;
         Qt.callLater(fitProject);
     }
 
@@ -443,7 +446,7 @@ Rectangle {
         if (!asset || asset.assemblyId || totalClipCount() >= 256)
             return;
         if (!hasDocument) {
-            const created = backend.createSoundAssembly(qsTr("New memory"), [asset.id], "sequence");
+            const created = backend.createSoundAssembly((independentMode ? qsTr("Untitled project") : qsTr("New memory")), [asset.id], "sequence");
             loadRevision(created);
             if (hasDocument && role === "material")
                 mutate(next => next.tracks[0].clips[0].sourceRole = role);
@@ -575,8 +578,9 @@ Rectangle {
             player.seek(Math.round(playheadMillis));
     }
     function fitProject(): void {
-        if (!hasDocument)
-            return;
+        if (!hasDocument) return;
+        if (!visible || laneViewportWidth <= 80) { fitPending = true; return; }
+        fitPending = false;
         pixelsPerSecond = Editing.clamp((laneViewportWidth - 80) * 1000 / Math.max(1000, durationMillis), 0.02, 800);
         timelineFlick.contentX = 0;
     }
@@ -599,8 +603,10 @@ Rectangle {
                     ids.push(clip.assetId);
         assemblyWaveforms.setSources(ids);
     }
-    onDocumentChanged: refreshWaveforms()
+    onTracksChanged: refreshWaveforms()
+    onLaneViewportWidthChanged: if (fitPending && visible) Qt.callLater(fitProject)
     onVisibleChanged: {
+        if (visible && fitPending) Qt.callLater(fitProject);
         if (!visible) {
             if (pendingPreviewJson) {
                 pendingPreviewJson = "";
@@ -765,7 +771,7 @@ Rectangle {
                         onClicked: {
                             workspace.sourcesVisible = !workspace.sourcesVisible;
                             if (workspace.sourcesVisible)
-                                sourceBrowser.sourceTab = 2;
+                                sourceBrowser.sourceTab = workspace.independentMode ? 0 : 2;
                         }
                     }
 
@@ -790,6 +796,7 @@ Rectangle {
                     }
 
                     EchoButton {
+                        visible: !workspace.independentMode
                         text: qsTr("Keep in memories")
                         enabled: workspace.hasDocument && !soundAssemblyController.running
                         onClicked: workspace.keepMemory()
@@ -1139,7 +1146,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: workspace.selectedClip ? (workspace.selectedClip.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (workspace.selectedClip.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(workspace.selectedClip.adjustmentRevisionId) : qsTr("Original source")) : ""
+                                    text: workspace.selectedClip ? (workspace.independentMode ? qsTr("Project source") : workspace.selectedClip.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (workspace.selectedClip.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(workspace.selectedClip.adjustmentRevisionId) : qsTr("Original source")) : ""
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontMeta
                                     wrapMode: Text.WordWrap
@@ -1151,6 +1158,7 @@ Rectangle {
                                 }
                                 EchoComboBox {
                                     Layout.fillWidth: true
+                                    visible: !workspace.independentMode
                                     model: [qsTr("Memory reference"), qsTr("Material reference")]
                                     selectionIndex: workspace.selectedClip && workspace.selectedClip.sourceRole === "material" ? 1 : 0
                                     onActivated: workspace.setClipValue("sourceRole", currentIndex === 1 ? "material" : "memory")

@@ -18,6 +18,8 @@ usage() {
 usage:
   ./scripts/run_debug.sh [catalog.sqlite [cache-root]]
   ./scripts/run_debug.sh --foreground [catalog.sqlite [cache-root]]
+  ./scripts/run_debug.sh [--foreground] --edit [audio files ...]
+  ./scripts/run_debug.sh [--foreground] --project /absolute/project.echo
   ./scripts/run_debug.sh --check
 
 By default Echo starts in the background from the canonical debug build and
@@ -54,6 +56,19 @@ case "${1:-}" in
         ;;
     -h|--help)
         usage
+        exit 0
+        ;;
+esac
+
+case "${1:-}" in
+    --edit|--project|--resume-editor)
+        if [ "$foreground" = true ]; then
+            exec "$echo_executable" "$@"
+        fi
+        mkdir -p "$debug_log_root"
+        nohup "$echo_executable" "$@" >>"$debug_log" 2>&1 </dev/null &
+        echo "Echo independent editor started (pid $!)."
+        echo "log: $debug_log"
         exit 0
         ;;
 esac

@@ -32,6 +32,11 @@ impl LibrarySession {
         global: bool,
         category: &str,
     ) -> Result<(), SessionError> {
+        if self.independent {
+            return Err(error(
+                "Use explicit project source admission in independent editing",
+            ));
+        }
         let request = MaterialImportPayload {
             path: Path::new(path).to_owned(),
             assembly_id: assembly_id.to_owned(),

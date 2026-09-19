@@ -4,6 +4,8 @@
 //! cache paths: they talk to this crate through the generated CXX ABI, and it
 //! owns the durable [`LibrarySession`] lifecycle.
 
+mod editor_project;
+mod editor_session;
 mod render_exports;
 mod session;
 
@@ -577,8 +579,12 @@ mod ffi {
         /// copy. This path is intentionally not catalog-owned: the working
         /// copy cache identity already anchors its mutable lifecycle.
         fn spectrogram_artifact_for_path(path: &str) -> Result<SpectrogramArtifactWire>;
-        /// Opens (creating if needed) the catalog and cache at the given
-        /// roots.
+        fn open_editor_session(root: &str) -> Result<Box<LibrarySession>>;
+        fn editor_import_audio(root: &str, input: &str) -> Result<String>;
+        fn editor_save_project(root: &str, destination: &str) -> Result<()>;
+        fn editor_open_project(project: &str, root: &str) -> Result<()>;
+        fn session_is_independent(self: &LibrarySession) -> bool;
+        /// Opens (creating if needed) the catalog and cache at the given roots.
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
         /// Lists registered assets, newest import first.
         fn session_save_project_clip_adjustment(
@@ -1597,6 +1603,40 @@ impl LibrarySession {
     /// Returns the session error message when the search fails.
     fn session_search(&self, query: &str, limit: u64) -> Result<Vec<ffi::SearchHitWire>, String> {
         self.search(query, limit).map_err(|error| error.message)
+    }
+}
+
+/// Opens a private editor store without any Library workers.
+///
+/// # Errors
+/// Returns a diagnostic when validation or project I/O fails.
+pub fn open_editor_session(root: &str) -> Result<Box<LibrarySession>, String> {
+    editor_session::open(Path::new(root)).map(Box::new)
+}
+/// Admits one source explicitly, without background analysis.
+///
+/// # Errors
+/// Returns a diagnostic when validation or project I/O fails.
+pub fn editor_import_audio(root: &str, input: &str) -> Result<String, String> {
+    editor_session::import(Path::new(root), Path::new(input))
+}
+/// Atomically writes a portable editing project.
+///
+/// # Errors
+/// Returns a diagnostic when validation or project I/O fails.
+pub fn editor_save_project(root: &str, destination: &str) -> Result<(), String> {
+    editor_project::save(Path::new(root), Path::new(destination))
+}
+/// Validates and extracts a project into an empty private working directory.
+///
+/// # Errors
+/// Returns a diagnostic when validation or project I/O fails.
+pub fn editor_open_project(project: &str, root: &str) -> Result<(), String> {
+    editor_project::open(Path::new(project), Path::new(root))
+}
+impl LibrarySession {
+    fn session_is_independent(&self) -> bool {
+        self.independent
     }
 }
 

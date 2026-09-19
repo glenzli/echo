@@ -82,6 +82,11 @@ ToolBar {
                 font.letterSpacing: 2.5
             }
 
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/edit.svg"
+                toolTipText: qsTr("Independent editing…")
+                onClicked: independentEditor.launchEditor([])
+            }
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 1

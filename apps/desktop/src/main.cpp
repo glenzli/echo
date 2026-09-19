@@ -7,6 +7,7 @@
 #include "creative_vfx_presets.hpp"
 #include "desktop_backend.hpp"
 #include "impulse_response_controller.hpp"
+#include "independent_editor_controller.hpp"
 #include "inference_preferences.hpp"
 #include "loudness_analysis_controller.hpp"
 #include "noise_profile_controller.hpp"
@@ -22,6 +23,7 @@
 #include "mac_titlebar.hpp"
 #endif
 
+#include <QDir>
 #include <QFile>
 #include <QGuiApplication>
 #include <QJsonDocument>
@@ -60,15 +62,35 @@ int main(int argc, char* argv[]) {
         "InferencePreferences is created by the host application"
     );
 
+    UiPreferences ui_prefs(application);
+    IndependentEditorController independent_editor;
+    if (!independent_editor.prepare()) {
+        std::cerr << independent_editor.errorText().toStdString() << std::endl;
+        QQmlApplicationEngine errorEngine;
+        errorEngine.addImportPath(QStringLiteral("qrc:/"));
+        ui_prefs.attachEngine(errorEngine);
+        errorEngine.rootContext()->setContextProperty(QStringLiteral("uiPrefs"), &ui_prefs);
+        errorEngine.rootContext()->setContextProperty(
+            QStringLiteral("startupError"),
+            independent_editor.errorText()
+        );
+        errorEngine.loadFromModule("EchoDesktop", "EditorOpenError");
+        if (errorEngine.rootObjects().isEmpty())
+            return 1;
+        return QGuiApplication::exec();
+    }
     const ApplicationPaths default_paths = defaultApplicationPaths();
-    const std::string catalog =
-        argc > 1 ? std::string(argv[1]) : default_paths.catalog_path.toStdString();
-    const std::string cache_root =
-        argc > 2 ? std::string(argv[2]) : default_paths.cache_root.toStdString();
+    const std::string catalog = independent_editor.independent() ? "catalog.sqlite"
+                                : argc > 1 ? std::string(argv[1])
+                                           : default_paths.catalog_path.toStdString();
+    const std::string cache_root = independent_editor.independent() ? "cache"
+                                   : argc > 2 ? std::string(argv[2])
+                                              : default_paths.cache_root.toStdString();
 
     try {
         rust::Box<echo::desktop::LibrarySession> session =
-            echo::desktop::open_session(catalog, cache_root);
+            independent_editor.independent() ? echo::desktop::open_editor_session(".")
+                                             : echo::desktop::open_session(catalog, cache_root);
 
         DesktopBackend backend(std::move(session));
         PlaybackController player;
@@ -83,7 +105,6 @@ int main(int argc, char* argv[]) {
         RenderedSpectralWorkingCopyController rendered_spectral_working_copy(backend);
         BatchExportController batch_exporter(backend);
         ImpulseResponseController impulse_response_controller(backend);
-        UiPreferences ui_prefs(application);
         CreativeVfxPresets creative_vfx_presets;
         InferencePreferences inference_prefs(echo::desktop::infer_runtime_credential_available());
         SemanticSearchController semantic_search(
@@ -100,13 +121,18 @@ int main(int argc, char* argv[]) {
                 semantic_search.setRuntimeEndpoint(inference_prefs.runtimeEndpoint());
             }
         );
-        backend.startWorkers(inference_prefs.runtimeEndpoint());
+        if (!independent_editor.independent())
+            backend.startWorkers(inference_prefs.runtimeEndpoint());
 
         QQmlApplicationEngine engine;
         // Qt 6.11's default import paths start at qrc:/qt/qml, while Echo's
         // executable module keeps its generated qmldir at qrc:/EchoDesktop.
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("independentEditor"),
+            &independent_editor
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("assemblyWaveforms"),
             &assembly_waveforms
@@ -176,7 +202,26 @@ int main(int argc, char* argv[]) {
             QStringLiteral("noiseSmokeRoot"),
             qEnvironmentVariable("ECHO_DEBUG_NOISE_ROOT")
         );
-        engine.loadFromModule("EchoDesktop", "Main");
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("independentSmokeRoot"),
+            qEnvironmentVariable("ECHO_DEBUG_INDEPENDENT_ROOT")
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("independentSmokeReopen"),
+            qEnvironmentVariableIsSet("ECHO_DEBUG_INDEPENDENT_REOPEN")
+        );
+        engine.loadFromModule(
+            "EchoDesktop",
+            independent_editor.independent() ? "IndependentEditor" : "Main"
+        );
+        if (independent_editor.independent() && !independent_editor.initialFiles().isEmpty()) {
+            QList<QUrl> inputs;
+            for (const auto& path : independent_editor.initialFiles())
+                inputs.append(QUrl::fromLocalFile(path));
+            QTimer::singleShot(0, &independent_editor, [&independent_editor, inputs] {
+                independent_editor.importAudio(inputs);
+            });
+        }
         if (engine.rootObjects().isEmpty()) {
             std::cerr << "Echo QML shell failed to load" << std::endl;
             return 1;
@@ -189,8 +234,39 @@ int main(int argc, char* argv[]) {
             title_toolbar == nullptr ? 48 : qRound(title_toolbar->property("height").toReal());
         installMacTitleBarAlignment(qobject_cast<QQuickWindow*>(root_object), title_bar_height);
 #endif
-        // Optional fixture-driven memory workflow. Readiness comes from QML and
-        // real catalog/render results; each distinct page is captured once.
+        // Optional fixture-driven independent editor workflow.
+        if (independent_editor.independent()
+            && qEnvironmentVariableIsSet("ECHO_DEBUG_INDEPENDENT_REPORT")
+            && !engine.rootObjects().isEmpty()) {
+            const QString reportPath = qEnvironmentVariable("ECHO_DEBUG_INDEPENDENT_REPORT");
+            QObject* root = engine.rootObjects().first();
+            auto* timer = new QTimer(root);
+            timer->setInterval(200);
+            QObject::connect(timer, &QTimer::timeout, root, [root, reportPath] {
+                const int stage = root->property("independentSmokeStage").toInt();
+                if ((stage == 3 || stage == 6)
+                    && !QFile::exists(reportPath + QStringLiteral(".%1.png").arg(stage))) {
+                    if (auto* window = qobject_cast<QQuickWindow*>(root))
+                        window->grabWindow().save(
+                            reportPath + QStringLiteral(".%1.png").arg(stage)
+                        );
+                }
+                const QByteArray report =
+                    root->property("independentSmokeReport").toString().toUtf8();
+                if (report.isEmpty())
+                    return;
+                QJsonObject object = QJsonDocument::fromJson(report).object();
+                object.insert(QStringLiteral("workspace"), QDir::currentPath());
+                QFile file(reportPath);
+                if (file.open(QIODevice::WriteOnly))
+                    file.write(QJsonDocument(object).toJson());
+                if (auto* window = qobject_cast<QQuickWindow*>(root))
+                    window->grabWindow().save(reportPath + QStringLiteral(".png"));
+                QGuiApplication::exit(object.value(QStringLiteral("ok")).toBool() ? 0 : 2);
+            });
+            timer->start();
+        }
+        // Library workflows use real catalog/render readiness from QML.
         const bool noise_smoke = !qEnvironmentVariable("ECHO_DEBUG_NOISE_REPORT").isEmpty();
         const bool spectral_smoke = !qEnvironmentVariable("ECHO_DEBUG_SPECTRAL_REPORT").isEmpty();
         const bool multitrack_smoke =

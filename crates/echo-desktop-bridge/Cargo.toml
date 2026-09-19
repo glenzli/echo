@@ -12,6 +12,7 @@ authors.workspace = true
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
+blake3.workspace = true
 cxx.workspace = true
 echo-ai.workspace = true
 echo-bridge.workspace = true
@@ -20,6 +21,7 @@ echo-catalog.workspace = true
 echo-core.workspace = true
 echo-domain.workspace = true
 echo-ir.workspace = true
+rusqlite.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 uuid.workspace = true

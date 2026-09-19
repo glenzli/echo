@@ -241,6 +241,8 @@ ApplicationWindow {
         onSettingsRequested: window.openSettings()
     }
 
+    Shortcut { sequence: "Ctrl+Shift+E"; onActivated: independentEditor.launchEditor([]) }
+
     StackLayout {
         anchors.fill: parent
         currentIndex: window.workspaceIndex

@@ -106,6 +106,8 @@ qt_add_executable(
     echo-desktop
     MACOSX_BUNDLE
     src/main.cpp
+    src/independent_editor_controller.cpp
+    src/independent_editor_controller.hpp
     src/application_paths.cpp
     src/application_paths.hpp
     src/desktop_sound_library.cpp
@@ -172,6 +174,9 @@ qt_add_qml_module(
     URI EchoDesktop
     VERSION 0.1
     QML_FILES
+        qml/EditorOpenError.qml
+        qml/IndependentEditor.qml
+        qml/IndependentEditorSmoke.qml
         qml/Main.qml
         qml/AudioMetadataBar.qml
         qml/AudioLibraryWorkspace.qml
@@ -356,6 +361,7 @@ add_dependencies(echo-desktop echo-desktop-rust-build)
 set_target_properties(
     echo-desktop
     PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
         MACOSX_BUNDLE_BUNDLE_NAME "Echo"
         MACOSX_BUNDLE_GUI_IDENTIFIER "dev.echo.audio"
         MACOSX_BUNDLE_ICON_FILE "app-icon.icns"

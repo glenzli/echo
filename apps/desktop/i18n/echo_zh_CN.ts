@@ -2374,6 +2374,10 @@
         <source>Save version</source>
         <translation>保存版本</translation>
     </message>
+    <message>
+        <source>Independent editing…</source>
+        <translation>独立编辑…</translation>
+    </message>
 </context>
 <context>
     <name>MasterOutputPanel</name>
@@ -4481,6 +4485,14 @@
         <source>WAV audio (*.wav)</source>
         <translation>WAV 音频 (*.wav)</translation>
     </message>
+    <message>
+        <source>Untitled project</source>
+        <translation>未命名工程</translation>
+    </message>
+    <message>
+        <source>Project source</source>
+        <translation>工程来源</translation>
+    </message>
 </context>
 <context>
     <name>SoundCard</name>
@@ -4696,6 +4708,10 @@
         <location filename="../qml/SoundEditingWorkspace.qml" line="1067"/>
         <source>Stop</source>
         <translation>停止</translation>
+    </message>
+    <message>
+        <source>Editing this clip. The project source stays unchanged.</source>
+        <translation>正在编辑此片段，工程来源保持不变。</translation>
     </message>
 </context>
 <context>
@@ -6568,6 +6584,191 @@
         <location filename="../qml/TransformVfxPanel.qml" line="64"/>
         <source>Creates an exaggerated character. It does not clone a person or preserve a natural speaking identity.</source>
         <translation>塑造夸张的声音角色，不会克隆人物，也不以保留自然说话身份为目标。</translation>
+    </message>
+</context>
+<context>
+    <name>IndependentEditor</name>
+    <message>
+        <source>Untitled project</source>
+        <translation>未命名工程</translation>
+    </message>
+    <message>
+        <source>Echo · Independent editing</source>
+        <translation>Echo · 独立编辑</translation>
+    </message>
+    <message>
+        <source>Finish or cancel the current operation before closing.</source>
+        <translation>请先完成或取消当前操作，再关闭窗口。</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>文件</translation>
+    </message>
+    <message>
+        <source>New editing window</source>
+        <translation>新建编辑窗口</translation>
+    </message>
+    <message>
+        <source>Open audio…</source>
+        <translation>打开音频…</translation>
+    </message>
+    <message>
+        <source>Open project…</source>
+        <translation>打开工程…</translation>
+    </message>
+    <message>
+        <source>Save project</source>
+        <translation>保存工程</translation>
+    </message>
+    <message>
+        <source>Save project as…</source>
+        <translation>工程另存为…</translation>
+    </message>
+    <message>
+        <source>Export audio…</source>
+        <translation>导出音频…</translation>
+    </message>
+    <message>
+        <source>Close window</source>
+        <translation>关闭窗口</translation>
+    </message>
+    <message>
+        <source>Independent editing</source>
+        <translation>独立编辑</translation>
+    </message>
+    <message>
+        <source>Waveform / Spectrum</source>
+        <translation>波形 / 频谱</translation>
+    </message>
+    <message>
+        <source>Multitrack</source>
+        <translation>多轨编排</translation>
+    </message>
+    <message>
+        <source>Project sources</source>
+        <translation>工程素材</translation>
+    </message>
+    <message>
+        <source>Original files stay unchanged</source>
+        <translation>原始文件保持不变</translation>
+    </message>
+    <message>
+        <source>A space for the sound in front of you</source>
+        <translation>专注眼前的声音</translation>
+    </message>
+    <message>
+        <source>Drop audio here to edit, repair or arrange it. Save a project to continue later, or export your finished sound.</source>
+        <translation>拖入音频，开始编辑、修复或编排。保存工程以便继续编辑，或导出处理后的声音。</translation>
+    </message>
+    <message>
+        <source>Recover editing session · %1</source>
+        <translation>恢复未关闭的编辑 · %1</translation>
+    </message>
+    <message>
+        <source>Working on your project…</source>
+        <translation>正在处理工程…</translation>
+    </message>
+    <message>
+        <source>Changes are recoverable. Save the project to keep a portable copy.</source>
+        <translation>编辑记录可恢复。保存工程后，可携带素材继续编辑。</translation>
+    </message>
+    <message>
+        <source>Only this project is open. Automatic library analysis is off.</source>
+        <translation>仅处理当前工程，不自动分析记忆库。</translation>
+    </message>
+    <message>
+        <source>Open audio</source>
+        <translation>打开音频</translation>
+    </message>
+    <message>
+        <source>Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</source>
+        <translation>音频文件 (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</translation>
+    </message>
+    <message>
+        <source>All files (*)</source>
+        <translation>所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Open project</source>
+        <translation>打开工程</translation>
+    </message>
+    <message>
+        <source>Echo projects (*.echo)</source>
+        <translation>Echo 工程 (*.echo)</translation>
+    </message>
+    <message>
+        <source>Save this project before closing?</source>
+        <translation>关闭前保存工程吗？</translation>
+    </message>
+    <message>
+        <source>The saved project includes your audio sources and editing state.</source>
+        <translation>保存的工程包含音频素材与编辑状态。</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Discard changes</source>
+        <translation>放弃修改</translation>
+    </message>
+</context>
+<context>
+    <name>IndependentEditorController</name>
+    <message>
+        <source>The editing workspace could not be created.</source>
+        <translation>无法创建编辑工作目录。</translation>
+    </message>
+    <message>
+        <source>This recovery session is unavailable.</source>
+        <translation>此编辑恢复记录不可用。</translation>
+    </message>
+    <message>
+        <source>The project could not be opened: %1</source>
+        <translation>无法打开工程：%1</translation>
+    </message>
+    <message>
+        <source>This editing session is already open.</source>
+        <translation>此编辑会话已在其他窗口打开。</translation>
+    </message>
+    <message>
+        <source>The editing workspace could not be opened.</source>
+        <translation>无法打开编辑工作目录。</translation>
+    </message>
+    <message>
+        <source>Choose a local audio file.</source>
+        <translation>请选择本地音频文件。</translation>
+    </message>
+    <message>
+        <source>Audio could not be opened: %1</source>
+        <translation>无法打开音频：%1</translation>
+    </message>
+    <message>
+        <source>Choose a local project destination.</source>
+        <translation>请选择本地工程保存位置。</translation>
+    </message>
+    <message>
+        <source>The project could not be saved: %1</source>
+        <translation>无法保存工程：%1</translation>
+    </message>
+    <message>
+        <source>The editor window could not be opened.</source>
+        <translation>无法打开编辑窗口。</translation>
+    </message>
+</context>
+<context>
+    <name>EditorOpenError</name>
+    <message>
+        <source>Echo · Independent editing</source>
+        <translation>Echo · 独立编辑</translation>
+    </message>
+    <message>
+        <source>The project could not be opened</source>
+        <translation>无法打开工程</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
 </context>
 </TS>

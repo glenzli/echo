@@ -153,6 +153,33 @@ suggestion-confirmation presentation; `SoundSelectionToolbar.qml` owns the
 selected sound's membership popup. `AudioSpaceWorkspace.qml` only composes
 those owners into filtering and selection.
 
+## Independent editing
+
+`Echo --edit [audio files…]` opens `IndependentEditor.qml` directly. The toolbar's
+“Independent editing…” action starts another isolated window; the editor supports
+opening audio, drag-and-drop, source selection, single-source processing, multitrack
+arrangement, project save/Save As, and the existing audio exporters. `Echo --project
+/path/project.echo` opens a saved project. Independent windows do not open the
+normal Library catalog or start its worker pool, scans, transcription, or indexes.
+
+`independent_editor_controller.*` owns process entry, a locked recovery directory,
+async source admission and portable file operations. The shared `DesktopBackend`
+and editing/rendering components attach only to that directory's project store.
+`editor_session.rs` owns explicit source intake and the no-background-analysis
+policy. `editor_project.rs` streams project-owned sources and processing files in
+bounded chunks into a versioned SQLite `.echo` file; it validates resource paths,
+lengths and hashes when reopening, and atomically replaces successful saves.
+Private source/cache paths are relative to the editor process working directory;
+opening a moved project requires no global asset registration or original path.
+
+Source copies and append-only adjustment/assembly revisions remain separate from
+original input files. The private working store also supports recovery after an
+unclean exit; available sessions appear on the editor's empty page. A normal close
+asks about unsaved project changes. `--resume-editor /absolute/session-directory`
+opens an existing unlocked recovery session. Save a `.echo` file for durable,
+portable storage; library membership and automatic AI analysis are not part of
+this workflow.
+
 ## Build and run
 
 ```sh

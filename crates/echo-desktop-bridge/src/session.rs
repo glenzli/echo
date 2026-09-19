@@ -1128,7 +1128,8 @@ fn asset_summary_wire(
 /// reused; the catalog serializes its own writes.
 #[derive(Debug)]
 pub struct LibrarySession {
-    catalog: std::sync::Arc<Catalog>,
+    pub(crate) catalog: std::sync::Arc<Catalog>,
+    pub(crate) independent: bool,
     catalog_path: PathBuf,
     cache_root: PathBuf,
     ir_source_root: PathBuf,
@@ -1166,7 +1167,11 @@ pub fn open_session(path: &str, cache_root: &str) -> Result<LibrarySession, Sess
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."))
         .join("impulse-responses");
+    let independent = catalog.with_transaction(|tx| {
+        tx.query_row("SELECT EXISTS(SELECT 1 FROM catalog_meta WHERE key='session_kind' AND value='independent-editor-v1')", [], |r| r.get::<_,bool>(0)).map_err(echo_catalog::CatalogError::from)
+    }).map_err(SessionError::from)?;
     Ok(LibrarySession {
+        independent,
         catalog: std::sync::Arc::new(catalog),
         catalog_path,
         cache_root: PathBuf::from(cache_root),
@@ -1996,6 +2001,11 @@ impl LibrarySession {
     ///
     /// Returns [`SessionError`] when the pool cannot start.
     pub fn start_workers(&self, runtime_endpoint: &str) -> Result<(), SessionError> {
+        if self.independent {
+            return Err(SessionError {
+                message: "Library workers are disabled in independent editing".into(),
+            });
+        }
         let mut workers = self.workers.lock().expect("worker mutex poisoned");
         if workers.is_some() {
             return Ok(());
@@ -2127,6 +2137,11 @@ impl LibrarySession {
     ///
     /// Returns [`SessionError`] when queueing fails.
     pub fn queue_scans(&self) -> Result<u64, SessionError> {
+        if self.independent {
+            return Err(SessionError {
+                message: "Library scanning is disabled in independent editing".into(),
+            });
+        }
         echo_core::queue_scans_for_enabled_roots(&self.catalog, now_millis()).map_err(|error| {
             SessionError {
                 message: error.to_string(),
@@ -2182,6 +2197,11 @@ impl LibrarySession {
     ///
     /// Returns [`SessionError`] when the write fails.
     pub fn add_root(&self, root: &str) -> Result<(), SessionError> {
+        if self.independent {
+            return Err(SessionError {
+                message: "Library scanning is disabled in independent editing".into(),
+            });
+        }
         echo_core::add_root_and_scan(&self.catalog, std::path::Path::new(root), now_millis())
             .map_err(|error| SessionError {
                 message: error.to_string(),

@@ -441,7 +441,7 @@ Rectangle {
         // assetChanged can arrive before the derived hasAsset binding updates.
         // Read the changed value directly, including when filtering clears selection.
         const current = asset;
-        const key=current ? JSON.stringify([current.id,current.path,current.pathStatus,current.durationMillis,current.adjustmentRevision,projectClipId]) : "";
+        const key=current ? JSON.stringify([current.id,current.path,current.pathStatus,current.durationMillis,backend.independentEditing === true ? 0 : current.adjustmentRevision,projectClipId]) : "";
         if(key===sourceIdentity) return;
         sourceIdentity=key;
         noiseProfile.cancel(); noiseCaptureIdentity=""; noiseCaptureObsolete=false;
@@ -468,6 +468,7 @@ Rectangle {
         target: backend
 
         function onAssetsChanged(): void {
+            if (backend.independentEditing === true && adjustmentDraft.dirty) return;
             workspace.refreshAsset();
         }
         function onProjectClipSaved(revision): void {
@@ -495,6 +496,7 @@ Rectangle {
 
     SoundAdjustmentDraft {
         id: adjustmentDraft
+        retainHistoryOnSave: backend.independentEditing === true
 
         asset: workspace.asset
 
@@ -789,7 +791,7 @@ Rectangle {
             }
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Editing this project clip. Its source memory stays unchanged.")
+                text: backend.independentEditing === true ? qsTr("Editing this clip. The project source stays unchanged.") : qsTr("Editing this project clip. Its source memory stays unchanged.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
                 wrapMode: Text.WordWrap

@@ -14,6 +14,7 @@
 
 class DesktopBackend : public QObject {
     Q_OBJECT
+    Q_PROPERTY(bool independentEditing READ independentEditing CONSTANT)
     Q_PROPERTY(quint64 assetCount READ assetCount NOTIFY assetsChanged)
     Q_PROPERTY(QString catalogPath READ catalogPath NOTIFY assetsChanged)
     Q_PROPERTY(QString cacheRoot READ cacheRoot NOTIFY assetsChanged)
@@ -25,6 +26,9 @@ class DesktopBackend : public QObject {
     );
     ~DesktopBackend() override = default;
 
+    bool independentEditing() const {
+        return session_->session_is_independent();
+    }
     Q_INVOKABLE void refresh();
     Q_INVOKABLE QVariantList listAssets(bool originals = false) const;
     Q_INVOKABLE QString

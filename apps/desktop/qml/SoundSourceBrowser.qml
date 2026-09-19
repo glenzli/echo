@@ -8,6 +8,7 @@ import EchoDesktop
 
 Rectangle {
     id: browser
+    readonly property bool independentMode: backend.independentEditing === true
     property bool editorMode: false
     property string assemblyId: ""
     property var projectDocument: ({})
@@ -40,6 +41,7 @@ Rectangle {
         return asset ? SoundSemantics.sourceTitle(asset) : "";
     }
     function roleFor(asset: var): string {
+        if (independentMode) return "material";
         return sourceTab === 2 || (sourceTab === 0 && !asset.inMemory) ? "material" : "memory";
     }
     function refresh(): void {
@@ -56,9 +58,9 @@ Rectangle {
         }
         const terms = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
         return assets.filter(asset => {
-            if (sourceTab === 0 && ids.indexOf(asset.id) < 0) return false;
-            if (sourceTab === 1 && !asset.inMemory) return false;
-            if (sourceTab === 2 && !asset.inMaterials) return false;
+            if (!independentMode && sourceTab === 0 && ids.indexOf(asset.id) < 0) return false;
+            if (!independentMode && sourceTab === 1 && !asset.inMemory) return false;
+            if (!independentMode && sourceTab === 2 && !asset.inMaterials) return false;
             if (category && asset.materialCategory !== category) return false;
             if (eventFilter && asset.eventType !== eventFilter) return false;
             const haystack = [titleFor(asset),asset.path,asset.summary,asset.eventType,asset.mood,(asset.keywords || []).join(" ")].join(" ").toLocaleLowerCase();
@@ -137,7 +139,7 @@ Rectangle {
             wrapMode: Text.WordWrap
         }
         TabBar {
-            visible: browser.editorMode
+            visible: browser.editorMode && !browser.independentMode
             Layout.fillWidth: true
             Layout.maximumHeight: Theme.controlHeight
             currentIndex: browser.sourceTab
@@ -154,19 +156,19 @@ Rectangle {
             onTextChanged: browser.query = text
         }
         RowLayout {
-            visible: browser.sourceTab === 2
+            visible: !browser.independentMode && browser.sourceTab === 2
             Layout.fillWidth: true
             Layout.maximumHeight: Theme.controlHeight
             EchoComboBox {
                 Layout.fillWidth: true
-                visible: browser.sourceTab === 2
+                visible: !browser.independentMode && browser.sourceTab === 2
                 model: browser.categoryLabels
                 currentIndex: browser.categories.indexOf(browser.category)
                 onActivated: browser.category = browser.categories[currentIndex]
             }
             EchoComboBox {
                 Layout.fillWidth: true
-                visible: browser.sourceTab === 2 && !browser.editorMode
+                visible: !browser.independentMode && browser.sourceTab === 2 && !browser.editorMode
                 model: browser.eventTypes
                 onActivated: browser.eventFilter = currentIndex === 0 ? "" : currentText
             }
@@ -175,7 +177,7 @@ Rectangle {
             id: collectGlobally
             enabled: browser.assemblyId.length > 0
             Layout.maximumHeight: Theme.controlHeight
-            visible: browser.editorMode
+            visible: browser.editorMode && !browser.independentMode
             checked: true
             text: qsTr("Keep imports in global materials")
         }
@@ -263,9 +265,10 @@ Rectangle {
                         onClicked: browser.addSource(sourceRow.asset)
                     }
                     EchoIconButton {
+                        visible: !browser.independentMode
                         source: "qrc:/EchoDesktop/icons/more-horizontal.svg"
                         toolTipText: qsTr("Collection and category")
-                        onClicked: { browser.selectedAsset = sourceRow.asset; sourceMenu.popup(); }
+                        onClicked: { browser.selectedAsset = sourceRow.asset; browser.independentMode ? undefined : sourceMenu.popup(); }
                     }
                 }
             }
@@ -315,6 +318,7 @@ Rectangle {
         fileMode: FileDialog.OpenFiles
         nameFilters: [qsTr("Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)"), qsTr("All files (*)")]
         onAccepted: {
+            if (browser.independentMode) { independentEditor.importAudio(selectedFiles); return; }
             const failures = [];
             for (const file of selectedFiles) {
                 const message = backend.importMaterial(file,browser.assemblyId,!browser.editorMode || !browser.assemblyId || collectGlobally.checked,browser.category);

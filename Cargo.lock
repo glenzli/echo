@@ -448,6 +448,7 @@ dependencies = [
 name = "echo-desktop-bridge"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "cxx",
  "cxx-build",
  "echo-ai",
@@ -457,6 +458,7 @@ dependencies = [
  "echo-core",
  "echo-domain",
  "echo-ir",
+ "rusqlite",
  "serde_json",
  "thiserror",
  "uuid",
