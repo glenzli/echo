@@ -1,8 +1,8 @@
 //! CLAP audio evidence: short, ASR-empty originals and ephemeral text queries.
 
 use echo_catalog::{
-    Catalog, ClaimedJob, enqueue_job, list_audio_sources_needing_embedding,
-    search_audio_semantic_segments, upsert_audio_semantic_segment,
+    Catalog, ClaimedJob, JobState, enqueue_job, job_by_id, list_audio_sources_needing_embedding,
+    retry_job, search_audio_semantic_segments, upsert_audio_semantic_segment,
 };
 use echo_domain::AssetId;
 
@@ -11,6 +11,8 @@ use crate::{
 };
 
 const INDEX_REVISION: u32 = 1;
+const LEGACY_SCHEMA_ERROR: &str =
+    "InferenceRejected: Infer Runtime consumer_core_unsupported (ContractMismatch)";
 
 pub(crate) fn enqueue_missing_documents(
     catalog: &Catalog,
@@ -20,6 +22,7 @@ pub(crate) fn enqueue_missing_documents(
         .with_transaction(|transaction| {
             let sources = list_audio_sources_needing_embedding(transaction)?;
             for source in &sources {
+                retry_legacy_schema_failure(transaction, source.asset_id, now_millis)?;
                 enqueue_job(
                     transaction,
                     &job_id(source.asset_id),
@@ -33,6 +36,32 @@ pub(crate) fn enqueue_missing_documents(
             )
         })
         .map_err(CoreError::from)
+}
+
+// The old SDK rejected CLAP before submission. Preserve the existing job and
+// attempt history, and persist the guard atomically so another contract failure
+// cannot become a retry loop on every startup or scan.
+fn retry_legacy_schema_failure(
+    transaction: &rusqlite::Transaction<'_>,
+    asset_id: AssetId,
+    now_millis: i64,
+) -> Result<(), echo_catalog::CatalogError> {
+    let Some(mut job) = job_by_id(transaction, &job_id(asset_id))? else {
+        return Ok(());
+    };
+    if job.state != JobState::Failed
+        || job.error.as_deref() != Some(LEGACY_SCHEMA_ERROR)
+        || job.payload.get("clap_schema_retry").is_some()
+    {
+        return Ok(());
+    }
+    job.payload["clap_schema_retry"] = serde_json::json!(true);
+    transaction.execute(
+        "UPDATE jobs SET payload = ?2 WHERE id = ?1",
+        rusqlite::params![job.id, job.payload.to_string()],
+    )?;
+    retry_job(transaction, &job.id, now_millis)?;
+    Ok(())
 }
 
 pub(crate) fn dispatch_document(
