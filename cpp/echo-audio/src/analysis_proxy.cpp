@@ -1,4 +1,5 @@
 #include "echo/audio/analysis_proxy.hpp"
+#include "ffmpeg_input.hpp"
 
 #include "echo/audio/ffmpeg_include.hpp"
 
@@ -166,7 +167,7 @@ AnalysisProxyResult build_analysis_proxy(
     }
 
     FormatContext format;
-    int result = avformat_open_input(format.slot(), source_path.c_str(), nullptr, nullptr);
+    int result = open_audio_input(format.slot(), source_path);
     if (result < 0) {
         fail("cannot open " + source_path + ": " + av_error_text(result));
     }

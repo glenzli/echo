@@ -7,6 +7,7 @@
 #include <QVariantList>
 
 #include <cstdint>
+#include <functional>
 
 class SemanticSearchController : public QObject {
     Q_OBJECT
@@ -16,10 +17,13 @@ class SemanticSearchController : public QObject {
     Q_PROPERTY(QString errorText READ errorText NOTIFY stateChanged)
 
   public:
+    using SearchFunction =
+        std::function<QVariantList(const QString&, const QString&, const QString&)>;
     explicit SemanticSearchController(
         QString catalogPath,
         QString runtimeEndpoint,
-        QObject* parent = nullptr
+        QObject* parent = nullptr,
+        SearchFunction search = {}
     );
 
     Q_INVOKABLE void request(const QString& query);
@@ -36,6 +40,10 @@ class SemanticSearchController : public QObject {
     void stateChanged();
 
   private:
+    void startPending();
+    SearchFunction search_;
+    QString pending_query_;
+    bool worker_active_ = false;
     QString catalog_path_;
     QString runtime_endpoint_;
     QVariantList results_;

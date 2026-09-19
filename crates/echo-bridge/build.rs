@@ -21,6 +21,7 @@ const ENGINE_SOURCES: &[&str] = &[
     "src/channel_repair_processor.cpp",
     "src/convolution/signalsmith_audiofft_adapter.cpp",
     "src/convolution_space_processor.cpp",
+    "src/ffmpeg_input.cpp",
     "src/decode.cpp",
     "src/de_click_processor.cpp",
     "src/de_esser.cpp",
@@ -127,6 +128,7 @@ const ENGINE_ADDITIONAL_INPUTS: &[&str] = &[
     "include/echo/audio/transform_vfx_processor.hpp",
     "include/echo/audio/tape_vfx_processor.hpp",
     "include/echo/audio/waveform.hpp",
+    "src/ffmpeg_input.hpp",
     "src/modulated_delay_vfx.hpp",
     "src/phaser_vfx.hpp",
     "src/tremolo_vfx.hpp",
@@ -240,6 +242,12 @@ fn main() {
         }
     }
     build.std("c++20");
+    // Match the CMake Debug DSP policy; keep symbols and IEEE arithmetic.
+    if env::var("PROFILE").as_deref() == Ok("debug")
+        && env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc")
+    {
+        build.opt_level(2);
+    }
 
     if env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
         build.flag("/W4").flag("/permissive-");

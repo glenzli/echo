@@ -7,6 +7,7 @@ import "SpectralEditing.js" as Editing
 
 Rectangle {
     id: spectrogram
+    property string scaleImageUrl: ""
     required property string imageUrl
     required property bool loading
     required property int sourceDurationMillis
@@ -223,6 +224,15 @@ Rectangle {
                     }
                 }
             }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            visible: spectrogram.scaleImageUrl.length>0
+            spacing: 8
+            Text { text: spectrogram.floorDecibels+' dB'; color: Theme.textSecondary; font.pixelSize: Theme.fontMeta }
+            Image { source: spectrogram.scaleImageUrl; Layout.preferredWidth: 160; Layout.preferredHeight: 8; smooth: true }
+            Text { text: '0 dB'; color: Theme.textSecondary; font.pixelSize: Theme.fontMeta }
+            Item { Layout.fillWidth: true }
         }
         RowLayout {
             Layout.fillWidth: true

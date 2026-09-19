@@ -11,6 +11,7 @@ add_library(
     src/channel_repair_processor.cpp
     src/convolution/signalsmith_audiofft_adapter.cpp
     src/convolution_space_processor.cpp
+    src/ffmpeg_input.cpp
     src/decode.cpp
     src/de_click_processor.cpp
     src/de_esser.cpp
@@ -68,6 +69,13 @@ target_include_directories(echo-audio SYSTEM PRIVATE third_party)
 
 target_compile_features(echo-audio PUBLIC cxx_std_20)
 
+# Keep the runnable Debug editor responsive while retaining symbols and checks.
+# The DSP runs behind the same boundaries in Cargo and CMake; do not use fast-math.
+# MSVC keeps its existing /RTC debug policy; /O2 would conflict with it.
+if(NOT MSVC)
+    target_compile_options(echo-audio PRIVATE "$<$<CONFIG:Debug>:-O2>")
+endif()
+
 target_link_libraries(echo-audio PUBLIC PkgConfig::FFmpeg)
 
 function(echo_audio_enable_warnings target)
@@ -89,6 +97,11 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(echo-audio-workflow-contract-test tests/audio_workflow_contract_test.cpp)
+    target_link_libraries(echo-audio-workflow-contract-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-audio-workflow-contract-test)
+    add_test(NAME echo-audio-workflow-contract-test COMMAND echo-audio-workflow-contract-test)
+
     add_executable(echo-profiled-noise-reduction-test tests/profiled_noise_reduction_test.cpp)
     target_link_libraries(echo-profiled-noise-reduction-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-profiled-noise-reduction-test)

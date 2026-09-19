@@ -1,4 +1,5 @@
 #include "echo/audio/waveform.hpp"
+#include "ffmpeg_input.hpp"
 
 #include "echo/audio/ffmpeg_include.hpp"
 
@@ -214,7 +215,7 @@ Waveform build_waveform(const std::string& path, uint32_t max_levels) {
         fail("max_levels must be positive");
     }
     FormatContext format;
-    int result = avformat_open_input(format.slot(), path.c_str(), nullptr, nullptr);
+    int result = open_audio_input(format.slot(), path);
     if (result < 0) {
         fail("cannot open " + path + ": " + av_error_text(result));
     }

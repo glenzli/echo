@@ -94,6 +94,31 @@ and `ECHO_DEBUG_MULTITRACK_REPORT=<absolute-report.json>`. The opt-in workflow
 checks three source waveforms, crossfade, undo, ripple deletion, preview identity,
 seek and mix provenance, and captures the actual native pages.
 
+Set `ECHO_DEBUG_COMPLEX=1` on that workflow to additionally exercise eight
+tracks and 32 overlapping clips, exact save/reopen, render cancellation and
+retry, UI heartbeat timing, and all 32 source references in the accepted mix.
+
+`SpectrogramPalette` owns both the displayed spectral colors and their energy
+legend. Quiet bins are dark blue; increasing intensity passes through teal to
+warm highlights. The palette has monotonically increasing measured luminance,
+including in grayscale. Spectral selection uses a light edge with a dark rim
+and a translucent fill so underlying energy remains visible. `Theme.qml` owns
+waveform/background contrast independently in light and dark appearances.
+
+`SemanticSearchController` runs one inference request at a time and keeps only
+the latest pending query. Clear, source endpoint changes and obsolete results
+cannot restart discarded requests or publish stale hits. Its asynchronous
+contract uses a controllable slow/failing boundary; live AI checks remain a
+separate validation of Runtime authorization, actual model output and retrieval.
+
+Native `echo-audio-workflow-contract-test` composes noise-profile learning,
+spectral attenuation, segments, fades, gain, dynamics, effects and multitrack
+mixing, then compares preview PCM against exported PCM24. Audio input owners
+share `cpp/echo-audio/src/ffmpeg_input.*`: recognized RIFF/RF64/RIFX WAVE headers
+select the WAV demuxer before FFmpeg probing, avoiding periodic PCM being
+misidentified as transport streams. Only native DSP code is optimized in Debug;
+debug symbols and normal floating-point semantics remain enabled.
+
 `SoundSourceBrowser.qml` owns the editor's project, memory and material bins and
 is reused for the global material page. `desktop_sound_library.cpp` exposes
 collection membership, queued durable imports and memory destinations.

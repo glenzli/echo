@@ -163,6 +163,10 @@ int main(int argc, char* argv[]) {
             QStringLiteral("multitrackSmokeRoot"),
             qEnvironmentVariable("ECHO_DEBUG_MULTITRACK_ROOT")
         );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("complexSmokeEnabled"),
+            qEnvironmentVariableIsSet("ECHO_DEBUG_COMPLEX")
+        );
         ui_prefs.attachEngine(engine);
         engine.rootContext()->setContextProperty(
             QStringLiteral("spectralSmokeRoot"),

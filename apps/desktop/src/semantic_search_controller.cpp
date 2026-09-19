@@ -15,7 +15,7 @@
 namespace {
 
 struct SearchOutcome {
-    std::vector<std::pair<QString, double>> hits;
+    QVariantList hits;
     bool succeeded = false;
 };
 
@@ -24,10 +24,40 @@ struct SearchOutcome {
 SemanticSearchController::SemanticSearchController(
     QString catalogPath,
     QString runtimeEndpoint,
-    QObject* parent
+    QObject* parent,
+    SearchFunction search
 ) :
     QObject(parent), catalog_path_(std::move(catalogPath)),
-    runtime_endpoint_(std::move(runtimeEndpoint)) {}
+    runtime_endpoint_(std::move(runtimeEndpoint)) {
+    search_ =
+        search ? std::move(search)
+               : SearchFunction(
+                     [](const QString& catalog, const QString& endpoint, const QString& query) {
+                         const auto hits = echo::desktop::semantic_search_catalog(
+                             catalog.toStdString(),
+                             endpoint.toStdString(),
+                             query.toStdString(),
+                             40
+                         );
+                         const std::size_t count = std::min(
+                             hits.size(),
+                             std::clamp((hits.size() + 3) / 4, std::size_t{3}, std::size_t{12})
+                         );
+                         QVariantList results;
+                         for (std::size_t index = 0; index < count; ++index) {
+                             const auto& hit = hits[index];
+                             results.append(
+                                 QVariantMap{
+                                     {QStringLiteral("id"),
+                                      QString::fromUtf8(hit.asset_id.data(), hit.asset_id.size())},
+                                     {QStringLiteral("score"), hit.score}
+                                 }
+                             );
+                         }
+                         return results;
+                     }
+                 );
+}
 
 void SemanticSearchController::request(const QString& query) {
     const QString normalized = query.simplified();
@@ -35,11 +65,21 @@ void SemanticSearchController::request(const QString& query) {
         clear();
         return;
     }
-    const std::uint64_t generation = ++generation_;
+    ++generation_;
+    pending_query_ = normalized;
     running_ = true;
     error_text_.clear();
     emit stateChanged();
 
+    startPending();
+}
+
+void SemanticSearchController::startPending() {
+    if (worker_active_ || pending_query_.isEmpty())
+        return;
+    worker_active_ = true;
+    const QString normalized = std::exchange(pending_query_, {});
+    const std::uint64_t generation = generation_;
     const QString catalog_path = catalog_path_;
     const QString runtime_endpoint = runtime_endpoint_;
     auto* watcher = new QFutureWatcher<SearchOutcome>(this);
@@ -50,60 +90,42 @@ void SemanticSearchController::request(const QString& query) {
         [this, watcher, generation, normalized] {
             const SearchOutcome outcome = watcher->result();
             watcher->deleteLater();
+            worker_active_ = false;
             if (generation != generation_) {
+                startPending();
                 return;
             }
             running_ = false;
             results_.clear();
             results_query_ = normalized;
             if (outcome.succeeded) {
-                for (const auto& [asset_id, score] : outcome.hits) {
-                    results_.append(
-                        QVariantMap{
-                            {QStringLiteral("id"), asset_id},
-                            {QStringLiteral("score"), score},
-                        }
-                    );
-                }
+                results_ = outcome.hits;
                 error_text_.clear();
             } else {
                 error_text_ = QStringLiteral("semantic search unavailable");
             }
             emit resultsChanged();
             emit stateChanged();
+            startPending();
         }
     );
-    watcher->setFuture(QtConcurrent::run([catalog_path, runtime_endpoint, normalized] {
-        SearchOutcome outcome;
-        try {
-            const auto hits = echo::desktop::semantic_search_catalog(
-                catalog_path.toStdString(),
-                runtime_endpoint.toStdString(),
-                normalized.toStdString(),
-                40
-            );
-            const std::size_t visible_count = std::min(
-                hits.size(),
-                std::clamp((hits.size() + 3) / 4, std::size_t{3}, std::size_t{12})
-            );
-            outcome.hits.reserve(visible_count);
-            for (std::size_t index = 0; index < visible_count; ++index) {
-                const auto& hit = hits[index];
-                outcome.hits.emplace_back(
-                    QString::fromUtf8(hit.asset_id.data(), hit.asset_id.size()),
-                    hit.score
-                );
+    watcher->setFuture(
+        QtConcurrent::run([catalog_path, runtime_endpoint, normalized, search = search_] {
+            SearchOutcome outcome;
+            try {
+                outcome.hits = search(catalog_path, runtime_endpoint, normalized);
+                outcome.succeeded = true;
+            } catch (const std::exception&) {
+                // Literal search remains available. Do not log the private query.
             }
-            outcome.succeeded = true;
-        } catch (const rust::Error&) {
-            // Literal search remains available. Do not log the private query.
-        }
-        return outcome;
-    }));
+            return outcome;
+        })
+    );
 }
 
 void SemanticSearchController::clear() {
     ++generation_;
+    pending_query_.clear();
     const bool state_changed = running_ || !error_text_.isEmpty();
     const bool results_changed = !results_.isEmpty() || !results_query_.isEmpty();
     running_ = false;

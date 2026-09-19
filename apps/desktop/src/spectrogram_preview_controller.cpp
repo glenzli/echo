@@ -1,4 +1,5 @@
 #include "spectrogram_preview_controller.hpp"
+#include "spectrogram_palette.hpp"
 
 #include <QBuffer>
 #include <QImage>
@@ -16,17 +17,10 @@ QString makePreview(const echo::audio::SpectrogramDetail& detail) {
     for (std::uint32_t y = 0; y < detail.rows; ++y) {
         auto* destination = image.scanLine(static_cast<int>(y));
         for (std::uint32_t x = 0; x < detail.columns; ++x) {
-            const double value =
-                detail.magnitudes[static_cast<std::size_t>(x) * detail.rows + detail.rows - y - 1]
-                / 255.0;
-            destination[x * 4] = static_cast<uchar>(qRound(14 + 241 * std::pow(value, 1.55)));
-            destination[x * 4 + 1] = static_cast<uchar>(
-                qRound(10 + 218 * std::pow(std::max(0.0, value - 0.30) / 0.70, 1.2))
-            );
-            destination[x * 4 + 2] = static_cast<uchar>(
-                qRound(30 + 194 * std::pow(std::max(0.0, value - 0.08) / 0.92, 0.62))
-            );
-            destination[x * 4 + 3] = 255;
+            const auto value =
+                detail.magnitudes[static_cast<std::size_t>(x) * detail.rows + detail.rows - y - 1];
+            const auto color = SpectrogramPalette::color(value);
+            std::copy(color.begin(), color.end(), destination + x * 4);
         }
     }
     QByteArray encoded;
@@ -138,4 +132,14 @@ bool SpectrogramPreviewController::running() const {
 }
 QString SpectrogramPreviewController::errorText() const {
     return error_text_;
+}
+
+QString SpectrogramPreviewController::scaleImageUrl() const {
+    static const QString scale = [] {
+        echo::audio::SpectrogramDetail detail{256, 1, std::vector<std::uint8_t>(256)};
+        for (std::size_t index = 0; index < 256; ++index)
+            detail.magnitudes[index] = static_cast<std::uint8_t>(index);
+        return makePreview(detail);
+    }();
+    return scale;
 }

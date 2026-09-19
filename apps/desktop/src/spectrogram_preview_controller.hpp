@@ -10,6 +10,7 @@
 
 class SpectrogramPreviewController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QString scaleImageUrl READ scaleImageUrl CONSTANT)
     Q_PROPERTY(QString imageUrl READ imageUrl NOTIFY previewChanged)
     Q_PROPERTY(bool running READ running NOTIFY stateChanged)
     Q_PROPERTY(QString errorText READ errorText NOTIFY stateChanged)
@@ -30,6 +31,7 @@ class SpectrogramPreviewController : public QObject {
         int ceilingDecibels
     );
     Q_INVOKABLE void clear();
+    [[nodiscard]] QString scaleImageUrl() const;
     [[nodiscard]] QString imageUrl() const;
     [[nodiscard]] bool running() const;
     [[nodiscard]] QString errorText() const;

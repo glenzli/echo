@@ -516,10 +516,10 @@ Rectangle {
                 viewStartRatio: timeline.viewStartRatio
                 viewEndRatio: timeline.viewEndRatio
                 progress: timeline.sourceDurationMillis > 0 ? timeline.playbackPositionMillis / timeline.sourceDurationMillis : 0
-                fillColor: Theme.textSecondary
-                progressColor: Theme.accent
+                fillColor: Theme.waveformFill
+                progressColor: Theme.waveformPlayed
                 normalize: false
-                opacity: 0.78
+                opacity: 0.92
             }
 
             SourceEditTimeline {

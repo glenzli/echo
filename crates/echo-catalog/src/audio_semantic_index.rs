@@ -106,8 +106,10 @@ pub fn search_audio_semantic_segments(
         return Err(invalid("invalid CLAP audio query"));
     }
     let mut statement = transaction.prepare(
-        "SELECT asset_id, start_millis, vector FROM audio_semantic_segments \
-         WHERE embedding_space = ?1",
+        "SELECT segment.asset_id, segment.start_millis, segment.vector FROM audio_semantic_segments segment \
+         JOIN assets asset ON asset.id = segment.asset_id \
+         WHERE segment.embedding_space = ?1 AND asset.path_status = 'present' \
+         AND segment.source_revision = ('echo:clap-audio:v1:' || asset.content_hash)",
     )?;
     let mut rows = statement.query([embedding_space])?;
     let mut hits = Vec::new();

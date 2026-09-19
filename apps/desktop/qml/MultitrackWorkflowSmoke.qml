@@ -6,6 +6,11 @@ Item {
     required property var shell
     required property var assembly
     required property string fixtureRoot
+    property bool stress: false
+    property real renderStarted: 0
+    property real lastHeartbeat: 0
+    property var heartbeatGaps: []
+    property string stressDocument: ""
     property int stage: 0
     property string reportJson: ""
     property var facts: ({})
@@ -210,13 +215,68 @@ Item {
             stage = 10;
             break;
         case 10:
+            if(stress) {
+                assembly.mutate(next=>{
+                    const templates=next.tracks.map(track=>JSON.parse(JSON.stringify(track.clips[0])));
+                    next.name="组合回归 · 8 tracks / 32 clips";
+                    next.tracks=[];
+                    for(let track=0;track<8;++track) {
+                        const clips=[];
+                        for(let index=0;index<4;++index) {
+                            const clip=JSON.parse(JSON.stringify(templates[track%3]));
+                            clip.id=backend.newAssemblyObjectId();clip.timelineStartMillis=index*7000;
+                            clip.sourceStartMillis=100;clip.sourceEndMillis=8100;
+                            clip.fadeInMillis=1000;clip.fadeOutMillis=1000;clip.gainCentibels=-300;
+                            clips.push(clip);
+                        }
+                        next.tracks.push({id:backend.newAssemblyObjectId(),name:"Track "+(track+1),gainCentibels:-900,panPercent:track*20-70,muted:false,solo:false,clips:clips});
+                    }
+                });
+                require(assembly.saveRevision()!==null,"stress revision failed to save");
+                stressDocument=JSON.stringify(assembly.document.tracks);
+                const project=assembly.document.id;
+                shell.showAudioSpace();shell.showSoundAssembly();assembly.openAssembly(project);
+                require(JSON.stringify(assembly.document.tracks)===stressDocument,"complex project lost pinned edits on reopen");
+                assembly.fitProject();assembly.preview();
+                const started=Date.now();soundAssemblyController.cancel();
+                facts.cancelMillis=Date.now()-started;
+                require(!soundAssemblyController.running,"cancel left active render");
+                renderStarted=Date.now();heartbeatGaps=[];lastHeartbeat=0;
+                assembly.preview();stage=11;break;
+            }
             restorePreferences();
             reportJson = JSON.stringify({
                 ok: true,
                 facts: facts
             });
             break;
+        case 11:
+            if(soundAssemblyController.running) return;
+            require(assembly.previewCurrent && player.playing,"complex preview not playable after cancellation");
+            facts.complexPreviewMillis=Date.now()-renderStarted;
+            assembly.stopPlayback();
+            facts.complexTracks=assembly.tracks.length;facts.complexClips=32;
+            const sorted=heartbeatGaps.slice().sort((a,b)=>a-b);
+            facts.uiHeartbeatP95Millis=sorted.length?sorted[Math.floor((sorted.length-1)*.95)]:0;
+            facts.uiHeartbeatMaxMillis=sorted.length?sorted[sorted.length-1]:0;
+            assembly.keepMemory();stage=12;break;
+        case 12: {
+            if(soundAssemblyController.running) return;
+            const memory=assets.find(asset=>asset.assemblyId===assembly.document.id && asset.inMemory);
+            require(memory,"complex memory missing");
+            const evidence=JSON.parse(memory.provenanceJson);
+            require(evidence.sources.length===32,"complex memory lost clip provenance");
+            facts.complexOutputPath=memory.path;facts.complexDurationMillis=assembly.durationMillis;
+            facts.complexProvenance=evidence;
+            stage=13;break;
         }
+        case 13:
+            restorePreferences();reportJson=JSON.stringify({ok:true,facts:facts});break;
+        }
+    }
+    Timer {
+        interval:16;repeat:true;running:smoke.stress && smoke.stage===11 && soundAssemblyController.running
+        onTriggered:{const now=Date.now();if(smoke.lastHeartbeat && smoke.heartbeatGaps.length<10000) smoke.heartbeatGaps.push(now-smoke.lastHeartbeat);smoke.lastHeartbeat=now;}
     }
     Timer {
         interval: 500

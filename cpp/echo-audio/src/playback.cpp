@@ -1,4 +1,5 @@
 #include "echo/audio/playback.hpp"
+#include "ffmpeg_input.hpp"
 
 #include "echo/audio/effect_mask_plan.hpp"
 #include "echo/audio/effect_processing_chain.hpp"
@@ -213,7 +214,7 @@ class PlaybackSession::Impl {
     Impl(const std::string& path, PlaybackAdjustment adjustment, PlaybackPipelineOptions options) :
         path_(path), options_(options) {
         AVFormatContext** format_slot = format_.slot();
-        int result = avformat_open_input(format_slot, path.c_str(), nullptr, nullptr);
+        int result = open_audio_input(format_slot, path);
         if (result < 0) {
             fail("cannot open " + path + ": " + av_error_text(result));
         }

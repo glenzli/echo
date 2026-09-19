@@ -35,6 +35,7 @@ file(
     "${PROJECT_SOURCE_DIR}/crates/*/src/**/*.rs"
     "${PROJECT_SOURCE_DIR}/cpp/echo-audio/include/*.hpp"
     "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/*.cpp"
+    "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/*.hpp"
     "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/bridge/*.cpp"
     "${PROJECT_SOURCE_DIR}/cpp/echo-audio/src/bridge/*.hpp"
 )
@@ -379,6 +380,19 @@ qt_add_translations(
 )
 
 if(BUILD_TESTING)
+    add_executable(echo-semantic-search-controller-test tests/semantic_search_controller_test.cpp src/semantic_search_controller.cpp src/semantic_search_controller.hpp)
+    target_include_directories(echo-semantic-search-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
+    target_compile_features(echo-semantic-search-controller-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-semantic-search-controller-test PRIVATE Qt6::Core Qt6::Concurrent echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
+    add_dependencies(echo-semantic-search-controller-test echo-desktop-rust-build)
+    echo_audio_enable_warnings(echo-semantic-search-controller-test)
+    add_test(NAME echo-semantic-search-controller-test COMMAND echo-semantic-search-controller-test)
+    add_executable(echo-spectrogram-preview-test tests/spectrogram_preview_controller_test.cpp src/spectrogram_preview_controller.cpp src/spectrogram_preview_controller.hpp)
+    target_include_directories(echo-spectrogram-preview-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_compile_features(echo-spectrogram-preview-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-spectrogram-preview-test PRIVATE Echo::Audio Qt6::Core Qt6::Gui Qt6::Concurrent)
+    echo_audio_enable_warnings(echo-spectrogram-preview-test)
+    add_test(NAME echo-spectrogram-preview-test COMMAND echo-spectrogram-preview-test)
     add_executable(
         echo-application-paths-test
         src/application_paths.cpp

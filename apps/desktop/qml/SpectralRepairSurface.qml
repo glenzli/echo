@@ -26,7 +26,7 @@ Rectangle {
     signal selectionChangedByUser(var value, int index)
     signal regionEdited(int index, var value)
     signal eraseRequested(var value)
-    color: "#0e0a1e"
+    color: "#0b1420"
     clip: true
     implicitHeight: 300
 
@@ -50,8 +50,8 @@ Rectangle {
             required property int modelData
             y: surface.yAt(modelData); width: surface.width; height: 1
             visible: modelData>surface.lowHertz && modelData<surface.highHertz
-            color: '#24ffffff'
-            Text { x: 5; y: -15; text: modelData>=1000 ? (modelData/1000)+' kHz' : modelData+' Hz'; color: '#c0c6d3'; font.pixelSize: 10 }
+            color: '#16e1edf5'
+            Text { x: 5; y: Math.max(2-parent.y, -height-2); text: modelData>=1000 ? (modelData/1000)+' kHz' : modelData+' Hz'; color: '#e1edf5'; style: Text.Outline; styleColor: '#0b1420'; font.pixelSize: 10 }
         }
     }
     Repeater {
@@ -61,8 +61,8 @@ Rectangle {
             required property int index
             x: surface.xAt(modelData.startMillis); y: surface.yAt(modelData.highHertz)
             width: surface.xAt(modelData.endMillis)-x; height: surface.yAt(modelData.lowHertz)-y
-            color: surface.layerEnabled ? '#2549bdd5' : '#18777777'
-            border.color: surface.layerEnabled ? '#83d7e8' : '#777777'
+            color: surface.layerEnabled ? '#127bb9ff' : '#18777777'
+            border.color: surface.layerEnabled ? '#8fbeef' : '#777777'
             visible: index!==surface.selectedIndex || !surface.activeRegion
             Text { x: 5; y: 3; visible: parent.width>52 && parent.height>17; text: (index+1)+' · −'+(modelData.attenuationCentibels/100).toFixed(0)+' dB'; color: '#e5f9ff'; font.pixelSize: 10 }
         }
@@ -75,17 +75,18 @@ Rectangle {
         y: value ? surface.yAt(value.highHertz) : 0
         width: value ? surface.xAt(value.endMillis)-x : 0
         height: value ? surface.yAt(value.lowHertz)-y : 0
-        color: '#30ffda83'; border.color: '#ffdc83'; border.width: 2
+        color: '#167bb9ff'; border.color: '#edf7ff'; border.width: 2
+        Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.color: "#b00b1420"; z: -1 }
         Rectangle {
             visible: selectedBox.value!==null
             x: selectedBox.value ? Math.min(parent.width/2, surface.xAt(selectedBox.value.startMillis+selectedBox.value.timeFeatherMillis)-parent.x) : 0
             y: selectedBox.value ? Math.min(parent.height/2, surface.yAt(selectedBox.value.highHertz-selectedBox.value.frequencyFeatherHertz)-parent.y) : 0
             width: Math.max(0,parent.width-2*x); height: Math.max(0,parent.height-2*y)
-            color: 'transparent'; border.color: '#8affdc83'
+            color: 'transparent'; border.color: '#907bb9ff'
         }
         Repeater {
             model: [[0,0],[1,0],[0,1],[1,1]]
-            delegate: Rectangle { required property var modelData; x: modelData[0]*selectedBox.width-3; y: modelData[1]*selectedBox.height-3; width: 6; height: 6; color: '#ffdc83' }
+            delegate: Rectangle { required property var modelData; x: modelData[0]*selectedBox.width-3; y: modelData[1]*selectedBox.height-3; width: 6; height: 6; color: '#edf7ff'; border.color: '#163a57' }
         }
     }
     Rectangle { x: (surface.progress-surface.startRatio)/Math.max(0.000001,surface.endRatio-surface.startRatio)*parent.width; width: 1; height: parent.height; color: '#f8faff' }

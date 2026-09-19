@@ -52,6 +52,7 @@ ApplicationWindow {
         shell: window
         assembly: soundAssembly
         fixtureRoot: multitrackSmokeRoot
+        stress: complexSmokeEnabled
     }
 
     readonly property alias spectralSmokeReport: spectralSmoke.reportJson

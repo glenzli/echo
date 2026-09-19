@@ -1,4 +1,5 @@
 #include "echo/audio/impulse_response_preparer.hpp"
+#include "ffmpeg_input.hpp"
 
 #include "echo/audio/ffmpeg_include.hpp"
 
@@ -377,10 +378,7 @@ void flush_resampler(
 DecodedImpulseResponse
 decode_impulse_response(const std::string& path, const WavContract& contract) {
     FormatContext format;
-    require_av(
-        avformat_open_input(format.slot(), path.c_str(), nullptr, nullptr),
-        "cannot open IR"
-    );
+    require_av(open_audio_input(format.slot(), path), "cannot open IR");
     require_av(avformat_find_stream_info(format.get(), nullptr), "cannot read IR stream info");
     AVStream* stream = nullptr;
     for (unsigned int index = 0; index < format.get()->nb_streams; ++index) {

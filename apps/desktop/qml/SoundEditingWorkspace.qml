@@ -438,7 +438,10 @@ Rectangle {
     }
 
     function synchronizeSource(): void {
-        const key=hasAsset ? JSON.stringify([asset.id,asset.path,asset.pathStatus,asset.durationMillis,asset.adjustmentRevision,projectClipId]) : "";
+        // assetChanged can arrive before the derived hasAsset binding updates.
+        // Read the changed value directly, including when filtering clears selection.
+        const current = asset;
+        const key=current ? JSON.stringify([current.id,current.path,current.pathStatus,current.durationMillis,current.adjustmentRevision,projectClipId]) : "";
         if(key===sourceIdentity) return;
         sourceIdentity=key;
         noiseProfile.cancel(); noiseCaptureIdentity=""; noiseCaptureObsolete=false;
@@ -953,6 +956,7 @@ Rectangle {
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 SplitView.minimumHeight: 360
+                scaleImageUrl: spectrogramPreview.scaleImageUrl
                 imageUrl: spectrogramPreview.imageUrl
                 loading: spectrogramPreview.running
                 sourceDurationMillis: adjustmentDraft.sourceDurationMillis
