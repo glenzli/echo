@@ -24,10 +24,7 @@ Item {
         width: Math.min(root.width, root.size)
         height: Math.min(root.height, root.size)
         source: root.source
-        sourceSize: Qt.size(
-            Math.ceil(root.size * Screen.devicePixelRatio),
-            Math.ceil(root.size * Screen.devicePixelRatio)
-        )
+        sourceSize: Qt.size(Math.ceil(root.size * Screen.devicePixelRatio), Math.ceil(root.size * Screen.devicePixelRatio))
         fillMode: Image.PreserveAspectFit
         smooth: true
         mipmap: true
@@ -37,12 +34,16 @@ Item {
         layer.enabled: visible
         layer.smooth: true
         layer.effect: MultiEffect {
+            // Lift black SVG strokes before colorization; preserve their alpha.
+            brightness: 1.0
             colorization: 1.0
             colorizationColor: root.color
         }
     }
 
     Behavior on color {
-        ColorAnimation { duration: 80 }
+        ColorAnimation {
+            duration: 80
+        }
     }
 }

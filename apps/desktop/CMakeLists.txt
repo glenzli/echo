@@ -132,6 +132,8 @@ qt_add_executable(
     src/qt_render_byte_sink.hpp
     src/semantic_search_controller.cpp
     src/semantic_search_controller.hpp
+    src/assembly_waveform_controller.cpp
+    src/assembly_waveform_controller.hpp
     src/sound_assembly_controller.cpp
     src/sound_assembly_controller.hpp
     src/spectrogram_preview_controller.cpp
@@ -229,8 +231,12 @@ qt_add_qml_module(
         qml/SoundAlbumState.qml
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
+        qml/EchoTimeSpinBox.qml
+        qml/SoundAssemblyEditing.js
+        qml/SoundAssemblyClip.qml
         qml/SoundAssemblyTrack.qml
         qml/MemoryWorkflowSmoke.qml
+        qml/MultitrackWorkflowSmoke.qml
         qml/MemorySourceReferences.qml
         qml/SoundPlaybackSource.qml
         qml/SoundSourceBrowser.qml

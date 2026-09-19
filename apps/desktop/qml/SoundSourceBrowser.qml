@@ -37,7 +37,7 @@ Rectangle {
     border.color: Theme.border
 
     function titleFor(asset: var): string {
-        return asset ? (asset.soundCaption || asset.sourceTitle || asset.path.split("/").pop()) : "";
+        return asset ? SoundSemantics.sourceTitle(asset) : "";
     }
     function roleFor(asset: var): string {
         return sourceTab === 2 || (sourceTab === 0 && !asset.inMemory) ? "material" : "memory";
@@ -222,13 +222,13 @@ Rectangle {
                         Text { Layout.fillWidth: true; text: browser.titleFor(sourceRow.asset); color: Theme.textPrimary; font.pixelSize: Theme.fontBody; elide: Text.ElideRight }
                         Text {
                             Layout.fillWidth: true
-                            text: (Number(sourceRow.asset.durationMillis)/1000).toFixed(1) + qsTr(" s") + " · " + (sourceRow.asset.assemblyId ? qsTr("Saved mix") : Number(sourceRow.asset.adjustmentRevision) > 0 ? qsTr("Adjusted recording") : qsTr("Original recording"))
+                            text: (Number(sourceRow.asset.durationMillis)/1000).toFixed(1) + qsTr(" s") + " · " + (sourceRow.asset.assemblyId ? qsTr("Saved mix") : Number(sourceRow.asset.adjustmentRevision) > 0 ? qsTr("Adjusted recording") : qsTr("Original source"))
                             color: Theme.textMuted; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight
                         }
                         Text {
                             Layout.fillWidth: true
                             visible: !!sourceRow.asset.eventType || !!sourceRow.asset.materialCategory
-                            text: (sourceRow.asset.materialCategory ? browser.categoryLabels[browser.categories.indexOf(sourceRow.asset.materialCategory)] : "") + (sourceRow.asset.eventType ? " · " + sourceRow.asset.eventType : "")
+                            text: (sourceRow.asset.materialCategory ? browser.categoryLabels[browser.categories.indexOf(sourceRow.asset.materialCategory)] : "") + (sourceRow.asset.eventType ? " · " + ((sourceRow.asset.calibratedFields || []).indexOf("event_type") >= 0 ? SoundSemantics.eventLabel(sourceRow.asset.eventType) : qsTr("AI: %1").arg(SoundSemantics.eventLabel(sourceRow.asset.eventType))) : "")
                             color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight
                         }
                         TapHandler { onTapped: browser.selectedAsset = sourceRow.asset; onDoubleTapped: { if (browser.editorMode) browser.addSource(sourceRow.asset); } }

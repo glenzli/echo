@@ -45,6 +45,15 @@ ApplicationWindow {
         materialPath: memorySmokeMaterial
     }
 
+    readonly property alias multitrackSmokeReport: multitrackSmoke.reportJson
+    readonly property alias multitrackSmokeStage: multitrackSmoke.stage
+    MultitrackWorkflowSmoke {
+        id: multitrackSmoke
+        shell: window
+        assembly: soundAssembly
+        fixtureRoot: multitrackSmokeRoot
+    }
+
     property var jobSnapshot: ({
             pending: 0,
             running: 0,

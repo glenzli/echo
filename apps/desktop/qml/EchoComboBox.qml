@@ -4,6 +4,17 @@ import QtQuick.Controls
 
 ComboBox {
     id: control
+    // Opt-in semantic selection. Rebuilding translated string models resets
+    // ComboBox.currentIndex internally, even when the authored value is stable.
+    property int selectionIndex: -1
+    onSelectionIndexChanged: {
+        if (selectionIndex >= 0)
+            currentIndex = selectionIndex;
+    }
+    onModelChanged: Qt.callLater(() => {
+        if (control.selectionIndex >= 0)
+            control.currentIndex = control.selectionIndex;
+    })
     implicitHeight: Theme.controlHeight
     font.pixelSize: Theme.fontBody
     leftPadding: 10

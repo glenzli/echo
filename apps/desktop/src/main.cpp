@@ -2,6 +2,7 @@
 //! playback controller, and UI preferences, then load the Audio Space shell.
 
 #include "application_paths.hpp"
+#include "assembly_waveform_controller.hpp"
 #include "batch_export_controller.hpp"
 #include "creative_vfx_presets.hpp"
 #include "desktop_backend.hpp"
@@ -72,6 +73,10 @@ int main(int argc, char* argv[]) {
         PlaybackController player;
         PlaybackController material_player;
         SoundAssemblyController sound_assembly(backend, player);
+        AssemblyWaveformController assembly_waveforms(
+            QString::fromStdString(catalog),
+            QString::fromStdString(cache_root)
+        );
         LoudnessAnalysisController loudness_analyzer;
         RenderExportController render_exporter(backend);
         RenderedSpectralWorkingCopyController rendered_spectral_working_copy(backend);
@@ -103,6 +108,10 @@ int main(int argc, char* argv[]) {
         // executable module keeps its generated qmldir at qrc:/EchoDesktop.
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("assemblyWaveforms"),
+            &assembly_waveforms
+        );
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
         engine.rootContext()->setContextProperty(
             QStringLiteral("materialPlayer"),
@@ -150,6 +159,10 @@ int main(int argc, char* argv[]) {
             QStringLiteral("memorySmokeMaterial"),
             qEnvironmentVariable("ECHO_DEBUG_MEMORY_MATERIAL")
         );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("multitrackSmokeRoot"),
+            qEnvironmentVariable("ECHO_DEBUG_MULTITRACK_ROOT")
+        );
         ui_prefs.attachEngine(engine);
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {
@@ -166,7 +179,11 @@ int main(int argc, char* argv[]) {
 #endif
         // Optional fixture-driven memory workflow. Readiness comes from QML and
         // real catalog/render results; each distinct page is captured once.
-        if (const auto report_path = qEnvironmentVariable("ECHO_DEBUG_MEMORY_REPORT");
+        const bool multitrack_smoke =
+            !qEnvironmentVariable("ECHO_DEBUG_MULTITRACK_REPORT").isEmpty();
+        if (const auto report_path = qEnvironmentVariable(
+                multitrack_smoke ? "ECHO_DEBUG_MULTITRACK_REPORT" : "ECHO_DEBUG_MEMORY_REPORT"
+            );
             !report_path.isEmpty()) {
             auto* root = engine.rootObjects().first();
             auto* timer = new QTimer(root);
@@ -175,8 +192,12 @@ int main(int argc, char* argv[]) {
                 timer,
                 &QTimer::timeout,
                 root,
-                [root, report_path, last_stage = -1]() mutable {
-                    const int stage = root->property("memorySmokeStage").toInt();
+                [root, report_path, multitrack_smoke, last_stage = -1]() mutable {
+                    const int stage =
+                        root->property(
+                                multitrack_smoke ? "multitrackSmokeStage" : "memorySmokeStage"
+                        )
+                            .toInt();
                     if (stage != last_stage) {
                         if (auto* window = qobject_cast<QQuickWindow*>(root))
                             window->grabWindow().save(
@@ -184,7 +205,12 @@ int main(int argc, char* argv[]) {
                             );
                         last_stage = stage;
                     }
-                    const auto report = root->property("memorySmokeReport").toString().toUtf8();
+                    const auto report =
+                        root->property(
+                                multitrack_smoke ? "multitrackSmokeReport" : "memorySmokeReport"
+                        )
+                            .toString()
+                            .toUtf8();
                     if (report.isEmpty())
                         return;
                     QFile file(report_path);

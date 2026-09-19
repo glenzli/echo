@@ -1,13 +1,11 @@
-//! One Sound Assembly track row: track mix controls and direct clip placement.
-
+//! One arrangement lane and its fixed, compact track controls.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import EchoDesktop
+import "SoundAssemblyEditing.js" as Editing
 
 Rectangle {
     id: trackRow
-
     required property var track
     required property int trackIndex
     required property real pixelsPerSecond
@@ -15,349 +13,318 @@ Rectangle {
     required property string selectedClipId
     required property bool canDeleteTrack
     property real timelineWidth: 1200
+    property real headerWidth: 208
+    property real horizontalOffset: 0
+    property real viewportWidth: 1200
     property var sourceAssets: []
+    property var clipSources: []
+    property var waveforms: ({})
+    property var snapPosition
+    property bool anySolo: false
+    readonly property color trackColor: ["#498eba", "#759b71", "#b49360", "#ad799e", "#6c9ea0", "#af7d63", "#8286ba", "#979561"][trackIndex % 8]
+    readonly property var crossfades: {
+        const pairs = [];
+        for (let a = 0; a < track.clips.length; ++a)
+            for (let b = a + 1; b < track.clips.length; ++b) {
+                const pair = Editing.crossfade(track.clips[a], track.clips[b]);
+                if (!pair)
+                    continue;
+                const first = track.clips.find(clip => clip.id === pair.first), second = track.clips.find(clip => clip.id === pair.second);
+                if (first.fadeOutMillis === pair.duration && second.fadeInMillis === pair.duration)
+                    pairs.push({
+                        start: second.timelineStartMillis,
+                        duration: pair.duration,
+                        outgoing: first.fadeOutCurve,
+                        incoming: second.fadeInCurve
+                    });
+            }
+        return pairs;
+    }
     signal sourceDropped(var asset, int trackIndex, real positionMillis)
     signal clipEditRequested(int trackIndex, string clipId)
-
     signal trackValueRequested(int trackIndex, string key, var value)
+    signal trackMixResetRequested(int trackIndex)
     signal trackDeleteRequested(int trackIndex)
     signal clipSelected(int trackIndex, string clipId)
-    signal clipMoveRequested(int trackIndex, string clipId, real timelineStartMillis)
-    signal clipTrimRequested(int trackIndex, string clipId, real sourceStartMillis, real sourceEndMillis, real timelineStartMillis)
+    signal clipPatchRequested(string clipId, var patch)
+    signal contextRequested
+    signal guideChanged(real position)
+    signal seekRequested(real position)
 
-    property real headerWidth: 220
-    implicitHeight: 118
+    implicitHeight: 130
     color: trackIndex % 2 === 0 ? Theme.panel : Theme.panelInset
     border.width: 1
     border.color: Theme.border
 
-    Rectangle {
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        width: trackRow.headerWidth
-        color: Theme.panelRaised
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 6
-
-            RowLayout {
-                Layout.fillWidth: true
-
-                EchoTextField {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 26
-                    text: trackRow.track.name
-                    maximumLength: 80
-                    padding: 6
-                    font.pixelSize: Theme.fontBody
-                    font.weight: Font.DemiBold
-                    onEditingFinished: {
-                        const nextName = text.trim();
-                        if (nextName.length > 0 && nextName !== trackRow.track.name)
-                            trackRow.trackValueRequested(trackRow.trackIndex, "name", nextName);
-                        else
-                            text = trackRow.track.name;
-                    }
-                }
-
-                Button {
-                    text: qsTr("M")
-                    checkable: true
-                    checked: trackRow.track.muted
-                    implicitWidth: 28
-                    implicitHeight: 24
-                    onClicked: trackRow.trackValueRequested(trackRow.trackIndex, "muted", checked)
-                }
-
-                Button {
-                    text: qsTr("S")
-                    checkable: true
-                    checked: trackRow.track.solo
-                    implicitWidth: 28
-                    implicitHeight: 24
-                    onClicked: trackRow.trackValueRequested(trackRow.trackIndex, "solo", checked)
-                }
-
-                Button {
-                    text: "×"
-                    Accessible.name: qsTr("Delete track")
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Delete track")
-                    enabled: trackRow.canDeleteTrack
-                    implicitWidth: 28
-                    implicitHeight: 24
-                    onClicked: trackRow.trackDeleteRequested(trackRow.trackIndex)
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    text: qsTr("Gain")
-                    color: Theme.textMuted
-                    font.pixelSize: Theme.fontMeta
-                }
-
-                Slider {
-                    Layout.fillWidth: true
-                    from: -2400
-                    to: 1200
-                    stepSize: 50
-                    value: trackRow.track.gainCentibels
-                    onPressedChanged: {
-                        if (!pressed)
-                            trackRow.trackValueRequested(trackRow.trackIndex, "gainCentibels", Math.round(value));
-                    }
-                }
-
-                Text {
-                    text: (trackRow.track.gainCentibels / 100).toFixed(1)
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 34
-                    horizontalAlignment: Text.AlignRight
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Text {
-                    text: qsTr("Pan")
-                    color: Theme.textMuted
-                    font.pixelSize: Theme.fontMeta
-                }
-
-                Slider {
-                    Layout.fillWidth: true
-                    from: -100
-                    to: 100
-                    stepSize: 1
-                    value: trackRow.track.panPercent
-                    onPressedChanged: {
-                        if (!pressed)
-                            trackRow.trackValueRequested(trackRow.trackIndex, "panPercent", Math.round(value));
-                    }
-                }
-
-                Text {
-                    text: String(trackRow.track.panPercent)
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontMeta
-                    Layout.preferredWidth: 34
-                    horizontalAlignment: Text.AlignRight
-                }
-            }
-        }
+    function sourceFor(clip: var): var {
+        return Editing.pinnedSource(clip, clipSources, sourceAssets);
+    }
+    function assetFor(clip: var): var {
+        return sourceAssets.find(source => source.id === clip.assetId) || ({});
+    }
+    function spansFor(clip: var): var {
+        const source = sourceFor(clip);
+        return source === null ? [] : Editing.sourceSpans(source, Number(assetFor(clip).durationMillis || 0));
     }
 
     Item {
         id: lane
-        anchors.left: parent.left
-        anchors.leftMargin: trackRow.headerWidth
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
+        x: trackRow.headerWidth
+        width: parent.width - x
+        height: parent.height
         clip: true
+        TapHandler {
+            onTapped: eventPoint => trackRow.seekRequested(Math.max(0, eventPoint.position.x * 1000 / trackRow.pixelsPerSecond))
+        }
         DropArea {
             anchors.fill: parent
             keys: ["echo-sound"]
             onDropped: drop => {
                 if (drop.source && drop.source.asset) {
-                    trackRow.sourceDropped(drop.source.asset,trackRow.trackIndex,Math.max(0,drop.x*1000/trackRow.pixelsPerSecond));
+                    trackRow.sourceDropped(drop.source.asset, trackRow.trackIndex, Math.max(0, drop.x * 1000 / trackRow.pixelsPerSecond));
                     drop.acceptProposedAction();
                 }
             }
         }
         Repeater {
             model: trackRow.track.clips
-
-            delegate: Rectangle {
-                id: clipBlock
+            delegate: SoundAssemblyClip {
                 required property var modelData
-                required property int index
-
-                property real moveStartMillis: modelData.timelineStartMillis
-                property real previewStartMillis: moveStartMillis
-                readonly property real durationMillis: modelData.sourceEndMillis - modelData.sourceStartMillis
-                readonly property bool selected: modelData.id === trackRow.selectedClipId
-
-                x: previewStartMillis * trackRow.pixelsPerSecond / 1000
-                y: 18 + (index % 2) * 6
-                width: Math.max(28, durationMillis * trackRow.pixelsPerSecond / 1000)
-                height: 76
-                radius: 7
-                color: selected ? Theme.accentSurface : Theme.surfaceSelected
-                border.width: selected ? 2 : 1
-                border.color: selected ? Theme.accent : Theme.borderStrong
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: Math.max(0, Math.min(parent.width, modelData.fadeInMillis * trackRow.pixelsPerSecond / 1000))
-                    color: Theme.accentSurfaceQuiet
-                    opacity: 0.7
-                    radius: parent.radius
+                clipData: modelData
+                title: {
+                    const source = trackRow.assetFor(modelData);
+                    return SoundSemantics.sourceTitle(source) || qsTr("Unavailable source");
                 }
-
-                Rectangle {
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: Math.max(0, Math.min(parent.width, modelData.fadeOutMillis * trackRow.pixelsPerSecond / 1000))
-                    color: Theme.warningSurface
-                    opacity: 0.45
-                    radius: parent.radius
-                }
-
-                Column {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 4
-
-                    Text {
-                        width: parent.width
-                        text: {
-                            const source = trackRow.sourceAssets.find(asset => asset.id === modelData.assetId);
-                            return source ? (source.soundCaption || source.sourceTitle || source.path.split("/").pop()) : qsTr("Clip %1").arg(index + 1);
+                sourceSpans: trackRow.spansFor(modelData)
+                sourceDuration: sourceSpans.length ? sourceSpans[sourceSpans.length - 1].end : modelData.sourceEndMillis
+                originalDuration: Number(trackRow.assetFor(modelData).durationMillis || sourceDuration)
+                waveformLevels: trackRow.waveforms[modelData.assetId] || []
+                pixelsPerSecond: trackRow.pixelsPerSecond
+                selected: trackRow.selectedClipId === modelData.id
+                trackColor: trackRow.trackColor
+                snapPosition: trackRow.snapPosition
+                viewportStart: trackRow.horizontalOffset
+                viewportWidth: trackRow.viewportWidth - trackRow.headerWidth
+                opacity: modelData.muted || trackRow.track.muted || (trackRow.anySolo && !trackRow.track.solo) ? 0.38 : 1
+                onSelectedRequested: trackRow.clipSelected(trackRow.trackIndex, modelData.id)
+                onEditRequested: trackRow.clipEditRequested(trackRow.trackIndex, modelData.id)
+                onPatchRequested: patch => trackRow.clipPatchRequested(modelData.id, patch)
+                onContextRequested: trackRow.contextRequested()
+                onGuideChanged: position => trackRow.guideChanged(position)
+            }
+        }
+        Repeater {
+            model: trackRow.crossfades
+            delegate: Canvas {
+                required property var modelData
+                readonly property real start: modelData.start * trackRow.pixelsPerSecond / 1000
+                readonly property real span: modelData.duration * trackRow.pixelsPerSecond / 1000
+                x: Math.max(start, trackRow.horizontalOffset)
+                y: 43
+                width: Math.max(0, Math.min(start + span, trackRow.horizontalOffset + trackRow.viewportWidth - trackRow.headerWidth) - x)
+                height: 48
+                z: 6
+                onWidthChanged: requestPaint()
+                onXChanged: requestPaint()
+                onModelDataChanged: requestPaint()
+                onPaint: {
+                    const ctx = getContext("2d");
+                    ctx.reset();
+                    ctx.fillStyle = Qt.alpha(trackRow.trackColor, 0.09);
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.strokeStyle = trackRow.trackColor;
+                    ctx.lineWidth = 1.4;
+                    for (const incoming of [false, true]) {
+                        ctx.beginPath();
+                        for (let pixel = 0; pixel <= width; pixel += 2) {
+                            const t = (x + pixel - start) / span;
+                            const value = Editing.fadeValue(incoming ? t : 1 - t, incoming ? modelData.incoming : modelData.outgoing);
+                            if (pixel === 0)
+                                ctx.moveTo(pixel, (1 - value) * height);
+                            else
+                                ctx.lineTo(pixel, (1 - value) * height);
                         }
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontBody
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                    }
-
-                    Text {
-                        width: parent.width
-                        text: (modelData.sourceRole === "material" ? qsTr("Material") : qsTr("Memory")) + " · " + (clipBlock.durationMillis / 1000).toFixed(2) + qsTr(" s")
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontMeta
-                        elide: Text.ElideRight
-                    }
-                }
-
-                TapHandler {
-                    acceptedButtons: Qt.LeftButton
-                    onTapped: trackRow.clipSelected(trackRow.trackIndex, clipBlock.modelData.id)
-                    onDoubleTapped: trackRow.clipEditRequested(trackRow.trackIndex, clipBlock.modelData.id)
-                }
-
-                DragHandler {
-                    id: moveHandler
-                    target: null
-                    xAxis.enabled: true
-                    yAxis.enabled: false
-                    onActiveChanged: {
-                        if (active) {
-                            clipBlock.moveStartMillis = clipBlock.modelData.timelineStartMillis;
-                            clipBlock.previewStartMillis = clipBlock.moveStartMillis;
-                            trackRow.clipSelected(trackRow.trackIndex, clipBlock.modelData.id);
-                        } else {
-                            trackRow.clipMoveRequested(
-                                trackRow.trackIndex,
-                                clipBlock.modelData.id,
-                                Math.max(0, Math.round(clipBlock.previewStartMillis / 10) * 10)
-                            );
-                        }
-                    }
-                    onTranslationChanged: {
-                        if (active)
-                            clipBlock.previewStartMillis = Math.max(0, clipBlock.moveStartMillis + translation.x * 1000 / trackRow.pixelsPerSecond);
-                    }
-                }
-
-                Rectangle {
-                    id: leftTrim
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 7
-                    color: clipBlock.selected ? Theme.accent : Theme.transparent
-                    opacity: trimLeftHandler.active ? 1 : 0.55
-
-                    property real initialSourceStart: 0
-                    property real initialTimelineStart: 0
-
-                    DragHandler {
-                        id: trimLeftHandler
-                        target: null
-                        xAxis.enabled: true
-                        yAxis.enabled: false
-                        onActiveChanged: {
-                            if (active) {
-                                leftTrim.initialSourceStart = clipBlock.modelData.sourceStartMillis;
-                                leftTrim.initialTimelineStart = clipBlock.modelData.timelineStartMillis;
-                                trackRow.clipSelected(trackRow.trackIndex, clipBlock.modelData.id);
-                            } else {
-                                const maximumDelta = clipBlock.durationMillis - 10;
-                                const delta = Math.max(-leftTrim.initialSourceStart, Math.min(maximumDelta, translation.x * 1000 / trackRow.pixelsPerSecond));
-                                trackRow.clipTrimRequested(
-                                    trackRow.trackIndex,
-                                    clipBlock.modelData.id,
-                                    Math.round(leftTrim.initialSourceStart + delta),
-                                    clipBlock.modelData.sourceEndMillis,
-                                    Math.max(0, Math.round(leftTrim.initialTimelineStart + delta))
-                                );
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: rightTrim
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 7
-                    color: clipBlock.selected ? Theme.accent : Theme.transparent
-                    opacity: trimRightHandler.active ? 1 : 0.55
-
-                    property real initialSourceEnd: 0
-
-                    DragHandler {
-                        id: trimRightHandler
-                        target: null
-                        xAxis.enabled: true
-                        yAxis.enabled: false
-                        onActiveChanged: {
-                            if (active) {
-                                rightTrim.initialSourceEnd = clipBlock.modelData.sourceEndMillis;
-                                trackRow.clipSelected(trackRow.trackIndex, clipBlock.modelData.id);
-                            } else {
-                                const minimumEnd = clipBlock.modelData.sourceStartMillis + 10;
-                                const nextEnd = Math.max(minimumEnd, rightTrim.initialSourceEnd + translation.x * 1000 / trackRow.pixelsPerSecond);
-                                trackRow.clipTrimRequested(
-                                    trackRow.trackIndex,
-                                    clipBlock.modelData.id,
-                                    clipBlock.modelData.sourceStartMillis,
-                                    Math.round(nextEnd),
-                                    clipBlock.modelData.timelineStartMillis
-                                );
-                            }
-                        }
+                        ctx.stroke();
                     }
                 }
             }
         }
+    }
 
+    // Counter-scroll the header while retaining the same vertical track geometry.
+    Rectangle {
+        objectName: "assemblyTrackHeader_" + trackRow.trackIndex
+        x: trackRow.horizontalOffset
+        width: trackRow.headerWidth
+        height: parent.height
+        color: Theme.panelRaised
+        z: 10
         Rectangle {
-            x: trackRow.playheadMillis * trackRow.pixelsPerSecond / 1000
+            width: 3
+            height: parent.height
+            color: trackRow.trackColor
+        }
+        Rectangle {
+            anchors.right: parent.right
             width: 1
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            color: Theme.accent
-            opacity: 0.8
-            z: 30
+            height: parent.height
+            color: Theme.borderStrong
+        }
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onPressed: mouse => mouse.accepted = true
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 7
+            RowLayout {
+                spacing: 6
+                Text {
+                    text: String(trackRow.trackIndex + 1).padStart(2, "0")
+                    color: trackRow.trackColor
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+                EchoTextField {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 24
+                    text: trackRow.track.name
+                    maximumLength: 80
+                    padding: 3
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    onEditingFinished: {
+                        if (text.trim().length > 0 && text.trim() !== trackRow.track.name)
+                            trackRow.trackValueRequested(trackRow.trackIndex, "name", text.trim());
+                        else
+                            text = trackRow.track.name;
+                    }
+                }
+                EchoIconButton {
+                    buttonSize: 22
+                    iconSize: 14
+                    source: "qrc:/EchoDesktop/icons/more-horizontal.svg"
+                    toolTipText: qsTr("Track actions")
+                    onClicked: trackMenu.popup()
+                }
+            }
+            RowLayout {
+                spacing: 5
+                Repeater {
+                    model: [
+                        {
+                            key: "muted",
+                            label: qsTr("M"),
+                            hint: qsTr("Mute track")
+                        },
+                        {
+                            key: "solo",
+                            label: qsTr("S"),
+                            hint: qsTr("Solo track")
+                        }
+                    ]
+                    delegate: Button {
+                        required property var modelData
+                        implicitWidth: 27
+                        implicitHeight: 24
+                        text: modelData.label
+                        checkable: true
+                        checked: trackRow.track[modelData.key]
+                        onClicked: trackRow.trackValueRequested(trackRow.trackIndex, modelData.key, checked)
+                        background: Rectangle {
+                            radius: 4
+                            color: parent.checked ? Qt.alpha(trackRow.trackColor, 0.24) : Theme.controlQuiet
+                            border.width: 1
+                            border.color: parent.checked ? trackRow.trackColor : Theme.border
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.textPrimary
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.text: modelData.hint
+                        Accessible.name: modelData.hint
+                    }
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+                Text {
+                    text: qsTr("%1 clips").arg(trackRow.track.clips.length)
+                    font.pixelSize: 9
+                    color: Theme.textMuted
+                }
+            }
+            EchoParameterSlider {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 22
+                label: qsTr("Gain")
+                labelWidth: 26
+                valueWidth: 60
+                from: -2400
+                to: 1200
+                stepSize: 50
+                value: trackRow.track.gainCentibels
+                valueText: (value / 100).toFixed(1) + " dB"
+                showNeutralMarker: true
+                neutralValue: 0
+                property bool dragging: false
+                onGestureStarted: dragging = true
+                onGestureFinished: {
+                    dragging = false;
+                    trackRow.trackValueRequested(trackRow.trackIndex, "gainCentibels", Math.round(value));
+                }
+                onEdited: value => {
+                    if (!dragging)
+                        trackRow.trackValueRequested(trackRow.trackIndex, "gainCentibels", Math.round(value));
+                }
+                accessibleName: qsTr("Track gain")
+            }
+            EchoParameterSlider {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 22
+                label: qsTr("Pan")
+                labelWidth: 26
+                valueWidth: 60
+                from: -100
+                to: 100
+                stepSize: 1
+                value: trackRow.track.panPercent
+                valueText: value === 0 ? qsTr("Center") : (value < 0 ? "L " : "R ") + Math.abs(value)
+                showNeutralMarker: true
+                neutralValue: 0
+                property bool dragging: false
+                onGestureStarted: dragging = true
+                onGestureFinished: {
+                    dragging = false;
+                    trackRow.trackValueRequested(trackRow.trackIndex, "panPercent", Math.round(value));
+                }
+                onEdited: value => {
+                    if (!dragging)
+                        trackRow.trackValueRequested(trackRow.trackIndex, "panPercent", Math.round(value));
+                }
+                accessibleName: qsTr("Track pan")
+            }
+        }
+        Menu {
+            id: trackMenu
+            MenuItem {
+                text: qsTr("Reset track mix")
+                onTriggered: {
+                    trackRow.trackMixResetRequested(trackRow.trackIndex);
+                }
+            }
+            MenuItem {
+                text: qsTr("Delete track")
+                enabled: trackRow.canDeleteTrack
+                onTriggered: trackRow.trackDeleteRequested(trackRow.trackIndex)
+            }
         }
     }
 }

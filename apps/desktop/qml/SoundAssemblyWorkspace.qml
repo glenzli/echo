@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import EchoDesktop
+import "SoundAssemblyEditing.js" as Editing
 
 Rectangle {
     id: workspace
@@ -16,14 +17,27 @@ Rectangle {
     property string selectedClipId: ""
     property int selectedTrackIndex: -1
     property real pixelsPerSecond: 90
-    readonly property real trackHeaderWidth: 220
+    readonly property real trackHeaderWidth: 208
     property real playheadMillis: 0
     property var undoStack: []
     property var redoStack: []
     property bool dirty: false
     property string savedDocumentJson: ""
     property string errorText: ""
-    property string noticeText: ""
+    property bool memorySavedNotice: false
+    readonly property string noticeText: memorySavedNotice ? qsTr("This version is now in your memory library.") : ""
+    property bool sourcesVisible: false
+    property bool inspectorVisible: true
+    property bool snapping: true
+    property bool followPlayback: true
+    property real snapGuideMillis: -1
+    property string previewDocumentJson: ""
+    property string pendingPreviewJson: ""
+    property bool playbackOwned: false
+    property real previewStartMillis: 0
+    readonly property bool previewCurrent: soundAssemblyController.hasPreview && previewDocumentJson === authoredJson(document)
+    readonly property real scrollPosition: timelineFlick.contentX
+    readonly property real laneViewportWidth: Math.max(1, timelineFlick.width - trackHeaderWidth)
     signal editClipRequested(var asset, var revision, string clipId)
     signal memoryOpened(string assemblyId)
 
@@ -32,12 +46,12 @@ Rectangle {
     readonly property bool hasDocument: document && document.id !== undefined
     readonly property var tracks: hasDocument ? document.tracks : []
     readonly property real durationMillis: assemblyDuration(document)
-    readonly property real timelineWidth: Math.max(900, durationMillis * pixelsPerSecond / 1000 + 360)
+    readonly property real timelineWidth: Math.max(laneViewportWidth, durationMillis * pixelsPerSecond / 1000 + 100)
     readonly property var selectedClip: clipById(selectedClipId)
-    readonly property real tickStepSeconds: durationMillis <= 300000 ? 1 : durationMillis <= 3600000 ? 10 : 60
-    readonly property int tickCount: Math.ceil(durationMillis / 1000 / tickStepSeconds) + 2
+    readonly property real tickStepSeconds: Editing.gridSeconds(pixelsPerSecond)
 
     color: Theme.window
+    focus: true
 
     function clone(value: var): var {
         return JSON.parse(JSON.stringify(value));
@@ -83,10 +97,12 @@ Rectangle {
             presentError(revision && revision.error ? revision.error : qsTr("The assembly could not be opened."));
             return;
         }
+        stopPlayback();
+        previewDocumentJson = "";
+        pendingPreviewJson = "";
         document = clone(revision);
         selectedTrackIndex = document.tracks.length > 0 ? 0 : -1;
-        selectedClipId = document.tracks.length > 0 && document.tracks[0].clips.length > 0
-            ? document.tracks[0].clips[0].id : "";
+        selectedClipId = document.tracks.length > 0 && document.tracks[0].clips.length > 0 ? document.tracks[0].clips[0].id : "";
         playheadMillis = 0;
         undoStack = [];
         redoStack = [];
@@ -94,10 +110,12 @@ Rectangle {
         dirty = false;
         errorText = "";
         refreshAssemblies();
+        Qt.callLater(fitProject);
     }
 
     function openAssembly(assemblyId: string): void {
-        if (dirty && !saveRevision()) return;
+        if (dirty && !saveRevision())
+            return;
         soundAssemblyController.cancel();
         materialPlayer.stop();
         loadRevision(backend.soundAssembly(assemblyId));
@@ -113,8 +131,9 @@ Rectangle {
     }
 
     function mutate(callback: var): void {
-        if (!hasDocument)
+        if (!hasDocument || soundAssemblyController.running)
             return;
+        stopPlayback();
         pushUndo();
         const next = clone(document);
         callback(next);
@@ -125,6 +144,7 @@ Rectangle {
     function undo(): void {
         if (!canUndo)
             return;
+        stopPlayback();
         const previous = undoStack.slice();
         const target = previous.pop();
         const future = redoStack.slice();
@@ -139,6 +159,7 @@ Rectangle {
     function redo(): void {
         if (!canRedo)
             return;
+        stopPlayback();
         const future = redoStack.slice();
         const target = future.pop();
         const previous = undoStack.slice();
@@ -173,8 +194,12 @@ Rectangle {
     function preview(): void {
         materialPlayer.stop();
         const revision = dirty ? saveRevision() : document;
-        if (revision)
+        if (revision) {
+            pendingPreviewJson = authoredJson(revision);
+            previewStartMillis = playheadMillis >= durationMillis ? 0 : playheadMillis;
+            playbackOwned = true;
             soundAssemblyController.preparePreview(revision);
+        }
     }
 
     function exportMix(): void {
@@ -188,7 +213,8 @@ Rectangle {
     function keepMemory(): void {
         materialPlayer.stop();
         const revision = dirty ? saveRevision() : document;
-        if (revision) soundAssemblyController.saveToMemory(revision);
+        if (revision)
+            soundAssemblyController.saveToMemory(revision);
     }
 
     function sourceAsset(clip: var): var {
@@ -196,20 +222,24 @@ Rectangle {
     }
     function sourceName(clip: var): string {
         const asset = sourceAsset(clip);
-        return asset ? (asset.soundCaption || asset.sourceTitle || asset.path.split("/").pop()) : qsTr("Unavailable source");
+        return asset ? SoundSemantics.sourceTitle(asset) : qsTr("Unavailable source");
     }
     function openClipEditor(): void {
-        if (!selectedClip) return;
+        if (!selectedClip)
+            return;
         const clipId = selectedClip.id;
         const revision = dirty ? saveRevision() : document;
-        if (!revision) return;
+        if (!revision)
+            return;
         const source = revision.clipSources.find(source => source.clipId === clipId);
         const original = sourceAsset(clipById(clipId));
-        if (!source || !original) return;
+        if (!source || !original)
+            return;
         const asset = clone(original);
-        for (const key of Object.keys(source)) asset[key] = source[key];
+        for (const key of Object.keys(source))
+            asset[key] = source[key];
         asset.adjustmentRevision = source.adjustmentRevisionId;
-        editClipRequested(asset,clone(revision),clipId);
+        editClipRequested(asset, clone(revision), clipId);
     }
     function acceptClipRevision(revision: var): void {
         pushUndo();
@@ -250,7 +280,10 @@ Rectangle {
         for (let trackIndex = 0; trackIndex < document.tracks.length; ++trackIndex) {
             for (let clipIndex = 0; clipIndex < document.tracks[trackIndex].clips.length; ++clipIndex) {
                 if (document.tracks[trackIndex].clips[clipIndex].id === clipId)
-                    return ({trackIndex: trackIndex, clipIndex: clipIndex});
+                    return ({
+                            trackIndex: trackIndex,
+                            clipIndex: clipIndex
+                        });
             }
         }
         return null;
@@ -278,8 +311,7 @@ Rectangle {
     }
 
     function deleteTrack(trackIndex: int): void {
-        if (trackIndex < 0 || trackIndex >= tracks.length || tracks.length <= 1
-                || totalClipCount() <= tracks[trackIndex].clips.length)
+        if (trackIndex < 0 || trackIndex >= tracks.length || tracks.length <= 1 || totalClipCount() <= tracks[trackIndex].clips.length)
             return;
         mutate(next => next.tracks.splice(trackIndex, 1));
         reconcileSelection();
@@ -302,26 +334,25 @@ Rectangle {
             return;
         selectedClipId = clipId;
         selectedTrackIndex = trackIndex;
-        mutate(next => next.tracks[location.trackIndex].clips[location.clipIndex].timelineStartMillis = Math.max(0, Math.round(timelineStartMillis)));
+        mutate(next => next.tracks[location.trackIndex].clips[location.clipIndex].timelineStartMillis = Editing.clamp(Math.round(timelineStartMillis), 0, 14400000 - Editing.duration(clipById(clipId))));
     }
 
-    function trimClip(trackIndex: int, clipId: string, sourceStart: real, sourceEnd: real, timelineStart: real): void {
-        const location = clipLocation(clipId);
-        if (location === null || sourceEnd - sourceStart < 10)
+    function sourceDurationFor(clip: var): real {
+        const asset = sourceAsset(clip);
+        const source = Editing.pinnedSource(clip, document.clipSources || [], libraryAssets);
+        if (source === null)
+            return clip.sourceEndMillis;
+        const spans = Editing.sourceSpans(source, asset ? asset.durationMillis : clip.sourceEndMillis);
+        return spans.length ? spans[spans.length - 1].end : clip.sourceEndMillis;
+    }
+    function setClipTiming(key: string, value: real): void {
+        if (!selectedClip)
             return;
-        selectedClipId = clipId;
-        selectedTrackIndex = trackIndex;
-        mutate(next => {
-            const clip = next.tracks[location.trackIndex].clips[location.clipIndex];
-            clip.sourceStartMillis = Math.round(sourceStart);
-            clip.sourceEndMillis = Math.round(sourceEnd);
-            clip.timelineStartMillis = Math.max(0, Math.round(timelineStart));
-            const duration = clip.sourceEndMillis - clip.sourceStartMillis;
-            clip.fadeInMillis = Math.min(clip.fadeInMillis, duration);
-            clip.fadeOutMillis = Math.min(clip.fadeOutMillis, duration - clip.fadeInMillis);
-        });
+        if (key === "timelineStartMillis")
+            moveClip(selectedTrackIndex, selectedClipId, value);
+        else
+            patchClip(selectedClipId, Editing.trim(selectedClip, key === "sourceStartMillis" ? "left" : "right", value - selectedClip[key], sourceDurationFor(selectedClip)));
     }
-
     function deleteSelectedClip(): void {
         const location = clipLocation(selectedClipId);
         if (location === null || totalClipCount() <= 1)
@@ -332,13 +363,13 @@ Rectangle {
 
     function duplicateSelectedClip(): void {
         const location = clipLocation(selectedClipId);
-        if (location === null || totalClipCount() >= 256)
+        if (location === null || totalClipCount() >= 256 || Editing.end(selectedClip) + Editing.duration(selectedClip) > 14400000)
             return;
         const newId = backend.newAssemblyObjectId();
         mutate(next => {
             const copy = clone(next.tracks[location.trackIndex].clips[location.clipIndex]);
             copy.id = newId;
-            copy.timelineStartMillis += 250;
+            copy.timelineStartMillis = Editing.end(copy);
             next.tracks[location.trackIndex].clips.splice(location.clipIndex + 1, 0, copy);
         });
         selectedClipId = newId;
@@ -348,26 +379,14 @@ Rectangle {
         const location = clipLocation(selectedClipId);
         if (location === null || totalClipCount() >= 256)
             return;
-        const clip = selectedClip;
-        const end = clip.timelineStartMillis + clip.sourceEndMillis - clip.sourceStartMillis;
-        if (playheadMillis <= clip.timelineStartMillis + 10 || playheadMillis >= end - 10) {
+        const halves = Editing.split(selectedClip, playheadMillis);
+        if (!halves) {
             presentError(qsTr("Place the playhead inside the selected clip before splitting."));
             return;
         }
         const newId = backend.newAssemblyObjectId();
-        mutate(next => {
-            const first = next.tracks[location.trackIndex].clips[location.clipIndex];
-            const second = clone(first);
-            const offset = Math.round(playheadMillis - first.timelineStartMillis);
-            const splitSource = first.sourceStartMillis + offset;
-            first.sourceEndMillis = splitSource;
-            first.fadeOutMillis = Math.min(first.fadeOutMillis, first.sourceEndMillis - first.sourceStartMillis);
-            second.id = newId;
-            second.sourceStartMillis = splitSource;
-            second.timelineStartMillis = Math.round(playheadMillis);
-            second.fadeInMillis = Math.min(second.fadeInMillis, second.sourceEndMillis - second.sourceStartMillis);
-            next.tracks[location.trackIndex].clips.splice(location.clipIndex + 1, 0, second);
-        });
+        halves[1].id = newId;
+        mutate(next => next.tracks[location.trackIndex].clips.splice(location.clipIndex, 1, halves[0], halves[1]));
         selectedClipId = newId;
     }
 
@@ -390,14 +409,14 @@ Rectangle {
             return;
         const id = backend.newAssemblyObjectId();
         mutate(next => next.tracks.push({
-            id: id,
-            name: qsTr("Track %1").arg(next.tracks.length + 1),
-            gainCentibels: 0,
-            panPercent: 0,
-            muted: false,
-            solo: false,
-            clips: []
-        }));
+                id: id,
+                name: qsTr("Track %1").arg(next.tracks.length + 1),
+                gainCentibels: 0,
+                panPercent: 0,
+                muted: false,
+                solo: false,
+                clips: []
+            }));
         selectedTrackIndex = tracks.length - 1;
     }
 
@@ -424,37 +443,37 @@ Rectangle {
         if (!asset || asset.assemblyId || totalClipCount() >= 256)
             return;
         if (!hasDocument) {
-            const created = backend.createSoundAssembly(qsTr("New memory"),[asset.id],"sequence");
+            const created = backend.createSoundAssembly(qsTr("New memory"), [asset.id], "sequence");
             loadRevision(created);
-            if (hasDocument && role === "material") mutate(next => next.tracks[0].clips[0].sourceRole = role);
+            if (hasDocument && role === "material")
+                mutate(next => next.tracks[0].clips[0].sourceRole = role);
             return;
         }
         const targetTrack = selectedTrackIndex >= 0 ? selectedTrackIndex : 0;
         const duration = linearAssetDuration(asset);
-        if (duration <= 0) {
+        if (duration <= 0 || playheadMillis + duration > 14400000) {
             presentError(qsTr("This sound has no usable duration."));
             return;
         }
         const clipId = backend.newAssemblyObjectId();
         mutate(next => next.tracks[targetTrack].clips.push({
-            id: clipId,
-            assetId: asset.id,
-            sourceRole: role || "memory",
-            adjustmentRevisionId: Number(asset.adjustmentRevision || 0),
-            sourceStartMillis: 0,
-            sourceEndMillis: duration,
-            timelineStartMillis: Math.round(playheadMillis),
-            gainCentibels: 0,
-            panPercent: 0,
-            fadeInMillis: 0,
-            fadeOutMillis: 0,
-            fadeInCurve: "linear",
-            fadeOutCurve: "linear",
-            muted: false
-        }));
+                id: clipId,
+                assetId: asset.id,
+                sourceRole: role || "memory",
+                adjustmentRevisionId: Number(asset.adjustmentRevision || 0),
+                sourceStartMillis: 0,
+                sourceEndMillis: duration,
+                timelineStartMillis: Math.round(playheadMillis),
+                gainCentibels: 0,
+                panPercent: 0,
+                fadeInMillis: 0,
+                fadeOutMillis: 0,
+                fadeInCurve: "linear",
+                fadeOutCurve: "linear",
+                muted: false
+            }));
         selectedClipId = clipId;
         selectedTrackIndex = targetTrack;
-
     }
 
     function formatTime(millis: real): string {
@@ -462,9 +481,213 @@ Rectangle {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor(totalSeconds % 3600 / 60);
         const seconds = totalSeconds % 60;
-        return hours > 0
-            ? String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0")
-            : String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+        return hours > 0 ? String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0") : String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+    }
+
+    function selectClip(trackIndex: int, clipId: string): void {
+        selectedTrackIndex = trackIndex;
+        selectedClipId = clipId;
+        forceActiveFocus();
+    }
+    function patchClip(clipId: string, patch: var): void {
+        const location = clipLocation(clipId);
+        if (!location)
+            return;
+        mutate(next => next.tracks[location.trackIndex].clips[location.clipIndex] = clone(patch));
+    }
+    function snapPosition(position: real, length: real, excludedId: string, bypass: bool): var {
+        const points = [0, playheadMillis];
+        for (const track of tracks)
+            for (const clip of track.clips) {
+                if (clip.id !== excludedId)
+                    points.push(clip.timelineStartMillis, Editing.end(clip));
+            }
+        return Editing.snap(position, length, points, tickStepSeconds * 1000, 8 * 1000 / pixelsPerSecond, snapping && !bypass);
+    }
+    function crossfadeCandidate(): var {
+        if (!selectedClip || selectedTrackIndex < 0)
+            return null;
+        const candidates = tracks[selectedTrackIndex].clips.filter(clip => clip.id !== selectedClipId).map(clip => Editing.crossfade(selectedClip, clip)).filter(value => value);
+        candidates.sort((a, b) => a.duration - b.duration);
+        return candidates.length ? candidates[0] : null;
+    }
+    function crossfadeSelected(): void {
+        const candidate = crossfadeCandidate();
+        if (!candidate)
+            return;
+        mutate(next => {
+            for (const clip of next.tracks[selectedTrackIndex].clips) {
+                if (clip.id === candidate.first) {
+                    clip.fadeOutMillis = candidate.duration;
+                    clip.fadeOutCurve = "equal_power";
+                }
+                if (clip.id === candidate.second) {
+                    clip.fadeInMillis = candidate.duration;
+                    clip.fadeInCurve = "equal_power";
+                }
+            }
+        });
+    }
+    function rippleDelete(): void {
+        const location = clipLocation(selectedClipId);
+        if (!location || totalClipCount() <= 1)
+            return;
+        const start = selectedClip.timelineStartMillis, end = Editing.end(selectedClip), length = Editing.duration(selectedClip);
+        // Close the gap on this track only; overlapping clips keep their placement.
+        mutate(next => {
+            const clips = next.tracks[location.trackIndex].clips;
+            clips.splice(location.clipIndex, 1);
+            for (const clip of clips)
+                if (clip.timelineStartMillis >= end)
+                    clip.timelineStartMillis -= length;
+        });
+        seekTo(start);
+        reconcileSelection();
+    }
+    function stopPlayback(): void {
+        if (playbackOwned)
+            player.stop();
+        playbackOwned = false;
+    }
+    function togglePlayback(): void {
+        if (soundAssemblyController.running) {
+            soundAssemblyController.cancel();
+            pendingPreviewJson = "";
+            return;
+        }
+        if (!hasDocument)
+            return;
+        materialPlayer.stop();
+        if (previewCurrent) {
+            if (playbackOwned && player.active)
+                player.togglePause();
+            else {
+                playbackOwned = true;
+                player.play(soundAssemblyController.previewPath);
+                player.seek(Math.round(playheadMillis >= durationMillis ? 0 : playheadMillis));
+            }
+        } else
+            preview();
+    }
+    function seekTo(position: real): void {
+        playheadMillis = Editing.clamp(Math.round(position), 0, durationMillis);
+        if (playbackOwned && previewCurrent && player.active)
+            player.seek(Math.round(playheadMillis));
+    }
+    function fitProject(): void {
+        if (!hasDocument)
+            return;
+        pixelsPerSecond = Editing.clamp((laneViewportWidth - 80) * 1000 / Math.max(1000, durationMillis), 0.02, 800);
+        timelineFlick.contentX = 0;
+    }
+    function fitSelection(): void {
+        if (!selectedClip)
+            return;
+        pixelsPerSecond = Editing.clamp((laneViewportWidth - 80) * 1000 / Editing.duration(selectedClip), 0.02, 800);
+        Qt.callLater(() => timelineFlick.contentX = Math.max(0, selectedClip.timelineStartMillis * pixelsPerSecond / 1000 - 40));
+    }
+    function zoomBy(factor: real): void {
+        const anchor = Math.max(0, (playheadMillis * pixelsPerSecond / 1000 - timelineFlick.contentX));
+        pixelsPerSecond = Editing.clamp(pixelsPerSecond * factor, 0.02, 800);
+        timelineFlick.contentX = Editing.clamp(playheadMillis * pixelsPerSecond / 1000 - anchor, 0, Math.max(0, timelineWidth - laneViewportWidth));
+    }
+    function refreshWaveforms(): void {
+        const ids = [];
+        for (const track of tracks)
+            for (const clip of track.clips)
+                if (ids.indexOf(clip.assetId) < 0)
+                    ids.push(clip.assetId);
+        assemblyWaveforms.setSources(ids);
+    }
+    onDocumentChanged: refreshWaveforms()
+    onVisibleChanged: {
+        if (!visible) {
+            if (pendingPreviewJson) {
+                pendingPreviewJson = "";
+                soundAssemblyController.cancel();
+            }
+            stopPlayback();
+        }
+    }
+    Keys.onPressed: event => {
+        if (!hasDocument || soundAssemblyController.running)
+            return;
+        const command = event.modifiers & (Qt.ControlModifier | Qt.MetaModifier);
+        if (event.key === Qt.Key_Space)
+            togglePlayback();
+        else if (event.key === Qt.Key_S && !command)
+            splitSelectedClip();
+        else if (event.key === Qt.Key_D && command)
+            duplicateSelectedClip();
+        else if (event.key === Qt.Key_Z && command) {
+            if (event.modifiers & Qt.ShiftModifier)
+                redo();
+            else
+                undo();
+        } else if (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) {
+            if (event.modifiers & Qt.ShiftModifier)
+                rippleDelete();
+            else
+                deleteSelectedClip();
+        } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+            const step = (event.modifiers & Qt.ShiftModifier ? 100 : 10) * (event.key === Qt.Key_Left ? -1 : 1);
+            if (selectedClip)
+                moveClip(selectedTrackIndex, selectedClipId, selectedClip.timelineStartMillis + step);
+        } else if (event.key === Qt.Key_Home)
+            seekTo(0);
+        else if (event.key === Qt.Key_F)
+            fitProject();
+        else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal)
+            zoomBy(1.3);
+        else if (event.key === Qt.Key_Minus)
+            zoomBy(1 / 1.3);
+        else
+            return;
+        event.accepted = true;
+    }
+
+    Menu {
+        id: clipMenu
+        MenuItem {
+            text: qsTr("Edit this clip’s sound")
+            onTriggered: workspace.openClipEditor()
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: qsTr("Split at playhead")
+            onTriggered: workspace.splitSelectedClip()
+        }
+        MenuItem {
+            text: qsTr("Duplicate after clip")
+            onTriggered: workspace.duplicateSelectedClip()
+        }
+        MenuItem {
+            text: qsTr("Crossfade overlap")
+            enabled: workspace.crossfadeCandidate() !== null
+            onTriggered: workspace.crossfadeSelected()
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: qsTr("Delete clip")
+            enabled: workspace.totalClipCount() > 1
+            onTriggered: workspace.deleteSelectedClip()
+        }
+        MenuItem {
+            text: qsTr("Delete and close gap on this track")
+            enabled: workspace.totalClipCount() > 1
+            onTriggered: workspace.rippleDelete()
+        }
+    }
+    Connections {
+        target: player
+        function onPositionChanged(): void {
+            if (!workspace.visible || !workspace.playbackOwned || !workspace.previewCurrent)
+                return;
+            workspace.playheadMillis = player.position;
+            const x = workspace.playheadMillis * workspace.pixelsPerSecond / 1000;
+            if (workspace.followPlayback && player.playing && (x < timelineFlick.contentX || x > timelineFlick.contentX + workspace.laneViewportWidth - 50))
+                timelineFlick.contentX = Math.max(0, x - 50);
+        }
     }
 
     RowLayout {
@@ -472,6 +695,7 @@ Rectangle {
         spacing: 0
 
         ColumnLayout {
+            visible: workspace.sourcesVisible
             Layout.preferredWidth: 282
             Layout.minimumWidth: 282
             Layout.maximumWidth: 282
@@ -482,7 +706,7 @@ Rectangle {
                 Layout.margins: 12
                 model: workspace.assemblies
                 textRole: "name"
-                currentIndex: workspace.assemblies.findIndex(value => workspace.hasDocument && value.assemblyId === workspace.document.id)
+                selectionIndex: workspace.assemblies.findIndex(value => workspace.hasDocument && value.assemblyId === workspace.document.id)
                 displayText: workspace.hasDocument ? workspace.document.name : qsTr("Choose a project")
                 onActivated: workspace.openAssembly(workspace.assemblies[currentIndex].assemblyId)
             }
@@ -516,6 +740,12 @@ Rectangle {
                     anchors.rightMargin: 14
                     spacing: 8
 
+                    EchoIconButton {
+                        source: "qrc:/EchoDesktop/icons/folder.svg"
+                        toolTipText: qsTr("Show sources and projects")
+                        selected: workspace.sourcesVisible
+                        onClicked: workspace.sourcesVisible = !workspace.sourcesVisible
+                    }
                     EchoTextField {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 100
@@ -532,16 +762,12 @@ Rectangle {
                         text: qsTr("Add sound")
                         ghost: true
                         enabled: workspace.hasDocument && workspace.totalClipCount() < 256
-                        onClicked: sourceBrowser.sourceTab = 2
+                        onClicked: {
+                            workspace.sourcesVisible = !workspace.sourcesVisible;
+                            if (workspace.sourcesVisible)
+                                sourceBrowser.sourceTab = 2;
+                        }
                     }
-
-                    EchoButton {
-                        text: qsTr("Add track")
-                        ghost: true
-                        enabled: workspace.hasDocument && workspace.tracks.length < 8
-                        onClicked: workspace.addTrack()
-                    }
-
 
                     Text {
                         visible: soundAssemblyController.running
@@ -551,21 +777,16 @@ Rectangle {
                     }
 
                     EchoButton {
-                        text: soundAssemblyController.running ? qsTr("Cancel")
-                            : player.playing && soundAssemblyController.hasPreview ? qsTr("Pause") : qsTr("Preview")
+                        objectName: "assemblyPreviewButton"
+                        text: soundAssemblyController.running ? qsTr("Cancel") : workspace.playbackOwned && player.playing ? qsTr("Pause") : qsTr("Preview")
                         enabled: workspace.hasDocument
-                        onClicked: {
-                            if (soundAssemblyController.running) {
-                                soundAssemblyController.cancel();
-                            } else if (soundAssemblyController.hasPreview && !workspace.dirty) {
-                                if (player.active)
-                                    player.togglePause();
-                                else
-                                    player.play(soundAssemblyController.previewPath);
-                            } else {
-                                workspace.preview();
-                            }
-                        }
+                        onClicked: workspace.togglePlayback()
+                    }
+                    EchoIconButton {
+                        source: "qrc:/EchoDesktop/icons/tune.svg"
+                        toolTipText: qsTr("Show clip inspector")
+                        selected: workspace.inspectorVisible
+                        onClicked: workspace.inspectorVisible = !workspace.inspectorVisible
                     }
 
                     EchoButton {
@@ -626,151 +847,258 @@ Rectangle {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 34
-                        color: Theme.panelInset
-                        border.width: 1
-                        border.color: Theme.border
-
+                        Layout.preferredHeight: 38
+                        color: Theme.panelRaised
+                        RowLayout {
+                            x: 10
+                            height: parent.height
+                            width: workspace.trackHeaderWidth - 20
+                            spacing: 4
+                            Text {
+                                text: qsTr("TRACKS")
+                                font.pixelSize: 9
+                                font.letterSpacing: 1
+                                color: Theme.textMuted
+                                Layout.fillWidth: true
+                            }
+                            EchoIconButton {
+                                source: "qrc:/EchoDesktop/icons/plus.svg"
+                                toolTipText: qsTr("Add track")
+                                enabled: workspace.hasDocument && workspace.tracks.length < 8
+                                onClicked: workspace.addTrack()
+                            }
+                        }
                         Item {
-                            anchors.fill: parent
-
+                            x: workspace.trackHeaderWidth
+                            width: parent.width - x
+                            height: parent.height
+                            clip: true
                             Repeater {
-                                model: Math.min(workspace.tickCount, 1500)
-
+                                model: Math.ceil(parent.width / (workspace.tickStepSeconds * workspace.pixelsPerSecond)) + 2
                                 delegate: Item {
                                     required property int index
-                                    x: workspace.trackHeaderWidth + index * workspace.tickStepSeconds * workspace.pixelsPerSecond
+                                    readonly property int tick: Math.floor(timelineFlick.contentX / (workspace.tickStepSeconds * workspace.pixelsPerSecond)) + index
+                                    x: tick * workspace.tickStepSeconds * workspace.pixelsPerSecond - timelineFlick.contentX
                                     width: 1
                                     height: parent.height
-
                                     Rectangle {
                                         anchors.bottom: parent.bottom
                                         width: 1
-                                        height: 8
+                                        height: 9
                                         color: Theme.borderStrong
                                     }
-
                                     Text {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 4
-                                        anchors.top: parent.top
-                                        anchors.topMargin: 3
-                                        text: workspace.formatTime(index * workspace.tickStepSeconds * 1000)
+                                        x: 5
+                                        y: 6
+                                        text: workspace.tickStepSeconds < 1 ? (tick * workspace.tickStepSeconds).toFixed(1) + " s" : workspace.formatTime(tick * workspace.tickStepSeconds * 1000)
                                         color: Theme.textMuted
                                         font.pixelSize: 9
+                                        font.family: "Menlo"
                                     }
+                                }
+                            }
+                            Rectangle {
+                                x: workspace.playheadMillis * workspace.pixelsPerSecond / 1000 - timelineFlick.contentX - 4
+                                anchors.bottom: parent.bottom
+                                width: 8
+                                height: 8
+                                rotation: 45
+                                color: Theme.accent
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onPressed: mouse => {
+                                    workspace.forceActiveFocus();
+                                    workspace.seekTo((mouse.x + timelineFlick.contentX) * 1000 / workspace.pixelsPerSecond);
+                                }
+                                onPositionChanged: mouse => {
+                                    if (pressed)
+                                        workspace.seekTo((mouse.x + timelineFlick.contentX) * 1000 / workspace.pixelsPerSecond);
                                 }
                             }
                         }
                     }
-
-                    Flickable {
-                        id: timelineFlick
+                    Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        contentWidth: workspace.trackHeaderWidth + workspace.timelineWidth
-                        contentHeight: Math.max(height, trackColumn.height)
-                        clip: true
-                        boundsBehavior: Flickable.StopAtBounds
-
-                        Column {
-                            id: trackColumn
-                            width: timelineFlick.contentWidth
-                            spacing: 2
-
-                            Repeater {
-                                model: workspace.tracks
-
-                                delegate: SoundAssemblyTrack {
-                                    required property var modelData
-                                    required property int index
-                                    width: trackColumn.width
-                                    sourceAssets: workspace.libraryAssets
-                                    onSourceDropped: function (asset, targetTrack, positionMillis) {
-                                        workspace.selectedTrackIndex = targetTrack;
-                                        workspace.playheadMillis = positionMillis;
-                                        workspace.addLibraryAsset(asset,sourceBrowser.roleFor(asset));
+                        Flickable {
+                            id: timelineFlick
+                            objectName: "assemblyTimeline"
+                            anchors.fill: parent
+                            contentWidth: workspace.trackHeaderWidth + workspace.timelineWidth
+                            contentHeight: Math.max(height, trackColumn.height + 30)
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            acceptedButtons: Qt.MiddleButton
+                            Column {
+                                id: trackColumn
+                                width: timelineFlick.contentWidth
+                                spacing: 1
+                                enabled: !soundAssemblyController.running
+                                Repeater {
+                                    model: workspace.tracks
+                                    delegate: SoundAssemblyTrack {
+                                        required property var modelData
+                                        required property int index
+                                        width: trackColumn.width
+                                        sourceAssets: workspace.libraryAssets
+                                        clipSources: workspace.document.clipSources || []
+                                        waveforms: assemblyWaveforms.waveforms
+                                        snapPosition: workspace.snapPosition
+                                        horizontalOffset: timelineFlick.contentX
+                                        viewportWidth: timelineFlick.width
+                                        anySolo: workspace.tracks.some(track => track.solo)
+                                        track: modelData
+                                        trackIndex: index
+                                        pixelsPerSecond: workspace.pixelsPerSecond
+                                        playheadMillis: workspace.playheadMillis
+                                        selectedClipId: workspace.selectedClipId
+                                        canDeleteTrack: workspace.tracks.length > 1 && workspace.totalClipCount() > modelData.clips.length
+                                        headerWidth: workspace.trackHeaderWidth
+                                        timelineWidth: workspace.timelineWidth
+                                        onSourceDropped: (asset, targetTrack, positionMillis) => {
+                                            workspace.selectedTrackIndex = targetTrack;
+                                            workspace.playheadMillis = positionMillis;
+                                            workspace.addLibraryAsset(asset, sourceBrowser.roleFor(asset));
+                                        }
+                                        onClipEditRequested: (trackIndex, clipId) => {
+                                            workspace.selectClip(trackIndex, clipId);
+                                            workspace.openClipEditor();
+                                        }
+                                        onTrackValueRequested: workspace.setTrackValue(trackIndex, key, value)
+                                        onTrackMixResetRequested: trackIndex => workspace.mutate(next => {
+                                                next.tracks[trackIndex].gainCentibels = 0;
+                                                next.tracks[trackIndex].panPercent = 0;
+                                            })
+                                        onTrackDeleteRequested: workspace.deleteTrack(trackIndex)
+                                        onClipSelected: (trackIndex, clipId) => workspace.selectClip(trackIndex, clipId)
+                                        onClipPatchRequested: (clipId, patch) => workspace.patchClip(clipId, patch)
+                                        onContextRequested: clipMenu.popup()
+                                        onGuideChanged: position => workspace.snapGuideMillis = position
+                                        onSeekRequested: position => {
+                                            workspace.forceActiveFocus();
+                                            workspace.seekTo(position);
+                                        }
                                     }
-                                    onClipEditRequested: function (trackIndex, clipId) {
-                                        workspace.selectedTrackIndex = trackIndex;
-                                        workspace.selectedClipId = clipId;
-                                        workspace.openClipEditor();
-                                    }
-                                    track: modelData
-                                    trackIndex: index
-                                    pixelsPerSecond: workspace.pixelsPerSecond
-                                    playheadMillis: workspace.playheadMillis
-                                    selectedClipId: workspace.selectedClipId
-                                    canDeleteTrack: workspace.tracks.length > 1
-                                        && workspace.totalClipCount() > modelData.clips.length
-                                    headerWidth: workspace.trackHeaderWidth
-                                    timelineWidth: workspace.timelineWidth
-                                    onTrackValueRequested: workspace.setTrackValue(trackIndex, key, value)
-                                    onTrackDeleteRequested: workspace.deleteTrack(trackIndex)
-                                    onClipSelected: function (trackIndex, clipId) {
-                                        workspace.selectedTrackIndex = trackIndex;
-                                        workspace.selectedClipId = clipId;
-                                    }
-                                    onClipMoveRequested: workspace.moveClip(trackIndex, clipId, timelineStartMillis)
-                                    onClipTrimRequested: workspace.trimClip(trackIndex, clipId, sourceStartMillis, sourceEndMillis, timelineStartMillis)
                                 }
                             }
+                            ScrollBar.horizontal: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                            }
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                            }
                         }
-
-                        ScrollBar.horizontal: ScrollBar {}
-                        ScrollBar.vertical: ScrollBar {}
+                        Item {
+                            x: workspace.trackHeaderWidth
+                            width: parent.width - x
+                            height: parent.height
+                            clip: true
+                            Repeater {
+                                model: Math.ceil(parent.width / (workspace.tickStepSeconds * workspace.pixelsPerSecond)) + 2
+                                delegate: Rectangle {
+                                    required property int index
+                                    readonly property int tick: Math.floor(timelineFlick.contentX / (workspace.tickStepSeconds * workspace.pixelsPerSecond)) + index
+                                    x: tick * workspace.tickStepSeconds * workspace.pixelsPerSecond - timelineFlick.contentX
+                                    width: 1
+                                    height: parent.height
+                                    color: Qt.alpha(Theme.borderStrong, 0.18)
+                                }
+                            }
+                            Rectangle {
+                                x: workspace.playheadMillis * workspace.pixelsPerSecond / 1000 - timelineFlick.contentX
+                                width: 1
+                                height: parent.height
+                                color: Theme.accent
+                            }
+                            Rectangle {
+                                visible: workspace.snapGuideMillis >= 0
+                                x: workspace.snapGuideMillis * workspace.pixelsPerSecond / 1000 - timelineFlick.contentX
+                                width: 1
+                                height: parent.height
+                                color: Theme.warningText
+                            }
+                        }
                     }
-
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 54
+                        Layout.preferredHeight: 46
                         color: Theme.chrome
-                        border.width: 1
-                        border.color: Theme.border
-
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 14
-                            anchors.rightMargin: 14
-                            spacing: 10
-
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 6
                             Text {
-                                text: workspace.formatTime(workspace.playheadMillis)
+                                text: workspace.formatTime(workspace.playheadMillis) + "." + String(Math.floor(workspace.playheadMillis % 1000)).padStart(3, "0")
                                 color: Theme.textPrimary
                                 font.family: "Menlo"
-                                font.pixelSize: Theme.fontBody
-                                Layout.preferredWidth: 70
+                                font.pixelSize: 12
+                                Layout.preferredWidth: 104
                             }
-
-                            Slider {
+                            EchoIconButton {
+                                source: "qrc:/EchoDesktop/icons/stop.svg"
+                                toolTipText: qsTr("Stop and return to start")
+                                onClicked: {
+                                    workspace.stopPlayback();
+                                    workspace.seekTo(0);
+                                }
+                            }
+                            EchoButton {
+                                text: qsTr("Snap")
+                                ghost: true
+                                checkable: true
+                                checked: workspace.snapping
+                                selected: checked
+                                onClicked: workspace.snapping = checked
+                                ToolTip.visible: hovered
+                                ToolTip.text: qsTr("Snap to clips, playhead and grid · Hold Shift to bypass")
+                            }
+                            EchoIconButton {
+                                source: "qrc:/EchoDesktop/icons/follow-playhead.svg"
+                                toolTipText: qsTr("Follow playback")
+                                selected: workspace.followPlayback
+                                onClicked: workspace.followPlayback = !workspace.followPlayback
+                            }
+                            Item {
                                 Layout.fillWidth: true
-                                from: 0
-                                to: Math.max(1, workspace.durationMillis)
-                                value: workspace.playheadMillis
-                                onMoved: workspace.playheadMillis = value
                             }
-
-                            Text {
-                                text: qsTr("Zoom")
-                                color: Theme.textMuted
-                                font.pixelSize: Theme.fontMeta
+                            EchoIconButton {
+                                source: "qrc:/EchoDesktop/icons/fit-all.svg"
+                                toolTipText: qsTr("Fit project (F)")
+                                onClicked: workspace.fitProject()
                             }
-
-                            Slider {
-                                Layout.preferredWidth: 120
-                                from: 25
-                                to: 240
-                                value: workspace.pixelsPerSecond
-                                onMoved: workspace.pixelsPerSecond = value
+                            EchoIconButton {
+                                source: "qrc:/EchoDesktop/icons/fit-selection.svg"
+                                toolTipText: qsTr("Fit selected clip")
+                                enabled: workspace.selectedClip !== null
+                                onClicked: workspace.fitSelection()
+                            }
+                            EchoButton {
+                                text: "−"
+                                ghost: true
+                                implicitWidth: 25
+                                onClicked: workspace.zoomBy(1 / 1.3)
+                                Accessible.name: qsTr("Zoom out")
+                            }
+                            EchoButton {
+                                text: "+"
+                                ghost: true
+                                implicitWidth: 25
+                                onClicked: workspace.zoomBy(1.3)
+                                Accessible.name: qsTr("Zoom in")
                             }
                         }
                     }
                 }
 
                 Rectangle {
-                    Layout.preferredWidth: 280
-                    Layout.minimumWidth: 280
-                    Layout.maximumWidth: 280
+                    visible: workspace.inspectorVisible
+                    enabled: workspace.hasDocument && !soundAssemblyController.running
+                    Layout.preferredWidth: 260
+                    Layout.minimumWidth: 260
+                    Layout.maximumWidth: 260
                     Layout.fillHeight: true
                     color: Theme.panel
                     border.width: 1
@@ -811,7 +1139,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: workspace.selectedClip ? (workspace.selectedClip.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (workspace.selectedClip.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(workspace.selectedClip.adjustmentRevisionId) : qsTr("Original recording")) : ""
+                                    text: workspace.selectedClip ? (workspace.selectedClip.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (workspace.selectedClip.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(workspace.selectedClip.adjustmentRevisionId) : qsTr("Original source")) : ""
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontMeta
                                     wrapMode: Text.WordWrap
@@ -823,14 +1151,22 @@ Rectangle {
                                 }
                                 EchoComboBox {
                                     Layout.fillWidth: true
-                                    model: [qsTr("Memory reference"),qsTr("Material reference")]
-                                    currentIndex: workspace.selectedClip && workspace.selectedClip.sourceRole === "material" ? 1 : 0
-                                    onActivated: workspace.setClipValue("sourceRole",currentIndex === 1 ? "material" : "memory")
+                                    model: [qsTr("Memory reference"), qsTr("Material reference")]
+                                    selectionIndex: workspace.selectedClip && workspace.selectedClip.sourceRole === "material" ? 1 : 0
+                                    onActivated: workspace.setClipValue("sourceRole", currentIndex === 1 ? "material" : "memory")
                                 }
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    EchoButton { text: qsTr("Split"); ghost: true; onClicked: workspace.splitSelectedClip() }
-                                    EchoButton { text: qsTr("Duplicate"); ghost: true; onClicked: workspace.duplicateSelectedClip() }
+                                    EchoButton {
+                                        text: qsTr("Split")
+                                        ghost: true
+                                        onClicked: workspace.splitSelectedClip()
+                                    }
+                                    EchoButton {
+                                        text: qsTr("Duplicate")
+                                        ghost: true
+                                        onClicked: workspace.duplicateSelectedClip()
+                                    }
                                     EchoButton {
                                         text: qsTr("Delete")
                                         ghost: true
@@ -855,31 +1191,92 @@ Rectangle {
                                     }
                                 }
 
-                                Label { text: qsTr("Clip gain") }
-                                Slider {
+                                Repeater {
+                                    model: [
+                                        {
+                                            key: "timelineStartMillis",
+                                            label: qsTr("Position (s)")
+                                        },
+                                        {
+                                            key: "sourceStartMillis",
+                                            label: qsTr("Source in (s)")
+                                        },
+                                        {
+                                            key: "sourceEndMillis",
+                                            label: qsTr("Source out (s)")
+                                        }
+                                    ]
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: modelData.label
+                                            font.pixelSize: 11
+                                            Layout.fillWidth: true
+                                        }
+                                        EchoTimeSpinBox {
+                                            Layout.preferredWidth: 130
+                                            from: modelData.key === "sourceEndMillis" && workspace.selectedClip ? workspace.selectedClip.sourceStartMillis + 10 : 0
+                                            to: !workspace.selectedClip ? 0 : modelData.key === "timelineStartMillis" ? 14400000 - Editing.duration(workspace.selectedClip) : modelData.key === "sourceStartMillis" ? workspace.selectedClip.sourceEndMillis - 10 : workspace.sourceDurationFor(workspace.selectedClip)
+                                            value: workspace.selectedClip ? workspace.selectedClip[modelData.key] : 0
+                                            onValueModified: workspace.setClipTiming(modelData.key, value)
+                                            Accessible.name: modelData.label
+                                        }
+                                    }
+                                }
+                                EchoParameterSlider {
                                     Layout.fillWidth: true
-                                    from: -2400; to: 1200; stepSize: 50
-                                    value: workspace.selectedClip !== null ? workspace.selectedClip.gainCentibels : 0
-                                    onPressedChanged: {
-                                        if (!pressed)
+                                    label: qsTr("Clip gain")
+                                    labelWidth: 62
+                                    valueWidth: 60
+                                    from: -2400
+                                    to: 1200
+                                    stepSize: 50
+                                    value: workspace.selectedClip ? workspace.selectedClip.gainCentibels : 0
+                                    valueText: (value / 100).toFixed(1) + " dB"
+                                    showNeutralMarker: true
+                                    neutralValue: 0
+                                    property bool dragging: false
+                                    onGestureStarted: dragging = true
+                                    onGestureFinished: {
+                                        dragging = false;
+                                        workspace.setClipValue("gainCentibels", Math.round(value));
+                                    }
+                                    onEdited: value => {
+                                        if (!dragging)
                                             workspace.setClipValue("gainCentibels", Math.round(value));
                                     }
                                 }
-
-                                Label { text: qsTr("Clip pan") }
-                                Slider {
+                                EchoParameterSlider {
                                     Layout.fillWidth: true
-                                    from: -100; to: 100; stepSize: 1
-                                    value: workspace.selectedClip !== null ? workspace.selectedClip.panPercent : 0
-                                    onPressedChanged: {
-                                        if (!pressed)
+                                    label: qsTr("Clip pan")
+                                    labelWidth: 62
+                                    valueWidth: 60
+                                    from: -100
+                                    to: 100
+                                    stepSize: 1
+                                    value: workspace.selectedClip ? workspace.selectedClip.panPercent : 0
+                                    valueText: value === 0 ? qsTr("Center") : (value < 0 ? "L " : "R ") + Math.abs(value)
+                                    showNeutralMarker: true
+                                    neutralValue: 0
+                                    property bool dragging: false
+                                    onGestureStarted: dragging = true
+                                    onGestureFinished: {
+                                        dragging = false;
+                                        workspace.setClipValue("panPercent", Math.round(value));
+                                    }
+                                    onEdited: value => {
+                                        if (!dragging)
                                             workspace.setClipValue("panPercent", Math.round(value));
                                     }
                                 }
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Fade in (ms)"); Layout.fillWidth: true }
+                                    Label {
+                                        text: qsTr("Fade in (ms)")
+                                        Layout.fillWidth: true
+                                    }
                                     SpinBox {
                                         from: 0
                                         to: workspace.selectedClip !== null ? workspace.selectedClip.sourceEndMillis - workspace.selectedClip.sourceStartMillis : 0
@@ -891,7 +1288,10 @@ Rectangle {
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Fade out (ms)"); Layout.fillWidth: true }
+                                    Label {
+                                        text: qsTr("Fade out (ms)")
+                                        Layout.fillWidth: true
+                                    }
                                     SpinBox {
                                         from: 0
                                         to: workspace.selectedClip !== null ? workspace.selectedClip.sourceEndMillis - workspace.selectedClip.sourceStartMillis : 0
@@ -903,38 +1303,50 @@ Rectangle {
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Fade-in curve"); Layout.fillWidth: true }
+                                    Label {
+                                        text: qsTr("Fade-in curve")
+                                        Layout.fillWidth: true
+                                    }
                                     EchoComboBox {
+                                        objectName: "assemblyFadeInCurve"
                                         Layout.preferredWidth: 128
                                         model: [qsTr("Linear"), qsTr("Smooth"), qsTr("Equal power")]
-                                        currentIndex: workspace.selectedClip !== null
-                                            ? workspace.fadeCurveIndex(workspace.selectedClip.fadeInCurve) : 0
+                                        selectionIndex: workspace.selectedClip !== null ? workspace.fadeCurveIndex(workspace.selectedClip.fadeInCurve) : 0
                                         onActivated: workspace.setClipValue("fadeInCurve", workspace.fadeCurveValue(currentIndex))
                                     }
                                 }
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Fade-out curve"); Layout.fillWidth: true }
+                                    Label {
+                                        text: qsTr("Fade-out curve")
+                                        Layout.fillWidth: true
+                                    }
                                     EchoComboBox {
                                         Layout.preferredWidth: 128
                                         model: [qsTr("Linear"), qsTr("Smooth"), qsTr("Equal power")]
-                                        currentIndex: workspace.selectedClip !== null
-                                            ? workspace.fadeCurveIndex(workspace.selectedClip.fadeOutCurve) : 0
+                                        selectionIndex: workspace.selectedClip !== null ? workspace.fadeCurveIndex(workspace.selectedClip.fadeOutCurve) : 0
                                         onActivated: workspace.setClipValue("fadeOutCurve", workspace.fadeCurveValue(currentIndex))
                                     }
                                 }
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Muted"); Layout.fillWidth: true }
+                                    Label {
+                                        text: qsTr("Muted")
+                                        Layout.fillWidth: true
+                                    }
                                     Switch {
                                         checked: workspace.selectedClip !== null && workspace.selectedClip.muted
                                         onToggled: workspace.setClipValue("muted", checked)
                                     }
                                 }
 
-                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+                                    color: Theme.border
+                                }
                             }
 
                             ColumnLayout {
@@ -944,10 +1356,14 @@ Rectangle {
                                 Layout.bottomMargin: 14
                                 spacing: 9
 
-                                Label { text: qsTr("Master gain") }
+                                Label {
+                                    text: qsTr("Master gain")
+                                }
                                 Slider {
                                     Layout.fillWidth: true
-                                    from: -2400; to: 1200; stepSize: 50
+                                    from: -2400
+                                    to: 1200
+                                    stepSize: 50
                                     value: workspace.hasDocument ? workspace.document.master.gainCentibels : 0
                                     onPressedChanged: {
                                         if (!pressed)
@@ -957,7 +1373,10 @@ Rectangle {
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Limiter"); Layout.fillWidth: true }
+                                    Label {
+                                        text: qsTr("Limiter")
+                                        Layout.fillWidth: true
+                                    }
                                     Switch {
                                         checked: workspace.hasDocument && workspace.document.master.limiterEnabled
                                         onToggled: workspace.setMasterValue("limiterEnabled", checked)
@@ -966,9 +1385,13 @@ Rectangle {
 
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Ceiling (0.01 dB)"); Layout.fillWidth: true }
+                                    Label {
+                                        text: qsTr("Ceiling (0.01 dB)")
+                                        Layout.fillWidth: true
+                                    }
                                     SpinBox {
-                                        from: -600; to: 0
+                                        from: -600
+                                        to: 0
                                         value: workspace.hasDocument ? workspace.document.master.limiterCeilingCentibels : -100
                                         editable: true
                                         onValueModified: workspace.setMasterValue("limiterCeilingCentibels", value)
@@ -978,9 +1401,7 @@ Rectangle {
                                 Text {
                                     Layout.fillWidth: true
                                     visible: soundAssemblyController.hasResult
-                                    text: qsTr("Last mix: %1 LUFS · %2 dBTP")
-                                        .arg(soundAssemblyController.integratedLufs.toFixed(1))
-                                        .arg(soundAssemblyController.truePeakDbtp.toFixed(1))
+                                    text: qsTr("Last mix: %1 LUFS · %2 dBTP").arg(soundAssemblyController.integratedLufs.toFixed(1)).arg(soundAssemblyController.truePeakDbtp.toFixed(1))
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontMeta
                                     wrapMode: Text.WordWrap
@@ -1063,24 +1484,44 @@ Rectangle {
 
     Connections {
         target: backend
-        function onAssetsChanged(): void { workspace.libraryAssets = backend.listAssets(); }
+        function onAssetsChanged(): void {
+            workspace.libraryAssets = backend.listAssets();
+        }
     }
     Connections {
         target: soundAssemblyController
+        function onStateChanged(): void {
+            if (!soundAssemblyController.running && workspace.pendingPreviewJson) {
+                if (soundAssemblyController.hasPreview && !soundAssemblyController.errorText) {
+                    workspace.previewDocumentJson = workspace.pendingPreviewJson;
+                    if (workspace.previewCurrent && workspace.visible) {
+                        workspace.playbackOwned = true;
+                        player.seek(Math.round(workspace.previewStartMillis));
+                    } else
+                        workspace.stopPlayback();
+                }
+                workspace.pendingPreviewJson = "";
+            }
+        }
         function onMemorySaved(assemblyId): void {
-            workspace.noticeText = qsTr("This version is now in your memory library.");
+            workspace.memorySavedNotice = true;
             errorTimer.restart();
         }
     }
     Timer {
         id: errorTimer
         interval: 5000
-        onTriggered: { workspace.errorText = ""; workspace.noticeText = ""; }
+        onTriggered: {
+            workspace.errorText = "";
+            workspace.memorySavedNotice = false;
+        }
     }
 
     Connections {
         target: backend
-        function onSoundAssembliesChanged(): void { workspace.refreshAssemblies(); }
+        function onSoundAssembliesChanged(): void {
+            workspace.refreshAssemblies();
+        }
     }
 
     Component.onCompleted: refreshAssemblies()

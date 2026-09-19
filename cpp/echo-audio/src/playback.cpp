@@ -230,6 +230,9 @@ class PlaybackSession::Impl {
         duration_millis_ = static_cast<std::uint64_t>(
             av_rescale_q(stream->duration, stream->time_base, AVRational{1, 1000})
         );
+        source_duration_frames_ = static_cast<std::uint64_t>(
+            av_rescale_q(stream->duration, stream->time_base, AVRational{1, kCanonicalSampleRate})
+        );
         adjustment_ = std::make_unique<PreparedAdjustment>(
             adjustment,
             duration_millis_,
@@ -704,11 +707,14 @@ class PlaybackSession::Impl {
             // for every nonzero seek, then discard everything before target.
             decode_start_frame = source_edit_plan_->start_frame();
         }
-        const std::int64_t timestamp = av_rescale_q(
-            static_cast<std::int64_t>(decode_start_frame),
-            AVRational{1, kCanonicalSampleRate},
-            format_.get()->streams[stream_index_]->time_base
-        );
+        const AVStream* stream = format_.get()->streams[stream_index_];
+        const std::int64_t timestamp =
+            av_rescale_q(
+                static_cast<std::int64_t>(decode_start_frame),
+                AVRational{1, kCanonicalSampleRate},
+                stream->time_base
+            )
+            + (stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time);
         const int result =
             av_seek_frame(format_.get(), stream_index_, timestamp, AVSEEK_FLAG_BACKWARD);
         if (result < 0) {
@@ -1155,7 +1161,8 @@ class PlaybackSession::Impl {
                     && frame_->best_effort_timestamp != AV_NOPTS_VALUE) {
                     const AVStream* stream = format_.get()->streams[stream_index_];
                     const std::int64_t rescaled = av_rescale_q(
-                        frame_->best_effort_timestamp,
+                        frame_->best_effort_timestamp
+                            - (stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time),
                         stream->time_base,
                         AVRational{1, kCanonicalSampleRate}
                     );
@@ -1241,6 +1248,26 @@ class PlaybackSession::Impl {
                         scratch.size() / channel_count_
                     );
                 }
+                // Authored source time uses whole milliseconds. A container
+                // duration such as 61.596750 s rounds up by 12 canonical
+                // frames. Feed only that known fractional rounding tail
+                // through the same edit/effect path (including terminal gaps).
+                // Larger short reads remain errors in the offline renderers.
+                const auto end_frame = source_edit_plan_->end_frame();
+                if (!reached_end && end_frame == duration_millis_ * kCanonicalSampleRate / 1000U
+                    && decoded_frame_cursor_ < end_frame
+                    && decoded_frame_cursor_ + 1 >= source_duration_frames_
+                    && end_frame - decoded_frame_cursor_ <= kCanonicalSampleRate / 1000U) {
+                    std::array<float, kCanonicalSampleRate / 1000U> silence{};
+                    const float* planes[] = {silence.data(), silence.data()};
+                    reached_end = feed_resampled(
+                        planes,
+                        static_cast<std::size_t>(end_frame - decoded_frame_cursor_),
+                        scratch.data(),
+                        source_frames.data(),
+                        scratch.size() / channel_count_
+                    );
+                }
                 const bool finished = reached_end
                                       || finish_effect_chain(
                                           scratch.data(),
@@ -1277,6 +1304,7 @@ class PlaybackSession::Impl {
     FormatContext format_;
     int stream_index_ = 0;
     std::uint64_t duration_millis_ = 0;
+    std::uint64_t source_duration_frames_ = 0;
     std::uint32_t channel_count_ = 1;
     std::unique_ptr<AVCodecContext, DecoderContextDeleter> codec_;
     std::unique_ptr<SwrContext, SwrDeleter> swr_;

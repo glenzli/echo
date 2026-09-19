@@ -44,12 +44,11 @@ void append(std::string& target, const void* bytes, std::size_t size) {
     target.append(static_cast<const char*>(bytes), size);
 }
 
-std::string sine_wav() {
+std::string sine_wav(std::uint32_t frames = 24000) {
     constexpr std::uint32_t sample_rate = 24000;
     constexpr std::uint16_t channels = 1;
     constexpr std::uint16_t bits = 16;
-    constexpr std::uint32_t frames = sample_rate;
-    constexpr std::uint32_t data_bytes = frames * channels * bits / 8;
+    const std::uint32_t data_bytes = frames * channels * bits / 8;
     std::string wav;
     append(wav, "RIFF", 4);
     const std::uint32_t riff_size = 36 + data_bytes;
@@ -573,6 +572,39 @@ int main() {
         echo::audio::OfflineFlacRenderer::render(source.string(), source_edited, edited_flac_sink);
     assert(edited_flac.frame_count == edited_wav.frame_count);
     assert(edited_flac.size_bytes == edited_flac_sink.bytes().size());
+
+    // 999.75 ms rounds to a 1000 ms authored endpoint. The sub-millisecond
+    // tail still passes through segment gaps and fixed-latency processing.
+    const auto fractional_source = source.string() + ".fraction.wav";
+    {
+        std::ofstream output(fractional_source, std::ios::binary);
+        const std::string wav = sine_wav(23'994);
+        output.write(wav.data(), static_cast<std::streamsize>(wav.size()));
+    }
+    auto fractional_adjustment = full_source;
+    fractional_adjustment.edit_segments = {{
+        .source_start_millis = 0,
+        .source_end_millis = 1000,
+        .state = echo::audio::EditSegmentState::Audible,
+        .gap_after_millis = 100,
+    }};
+    MemorySink fractional_wav_sink;
+    const auto fractional_wav = echo::audio::OfflineWavRenderer::render(
+        fractional_source,
+        fractional_adjustment,
+        fractional_wav_sink
+    );
+    assert(fractional_wav.frame_count == 52'800);
+    MemorySink fractional_flac_sink;
+    const auto fractional_flac = echo::audio::OfflineFlacRenderer::render(
+        fractional_source,
+        fractional_adjustment,
+        fractional_flac_sink
+    );
+    assert(fractional_flac.frame_count == fractional_wav.frame_count);
+    const auto fractional_playback = render_playback(fractional_source, fractional_adjustment);
+    assert(fractional_playback.size() == 52'800 * 2);
+    std::filesystem::remove(fractional_source);
 
     MemorySink cancelled_sink;
     bool did_cancel = false;

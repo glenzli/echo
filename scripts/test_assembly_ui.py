@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Run source QML pointer contracts in a disposable module; no app rebuild needed."""
+import argparse
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--native", action="store_true", help="Use the platform GPU renderer for icon color checks")
+args = parser.parse_args()
+
+root = Path(__file__).resolve().parents[1]
+runner = shutil.which("qmltestrunner") or "/opt/homebrew/opt/qtdeclarative/bin/qmltestrunner"
+with tempfile.TemporaryDirectory(prefix="echo-qml-contract-") as temporary:
+    module = Path(temporary) / "EchoDesktop"
+    module.mkdir()
+    entries = ["module EchoDesktop", "singleton Theme 0.1 Theme.qml", "singleton SoundSemantics 0.1 SoundSemantics.qml"]
+    for name in ["Theme.qml", "SoundSemantics.qml", "WaveformView.qml", "SoundAssemblyClip.qml", "SoundAssemblyEditing.js", "EchoIcon.qml", "EchoComboBox.qml"]:
+        (module / name).symlink_to(root / "apps/desktop/qml" / name)
+        if name.endswith(".qml") and name not in ("Theme.qml", "SoundSemantics.qml"):
+            entries.append(f"{Path(name).stem} 0.1 {name}")
+    (module / "qmldir").write_text("\n".join(entries) + "\n")
+    environment = dict(os.environ, QT_QUICK_CONTROLS_STYLE="Basic", QT_QPA_PLATFORM="offscreen", QSG_RHI_BACKEND="software", QT_QUICK_BACKEND="software")
+    if args.native:
+        environment.pop("QT_QUICK_BACKEND", None)
+        environment.pop("QSG_RHI_BACKEND", None)
+        environment.pop("QT_QPA_PLATFORM", None)
+    raise SystemExit(subprocess.call([runner, "-input", str(root / "apps/desktop/tests/qml"), "-import", temporary], env=environment))

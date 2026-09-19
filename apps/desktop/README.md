@@ -52,8 +52,13 @@ user explicitly auditions the changed draft.
 
 Sound Assembly is a third peer workspace. `SoundAssemblyWorkspace.qml` owns
 the versioned document, bounded undo/redo history, timeline commands, clip and
-master inspectors, preview, and mixdown presentation; `SoundAssemblyTrack.qml`
-owns one track's mix controls and direct clip placement, trim, and selection.
+master inspectors, preview, and mixdown presentation. `SoundAssemblyTrack.qml`
+owns a lane and its fixed mix controls. `SoundAssemblyClip.qml` owns the complete
+move, trim and fade gesture lifecycle; `SoundAssemblyEditing.js` owns bounded
+geometry, magnetic snapping, split/crossfade transforms and source-time mapping.
+`AssemblyWaveformController` serializes asynchronous source waveform reads and
+retains bounded overview buckets for the active project's sources. The overview
+follows pinned source segments and gaps; it does not claim to show rendered DSP.
 Library selection creates a sequence or layered document. Every clip pins an
 exact asset adjustment revision. `SoundAssemblyController` first renders each
 unique pinned revision through the existing single-sound offline renderer,
@@ -62,9 +67,39 @@ assembly plan for preview and PCM24 WAV mixdown. Catalog publication happens
 only after an atomic output commit and records the assembly revision, Original
 hashes, pinned adjustment revisions, and output hash.
 
+Sources and the inspector can be collapsed independently. The ruler, grid and
+playhead share the scrolling timeline's coordinates. Preview reuse is bound to
+the authored document, including exact source versions; saving after an edit
+cannot reuse an older preview. Space toggles playback, S splits at the playhead,
+Cmd/Ctrl+D duplicates after the clip, arrows nudge 10 ms (Shift: 100 ms), F fits
+the project, and +/- zoom. Shift bypasses magnetic snapping while dragging.
+Right-click a clip for crossfade and same-track gap-closing deletion.
+
+Interaction references: [Audition clip editing](https://helpx.adobe.com/ca/audition/using/arranging-editing-multitrack-clips.html),
+[Audacity tracks and clips](https://manual.audacityteam.org/man/audacity_tracks_and_clips.html),
+and [Ardour fades](https://manual.ardour.org/editing-and-arranging/create-region-fades-and-crossfades/).
+
+Focused checks: `node --test apps/desktop/tests/assembly_editing_contract.mjs`
+and `python3 scripts/test_assembly_ui.py` (Qt Quick Test mouse gestures). For a
+native fixture workflow, prepare an external directory with
+`scripts/prepare_multitrack_demo.py <directory> --operator-credential <protected-local-operator-file>`.
+The tool downloads two hash-pinned CC0 sounds and requests a new descriptive
+synthetic voice through Infer Runtime, without changing Echo's consumer grants.
+It keeps audio, license/source attribution, request and job evidence outside Git.
+On Python installations without configured CA certificates, set `SSL_CERT_FILE`
+to the host's trusted CA bundle; do not disable certificate verification.
+Import `Rain in the gutter.mp3` into an isolated catalog with `echo-cli import`,
+then launch Echo against that catalog with `ECHO_DEBUG_MULTITRACK_ROOT=<directory>`
+and `ECHO_DEBUG_MULTITRACK_REPORT=<absolute-report.json>`. The opt-in workflow
+checks three source waveforms, crossfade, undo, ripple deletion, preview identity,
+seek and mix provenance, and captures the actual native pages.
+
 `SoundSourceBrowser.qml` owns the editor's project, memory and material bins and
 is reused for the global material page. `desktop_sound_library.cpp` exposes
 collection membership, queued durable imports and memory destinations.
+Editing names use `SoundSemantics.sourceTitle`: explicit user captions, embedded
+source titles or filenames remain stable when AI analysis arrives. Model event
+labels in the source browser are marked as AI suggestions.
 `SoundPlaybackSource.qml` maps saved processing into either the main transport
 or the independent material audition transport. `MemorySourceReferences.qml`
 shows the exact source snapshot of an accepted listening edition.

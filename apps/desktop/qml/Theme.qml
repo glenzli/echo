@@ -21,7 +21,7 @@ QtObject {
         if (mode === Theme.AppearanceMode.Light) {
             return false;
         }
-        return uiPrefs !== undefined ? uiPrefs.dark : true;
+        return typeof uiPrefs !== "undefined" ? uiPrefs.dark : true;
     }
 
     // Density tokens

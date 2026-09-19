@@ -32,6 +32,16 @@ QtObject {
         }
     }
 
+    // Stable editing identity: analysis may enrich a source, but must not rename it.
+    function sourceTitle(asset) {
+        if (!asset)
+            return "";
+        const calibrated = asset.calibratedFields || [];
+        if ((asset.assemblyId || calibrated.indexOf("sound_caption") >= 0) && asset.soundCaption)
+            return asset.soundCaption;
+        return asset.sourceTitle || String(asset.path || "").split("/").pop() || asset.soundCaption || "";
+    }
+
     function eventLabel(value) {
         const normalized = String(value || "").trim().toLocaleLowerCase().replace(/[_-]+/g, " ");
         switch (normalized) {
