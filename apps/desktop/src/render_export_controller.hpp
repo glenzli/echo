@@ -93,7 +93,8 @@ class RenderExportController : public QObject {
         const QVariantList& effectChain,
         const QVariantList& editSegments,
         const QVariantList& effectMasks,
-        const QVariantMap& creativeVfx
+        const QVariantMap& creativeVfx,
+        const QVariantMap& spectralRepair = QVariantMap{}
     );
     /// Publishes the active rendered repair copy itself. It deliberately uses
     /// an empty downstream adjustment so post-freeze effects are never applied

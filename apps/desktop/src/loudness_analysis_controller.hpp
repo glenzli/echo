@@ -87,7 +87,8 @@ class LoudnessAnalysisController : public QObject {
         const QVariantList& effectChain,
         const QVariantList& editSegments,
         const QVariantList& effectMasks,
-        const QVariantMap& creativeVfx
+        const QVariantMap& creativeVfx,
+        const QVariantMap& spectralRepair = QVariantMap{}
     );
     Q_INVOKABLE void cancel();
     Q_INVOKABLE QVariantMap

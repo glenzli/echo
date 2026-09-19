@@ -40,6 +40,44 @@ void PlaybackController::play(const QString& path) {
     startSession(path, {});
 }
 
+void PlaybackController::playSpectralBand(
+    const QString& path,
+    qint64 startMillis,
+    qint64 endMillis,
+    int lowHertz,
+    int highHertz
+) {
+    if (startMillis < 0 || endMillis <= startMillis || lowHertz < 20 || highHertz > 24'000
+        || lowHertz >= highHertz)
+        return;
+    echo::audio::PlaybackAdjustment adjustment;
+    adjustment.trim_start_millis = static_cast<std::uint64_t>(startMillis);
+    adjustment.trim_end_millis = static_cast<std::uint64_t>(endMillis);
+    adjustment.fade_in_millis = std::min<qint64>(5, (endMillis - startMillis) / 2);
+    adjustment.fade_out_millis = adjustment.fade_in_millis;
+    if (lowHertz > 20)
+        adjustment.spectral_repair.push_back(
+            {0,
+             static_cast<std::uint64_t>(endMillis),
+             20,
+             static_cast<std::uint16_t>(lowHertz),
+             9600,
+             0,
+             0}
+        );
+    if (highHertz < 24'000)
+        adjustment.spectral_repair.push_back(
+            {0,
+             static_cast<std::uint64_t>(endMillis),
+             static_cast<std::uint16_t>(highHertz),
+             24'000,
+             9600,
+             0,
+             0}
+        );
+    startSession(path, adjustment);
+}
+
 void PlaybackController::playAdjusted(
     const QString& path,
     qint64 trimStartMillis,
@@ -132,7 +170,8 @@ void PlaybackController::playAdjusted(
     const QVariantList& effectChain,
     const QVariantList& editSegments,
     const QVariantList& effectMasks,
-    const QVariantMap& creativeVfxValue
+    const QVariantMap& creativeVfxValue,
+    const QVariantMap& spectralRepair
 ) {
     const auto adjustment = PlaybackAdjustmentProjection::fromQml(
         trimStartMillis,
@@ -162,7 +201,8 @@ void PlaybackController::playAdjusted(
         effectChain,
         editSegments,
         effectMasks,
-        creativeVfxValue
+        creativeVfxValue,
+        spectralRepair
     );
     if (!adjustment.has_value()) {
         qWarning("invalid playback adjustment");

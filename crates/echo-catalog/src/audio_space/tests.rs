@@ -317,3 +317,61 @@ fn append_contextual_fixture(
     )?;
     Ok(())
 }
+
+#[test]
+fn spectral_repairs_survive_library_projection_and_bypass() {
+    let root = std::env::temp_dir().join(format!("echo-spectral-wall-{}", std::process::id()));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");
+    catalog
+        .with_transaction(|transaction| -> Result<_, crate::CatalogError> {
+            let registered = register_asset(
+                transaction,
+                &AssetRegistrationInput {
+                    content_hash: ContentHash::new([71; 32]),
+                    path: Path::new("/spectral-calibration.wav"),
+                    size_bytes: 100,
+                    codec: Some("pcm"),
+                    duration_millis: Some(8000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 10,
+                },
+            )?;
+            let asset_id = match registered {
+                RegisterAsset::Created(asset) | RegisterAsset::Existed(asset) => asset.id,
+            };
+            for enabled in [true, false] {
+                let effects = echo_domain::AdjustmentEffects::default().with_spectral_repair(
+                    echo_domain::SpectralRepairSettings {
+                        enabled,
+                        regions: vec![echo_domain::SpectralAttenuationRegion {
+                            start_millis: 1200,
+                            end_millis: 3900,
+                            low_hertz: 1650,
+                            high_hertz: 1950,
+                            attenuation_centibels: 2400,
+                            time_feather_millis: 30,
+                            frequency_feather_hertz: 60,
+                        }],
+                    },
+                );
+                let graph = echo_domain::AdjustmentGraph::new(8000, 0, 8000, 0, 0, effects)
+                    .expect("spectral graph");
+                let saved = record_adjustment_graph(transaction, asset_id, graph.clone(), 11)?;
+                let projected = list_audio_space(transaction)?
+                    .into_iter()
+                    .find(|asset| asset.id == asset_id.to_string())
+                    .expect("asset")
+                    .adjustment
+                    .expect("saved adjustment");
+                assert_eq!(projected.revision_id, saved.revision_id);
+                assert_eq!(
+                    projected.graph, graph,
+                    "library projection must preserve the complete graph"
+                );
+            }
+            Ok(())
+        })
+        .expect("spectral library round trip");
+    drop(catalog);
+    std::fs::remove_dir_all(root).expect("remove fixture");
+}

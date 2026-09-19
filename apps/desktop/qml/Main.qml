@@ -54,6 +54,14 @@ ApplicationWindow {
         fixtureRoot: multitrackSmokeRoot
     }
 
+    readonly property alias spectralSmokeReport: spectralSmoke.reportJson
+    readonly property alias spectralSmokeStage: spectralSmoke.stage
+    SpectralWorkflowSmoke {
+        id: spectralSmoke
+        shell: window; editor: soundEditor; library: audioSpace
+        fixtureRoot: spectralSmokeRoot
+    }
+
     property var jobSnapshot: ({
             pending: 0,
             running: 0,
@@ -79,6 +87,18 @@ ApplicationWindow {
 
     function showAudioSpace(): void {
         workspaceIndex = 0;
+    }
+
+    function debugOpenSpectralSource(path: string): void {
+        const asset=backend.listAssets().find(value=>value.path===path);
+        if(!asset) return;
+        audioSpace.selectedFilter="all";audioSpace.refreshAssets();audioSpace.selectAssetOnly(asset);
+        showSoundEditor();soundEditor.spectralFocus=true;
+        Qt.callLater(()=>{
+            const regions=soundEditor.adjustment.spectralRepair.regions;
+            if(regions.length) soundEditor.spectralEditor.setSelection(regions[0],0);
+            soundEditor.spectralEditor.lowHertz=200;soundEditor.spectralEditor.highHertz=8000;
+        });
     }
 
     function showSoundEditor(): void {

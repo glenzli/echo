@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--input", default="apps/desktop/tests/qml", help="Focused QML test file or directory")
 parser.add_argument("--native", action="store_true", help="Use the platform GPU renderer for icon color checks")
 args = parser.parse_args()
 
@@ -17,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix="echo-qml-contract-") as temporary:
     module = Path(temporary) / "EchoDesktop"
     module.mkdir()
     entries = ["module EchoDesktop", "singleton Theme 0.1 Theme.qml", "singleton SoundSemantics 0.1 SoundSemantics.qml"]
-    for name in ["Theme.qml", "SoundSemantics.qml", "WaveformView.qml", "SoundAssemblyClip.qml", "SoundAssemblyEditing.js", "EchoIcon.qml", "EchoComboBox.qml"]:
+    for name in ["Theme.qml", "SoundSemantics.qml", "WaveformView.qml", "SoundAssemblyClip.qml", "SoundAssemblyEditing.js", "EchoIcon.qml", "EchoComboBox.qml", "SpectralEditing.js", "SpectrogramView.qml", "SpectralRepairSurface.qml", "SoundAdjustmentDraft.qml", "EchoTimeSpinBox.qml", "EchoParameterSlider.qml", "EchoSwitch.qml"]:
         (module / name).symlink_to(root / "apps/desktop/qml" / name)
         if name.endswith(".qml") and name not in ("Theme.qml", "SoundSemantics.qml"):
             entries.append(f"{Path(name).stem} 0.1 {name}")
@@ -27,4 +28,4 @@ with tempfile.TemporaryDirectory(prefix="echo-qml-contract-") as temporary:
         environment.pop("QT_QUICK_BACKEND", None)
         environment.pop("QSG_RHI_BACKEND", None)
         environment.pop("QT_QPA_PLATFORM", None)
-    raise SystemExit(subprocess.call([runner, "-input", str(root / "apps/desktop/tests/qml"), "-import", temporary], env=environment))
+    raise SystemExit(subprocess.call([runner, "-input", str(root / args.input), "-import", temporary], env=environment))

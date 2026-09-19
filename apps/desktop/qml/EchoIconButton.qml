@@ -50,7 +50,7 @@ Button {
         size: iconSize
         source: control.source
         color: !control.enabled ? Theme.textDisabled
-                                : control.selected ? selectedIconColor
+                                : control.selected ? control.selectedIconColor
                                                    : Theme.textSecondary
     }
 }

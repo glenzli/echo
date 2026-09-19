@@ -163,3 +163,31 @@ and `ECHO_DEBUG_MEMORY_REPORT=/absolute/report.json`. It exercises project mater
 isolated clip precision editing, accepted mix publication, waveform access, draft retention
 and project reopening, then exits with a JSON report and numbered window captures. It invokes
 the same workspace handlers as the UI; pointer gestures and native file dialogs remain manual QA.
+
+`SpectrogramView.qml` owns precise source-frequency selection, per-region repair
+inspection, harmonic expansion and diagnostic audition. `SpectralRepairSurface.qml`
+owns marquee/move/edge-resize gestures and `SpectralEditing.js` owns their bounded
+source-time/Hz geometry. `SpectrogramPreviewController` serializes cancellable,
+latest-wins native viewport analysis; `spectrogram_detail` performs channel-preserving
+STFT analysis into uniform time buckets, with logarithmic/linear frequency projection,
+2048/8192-frame resolution and display-floor control. This is source evidence, not a
+rendered preview. The cached whole-file overview remains available to other consumers.
+
+Spectral repair settings are explicitly passed to editor, library and source-browser
+playback, whole-preview loudness analysis and single-file export. The catalog's library
+projection restores the complete saved graph, including bypassed repair regions.
+Source-band listening creates temporary diagnostic filters; it never writes an adjustment.
+Spectral edits invalidate old audition identity. Source-preserving
+attenuation remains distinct from future context healing, noise-print reduction and
+note-level pitch correction. Interaction references: [Audacity spectral selection](https://manual.audacityteam.org/man/spectral_selection_toolbar.html)
+and [Audition spectral ranges](https://helpx.adobe.com/ie/audition/desktop/editing-audio-files/selecting-audio.html).
+
+`SpectralWorkflowSmoke.qml` exercises actual packaged playback, undo, save/readback,
+reopening, source-band audition, loudness analysis and WAV export. Set
+`ECHO_DEBUG_SPECTRAL_ROOT` to a fixture prepared by `scripts/prepare_spectral_demo.py`
+and `ECHO_DEBUG_SPECTRAL_REPORT` to a JSON output path. The fixture has an isolated
+catalog/cache, an analytically known two-tone source and an optional synthetic narration
+with explicitly injected interference. `scripts/verify_spectral_demo.py` checks source
+hashes, exported frequency attenuation, untouched audio outside the repair and catalog
+integrity. Real mouse gestures and numerical controls are covered separately by
+`tests/qml/tst_SpectralRepair.qml`.

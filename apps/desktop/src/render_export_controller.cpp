@@ -145,7 +145,8 @@ void RenderExportController::exportAdjusted(
     const QVariantList& effectChain,
     const QVariantList& editSegments,
     const QVariantList& effectMasks,
-    const QVariantMap& creativeVfx
+    const QVariantMap& creativeVfx,
+    const QVariantMap& spectralRepair
 ) {
     if (assetId.isEmpty() || adjustmentRevisionId < 0 || sourcePath.isEmpty()) {
         reject(QStringLiteral("render source identity is invalid"));
@@ -188,7 +189,8 @@ void RenderExportController::exportAdjusted(
         effectChain,
         editSegments,
         effectMasks,
-        creativeVfx
+        creativeVfx,
+        spectralRepair
     );
     if (!adjustment.has_value()) {
         reject(QStringLiteral("render adjustment is outside the supported range"));

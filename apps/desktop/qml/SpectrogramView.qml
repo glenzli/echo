@@ -1,14 +1,12 @@
-//! Display-only, source-derived spectrogram overview. Its caller owns the
-//! synchronized timeline viewport and any future repair gestures.
-
+//! Source-frequency selection, repair inspector and diagnostic listening.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import EchoDesktop
+import "SpectralEditing.js" as Editing
 
 Rectangle {
     id: spectrogram
-
     required property string imageUrl
     required property bool loading
     required property int sourceDurationMillis
@@ -27,267 +25,187 @@ Rectangle {
     required property string renderedWorkingCopyError
     required property bool renderedEraseMode
     required property int renderedWorkingCopyOperationCount
-
-    readonly property bool hasOverview: imageUrl.length > 0
-
-    signal regionRequested(int startMillis, int endMillis, int lowHertz, int highHertz)
+    property int lowHertz: 20
+    property int highHertz: 24000
+    property bool logarithmic: true
+    property int windowFrames: 8192
+    property int floorDecibels: -96
+    property int selectedIndex: -1
+    property var selection: null
+    property bool showPostEffects: false
+    readonly property bool hasOverview: imageUrl.length>0
+    readonly property bool hasSelection: selection!==null
+    signal viewportChanged()
+    signal regionUpdated(int index, var value)
+    signal regionsAppended(var values)
+    signal regionRemoved(int index)
+    signal gestureStarted()
+    signal gestureFinished()
+    signal auditionRequested(var selection, bool bandOnly)
     signal layerEnabledRequested(bool enabled)
-    signal clearRequested
-    signal renderedWorkingCopyRequested
+    signal clearRequested()
+    signal renderedWorkingCopyRequested()
     signal renderedEraseModeRequested(bool enabled)
     signal renderedEraseRequested(int startMillis, int endMillis, int lowHertz, int highHertz)
-    signal renderedWorkingCopyAuditionRequested
-
-    implicitHeight: 230
+    signal renderedWorkingCopyAuditionRequested()
     color: Theme.panelRaised
     radius: Theme.panelRadius
     border.color: Theme.border
+    implicitHeight: 490
     clip: true
 
-    function clamp(value: real, minimum: real, maximum: real): real {
-        return Math.max(minimum, Math.min(maximum, value));
+    function resetSelection() { selectedIndex=-1; selection=null; lowHertz=20; highHertz=24000; }
+    function setSelection(value,index) { selectedIndex=index; selection=value; }
+    function editField(key,value) {
+        if (!selection) return;
+        const next=Object.assign({},selection); next[key]=value;
+        selection=Editing.region(next,sourceDurationMillis);
+        if(selectedIndex>=0) regionUpdated(selectedIndex,selection);
     }
+    function applySelection() {
+        if (!selection || regions.length>=64 || renderedEraseMode) return;
+        const index=regions.length;
+        regionsAppended([selection]); selectedIndex=index;
+    }
+    function addHarmonics(count) {
+        if (!selection || renderedEraseMode) return;
+        const baseIndex=regions.findIndex(value => value.startMillis===selection.startMillis && value.endMillis===selection.endMillis && value.lowHertz===selection.lowHertz && value.highHertz===selection.highHertz);
+        const values=Editing.harmonics(selection,count,sourceDurationMillis).filter(value => !regions.some(existing =>
+            existing.startMillis===value.startMillis && existing.endMillis===value.endMillis && existing.lowHertz===value.lowHertz && existing.highHertz===value.highHertz));
+        if(selectedIndex<0 && baseIndex<0) values.unshift(selection);
+        if(values.length+regions.length>64) return;
+        const index=baseIndex>=0 ? baseIndex : regions.length;
+        if(values.length>0) regionsAppended(values);
+        if(selectedIndex<0 && index<regions.length) setSelection(regions[index],index);
+    }
+    function focusFrequency() {
+        if(!selection) return;
+        const padding=Math.max(20,(selection.highHertz-selection.lowHertz)*0.5);
+        lowHertz=Math.max(20,Math.floor(selection.lowHertz-padding)); highHertz=Math.min(24000,Math.ceil(selection.highHertz+padding));
+    }
+    onRegionsChanged: { if(selectedIndex>=regions.length) {selectedIndex=-1; selection=null;} else if(selectedIndex>=0) selection=regions[selectedIndex]; }
+    onLowHertzChanged: viewportChanged()
+    onHighHertzChanged: viewportChanged()
+    onLogarithmicChanged: viewportChanged()
+    onWindowFramesChanged: viewportChanged()
+    onFloorDecibelsChanged: viewportChanged()
+    onViewStartRatioChanged: viewportChanged()
+    onViewEndRatioChanged: viewportChanged()
+    onRenderedEraseModeChanged: { selectedIndex=-1; selection=null; }
 
     ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: 10
-        spacing: 6
-
+        anchors.fill: parent; anchors.margins: 10; spacing: 8
         RowLayout {
-            Layout.fillWidth: true
-
-            Text {
-                text: qsTr("Spectrogram")
-                color: Theme.textPrimary
-                font.pixelSize: Theme.fontBody
-                font.bold: true
-            }
-
-            Text {
-                text: spectrogram.renderedEraseMode
-                    ? qsTr("Rendered working layer · destructive")
-                    : qsTr("Original-first · non-destructive")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-            }
-
-            Switch {
-                text: qsTr("Spectral adjustment")
-                checked: spectrogram.layerEnabled
-                onClicked: spectrogram.layerEnabledRequested(checked)
-            }
-
+            Layout.fillWidth: true; spacing: 8
+            Text { text: qsTr("Spectral repair"); color: Theme.textPrimary; font.pixelSize: 14; font.bold: true }
+            EchoSwitch { checked: spectrogram.layerEnabled; accessibleName: qsTr("Spectral adjustment"); onToggled: value => spectrogram.layerEnabledRequested(value) }
+            Text { text: spectrogram.renderedEraseMode ? qsTr("Rendered working copy") : qsTr("Original source"); color: Theme.textSecondary; font.pixelSize: Theme.fontMeta }
             Item { Layout.fillWidth: true }
-
-            Text {
-                text: hasOverview ? (layerEnabled ? qsTr("%1 repairs").arg(regions.length) : qsTr("Bypassed"))
-                    : (loading ? qsTr("Loading…") : qsTr("Unavailable"))
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontMeta
-            }
-
-            Button {
-                text: qsTr("Clear repairs")
-                enabled: regions.length > 0
-                onClicked: spectrogram.clearRequested()
+            Text { text: qsTr("%1 / 64 repairs").arg(spectrogram.regions.length); color: Theme.textSecondary; font.pixelSize: Theme.fontMeta }
+            Button { text: qsTr("New selection"); onClicked: spectrogram.setSelection(null,-1) }
+            Button { text: qsTr("Clear repairs"); enabled: spectrogram.regions.length>0; onClicked: spectrogram.clearRequested() }
+        }
+        RowLayout {
+            Layout.fillWidth: true; spacing: 8
+            EchoComboBox { Layout.preferredWidth: 118; selectionIndex: spectrogram.logarithmic ? 0 : 1; model: [qsTr("Log frequency"),qsTr("Linear frequency")]; onActivated: index => spectrogram.logarithmic=index===0 }
+            EchoComboBox { Layout.preferredWidth: 146; selectionIndex: spectrogram.windowFrames===8192 ? 0 : 1; model: [qsTr("Tonal detail"),qsTr("Transient detail")]; onActivated: index => spectrogram.windowFrames=index===0 ? 8192 : 2048 }
+            Button { text: qsTr("Low frequencies"); onClicked: {spectrogram.lowHertz=20; spectrogram.highHertz=1000;} }
+            Button { text: qsTr("Focus selection"); enabled: spectrogram.hasSelection; onClicked: spectrogram.focusFrequency() }
+            Button { text: qsTr("Full range"); onClicked: {spectrogram.lowHertz=20; spectrogram.highHertz=24000;} }
+            Item { Layout.fillWidth: true }
+            EchoParameterSlider {
+                Layout.preferredWidth: 222; label: qsTr("Display floor"); labelWidth: 78; valueWidth: 56
+                from: -120; to: -48; stepSize: 6; value: spectrogram.floorDecibels; valueText: value+' dB'
+                onEdited: value => spectrogram.floorDecibels=Math.round(value)
             }
         }
-
+        RowLayout {
+            Layout.fillWidth: true; Layout.fillHeight: true; spacing: 10
+            ColumnLayout {
+                Layout.fillWidth: true; Layout.fillHeight: true; spacing: 5
+                SpectralRepairSurface {
+                    id: surface; objectName: 'spectralSurface'
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    imageUrl: spectrogram.imageUrl; durationMillis: spectrogram.sourceDurationMillis
+                    startRatio: spectrogram.viewStartRatio; endRatio: spectrogram.viewEndRatio
+                    lowHertz: spectrogram.lowHertz; highHertz: spectrogram.highHertz; logarithmic: spectrogram.logarithmic
+                    regions: spectrogram.regions; selection: spectrogram.selection; selectedIndex: spectrogram.selectedIndex
+                    layerEnabled: spectrogram.layerEnabled; progress: spectrogram.progress; eraseMode: spectrogram.renderedEraseMode
+                    onSelectionChangedByUser: (value,index) => spectrogram.setSelection(value,index)
+                    onRegionEdited: (index,value) => spectrogram.regionUpdated(index,value)
+                    onEraseRequested: value => spectrogram.renderedEraseRequested(value.startMillis,value.endMillis,value.lowHertz,value.highHertz)
+                    Text { anchors.centerIn: parent; visible: !spectrogram.hasOverview; text: spectrogram.loading ? qsTr("Analyzing visible frequencies…") : qsTr("Spectrogram unavailable"); color: '#c0c6d3'; font.pixelSize: Theme.fontBody }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { Layout.fillWidth: true; text: qsTr("Drag to select · drag edges to resize · Alt-drag for a new selection"); color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight }
+                    Text { text: surface.hovered ? (surface.hoverMillis/1000).toFixed(3)+' s · '+Math.round(surface.hoverHertz)+' Hz' : spectrogram.lowHertz+'–'+spectrogram.highHertz+' Hz'; color: Theme.textSecondary; font.family: 'Menlo'; font.pixelSize: Theme.fontMeta }
+                }
+            }
+            ScrollView {
+                Layout.preferredWidth: 276; Layout.fillHeight: true; clip: true
+                contentWidth: availableWidth
+                ColumnLayout {
+                    width: parent.width; spacing: 8
+                    EchoComboBox {
+                        objectName: 'spectralRegionPicker'; Layout.fillWidth: true
+                        selectionIndex: spectrogram.selectedIndex+1
+                        model: [qsTr("New selection")].concat(spectrogram.regions.map((value,index) => qsTr("Repair %1").arg(index+1)+' · '+value.lowHertz+'–'+value.highHertz+' Hz'))
+                        onActivated: index => spectrogram.setSelection(index>0 ? spectrogram.regions[index-1] : null,index-1)
+                    }
+                    GridLayout {
+                        Layout.fillWidth: true; columns: 2; columnSpacing: 10; rowSpacing: 6
+                        enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode
+                        Text { text: qsTr("Start (s)"); color: Theme.textSecondary; font.pixelSize: Theme.fontBody }
+                        EchoTimeSpinBox { objectName: 'spectralStart'; Layout.fillWidth: true; to: spectrogram.hasSelection ? spectrogram.selection.endMillis-1 : 0; value: spectrogram.hasSelection ? spectrogram.selection.startMillis : 0; onValueModified: spectrogram.editField('startMillis',value) }
+                        Text { text: qsTr("End (s)"); color: Theme.textSecondary; font.pixelSize: Theme.fontBody }
+                        EchoTimeSpinBox { Layout.fillWidth: true; from: spectrogram.hasSelection ? spectrogram.selection.startMillis+1 : 0; to: spectrogram.sourceDurationMillis; value: spectrogram.hasSelection ? spectrogram.selection.endMillis : 0; onValueModified: spectrogram.editField('endMillis',value) }
+                        Text { text: qsTr("Low (Hz)"); color: Theme.textSecondary; font.pixelSize: Theme.fontBody }
+                        SpinBox { objectName: 'spectralLow'; Layout.fillWidth: true; editable: true; from: 20; to: spectrogram.hasSelection ? spectrogram.selection.highHertz-1 : 24000; value: spectrogram.hasSelection ? spectrogram.selection.lowHertz : 20; onValueModified: spectrogram.editField('lowHertz',value) }
+                        Text { text: qsTr("High (Hz)"); color: Theme.textSecondary; font.pixelSize: Theme.fontBody }
+                        SpinBox { Layout.fillWidth: true; editable: true; from: spectrogram.hasSelection ? spectrogram.selection.lowHertz+1 : 21; to: 24000; value: spectrogram.hasSelection ? spectrogram.selection.highHertz : 24000; onValueModified: spectrogram.editField('highHertz',value) }
+                    }
+                    EchoParameterSlider {
+                        objectName: 'spectralReduction'; Layout.fillWidth: true; enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode
+                        label: qsTr("Reduction"); labelWidth: 70; valueWidth: 56; from: 0; to: 9600; stepSize: 100
+                        value: spectrogram.hasSelection ? spectrogram.selection.attenuationCentibels : 2400; valueText: '−'+(value/100).toFixed(0)+' dB'
+                        onGestureStarted: spectrogram.gestureStarted(); onGestureFinished: spectrogram.gestureFinished(); onEdited: value => spectrogram.editField('attenuationCentibels',value)
+                    }
+                    EchoParameterSlider {
+                        Layout.fillWidth: true; enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode
+                        label: qsTr("Time feather"); labelWidth: 88; valueWidth: 48; from: 0; to: 250; stepSize: 1
+                        value: spectrogram.hasSelection ? spectrogram.selection.timeFeatherMillis : 24; valueText: value+' ms'
+                        onGestureStarted: spectrogram.gestureStarted(); onGestureFinished: spectrogram.gestureFinished(); onEdited: value => spectrogram.editField('timeFeatherMillis',value)
+                    }
+                    EchoParameterSlider {
+                        Layout.fillWidth: true; enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode
+                        label: qsTr("Frequency feather"); labelWidth: 112; valueWidth: 48; from: 0; to: 2000; stepSize: 5
+                        value: spectrogram.hasSelection ? spectrogram.selection.frequencyFeatherHertz : 80; valueText: value+' Hz'
+                        onGestureStarted: spectrogram.gestureStarted(); onGestureFinished: spectrogram.gestureFinished(); onEdited: value => spectrogram.editField('frequencyFeatherHertz',value)
+                    }
+                    Button { objectName: 'applySpectralSelection'; Layout.fillWidth: true; text: qsTr("Attenuate selection"); enabled: spectrogram.hasSelection && spectrogram.selectedIndex<0 && spectrogram.regions.length<64 && !spectrogram.renderedEraseMode; onClicked: spectrogram.applySelection() }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Button { Layout.fillWidth: true; text: qsTr("Add harmonics"); enabled: spectrogram.hasSelection && spectrogram.regions.length<64 && !spectrogram.renderedEraseMode; onClicked: spectrogram.addHarmonics(harmonicCount.value) }
+                        SpinBox { id: harmonicCount; from: 2; to: 8; value: 4; editable: true; Layout.preferredWidth: 105 }
+                    }
+                    Button { Layout.fillWidth: true; text: qsTr("Delete selected repair"); enabled: spectrogram.selectedIndex>=0 && !spectrogram.renderedEraseMode; onClicked: spectrogram.regionRemoved(spectrogram.selectedIndex) }
+                }
+            }
+        }
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
-
-            Text {
-                text: qsTr("Post-effect repair")
-                color: Theme.textSecondary
-                font.pixelSize: Theme.fontMeta
-            }
-
-            Button {
-                text: spectrogram.renderedWorkingCopyRunning ? qsTr("Freezing render…")
-                    : (spectrogram.renderedWorkingCopyReady ? qsTr("Rendered repair ready")
-                       : (spectrogram.hasRenderedWorkingCopy ? qsTr("Freeze new working copy") : qsTr("Create working copy")))
-                enabled: spectrogram.canCreateRenderedWorkingCopy && !spectrogram.renderedWorkingCopyRunning
-                    && !spectrogram.renderedWorkingCopyReady
-                onClicked: spectrogram.renderedWorkingCopyRequested()
-            }
-
-            Switch {
-                visible: spectrogram.renderedWorkingCopyReady
-                text: qsTr("Erase mode")
-                checked: spectrogram.renderedEraseMode
-                enabled: !spectrogram.renderedWorkingCopyRunning
-                onToggled: spectrogram.renderedEraseModeRequested(checked)
-            }
-
-            Button {
-                visible: spectrogram.renderedWorkingCopyReady
-                text: qsTr("Audition rendered")
-                enabled: !spectrogram.renderedWorkingCopyRunning
-                onClicked: spectrogram.renderedWorkingCopyAuditionRequested()
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: spectrogram.renderedWorkingCopyError.length > 0 ? spectrogram.renderedWorkingCopyError
-                    : (spectrogram.renderedWorkingCopyReady
-                        ? (spectrogram.renderedEraseMode
-                            ? qsTr("Draw a region to erase it in the rendered working layer.")
-                            : qsTr("%1 committed repairs. Upstream changes require a new copy.").arg(spectrogram.renderedWorkingCopyOperationCount))
-                        : qsTr("Save adjustments before creating a post-effect repair copy."))
-                color: spectrogram.renderedWorkingCopyError.length > 0 ? Theme.warningText : Theme.textDisabled
-                font.pixelSize: Theme.fontMeta
-                elide: Text.ElideRight
-            }
+                    Button { text: qsTr("Listen to source band"); enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode; onClicked: spectrogram.auditionRequested(spectrogram.selection,true) }
+                    Button { text: qsTr("Audition repaired range"); enabled: spectrogram.hasSelection && !spectrogram.renderedEraseMode; onClicked: spectrogram.auditionRequested(spectrogram.selection,false) }
+            Button { text: spectrogram.showPostEffects ? qsTr("Hide post-effect tools") : qsTr("Post-effect repair"); onClicked: spectrogram.showPostEffects=!spectrogram.showPostEffects }
+            Text { Layout.fillWidth: true; text: spectrogram.regions.length>=64 ? qsTr("Repair limit reached. Edit or remove an existing region.") : qsTr("Repairs keep the original intact. The image shows the source; audition to compare."); color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight }
         }
-
-        Rectangle {
-            id: spectrumSurface
-
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            color: Theme.waveformSurface
-            border.color: Theme.border
-            clip: true
-
-            Image {
-                id: spectrumImage
-                anchors.fill: parent
-                source: spectrogram.imageUrl
-                fillMode: Image.Stretch
-                smooth: true
-                sourceClipRect: Qt.rect(
-                    Math.floor(spectrogram.clamp(spectrogram.viewStartRatio, 0, 1) * sourceSize.width),
-                    0,
-                    Math.max(1, Math.ceil((spectrogram.clamp(spectrogram.viewEndRatio, 0, 1) - spectrogram.clamp(spectrogram.viewStartRatio, 0, 1)) * sourceSize.width)),
-                    sourceSize.height
-                )
-            }
-
-            Text {
-                anchors.centerIn: parent
-                visible: !spectrogram.hasOverview
-                text: spectrogram.loading ? qsTr("Loading…") : qsTr("Spectrogram overview unavailable")
-                color: Theme.textDisabled
-                font.pixelSize: Theme.fontMeta
-            }
-
-            Rectangle {
-                x: spectrogram.clamp((spectrogram.selectionStartRatio - spectrogram.viewStartRatio) / Math.max(0.0001, spectrogram.viewEndRatio - spectrogram.viewStartRatio), 0, 1) * parent.width
-                width: Math.max(0, spectrogram.clamp((spectrogram.selectionEndRatio - spectrogram.viewStartRatio) / Math.max(0.0001, spectrogram.viewEndRatio - spectrogram.viewStartRatio), 0, 1) * parent.width - x)
-                height: parent.height
-                color: Theme.accentSurface
-                border.color: Theme.accent
-                opacity: 0.34
-                visible: spectrogram.hasTimeSelection && width > 0
-            }
-
-            Repeater {
-                model: spectrogram.regions
-
-                delegate: Rectangle {
-                    required property var modelData
-
-                    readonly property real visibleDuration: Math.max(0.0001, spectrogram.viewEndRatio - spectrogram.viewStartRatio)
-                    x: Math.max(0, (Number(modelData.startMillis) / Math.max(1, spectrogram.sourceDurationMillis) - spectrogram.viewStartRatio) / visibleDuration * parent.width)
-                    width: Math.max(0, (Number(modelData.endMillis) / Math.max(1, spectrogram.sourceDurationMillis) - spectrogram.viewStartRatio) / visibleDuration * parent.width - x)
-                    y: Math.max(0, (1 - Number(modelData.highHertz) / 24000) * parent.height)
-                    height: Math.max(0, (Number(modelData.highHertz) - Number(modelData.lowHertz)) / 24000 * parent.height)
-                    color: Theme.accentSurface
-                    border.color: Theme.accent
-                    opacity: 0.56
-                    visible: spectrogram.layerEnabled && width > 0 && x < parent.width
-                }
-            }
-
-            Rectangle {
-                id: pendingRegion
-
-                property real startX: 0
-                property real startY: 0
-                property real currentX: 0
-                property real currentY: 0
-                readonly property real leftEdge: Math.min(startX, currentX)
-                readonly property real topEdge: Math.min(startY, currentY)
-
-                x: leftEdge
-                y: topEdge
-                width: Math.abs(currentX - startX)
-                height: Math.abs(currentY - startY)
-                visible: spectrumInput.pressed && width >= 4 && height >= 4
-                color: Theme.accentSurface
-                border.color: Theme.accent
-                opacity: 0.7
-            }
-
-            MouseArea {
-                id: spectrumInput
-
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                enabled: spectrogram.layerEnabled || spectrogram.renderedEraseMode
-                cursorShape: Qt.CrossCursor
-                onPressed: function(mouse) {
-                    pendingRegion.startX = mouse.x;
-                    pendingRegion.startY = mouse.y;
-                    pendingRegion.currentX = mouse.x;
-                    pendingRegion.currentY = mouse.y;
-                }
-                onPositionChanged: function(mouse) {
-                    if (pressed) {
-                        pendingRegion.currentX = mouse.x;
-                        pendingRegion.currentY = mouse.y;
-                    }
-                }
-                onReleased: function(mouse) {
-                    pendingRegion.currentX = mouse.x;
-                    pendingRegion.currentY = mouse.y;
-                    if (pendingRegion.width < 8 || pendingRegion.height < 8 || spectrogram.sourceDurationMillis <= 0)
-                        return;
-                    const viewDuration = Math.max(0.0001, spectrogram.viewEndRatio - spectrogram.viewStartRatio);
-                    const startRatio = spectrogram.viewStartRatio + pendingRegion.leftEdge / width * viewDuration;
-                    const endRatio = spectrogram.viewStartRatio + (pendingRegion.leftEdge + pendingRegion.width) / width * viewDuration;
-                    const high = Math.round((1 - pendingRegion.topEdge / height) * 24000);
-                    const low = Math.round((1 - (pendingRegion.topEdge + pendingRegion.height) / height) * 24000);
-                    const startMillis = Math.round(spectrogram.clamp(startRatio, 0, 1) * spectrogram.sourceDurationMillis);
-                    const endMillis = Math.round(spectrogram.clamp(endRatio, 0, 1) * spectrogram.sourceDurationMillis);
-                    const lowHertz = Math.max(20, Math.min(23999, low));
-                    const highHertz = Math.max(21, Math.min(24000, high));
-                    if (spectrogram.renderedEraseMode) {
-                        spectrogram.renderedEraseRequested(startMillis, endMillis, lowHertz, highHertz);
-                    } else {
-                        spectrogram.regionRequested(startMillis, endMillis, lowHertz, highHertz);
-                    }
-                }
-            }
-
-            Rectangle {
-                x: spectrogram.clamp((spectrogram.progress - spectrogram.viewStartRatio) / Math.max(0.0001, spectrogram.viewEndRatio - spectrogram.viewStartRatio), 0, 1) * parent.width
-                width: 1
-                height: parent.height
-                color: Theme.textPrimary
-                visible: spectrogram.progress >= spectrogram.viewStartRatio && spectrogram.progress <= spectrogram.viewEndRatio
-            }
-
-            Text {
-                anchors.left: parent.left
-                anchors.leftMargin: 7
-                anchors.top: parent.top
-                anchors.topMargin: 5
-                text: "24 kHz"
-                color: Theme.textDisabled
-                font.pixelSize: 9
-            }
-
-            Text {
-                anchors.left: parent.left
-                anchors.leftMargin: 7
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 5
-                text: "0 Hz"
-                color: Theme.textDisabled
-                font.pixelSize: 9
-            }
+        RowLayout {
+            visible: spectrogram.showPostEffects; Layout.fillWidth: true
+            Button { text: spectrogram.renderedWorkingCopyRunning ? qsTr("Freezing render…") : (spectrogram.hasRenderedWorkingCopy ? qsTr("Freeze new working copy") : qsTr("Create working copy")); enabled: spectrogram.canCreateRenderedWorkingCopy && !spectrogram.renderedWorkingCopyRunning && !spectrogram.renderedWorkingCopyReady; onClicked: spectrogram.renderedWorkingCopyRequested() }
+            Switch { visible: spectrogram.renderedWorkingCopyReady; text: qsTr("Erase mode"); checked: spectrogram.renderedEraseMode; enabled: !spectrogram.renderedWorkingCopyRunning; onClicked: spectrogram.renderedEraseModeRequested(checked) }
+            Button { visible: spectrogram.renderedWorkingCopyReady; text: qsTr("Audition rendered"); enabled: !spectrogram.renderedWorkingCopyRunning; onClicked: spectrogram.renderedWorkingCopyAuditionRequested() }
+            Text { Layout.fillWidth: true; text: spectrogram.renderedWorkingCopyError.length>0 ? spectrogram.renderedWorkingCopyError : (spectrogram.renderedWorkingCopyReady ? qsTr("%1 committed repairs. Upstream changes require a new copy.").arg(spectrogram.renderedWorkingCopyOperationCount) : qsTr("Save adjustments before creating a post-effect repair copy.")); color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight }
         }
     }
 }

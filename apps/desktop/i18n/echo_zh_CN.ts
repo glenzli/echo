@@ -2302,12 +2302,12 @@
         <translation>Echo</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="107"/>
+        <location filename="../qml/Main.qml" line="115"/>
         <source>Layered assembly</source>
         <translation>分层编排</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="107"/>
+        <location filename="../qml/Main.qml" line="115"/>
         <source>Sound sequence</source>
         <translation>声音序列</translation>
     </message>
@@ -4434,147 +4434,162 @@
 <context>
     <name>SoundEditingWorkspace</name>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="760"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="805"/>
         <source>Apply recipe</source>
         <translation>应用处理方案</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1036"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1087"/>
         <source>Processing recipe applied.</source>
         <translation>处理方案已应用。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1019"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1070"/>
         <source>Processing recipe saved.</source>
         <translation>处理方案已保存。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="751"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="796"/>
         <source>Save as recipe</source>
         <translation>保存为处理方案</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1039"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1090"/>
         <source>The processing recipe could not be applied.</source>
         <translation>无法应用处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1021"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1072"/>
         <source>The processing recipe could not be saved.</source>
         <translation>无法保存处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="769"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="814"/>
         <source>Manage processing recipes</source>
         <translation>管理处理方案</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="335"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="368"/>
         <source>%1 restored · %2 conflicts · %3 failed</source>
         <translation>已恢复 %1 个 · %2 个冲突 · %3 个失败</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="780"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="825"/>
         <source>Processing history</source>
         <translation>处理历史</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1051"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1102"/>
         <source>Processing recipe renamed.</source>
         <translation>处理方案已重命名。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1060"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1111"/>
         <source>Processing recipe version %1 added.</source>
         <translation>已添加处理方案版本 %1。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1068"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1119"/>
         <source>Processing recipe archived.</source>
         <translation>处理方案已归档。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="331"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="364"/>
         <source>The processing recipe application could not be undone.</source>
         <translation>无法撤销本次处理方案应用。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1053"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1104"/>
         <source>The processing recipe could not be renamed.</source>
         <translation>无法重命名处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1062"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1113"/>
         <source>The processing recipe could not be updated.</source>
         <translation>无法更新处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1070"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1121"/>
         <source>The processing recipe could not be archived.</source>
         <translation>无法归档处理方案。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1117"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1168"/>
         <source>Undo batch</source>
         <translation>撤销本批次</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="69"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="73"/>
         <source>%1 channels</source>
         <translation>%1 声道</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="671"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="711"/>
         <source>Select a sound in Audio Space</source>
         <translation>请先在声音空间中选择声音</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="680"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="720"/>
         <source>Choose a sound before opening adjustments.</source>
         <translation>选择声音后即可进入调整工作区。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="699"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="739"/>
         <source>Back to project</source>
         <translation>返回项目</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="705"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="745"/>
         <source>Editing this project clip. Its source memory stays unchanged.</source>
         <translation>正在编辑项目片段，来源记忆的版本保持不变。</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="790"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="756"/>
+        <source>Effects</source>
+        <translation>效果链</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="756"/>
+        <source>Spectral repair</source>
+        <translation>频谱精修</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="783"/>
+        <source>Listening to original frequency band</source>
+        <translation>正在监听原始频段</translation>
+    </message>
+    <message>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="835"/>
         <source>Export</source>
         <translation>导出</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="954"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1005"/>
         <source>Play</source>
         <translation>播放</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="990"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1041"/>
         <source>Audition</source>
         <translation>试听对比</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="996"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1047"/>
         <source>Adjusted</source>
         <translation>调整后</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="1003"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1054"/>
         <source>Original</source>
         <translation>原始</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="954"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1005"/>
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/SoundEditingWorkspace.qml" line="963"/>
+        <location filename="../qml/SoundEditingWorkspace.qml" line="1014"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
@@ -6034,105 +6049,215 @@
 <context>
     <name>SpectrogramView</name>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="60"/>
-        <source>Spectrogram</source>
-        <translation>频谱图</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="69"/>
-        <source>Original-first · non-destructive</source>
-        <translation>原始音频第一层 · 非破坏性</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="75"/>
+        <location filename="../qml/SpectrogramView.qml" line="97"/>
         <source>Spectral adjustment</source>
         <translation>频谱调整</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="83"/>
-        <source>Bypassed</source>
-        <translation>已旁路</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="84"/>
-        <location filename="../qml/SpectrogramView.qml" line="170"/>
-        <source>Loading…</source>
-        <translation>正在加载…</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="84"/>
-        <source>Unavailable</source>
-        <translation>不可用</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="170"/>
-        <source>Spectrogram overview unavailable</source>
-        <translation>频谱概览不可用</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="83"/>
-        <source>%1 repairs</source>
-        <translation>%1 个修复区域</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="90"/>
+        <location filename="../qml/SpectrogramView.qml" line="102"/>
         <source>Clear repairs</source>
         <translation>清除修复区域</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="101"/>
+        <location filename="../qml/SpectrogramView.qml" line="196"/>
         <source>Post-effect repair</source>
         <translation>效果后修复</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="107"/>
+        <location filename="../qml/SpectrogramView.qml" line="201"/>
         <source>Freezing render…</source>
         <translation>正在冻结渲染…</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="108"/>
-        <source>Rendered repair ready</source>
-        <translation>渲染后修复已就绪</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="109"/>
+        <location filename="../qml/SpectrogramView.qml" line="201"/>
         <source>Create working copy</source>
         <translation>创建工作副本</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="109"/>
+        <location filename="../qml/SpectrogramView.qml" line="201"/>
         <source>Freeze new working copy</source>
         <translation>冻结新的工作副本</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="137"/>
+        <location filename="../qml/SpectrogramView.qml" line="204"/>
         <source>Save adjustments before creating a post-effect repair copy.</source>
         <translation>请先保存调整，再创建效果后修复副本。</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="117"/>
+        <location filename="../qml/SpectrogramView.qml" line="202"/>
         <source>Erase mode</source>
         <translation>擦除模式</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="125"/>
+        <location filename="../qml/SpectrogramView.qml" line="96"/>
+        <source>Spectral repair</source>
+        <translation>频谱精修</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="98"/>
+        <source>Rendered working copy</source>
+        <translation>渲染工作副本</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="98"/>
+        <source>Original source</source>
+        <translation>原始声音</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="100"/>
+        <source>%1 / 64 repairs</source>
+        <translation>%1 / 64 个修复区</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="101"/>
+        <location filename="../qml/SpectrogramView.qml" line="149"/>
+        <source>New selection</source>
+        <translation>新选区</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="106"/>
+        <source>Log frequency</source>
+        <translation>对数频率</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="106"/>
+        <source>Linear frequency</source>
+        <translation>线性频率</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="107"/>
+        <source>Tonal detail</source>
+        <translation>音调细节</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="107"/>
+        <source>Transient detail</source>
+        <translation>瞬态细节</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="108"/>
+        <source>Low frequencies</source>
+        <translation>低频聚焦</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="109"/>
+        <source>Focus selection</source>
+        <translation>聚焦选区</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="110"/>
+        <source>Full range</source>
+        <translation>完整频段</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="113"/>
+        <source>Display floor</source>
+        <translation>显示下限</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="133"/>
+        <source>Analyzing visible frequencies…</source>
+        <translation>正在分析当前频谱…</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="133"/>
+        <source>Spectrogram unavailable</source>
+        <translation>频谱暂不可用</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="137"/>
+        <source>Drag to select · drag edges to resize · Alt-drag for a new selection</source>
+        <translation>拖动选择 · 拖动边界调整 · 按住 Alt 拖动新建选区</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="149"/>
+        <source>Repair %1</source>
+        <translation>修复区 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="155"/>
+        <source>Start (s)</source>
+        <translation>起点（秒）</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="157"/>
+        <source>End (s)</source>
+        <translation>终点（秒）</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="159"/>
+        <source>Low (Hz)</source>
+        <translation>低频（Hz）</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="161"/>
+        <source>High (Hz)</source>
+        <translation>高频（Hz）</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="166"/>
+        <source>Reduction</source>
+        <translation>衰减</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="172"/>
+        <source>Time feather</source>
+        <translation>时间羽化</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="178"/>
+        <source>Frequency feather</source>
+        <translation>频率羽化</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="182"/>
+        <source>Attenuate selection</source>
+        <translation>衰减选区</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="185"/>
+        <source>Add harmonics</source>
+        <translation>添加谐波</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="188"/>
+        <source>Listen to source band</source>
+        <translation>监听原始频段</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="189"/>
+        <source>Audition repaired range</source>
+        <translation>试听修复区间</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="190"/>
+        <source>Delete selected repair</source>
+        <translation>删除所选修复区</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="196"/>
+        <source>Hide post-effect tools</source>
+        <translation>收起效果后修复工具</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="197"/>
+        <source>Repair limit reached. Edit or remove an existing region.</source>
+        <translation>修复区已达上限，请编辑或移除现有区域。</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="197"/>
+        <source>Repairs keep the original intact. The image shows the source; audition to compare.</source>
+        <translation>修复保留原始声音。图中显示来源频谱，可试听对比效果。</translation>
+    </message>
+    <message>
+        <location filename="../qml/SpectrogramView.qml" line="203"/>
         <source>Audition rendered</source>
         <translation>试听渲染副本</translation>
     </message>
     <message>
-        <location filename="../qml/SpectrogramView.qml" line="135"/>
-        <source>Draw a region to erase it in the rendered working layer.</source>
-        <translation>拖拽选区以在渲染工作层中擦除。</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="136"/>
+        <location filename="../qml/SpectrogramView.qml" line="204"/>
         <source>%1 committed repairs. Upstream changes require a new copy.</source>
         <translation>已提交 %1 个修复；上游变更后需要新建副本。</translation>
-    </message>
-    <message>
-        <location filename="../qml/SpectrogramView.qml" line="68"/>
-        <source>Rendered working layer · destructive</source>
-        <translation>渲染工作层 · 破坏性</translation>
     </message>
 </context>
 <context>

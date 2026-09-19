@@ -109,7 +109,8 @@ pub fn list_audio_space(
          COALESCE(u.resume_position_millis, 0), \
          calibration.id, calibration.sound_caption, calibration.summary, \
          calibration.event_type, calibration.mood, calibration.keywords_json, \
-         calibration.transcript_text, calibration.language, calibration.created_at_millis \
+         calibration.transcript_text, calibration.language, calibration.created_at_millis, \
+         adj.spectral_repair_json AS spectral_repair_json \
          FROM assets a LEFT JOIN sound_user_state u ON u.asset_id = a.id \
          LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
          LEFT JOIN asset_adjustment_revisions adj ON adj.id = (\
@@ -387,6 +388,10 @@ fn audio_space_adjustment_from_row(
     .with_creative_vfx(
         serde_json::from_str(&row.get::<_, String>(47)?)
             .expect("stored creative VFX settings parse"),
+    )
+    .with_spectral_repair(
+        serde_json::from_str(&row.get::<_, String>("spectral_repair_json")?)
+            .expect("stored spectral repair settings parse"),
     );
     let graph = echo_domain::AdjustmentGraph::new(
         source_duration,

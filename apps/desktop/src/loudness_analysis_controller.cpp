@@ -115,7 +115,8 @@ void LoudnessAnalysisController::analyzeAdjusted(
     const QVariantList& effectChain,
     const QVariantList& editSegments,
     const QVariantList& effectMasks,
-    const QVariantMap& creativeVfx
+    const QVariantMap& creativeVfx,
+    const QVariantMap& spectralRepair
 ) {
     const auto adjustment = PlaybackAdjustmentProjection::fromQml(
         trimStartMillis,
@@ -145,7 +146,8 @@ void LoudnessAnalysisController::analyzeAdjusted(
         effectChain,
         editSegments,
         effectMasks,
-        creativeVfx
+        creativeVfx,
+        spectralRepair
     );
     if (!adjustment.has_value()) {
         error_text_ = QStringLiteral("adjustment is outside the supported range");

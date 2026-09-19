@@ -48,6 +48,7 @@ add_library(
     src/scene_vfx_processor.cpp
     src/source_edit_plan.cpp
     src/spectrogram.cpp
+    src/spectrogram_detail.cpp
     src/spectral_repair_processor.cpp
     src/spring_space_reverb.cpp
     src/stereo_vfx_processor.cpp
@@ -101,6 +102,11 @@ if(BUILD_TESTING)
     target_link_libraries(echo-stereo-vfx-processor-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-stereo-vfx-processor-test)
     add_test(NAME echo-stereo-vfx-processor-test COMMAND echo-stereo-vfx-processor-test)
+
+add_executable(echo-spectrogram-detail-test tests/spectrogram_detail_test.cpp)
+target_link_libraries(echo-spectrogram-detail-test PRIVATE Echo::Audio)
+echo_audio_enable_warnings(echo-spectrogram-detail-test)
+add_test(NAME echo-spectrogram-detail-test COMMAND echo-spectrogram-detail-test)
 
 add_executable(echo-spectrogram-test tests/spectrogram_test.cpp)
     target_link_libraries(echo-spectrogram-test PRIVATE Echo::Audio)

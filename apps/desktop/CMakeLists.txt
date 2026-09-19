@@ -237,12 +237,15 @@ qt_add_qml_module(
         qml/SoundAssemblyTrack.qml
         qml/MemoryWorkflowSmoke.qml
         qml/MultitrackWorkflowSmoke.qml
+        qml/SpectralWorkflowSmoke.qml
         qml/MemorySourceReferences.qml
         qml/SoundPlaybackSource.qml
         qml/SoundSourceBrowser.qml
         qml/SoundAssemblyWorkspace.qml
         qml/SpaceReverbPanel.qml
         qml/SpectrogramView.qml
+        qml/SpectralRepairSurface.qml
+        qml/SpectralEditing.js
         qml/StereoVfxPanel.qml
         qml/ImpulseResponseImportDialog.qml
         qml/SoundEditorTimeline.qml

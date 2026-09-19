@@ -19,6 +19,7 @@ Rectangle {
 
     property var waveformLevels: []
     property string loadedPath: ""
+    property string sourceIdentity: ""
     property string loadedBaseAdjustmentKey: ""
     property string loadedAdjustmentKey: ""
     property bool auditionOriginal: false
@@ -30,11 +31,15 @@ Rectangle {
     property string lastProcessingRecipeBatchId: ""
     property var renderedSpectralWorkingCopies: []
     property bool renderedSpectralEraseMode: false
+    property bool spectralFocus: false
+    property bool listeningToSourceBand: false
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
     readonly property bool dirty: adjustmentDraft.dirty
     readonly property bool canUndo: adjustmentDraft.canUndo
     readonly property bool canRedo: adjustmentDraft.canRedo
+    readonly property alias spectralEditor: spectralView
+    readonly property alias adjustment: adjustmentDraft
 
     color: Theme.window
 
@@ -83,21 +88,49 @@ Rectangle {
     }
 
     function refreshSpectrogramPreview(): void {
-        if (!hasAsset || asset.pathStatus === "missing") {
-            spectrogramPreview.clear();
-            return;
-        }
-        const copy = activeRenderedSpectralWorkingCopy();
-        if (renderedSpectralEraseMode && copy) {
-            spectrogramPreview.requestPath(asset.id, copy.cachePath);
+        spectrogramPreview.clear();
+        if (visible && spectralFocus && hasAsset && asset.pathStatus !== "missing") spectralPreviewTimer.restart();
+    }
+
+    function requestSpectrogramViewport(): void {
+        if (!visible || !spectralFocus || !hasAsset || asset.pathStatus === "missing") return;
+        const copy=activeRenderedSpectralWorkingCopy();
+        const path=renderedSpectralEraseMode && copy ? copy.cachePath : asset.path;
+        const identity=asset.id+":"+path;
+        spectrogramPreview.requestViewport(path,identity,
+            Math.max(0,Math.floor(editorTimeline.viewStartRatio*adjustmentDraft.sourceDurationMillis)),
+            Math.ceil(editorTimeline.viewEndRatio*adjustmentDraft.sourceDurationMillis),
+            spectralView.lowHertz,spectralView.highHertz,spectralView.logarithmic,spectralView.windowFrames,spectralView.floorDecibels,0);
+    }
+
+    function auditionSpectralSelection(selection: var, bandOnly: bool): void {
+        if(!hasAsset || !selection) return;
+        if(bandOnly) {
+            editorTimeline.loopSelection=false;
+            player.playSpectralBand(asset.path,selection.startMillis,selection.endMillis,selection.lowHertz,selection.highHertz);
+            listeningToSourceBand=true;
+            loadedPath=asset.path; loadedBaseAdjustmentKey="source-band"; loadedAdjustmentKey=adjustmentKey();
         } else {
-            spectrogramPreview.request(asset.id);
+            auditionOriginal=false;
+            editorTimeline.selectionStartMillis=Math.max(adjustmentDraft.trimStartMillis,selection.startMillis);
+            editorTimeline.selectionEndMillis=Math.min(adjustmentDraft.trimEndMillis,selection.endMillis);
+            if(editorTimeline.selectionStartMillis>=editorTimeline.selectionEndMillis) return;
+            editorTimeline.hasTimeSelection=true;
+            editorTimeline.loopSelection=true;
+            playFrom(editorTimeline.selectionStartMillis);
         }
     }
 
+    onSpectralFocusChanged: refreshSpectrogramPreview()
+    onVisibleChanged: {
+        if(!visible) {spectrogramPreview.clear(); spectralPreviewTimer.stop(); if(listeningToSourceBand) player.stop();}
+        else refreshSpectrogramPreview();
+    }
+    Timer { id: spectralPreviewTimer; interval: 160; onTriggered: workspace.requestSpectrogramViewport() }
+
     function playbackBaseAdjustmentKey(): string {
         const prefix = auditionOriginal ? "original" : "adjusted";
-        return prefix + ":" + adjustmentDraft.trimStartMillis + ":" + adjustmentDraft.trimEndMillis + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeInMillis) + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis) + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeInCurve) + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve) + ":" + (auditionOriginal ? 0 : adjustmentDraft.gainCentibels) + ":" + (auditionOriginal ? 0 : adjustmentDraft.lowCutHertz);
+        return prefix + ":" + adjustmentDraft.trimStartMillis + ":" + adjustmentDraft.trimEndMillis + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeInMillis) + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis) + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeInCurve) + ":" + (auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve) + ":" + (auditionOriginal ? 0 : adjustmentDraft.gainCentibels) + ":" + (auditionOriginal ? 0 : adjustmentDraft.lowCutHertz) + ":" + JSON.stringify(auditionOriginal ? ({ enabled: false, regions: [] }) : adjustmentDraft.spectralRepairValue());
     }
 
     function adjustmentKey(): string {
@@ -160,6 +193,7 @@ Rectangle {
     function playFrom(millis: int): void {
         if (!asset || asset.pathStatus === "missing")
             return;
+        listeningToSourceBand=false;
         player.playAdjusted(asset.path, adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis, auditionOriginal ? 0 : adjustmentDraft.fadeInMillis, auditionOriginal ? 0 : adjustmentDraft.fadeOutMillis, auditionOriginal ? 0 : adjustmentDraft.fadeInCurve, auditionOriginal ? 0 : adjustmentDraft.fadeOutCurve, auditionOriginal ? 0 : adjustmentDraft.gainCentibels, auditionOriginal ? 0 : adjustmentDraft.lowCutHertz, auditionOriginal ? {
             enabled: false,
             dePlosiveEnabled: false,
@@ -202,7 +236,7 @@ Rectangle {
             dampingPercent: 45,
             lowCutHertz: 120,
             highCutHertz: 10000
-        } : adjustmentDraft.reverbValue(), auditionOriginal ? false : adjustmentDraft.limiterEnabled, auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels, auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis, auditionOriginal ? adjustmentDraft.defaultEffectChain() : adjustmentDraft.effectChain, auditionOriginal ? adjustmentDraft.defaultEditSegments(adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis) : adjustmentDraft.editSegments, auditionOriginal ? [] : adjustmentDraft.effectMasks, auditionOriginal ? adjustmentDraft.creativeVfxForOriginal() : adjustmentDraft.creativeVfxValue());
+        } : adjustmentDraft.reverbValue(), auditionOriginal ? false : adjustmentDraft.limiterEnabled, auditionOriginal ? -100 : adjustmentDraft.limiterCeilingCentibels, auditionOriginal ? 100 : adjustmentDraft.limiterReleaseMillis, auditionOriginal ? adjustmentDraft.defaultEffectChain() : adjustmentDraft.effectChain, auditionOriginal ? adjustmentDraft.defaultEditSegments(adjustmentDraft.trimStartMillis, adjustmentDraft.trimEndMillis) : adjustmentDraft.editSegments, auditionOriginal ? [] : adjustmentDraft.effectMasks, auditionOriginal ? adjustmentDraft.creativeVfxForOriginal() : adjustmentDraft.creativeVfxValue(), auditionOriginal ? ({ enabled: false, regions: [] }) : adjustmentDraft.spectralRepairValue());
         loadedPath = asset.path;
         loadedBaseAdjustmentKey = playbackBaseAdjustmentKey();
         loadedAdjustmentKey = adjustmentKey();
@@ -239,7 +273,7 @@ Rectangle {
     function togglePlayback(): void {
         if (!hasAsset || asset.pathStatus === "missing")
             return;
-        if (!ownsActivePlayback()) {
+        if (listeningToSourceBand || !ownsActivePlayback()) {
             playFrom(defaultPlaybackStart());
         } else {
             player.togglePause();
@@ -367,18 +401,26 @@ Rectangle {
         exportDialog.debugExport(destination);
     }
 
-    onAssetChanged: {
+    function synchronizeSource(): void {
+        const key=hasAsset ? JSON.stringify([asset.id,asset.path,asset.pathStatus,asset.durationMillis,asset.adjustmentRevision,projectClipId]) : "";
+        if(key===sourceIdentity) return;
+        sourceIdentity=key;
         player.stop();
         loudnessAnalyzer.cancel();
         renderExporter.cancel();
         renderedSpectralWorkingCopy.cancel();
         renderedSpectralEraseMode = false;
+        listeningToSourceBand = false;
+        spectralView.resetSelection();
         auditionOriginal = false;
         loadedPath = "";
         loadedBaseAdjustmentKey = "";
         loadedAdjustmentKey = "";
         Qt.callLater(refreshAsset);
     }
+
+    onAssetChanged: synchronizeSource()
+    onProjectClipIdChanged: synchronizeSource()
 
     Component.onCompleted: refreshProcessingRecipes()
 
@@ -448,6 +490,11 @@ Rectangle {
         }
         function onDePlosiveEnabledChanged(): void {
             workspace.scheduleEffectsPreview();
+        }
+        function onSpectralRepairChanged(): void {
+            if(workspace.hasAsset && workspace.loadedPath===workspace.asset.path && !workspace.auditionOriginal) {
+                player.stop(); workspace.loadedAdjustmentKey="";
+            }
         }
         function onDePlosiveFrequencyHertzChanged(): void {
             workspace.scheduleEffectsPreview();
@@ -637,7 +684,7 @@ Rectangle {
     Timer {
         interval: 40
         repeat: true
-        running: workspace.hasAsset && player.playing && editorTimeline.loopSelection && editorTimeline.hasTimeSelection && workspace.loadedPath === workspace.asset.path
+        running: !workspace.listeningToSourceBand && workspace.hasAsset && player.playing && editorTimeline.loopSelection && editorTimeline.hasTimeSelection && workspace.loadedPath === workspace.asset.path
         onTriggered: {
             if (player.position >= editorTimeline.selectionEndMillis - 40) {
                 player.seek(editorTimeline.selectionStartMillis);
@@ -712,6 +759,11 @@ Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
             spacing: 10
+            EchoSegmentedControl {
+                model: [qsTr("Effects"),qsTr("Spectral repair")]
+                currentIndex: workspace.spectralFocus ? 1 : 0
+                onActivated: index => workspace.spectralFocus=index===1
+            }
 
             Text {
                 Layout.maximumWidth: Math.min(440, implicitWidth)
@@ -735,7 +787,7 @@ Rectangle {
             }
 
             Text {
-                text: workspace.technicalDetails()
+                text: workspace.listeningToSourceBand && player.active ? qsTr("Listening to original frequency band") : workspace.technicalDetails()
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontMeta
                 elide: Text.ElideRight
@@ -826,7 +878,7 @@ Rectangle {
                 id: editorTimeline
 
                 SplitView.fillWidth: true
-                SplitView.preferredHeight: 286
+                SplitView.preferredHeight: workspace.spectralFocus ? 180 : 286
                 SplitView.minimumHeight: 176
                 SplitView.maximumHeight: 420
                 waveformLevels: workspace.waveformLevels
@@ -859,10 +911,11 @@ Rectangle {
             }
 
             SpectrogramView {
+                id: spectralView
+                visible: workspace.spectralFocus
                 SplitView.fillWidth: true
-                SplitView.preferredHeight: 226
-                SplitView.minimumHeight: 150
-                SplitView.maximumHeight: 360
+                SplitView.fillHeight: true
+                SplitView.minimumHeight: 360
                 imageUrl: spectrogramPreview.imageUrl
                 loading: spectrogramPreview.running
                 sourceDurationMillis: adjustmentDraft.sourceDurationMillis
@@ -889,9 +942,13 @@ Rectangle {
                     return copy ? Number(copy.operationCount) : 0;
                 }
                 onLayerEnabledRequested: enabled => adjustmentDraft.setSpectralRepairEnabled(enabled)
-                onRegionRequested: function(startMillis, endMillis, lowHertz, highHertz) {
-                    adjustmentDraft.addSpectralRepairRegion(startMillis, endMillis, lowHertz, highHertz);
-                }
+                onViewportChanged: workspace.refreshSpectrogramPreview()
+                onRegionUpdated: (index,value) => adjustmentDraft.updateSpectralRepairRegion(index,value)
+                onRegionsAppended: values => adjustmentDraft.appendSpectralRepairRegions(values)
+                onRegionRemoved: index => adjustmentDraft.removeSpectralRepairRegion(index)
+                onGestureStarted: adjustmentDraft.beginGesture()
+                onGestureFinished: adjustmentDraft.endGesture()
+                onAuditionRequested: (selection,bandOnly) => workspace.auditionSpectralSelection(selection,bandOnly)
                 onClearRequested: adjustmentDraft.clearSpectralRepairRegions()
                 onRenderedWorkingCopyRequested: { if (!workspace.editingProjectClip) renderedSpectralWorkingCopy.createFromSavedAsset(workspace.asset); }
                 onRenderedEraseModeRequested: function(enabled) {
@@ -921,6 +978,7 @@ Rectangle {
 
             SoundAdjustmentEditor {
                 id: adjustmentEditor
+                visible: !workspace.spectralFocus
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 SplitView.minimumHeight: 330

@@ -89,10 +89,7 @@ int main(int argc, char* argv[]) {
             QString::fromStdString(catalog),
             inference_prefs.runtimeEndpoint()
         );
-        SpectrogramPreviewController spectrogram_preview(
-            QString::fromStdString(catalog),
-            QString::fromStdString(cache_root)
-        );
+        SpectrogramPreviewController spectrogram_preview;
         QObject::connect(
             &inference_prefs,
             &InferencePreferences::runtimeEndpointChanged,
@@ -164,6 +161,10 @@ int main(int argc, char* argv[]) {
             qEnvironmentVariable("ECHO_DEBUG_MULTITRACK_ROOT")
         );
         ui_prefs.attachEngine(engine);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("spectralSmokeRoot"),
+            qEnvironmentVariable("ECHO_DEBUG_SPECTRAL_ROOT")
+        );
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {
             std::cerr << "Echo QML shell failed to load" << std::endl;
@@ -179,10 +180,13 @@ int main(int argc, char* argv[]) {
 #endif
         // Optional fixture-driven memory workflow. Readiness comes from QML and
         // real catalog/render results; each distinct page is captured once.
+        const bool spectral_smoke = !qEnvironmentVariable("ECHO_DEBUG_SPECTRAL_REPORT").isEmpty();
         const bool multitrack_smoke =
             !qEnvironmentVariable("ECHO_DEBUG_MULTITRACK_REPORT").isEmpty();
         if (const auto report_path = qEnvironmentVariable(
-                multitrack_smoke ? "ECHO_DEBUG_MULTITRACK_REPORT" : "ECHO_DEBUG_MEMORY_REPORT"
+                spectral_smoke     ? "ECHO_DEBUG_SPECTRAL_REPORT"
+                : multitrack_smoke ? "ECHO_DEBUG_MULTITRACK_REPORT"
+                                   : "ECHO_DEBUG_MEMORY_REPORT"
             );
             !report_path.isEmpty()) {
             auto* root = engine.rootObjects().first();
@@ -192,12 +196,13 @@ int main(int argc, char* argv[]) {
                 timer,
                 &QTimer::timeout,
                 root,
-                [root, report_path, multitrack_smoke, last_stage = -1]() mutable {
-                    const int stage =
-                        root->property(
-                                multitrack_smoke ? "multitrackSmokeStage" : "memorySmokeStage"
-                        )
-                            .toInt();
+                [root, report_path, multitrack_smoke, spectral_smoke, last_stage = -1]() mutable {
+                    const int stage = root->property(
+                                              spectral_smoke     ? "spectralSmokeStage"
+                                              : multitrack_smoke ? "multitrackSmokeStage"
+                                                                 : "memorySmokeStage"
+                    )
+                                          .toInt();
                     if (stage != last_stage) {
                         if (auto* window = qobject_cast<QQuickWindow*>(root))
                             window->grabWindow().save(
@@ -205,14 +210,21 @@ int main(int argc, char* argv[]) {
                             );
                         last_stage = stage;
                     }
-                    const auto report =
-                        root->property(
-                                multitrack_smoke ? "multitrackSmokeReport" : "memorySmokeReport"
-                        )
-                            .toString()
-                            .toUtf8();
+                    const auto report = root->property(
+                                                spectral_smoke     ? "spectralSmokeReport"
+                                                : multitrack_smoke ? "multitrackSmokeReport"
+                                                                   : "memorySmokeReport"
+                    )
+                                            .toString()
+                                            .toUtf8();
                     if (report.isEmpty())
                         return;
+                    if (spectral_smoke) {
+                        if (auto* window = qobject_cast<QQuickWindow*>(root))
+                            window->grabWindow().save(
+                                report_path + QStringLiteral(".complete.png")
+                            );
+                    }
                     QFile file(report_path);
                     const bool written =
                         file.open(QIODevice::WriteOnly) && file.write(report) == report.size();
@@ -279,6 +291,12 @@ int main(int argc, char* argv[]) {
             QObject* root = engine.rootObjects().first();
             QTimer::singleShot(1'200, root, [root] {
                 QMetaObject::invokeMethod(root, "debugPlaySoundTape");
+            });
+        }
+        if (const auto path = qEnvironmentVariable("ECHO_DEBUG_SPECTRAL_SOURCE"); !path.isEmpty()) {
+            auto* root = engine.rootObjects().first();
+            QTimer::singleShot(750, root, [root, path] {
+                QMetaObject::invokeMethod(root, "debugOpenSpectralSource", Q_ARG(QString, path));
             });
         }
         if (std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr) {
@@ -416,6 +434,7 @@ int main(int argc, char* argv[]) {
                                      || std::getenv("ECHO_DEBUG_OPEN_TAPE") != nullptr
                                      || std::getenv("ECHO_DEBUG_PLAY_TAPE") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EDITOR") != nullptr
+                                     || std::getenv("ECHO_DEBUG_SPECTRAL_SOURCE") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_ASSEMBLY") != nullptr
                                      || std::getenv("ECHO_DEBUG_CREATE_ASSEMBLY") != nullptr
                                      || std::getenv("ECHO_DEBUG_OPEN_EXPORT") != nullptr

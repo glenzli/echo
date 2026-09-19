@@ -2,12 +2,14 @@
 //! validation, gesture-coalesced undo/redo history, saved-state comparison,
 //! and explicit publication; presentation components only mutate this owner.
 
+import "SpectralEditing.js" as SpectralEditing
 import QtQuick
 
 QtObject {
     id: draft
 
     required property var asset
+    property string _loadedAssetKey: ""
 
     property int trimStartMillis: 0
     property int trimEndMillis: 0
@@ -227,21 +229,9 @@ QtObject {
 
     function copySpectralRepair(value: var): var {
         const source = value || {};
-        const regions = source.regions || [];
-        const copied = [];
-        for (let index = 0; index < regions.length && index < 64; ++index) {
-            const region = regions[index];
-            const start = Math.max(0, Math.round(Number(region.startMillis)));
-            const end = Math.min(sourceDurationMillis, Math.round(Number(region.endMillis)));
-            const low = Math.max(20, Math.round(Number(region.lowHertz)));
-            const high = Math.min(24000, Math.round(Number(region.highHertz)));
-            const attenuation = Math.max(0, Math.min(9600, Math.round(Number(region.attenuationCentibels))));
-            const timeFeather = Math.max(0, Math.min(250, Math.round(Number(region.timeFeatherMillis))));
-            const frequencyFeather = Math.max(0, Math.min(2000, Math.round(Number(region.frequencyFeatherHertz))));
-            if (end > start && high > low)
-                copied.push({ startMillis: start, endMillis: end, lowHertz: low, highHertz: high, attenuationCentibels: attenuation, timeFeatherMillis: timeFeather, frequencyFeatherHertz: frequencyFeather });
-        }
-        return { enabled: source.enabled === undefined ? true : Boolean(source.enabled), regions: copied };
+        const regions = (source.regions || []).slice(0, 64)
+            .map(value => SpectralEditing.region(value, sourceDurationMillis)).filter(value => value !== null);
+        return { enabled: source.enabled === undefined ? true : Boolean(source.enabled), regions: regions };
     }
 
     function spectralRepairValue(): var {
@@ -260,10 +250,30 @@ QtObject {
     }
 
     function addSpectralRepairRegion(startMillis: int, endMillis: int, lowHertz: int, highHertz: int): void {
+        appendSpectralRepairRegions([SpectralEditing.selection(startMillis, endMillis, lowHertz, highHertz, sourceDurationMillis)]);
+    }
+
+    function appendSpectralRepairRegions(regions: var): bool {
+        if (!regions || regions.length === 0 || spectralRepair.regions.length + regions.length > 64)
+            return false;
         const next = copySpectralRepair(spectralRepair);
-        if (next.regions.length >= 64)
-            return;
-        next.regions.push({ startMillis: startMillis, endMillis: endMillis, lowHertz: lowHertz, highHertz: highHertz, attenuationCentibels: 2400, timeFeatherMillis: 24, frequencyFeatherHertz: 80 });
+        next.enabled = true;
+        next.regions = next.regions.concat(regions);
+        setSpectralRepairRegions(next);
+        return true;
+    }
+
+    function updateSpectralRepairRegion(index: int, value: var): void {
+        if (index < 0 || index >= spectralRepair.regions.length) return;
+        const next = copySpectralRepair(spectralRepair);
+        next.regions[index] = value;
+        setSpectralRepairRegions(next);
+    }
+
+    function removeSpectralRepairRegion(index: int): void {
+        if (index < 0 || index >= spectralRepair.regions.length) return;
+        const next = copySpectralRepair(spectralRepair);
+        next.regions.splice(index, 1);
         setSpectralRepairRegions(next);
     }
 
@@ -1947,6 +1957,13 @@ QtObject {
         _gestureStart = null;
     }
 
-    onAssetChanged: resetFromAsset()
+    function synchronizeAsset(): void {
+        const key=asset ? JSON.stringify([asset.id,asset.path,asset.durationMillis,asset.adjustmentRevision]) : "";
+        if(key===_loadedAssetKey) return;
+        _loadedAssetKey=key;
+        resetFromAsset();
+    }
+
+    onAssetChanged: synchronizeAsset()
     Component.onCompleted: resetFromAsset()
 }

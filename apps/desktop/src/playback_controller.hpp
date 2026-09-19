@@ -37,6 +37,13 @@ class PlaybackController : public QObject {
     ~PlaybackController() override;
 
     Q_INVOKABLE void play(const QString& path);
+    Q_INVOKABLE void playSpectralBand(
+        const QString& path,
+        qint64 startMillis,
+        qint64 endMillis,
+        int lowHertz,
+        int highHertz
+    );
     // Compatibility entry point for the pre-Creative QML workspace. The UI
     // owner switches to the overload below when its authored draft is ready.
     Q_INVOKABLE void playAdjusted(
@@ -98,7 +105,8 @@ class PlaybackController : public QObject {
         const QVariantList& effectChain,
         const QVariantList& editSegments,
         const QVariantList& effectMasks,
-        const QVariantMap& creativeVfx
+        const QVariantMap& creativeVfx,
+        const QVariantMap& spectralRepair = QVariantMap{}
     );
     Q_INVOKABLE bool updateEqualizer(bool enabled, const QVariantList& equalizerBands);
     Q_INVOKABLE bool updateRestoration(const QVariantMap& restoration);

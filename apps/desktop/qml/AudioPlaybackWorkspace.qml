@@ -207,14 +207,14 @@ Rectangle {
     }
 
     function adjustmentKey(): string {
-        return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve + ":" + gainCentibels + ":" + lowCutHertz + ":" + JSON.stringify(restorationValue) + ":" + JSON.stringify(deHumValue) + ":" + JSON.stringify(deClickValue) + ":" + JSON.stringify(channelRepairValue) + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths + ":" + compressorAttackMillis + ":" + compressorReleaseMillis + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue) + ":" + limiterEnabled + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis + ":" + JSON.stringify(effectChain) + ":" + JSON.stringify(editSegments) + ":" + JSON.stringify(effectMasks) + ":" + JSON.stringify(creativeVfx);
+        return trimStartMillis + ":" + trimEndMillis + ":" + fadeInMillis + ":" + fadeOutMillis + ":" + fadeInCurve + ":" + fadeOutCurve + ":" + gainCentibels + ":" + lowCutHertz + ":" + JSON.stringify(restorationValue) + ":" + JSON.stringify(deHumValue) + ":" + JSON.stringify(deClickValue) + ":" + JSON.stringify(channelRepairValue) + ":" + equalizerEnabled + ":" + JSON.stringify(equalizerBands) + ":" + compressorEnabled + ":" + compressorThresholdCentibels + ":" + compressorRatioTenths + ":" + compressorAttackMillis + ":" + compressorReleaseMillis + ":" + compressorMakeupCentibels + ":" + JSON.stringify(reverbValue) + ":" + limiterEnabled + ":" + limiterCeilingCentibels + ":" + limiterReleaseMillis + ":" + JSON.stringify(effectChain) + ":" + JSON.stringify(editSegments) + ":" + JSON.stringify(effectMasks) + ":" + JSON.stringify(creativeVfx) + ":" + JSON.stringify(hasAsset ? asset.spectralRepair : {});
     }
 
     function playFrom(millis: int): void {
         if (!asset || asset.pathStatus === "missing") {
             return;
         }
-        player.playAdjusted(asset.path, trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationValue, deHumValue, deClickValue, channelRepairValue, equalizerEnabled, equalizerBands, compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbValue, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, effectChain, editSegments, effectMasks, creativeVfx);
+        player.playAdjusted(asset.path, trimStartMillis, trimEndMillis, fadeInMillis, fadeOutMillis, fadeInCurve, fadeOutCurve, gainCentibels, lowCutHertz, restorationValue, deHumValue, deClickValue, channelRepairValue, equalizerEnabled, equalizerBands, compressorEnabled, compressorThresholdCentibels, compressorRatioTenths, compressorAttackMillis, compressorReleaseMillis, compressorMakeupCentibels, reverbValue, limiterEnabled, limiterCeilingCentibels, limiterReleaseMillis, effectChain, editSegments, effectMasks, creativeVfx, (asset.spectralRepair || {}));
         loadedPath = asset.path;
         loadedAdjustmentKey = adjustmentKey();
         const start = Math.max(trimStartMillis, Math.min(millis, trimEndMillis));
