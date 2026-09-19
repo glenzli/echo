@@ -92,6 +92,10 @@ pub fn register_asset(
         "INSERT INTO asset_levels (asset_id, max_level) VALUES (?1, 0)",
         [id.to_string()],
     )?;
+    transaction.execute(
+        "INSERT INTO sound_items (id, asset_id, created_at_millis) VALUES (?1, ?1, ?2)",
+        rusqlite::params![id.to_string(), imported_at_millis],
+    )?;
     let asset = load_asset(transaction, &id.to_string())?.ok_or_else(|| {
         CatalogError::new(
             CatalogErrorKind::Other,

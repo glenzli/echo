@@ -13,6 +13,8 @@ ToolBar {
     required property string collectionName
     required property int visibleCount
     required property string viewMode
+    property string tapeScope: "memories"
+    signal tapeScopeRequested(string scope)
     required property real cardWidth
     required property string searchText
     required property bool semanticSearching
@@ -72,10 +74,17 @@ ToolBar {
             }
         }
 
+        ComboBox {
+            visible: toolbar.viewMode === "tape"
+            Layout.preferredWidth: 130
+            model: [qsTr("Memory tape"),qsTr("Material tape"),qsTr("Original tape")]
+            currentIndex: ["memories","materials","originals"].indexOf(toolbar.tapeScope)
+            onActivated: toolbar.tapeScopeRequested(["memories","materials","originals"][currentIndex])
+        }
         EchoTextField {
             Layout.leftMargin: 4
-            Layout.minimumWidth: 150
-            Layout.preferredWidth: 240
+            Layout.minimumWidth: 100
+            Layout.preferredWidth: toolbar.viewMode === "tape" ? 150 : 240
             Layout.maximumWidth: 300
             implicitHeight: Theme.compactControlHeight
             text: toolbar.searchText

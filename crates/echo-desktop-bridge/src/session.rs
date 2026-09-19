@@ -4,6 +4,7 @@
 mod processing_recipe;
 mod rendered_spectral_working_copy;
 mod sound_assembly;
+mod sound_library;
 
 use std::{
     collections::HashMap,
@@ -994,8 +995,18 @@ fn asset_summary_wire(
         .as_ref()
         .map_or(0, |revision| revision.revision_id);
     let source_metadata = source_metadata_wire_fields(asset.source_metadata.as_ref());
-    let analysis = analysis_wire_fields(analysis);
+    let mut analysis = analysis_wire_fields(analysis);
+    if !asset.assembly_id.is_empty() {
+        "assembly".clone_into(&mut analysis.stage);
+        "not_applicable".clone_into(&mut analysis.state);
+    }
     AssetSummaryWire {
+        in_memory: asset.in_memory,
+        in_materials: asset.in_materials,
+        material_category: asset.material_category,
+        assembly_id: asset.assembly_id,
+        assembly_revision_id: asset.assembly_revision_id,
+        provenance_json: asset.provenance_json,
         id: asset.id,
         path: asset.path.to_string_lossy().into_owned(),
         codec: asset.codec.unwrap_or_else(|| "unknown".to_owned()),
@@ -1399,6 +1410,17 @@ impl LibrarySession {
     ///
     /// Returns [`SessionError`] when the catalog read fails.
     pub fn list_assets(&self) -> Result<Vec<AssetSummaryWire>, SessionError> {
+        self.list_assets_with_versions(false)
+    }
+
+    pub(crate) fn list_originals(&self) -> Result<Vec<AssetSummaryWire>, SessionError> {
+        self.list_assets_with_versions(true)
+    }
+
+    fn list_assets_with_versions(
+        &self,
+        originals: bool,
+    ) -> Result<Vec<AssetSummaryWire>, SessionError> {
         let (projection, statuses) = self
             .catalog
             .with_transaction(|transaction| -> Result<_, echo_catalog::CatalogError> {
@@ -1419,7 +1441,11 @@ impl LibrarySession {
             .collect::<HashMap<_, _>>();
         Ok(projection
             .into_iter()
-            .map(|asset| {
+            .filter(|asset| !originals || asset.assembly_id.is_empty())
+            .map(|mut asset| {
+                if originals {
+                    asset.adjustment = None;
+                }
                 let status = statuses.remove(&asset.id);
                 asset_summary_wire(asset, status.as_ref(), &self.cache_root)
             })
@@ -1779,6 +1805,25 @@ impl LibrarySession {
         let id = AssetId::from_str(asset_id).map_err(|error| SessionError {
             message: format!("invalid asset id {asset_id}: {error}"),
         })?;
+        if let Some(payload) =
+            echo_core::load_or_build_memory_waveform(&self.catalog, asset_id, &self.cache_root)
+                .map_err(|e| SessionError {
+                    message: e.to_string(),
+                })?
+        {
+            return Ok(WaveformArtifactWire {
+                canonical_sample_rate: payload.canonical_sample_rate,
+                levels: payload
+                    .levels
+                    .into_iter()
+                    .map(|level| WaveformLevelWire {
+                        samples_per_bucket: level.samples_per_bucket,
+                        mins: level.mins,
+                        maxs: level.maxs,
+                    })
+                    .collect(),
+            });
+        }
         let source =
             self.catalog
                 .with_transaction(|transaction| match find_by_id(transaction, id) {

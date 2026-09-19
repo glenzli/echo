@@ -23,7 +23,7 @@ pub fn asset_affinity(
     asset_id: AssetId,
 ) -> Result<AssetAffinity, CatalogError> {
     let mut statement =
-        transaction.prepare("SELECT liked, rating FROM asset_user_state WHERE asset_id = ?1")?;
+        transaction.prepare("SELECT liked, rating FROM sound_user_state WHERE asset_id = ?1")?;
     let mut rows = statement.query([asset_id.to_string()])?;
     let Some(row) = rows.next()? else {
         return Ok(AssetAffinity::default());
@@ -55,7 +55,7 @@ pub fn set_asset_affinity(
         ));
     }
     transaction.execute(
-        "INSERT INTO asset_user_state (asset_id, liked, rating, updated_at_millis) \
+        "INSERT INTO sound_user_state (asset_id, liked, rating, updated_at_millis) \
          VALUES (?1, ?2, ?3, ?4) ON CONFLICT(asset_id) DO UPDATE SET \
          liked = excluded.liked, rating = excluded.rating, \
          updated_at_millis = excluded.updated_at_millis",

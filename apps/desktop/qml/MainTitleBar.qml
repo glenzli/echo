@@ -23,6 +23,7 @@ ToolBar {
     signal soundEditorRequested()
     signal soundAssemblyRequested()
     signal settingsRequested()
+    signal materialsRequested()
 
     objectName: "titleToolBar"
     Accessible.name: qsTr("Echo toolbar")
@@ -105,7 +106,7 @@ ToolBar {
                     buttonSize: 30
                     iconSize: 18
                     source: "qrc:/EchoDesktop/icons/waveform.svg"
-                    toolTipText: qsTr("Audio Space")
+                    toolTipText: qsTr("Memory library")
                     selected: titleBar.workspaceIndex === 0
                     onClicked: titleBar.soundWallRequested()
                 }
@@ -130,7 +131,7 @@ ToolBar {
                     buttonSize: 30
                     iconSize: 18
                     source: "qrc:/EchoDesktop/icons/edit.svg"
-                    toolTipText: qsTr("Sound Adjustments")
+                    toolTipText: qsTr("Edit sound")
                     enabled: titleBar.editorAvailable
                     selected: titleBar.workspaceIndex === 1
                     onClicked: titleBar.soundEditorRequested()
@@ -156,7 +157,7 @@ ToolBar {
                     buttonSize: 30
                     iconSize: 18
                     source: "qrc:/EchoDesktop/icons/assembly.svg"
-                    toolTipText: qsTr("Sound Assembly")
+                    toolTipText: qsTr("Projects")
                     selected: titleBar.workspaceIndex === 3
                     onClicked: titleBar.soundAssemblyRequested()
                 }
@@ -168,6 +169,26 @@ ToolBar {
                     height: 2
                     radius: 1
                     visible: titleBar.workspaceIndex === 3
+                    color: Theme.accent
+                }
+            }
+            Item {
+                width: 46
+                height: parent.height
+                EchoIconButton {
+                    anchors.centerIn: parent
+                    buttonSize: 30
+                    iconSize: 18
+                    source: "qrc:/EchoDesktop/icons/folder.svg"
+                    toolTipText: qsTr("Materials")
+                    selected: titleBar.workspaceIndex === 4
+                    onClicked: titleBar.materialsRequested()
+                }
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    width: 24; height: 2; radius: 1
+                    visible: titleBar.workspaceIndex === 4
                     color: Theme.accent
                 }
             }

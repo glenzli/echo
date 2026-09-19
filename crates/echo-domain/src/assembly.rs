@@ -25,6 +25,15 @@ pub const MAX_ASSEMBLY_TRACK_NAME_CHARACTERS: usize = 80;
 pub const MIN_ASSEMBLY_PAN_PERCENT: i8 = -100;
 pub const MAX_ASSEMBLY_PAN_PERCENT: i8 = 100;
 
+/// The user's intent for a clip reference, independent of its track or later collection changes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AssemblySourceRole {
+    #[default]
+    Memory,
+    Material,
+}
+
 /// One clip sourced from the linear render of an exact asset revision.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +41,8 @@ pub struct AssemblyClip {
     id: AssemblyClipId,
     asset_id: AssetId,
     adjustment_revision_id: i64,
+    #[serde(default)]
+    source_role: AssemblySourceRole,
     source_start_millis: u64,
     source_end_millis: u64,
     timeline_start_millis: u64,
@@ -93,6 +104,7 @@ impl AssemblyClip {
             id,
             asset_id,
             adjustment_revision_id,
+            source_role: AssemblySourceRole::Memory,
             source_start_millis,
             source_end_millis,
             timeline_start_millis,
@@ -104,6 +116,18 @@ impl AssemblyClip {
             fade_out_curve,
             muted,
         })
+    }
+
+    /// Selects the meaning of this reference without changing its immutable source.
+    #[must_use]
+    pub const fn with_source_role(mut self, role: AssemblySourceRole) -> Self {
+        self.source_role = role;
+        self
+    }
+
+    #[must_use]
+    pub const fn source_role(&self) -> AssemblySourceRole {
+        self.source_role
     }
 
     #[must_use]

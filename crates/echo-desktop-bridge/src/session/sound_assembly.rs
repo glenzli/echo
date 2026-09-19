@@ -13,8 +13,8 @@ use echo_catalog::{
     record_sound_assembly_export,
 };
 use echo_domain::{
-    AssemblyClip, AssemblyClipId, AssemblyMaster, AssemblyTrack, AssemblyTrackId, AssetId,
-    FadeCurve, SoundAssembly, SoundAssemblyId,
+    AssemblyClip, AssemblyClipId, AssemblyMaster, AssemblySourceRole, AssemblyTrack,
+    AssemblyTrackId, AssetId, FadeCurve, SoundAssembly, SoundAssemblyId,
 };
 
 use super::{
@@ -47,6 +47,7 @@ impl LibrarySession {
             })
     }
 
+    #[allow(clippy::too_many_lines)] // Resolve source versions and lay out the complete initial document together.
     pub(crate) fn create_sound_assembly(
         &self,
         name: &str,
@@ -72,6 +73,7 @@ impl LibrarySession {
             .filter(|id| seen.insert(*id))
             .collect::<Vec<_>>();
         let sources = self.catalog.with_transaction(|transaction| {
+            let memberships = echo_catalog::sound_memberships(transaction)?;
             ids.iter()
                 .copied()
                 .map(|asset_id| {
@@ -103,7 +105,15 @@ impl LibrarySession {
                         .filter(|value| !value.trim().is_empty())
                         .unwrap_or("Sound")
                         .to_owned();
-                    Ok((asset_id, revision_id, duration, display_name))
+                    let role = if memberships
+                        .get(&asset_id.to_string())
+                        .is_some_and(|value| value.in_memory)
+                    {
+                        AssemblySourceRole::Memory
+                    } else {
+                        AssemblySourceRole::Material
+                    };
+                    Ok((asset_id, revision_id, duration, display_name, role))
                 })
                 .collect::<Result<Vec<_>, echo_catalog::CatalogError>>()
         })?;
@@ -112,8 +122,9 @@ impl LibrarySession {
             let mut timeline_start = 0_u64;
             let clips = sources
                 .iter()
-                .map(|(asset_id, revision_id, duration, _)| {
-                    let clip = assembly_clip(*asset_id, *revision_id, *duration, timeline_start)?;
+                .map(|(asset_id, revision_id, duration, _, role)| {
+                    let clip = assembly_clip(*asset_id, *revision_id, *duration, timeline_start)?
+                        .with_source_role(*role);
                     timeline_start = timeline_start.checked_add(*duration).ok_or_else(|| {
                         session_error("assembly sequence duration exceeds the supported range")
                     })?;
@@ -135,7 +146,7 @@ impl LibrarySession {
         } else {
             sources
                 .iter()
-                .map(|(asset_id, revision_id, duration, display_name)| {
+                .map(|(asset_id, revision_id, duration, display_name, role)| {
                     AssemblyTrack::new(
                         AssemblyTrackId::new(),
                         display_name.clone(),
@@ -143,7 +154,10 @@ impl LibrarySession {
                         0,
                         false,
                         false,
-                        vec![assembly_clip(*asset_id, *revision_id, *duration, 0)?],
+                        vec![
+                            assembly_clip(*asset_id, *revision_id, *duration, 0)?
+                                .with_source_role(*role),
+                        ],
                     )
                     .map_err(domain_error)
                 })
@@ -184,6 +198,110 @@ impl LibrarySession {
         let revision = self.catalog.with_transaction(|transaction| {
             record_sound_assembly(transaction, &document, now_millis())
         })?;
+        self.resolve_sound_assembly_revision(&revision)
+    }
+
+    pub(crate) fn save_project_clip_adjustment(
+        &self,
+        document_json: &str,
+        clip_id: &str,
+        asset_id: &str,
+        adjustment: &crate::ffi::AssetAdjustmentWire,
+    ) -> Result<SoundAssemblyRevisionWire, SessionError> {
+        let mut document: serde_json::Value =
+            serde_json::from_str(document_json).map_err(|e| session_error(e.to_string()))?;
+        let source_id = parse_asset_id(asset_id)?;
+        let assembly_id = document
+            .get("id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| session_error("missing project identity"))?
+            .to_owned();
+        let assembly_id_typed = parse_assembly_id(&assembly_id)?;
+        let revision = self
+            .catalog
+            .with_transaction(|tx| -> Result<_, SessionError> {
+                if latest_sound_assembly(tx, assembly_id_typed)?.is_none() {
+                    return Err(session_error("project does not exist"));
+                }
+                let asset = match find_by_id(tx, source_id)? {
+                    AssetLookup::Found(a) => a,
+                    AssetLookup::NotFound => return Err(session_error("source does not exist")),
+                };
+                let duration = asset
+                    .original
+                    .duration_millis
+                    .ok_or_else(|| session_error("unknown source duration"))?;
+                let graph = super::adjustment_graph_from_wire(duration, adjustment)?;
+                let output_duration = graph.edit_timeline().output_duration_millis();
+                let mut found = false;
+                for track in document["tracks"]
+                    .as_array_mut()
+                    .ok_or_else(|| session_error("missing tracks"))?
+                {
+                    for clip in track["clips"]
+                        .as_array_mut()
+                        .ok_or_else(|| session_error("missing clips"))?
+                    {
+                        if clip["id"].as_str() != Some(clip_id) {
+                            continue;
+                        }
+                        if clip["assetId"].as_str() != Some(asset_id) || output_duration == 0 {
+                            return Err(session_error(
+                                "project clip source does not match the editor",
+                            ));
+                        }
+                        let old_revision = clip["adjustmentRevisionId"]
+                            .as_i64()
+                            .ok_or_else(|| session_error("missing source revision"))?;
+                        let old_duration = if old_revision == 0 {
+                            duration
+                        } else {
+                            adjustment_graph_at_revision(tx, source_id, old_revision)?
+                                .ok_or_else(|| session_error("missing source revision"))?
+                                .graph
+                                .edit_timeline()
+                                .output_duration_millis()
+                        };
+                        let saved = echo_catalog::record_project_adjustment_graph(
+                            tx,
+                            source_id,
+                            &assembly_id,
+                            clip_id,
+                            graph.clone(),
+                            now_millis(),
+                        )?;
+                        let old_start = clip["sourceStartMillis"]
+                            .as_u64()
+                            .ok_or_else(|| session_error("invalid clip range"))?;
+                        let old_end = clip["sourceEndMillis"]
+                            .as_u64()
+                            .ok_or_else(|| session_error("invalid clip range"))?;
+                        let start = old_start.min(output_duration - 1);
+                        let end = if old_end == old_duration {
+                            output_duration
+                        } else {
+                            old_end.min(output_duration)
+                        };
+                        let fade_in = clip["fadeInMillis"].as_u64().unwrap_or(0).min(end - start);
+                        let fade_out = clip["fadeOutMillis"]
+                            .as_u64()
+                            .unwrap_or(0)
+                            .min(end - start - fade_in);
+                        clip["adjustmentRevisionId"] = saved.revision_id.into();
+                        clip["sourceStartMillis"] = start.into();
+                        clip["sourceEndMillis"] = end.into();
+                        clip["fadeInMillis"] = fade_in.into();
+                        clip["fadeOutMillis"] = fade_out.into();
+                        found = true;
+                    }
+                }
+                if !found {
+                    return Err(session_error("project clip no longer exists"));
+                }
+                let authored: SoundAssembly =
+                    serde_json::from_value(document).map_err(|e| session_error(e.to_string()))?;
+                Ok(record_sound_assembly(tx, &authored, now_millis())?)
+            })?;
         self.resolve_sound_assembly_revision(&revision)
     }
 

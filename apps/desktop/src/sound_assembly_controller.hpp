@@ -36,6 +36,7 @@ class SoundAssemblyController : public QObject {
 
     Q_INVOKABLE void preparePreview(const QVariantMap& revision);
     Q_INVOKABLE void exportAssembly(const QVariantMap& revision, const QUrl& destination);
+    Q_INVOKABLE void saveToMemory(const QVariantMap& revision);
     Q_INVOKABLE void cancel();
 
     [[nodiscard]] bool running() const;
@@ -51,9 +52,15 @@ class SoundAssemblyController : public QObject {
   signals:
     void stateChanged();
     void progressChanged();
+    void memorySaved(const QString& assemblyId);
 
   private:
-    void start(const QVariantMap& revision, const QString& destination, bool preview);
+    void start(
+        const QVariantMap& revision,
+        const QString& destination,
+        bool preview,
+        bool preserveMemory = false
+    );
     void stopWorker();
     void reject(const QString& message);
 

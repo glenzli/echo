@@ -78,7 +78,7 @@ Rectangle {
                         value: metadata.formatDuration(metadata.asset.durationMillis)
                     },
                     {
-                        label: qsTr("Recorded"),
+                        label: metadata.asset.assemblyId ? qsTr("Collected") : metadata.asset.recordedAtMillis > 0 ? qsTr("Recorded") : qsTr("Imported"),
                         value: metadata.formatDate(metadata.asset.recordedAtMillis > 0 ? metadata.asset.recordedAtMillis : metadata.asset.importedAtMillis)
                     }
                 ] : []

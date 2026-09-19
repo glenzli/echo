@@ -17,3 +17,11 @@ appends immutable revisions, resolves every clip's exact Original and
 adjustment revision for native preparation, rejects destinations that would
 replace an Original, and records a verified mixdown plus source provenance
 only after the output exists.
+
+`session/sound_library.rs` owns collection membership, global/project material
+intake, durable memory destinations, and explicit acceptance of completed mix
+editions. `session/sound_assembly.rs` also owns project-scoped precision saves:
+a clip processing revision and its parent project revision commit atomically,
+without advancing the original recording's listening adjustment. Summary wires
+identify recordings and mix memories explicitly; originals remain assets, while
+accepted mix waveforms are indexed by export identity.

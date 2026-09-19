@@ -17,11 +17,13 @@ Rectangle {
     property bool calibratingMetadata: false
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
+    readonly property bool isAssemblyMemory: hasAsset && !!asset.assemblyId
     readonly property string analysisStage: hasAsset ? String(asset.analysisStage || "text") : "text"
     readonly property string analysisState: hasAsset ? String(asset.analysisState || "missing") : "missing"
     readonly property string analysisRecovery: hasAsset ? String(asset.analysisRecovery || "none") : "none"
     readonly property int analysisProgress: hasAsset ? Number(asset.analysisProgress || 0) : 0
 
+    signal openProjectRequested(string assemblyId)
     signal affinityRequested(var asset, bool liked, int rating)
     signal retryAnalysisRequested(var asset)
 
@@ -84,15 +86,17 @@ Rectangle {
         if (asset.pathStatus !== "missing") {
             waveformLevels = backend.waveformForAsset(asset.id);
         }
-        longAudioChapters = backend.longAudioChaptersForAsset(asset.id);
+        longAudioChapters = isAssemblyMemory ? [] : backend.longAudioChaptersForAsset(asset.id);
     }
+
+    SoundPlaybackSource { id: savedSound; asset: inspector.asset; transport: player }
 
     function playSelected(): void {
         if (!asset || asset.pathStatus === "missing") {
             return;
         }
         if (loadedPath !== asset.path) {
-            player.play(asset.path);
+            savedSound.play();
             loadedPath = asset.path;
             const resume = listeningProgress.resumePositionMillis;
             if (resume > 0 && resume < Number(asset.durationMillis))
@@ -264,7 +268,7 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: inspector.hasAsset ? inspector.fileName(inspector.asset.path) + " · " + inspector.formatDuration(inspector.asset.durationMillis) : ""
+                            text: inspector.hasAsset ? (inspector.isAssemblyMemory ? qsTr("Saved mix") : inspector.fileName(inspector.asset.path)) + " · " + inspector.formatDuration(inspector.asset.durationMillis) : ""
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontMeta
                             elide: Text.ElideMiddle
@@ -277,6 +281,7 @@ Rectangle {
                         toolTipText: qsTr("Edit sound information")
                         buttonSize: 28
                         iconSize: 15
+                        visible: !inspector.isAssemblyMemory
                         onClicked: inspector.calibratingMetadata = true
                     }
 
@@ -395,6 +400,14 @@ Rectangle {
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontMeta
                     }
+                }
+
+                MemorySourceReferences {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    asset: inspector.asset
+                    onOpenProjectRequested: id => inspector.openProjectRequested(id)
                 }
 
                 InspectorSection {
@@ -582,7 +595,7 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
-                    visible: inspector.hasAsset && inspector.analysisState !== "done"
+                    visible: inspector.hasAsset && !inspector.isAssemblyMemory && inspector.analysisState !== "done"
                     title: qsTr("ANALYSIS")
 
                     ColumnLayout {
@@ -634,7 +647,7 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
-                    visible: inspector.hasAsset && (inspector.asset.textPreview.length > 0 || inspector.analysisStage === "text" && inspector.analysisState !== "done")
+                    visible: inspector.hasAsset && !inspector.isAssemblyMemory && (inspector.asset.textPreview.length > 0 || inspector.analysisStage === "text" && inspector.analysisState !== "done")
                     title: qsTr("TEXT")
 
                     ColumnLayout {
@@ -663,7 +676,7 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
-                    title: qsTr("SOURCE METADATA")
+                    title: inspector.isAssemblyMemory ? qsTr("LISTENING EDITION") : qsTr("SOURCE METADATA")
 
                     GridLayout {
                         Layout.fillWidth: true
@@ -672,7 +685,7 @@ Rectangle {
                         rowSpacing: 7
 
                         Text {
-                            text: qsTr("Recorded")
+                            text: inspector.isAssemblyMemory ? qsTr("Collected") : inspector.hasAsset && (inspector.asset.recordedAtMillis > 0 || inspector.asset.sourceCreatedAt.length > 0) ? qsTr("Recorded") : qsTr("Imported")
                             color: Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                         }
@@ -685,12 +698,14 @@ Rectangle {
                         }
 
                         Text {
+                            visible: !inspector.isAssemblyMemory
                             text: qsTr("Location")
                             color: Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
                         }
                         Text {
                             Layout.fillWidth: true
+                            visible: !inspector.isAssemblyMemory
                             text: inspector.hasAsset && inspector.asset.sourceLocation.length > 0 ? inspector.asset.sourceLocation : qsTr("Not embedded")
                             color: inspector.hasAsset && inspector.asset.sourceLocation.length > 0 ? Theme.textPrimary : Theme.textDisabled
                             font.pixelSize: Theme.fontMeta
@@ -727,7 +742,7 @@ Rectangle {
 
                 InspectorSection {
                     Layout.fillWidth: true
-                    title: qsTr("ORIGINAL")
+                    title: inspector.isAssemblyMemory ? qsTr("SAVED AUDIO") : qsTr("ORIGINAL")
 
                     Text {
                         Layout.fillWidth: true

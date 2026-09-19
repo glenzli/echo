@@ -439,6 +439,7 @@ fn assembly_provenance(
                 "clipId": clip.id().to_string(),
                 "assetId": clip.asset_id().to_string(),
                 "originalContentHash": content_hash,
+                "sourceRole": clip.source_role(),
                 "adjustmentRevisionId": (clip.adjustment_revision_id() > 0)
                     .then_some(clip.adjustment_revision_id()),
                 "sourceStartMillis": clip.source_start_millis(),

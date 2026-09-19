@@ -11,6 +11,11 @@ Rectangle {
     id: workspace
 
     required property var asset
+    property var projectDocument: ({})
+    property string projectClipId: ""
+    readonly property bool editingProjectClip: projectClipId.length > 0
+    signal returnToProjectRequested()
+    signal projectClipSaved(var revision)
 
     property var waveformLevels: []
     property string loadedPath: ""
@@ -68,6 +73,7 @@ Rectangle {
     }
 
     function activeRenderedSpectralWorkingCopy(): var {
+        if (editingProjectClip) return null;
         for (let index = 0; index < renderedSpectralWorkingCopies.length; ++index) {
             const copy = renderedSpectralWorkingCopies[index];
             if (copy.enabled && copy.upstreamCurrent && copy.cachePath.length > 0)
@@ -147,7 +153,7 @@ Rectangle {
         if (!asset || !asset.id || asset.pathStatus === "missing")
             return;
         waveformLevels = backend.waveformForAsset(asset.id);
-        renderedSpectralWorkingCopies = backend.renderedSpectralWorkingCopies(asset.id);
+        renderedSpectralWorkingCopies = editingProjectClip ? [] : backend.renderedSpectralWorkingCopies(asset.id);
         refreshSpectrogramPreview();
     }
 
@@ -274,6 +280,7 @@ Rectangle {
     }
 
     function presentApplyProcessingRecipe(): void {
+        if (editingProjectClip) return;
         refreshProcessingRecipes();
         processingRecipeApplyDialog.recipeModel = processingRecipes;
         processingRecipeApplyDialog.modelRevision = processingRecipeModelRevision;
@@ -352,6 +359,7 @@ Rectangle {
     }
 
     function openExport(): void {
+        if (editingProjectClip) return;
         exportDialog.present();
     }
 
@@ -380,6 +388,13 @@ Rectangle {
         function onAssetsChanged(): void {
             workspace.refreshAsset();
         }
+        function onProjectClipSaved(revision): void {
+            if (workspace.editingProjectClip) {
+                workspace.projectDocument = revision;
+                workspace.projectClipSaved(revision);
+            }
+        }
+        function onAdjustmentSaveFailed(message): void { workspace.showProcessingRecipeNotice(message); }
         function onProcessingRecipesChanged(): void {
             workspace.refreshProcessingRecipes();
         }
@@ -402,7 +417,7 @@ Rectangle {
         asset: workspace.asset
 
         onSaveRequested: function (startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx, spectralRepair, space) {
-            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx, spectralRepair, space)) {
+            if (backend.setAssetAdjustment(workspace.asset.id, startMillis, endMillis, fadeIn, fadeOut, fadeInCurve, fadeOutCurve, gain, lowCut, restorationEnabled, dePlosiveEnabled, dePlosiveFrequency, dePlosiveSensitivity, dePlosiveReduction, dePlosiveRelease, noiseEnabled, noiseReduction, noiseSensitivity, noiseSmoothing, deEsserEnabled, deEsserFrequency, deEsserThreshold, deEsserReduction, deHumEnabled, deHumFundamental, deHumHarmonicCount, deHumQuality, deHumDepth, deClickEnabled, deClickSensitivity, deClickMaximumClick, deClickRepair, channelRepairEnabled, channelRepairInvertLeft, channelRepairInvertRight, channelRepairSwapChannels, channelRepairMonoFoldDown, channelRepairBalance, equalizerEnabled, equalizerBands, compressorEnabled, compressorThreshold, compressorRatio, compressorAttack, compressorRelease, compressorMakeup, reverbCharacter, reverbEnabled, reverbMix, reverbPreDelay, reverbDecay, reverbSize, reverbDamping, reverbLowCut, reverbHighCut, limiterEnabled, limiterCeiling, limiterRelease, effectChain, editSegments, effectMasks, creativeVfx, spectralRepair, space, workspace.projectDocument, workspace.projectClipId)) {
                 adjustmentDraft.markSaved();
                 workspace.auditionOriginal = false;
                 workspace.loadedBaseAdjustmentKey = "";
@@ -679,6 +694,22 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            visible: workspace.editingProjectClip
+            EchoButton {
+                text: qsTr("Back to project")
+                ghost: true
+                onClicked: workspace.returnToProjectRequested()
+            }
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Editing this project clip. Its source memory stays unchanged.")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontMeta
+                wrapMode: Text.WordWrap
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
             Layout.preferredHeight: 36
             spacing: 10
 
@@ -716,6 +747,7 @@ Rectangle {
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/recipe-save.svg"
+                visible: !workspace.editingProjectClip
                 toolTipText: qsTr("Save as recipe")
                 accessibleName: toolTipText
                 enabled: workspace.hasAsset && !workspace.dirty && Number(workspace.asset.adjustmentRevision || 0) > 0
@@ -724,6 +756,7 @@ Rectangle {
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/recipe-apply.svg"
+                visible: !workspace.editingProjectClip
                 toolTipText: qsTr("Apply recipe")
                 accessibleName: toolTipText
                 enabled: workspace.hasAsset && !workspace.dirty
@@ -732,6 +765,7 @@ Rectangle {
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/equalizer.svg"
+                visible: !workspace.editingProjectClip
                 toolTipText: qsTr("Manage processing recipes")
                 accessibleName: toolTipText
                 enabled: workspace.processingRecipes.length > 0
@@ -742,6 +776,7 @@ Rectangle {
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/history.svg"
+                visible: !workspace.editingProjectClip
                 toolTipText: qsTr("Processing history")
                 accessibleName: toolTipText
                 buttonSize: 30
@@ -751,6 +786,7 @@ Rectangle {
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/export.svg"
+                visible: !workspace.editingProjectClip
                 toolTipText: qsTr("Export")
                 accessibleName: toolTipText
                 enabled: workspace.hasAsset && workspace.asset.pathStatus !== "missing" && !renderExporter.running
@@ -840,7 +876,7 @@ Rectangle {
                 selectionEndRatio: adjustmentDraft.sourceDurationMillis > 0 ? editorTimeline.selectionEndMillis / adjustmentDraft.sourceDurationMillis : 0
                 layerEnabled: adjustmentDraft.spectralRepair.enabled
                 regions: adjustmentDraft.spectralRepair.regions
-                canCreateRenderedWorkingCopy: workspace.hasAsset && workspace.asset.pathStatus !== "missing" && !workspace.dirty
+                canCreateRenderedWorkingCopy: !workspace.editingProjectClip && workspace.hasAsset && workspace.asset.pathStatus !== "missing" && !workspace.dirty
                 hasRenderedWorkingCopy: workspace.renderedSpectralWorkingCopies.length > 0
                 renderedWorkingCopyRunning: renderedSpectralWorkingCopy.running
                 renderedWorkingCopyReady: workspace.renderedSpectralWorkingCopies.some(function(copy) {
@@ -857,7 +893,7 @@ Rectangle {
                     adjustmentDraft.addSpectralRepairRegion(startMillis, endMillis, lowHertz, highHertz);
                 }
                 onClearRequested: adjustmentDraft.clearSpectralRepairRegions()
-                onRenderedWorkingCopyRequested: renderedSpectralWorkingCopy.createFromSavedAsset(workspace.asset)
+                onRenderedWorkingCopyRequested: { if (!workspace.editingProjectClip) renderedSpectralWorkingCopy.createFromSavedAsset(workspace.asset); }
                 onRenderedEraseModeRequested: function(enabled) {
                     workspace.renderedSpectralEraseMode = enabled;
                     workspace.refreshSpectrogramPreview();

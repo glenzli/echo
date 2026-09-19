@@ -34,7 +34,7 @@ Rectangle {
     readonly property bool hasSemanticLine: entry.mood.length > 0 || displayEvent.length > 0 || displayLanguage.length > 0 || keywordLine.length > 0
     readonly property bool hasPreview: String(displayPreview || "").trim().length > 0
     readonly property bool hasEvidence: evidenceLine.length > 0
-    readonly property bool analysisIncomplete: String(entry.analysisState || "missing") !== "done"
+    readonly property bool analysisIncomplete: !entry.assemblyId && String(entry.analysisState || "missing") !== "done"
     readonly property int waveformHeight: overview ? 48 : rich ? 62 : 52
 
     implicitWidth: 264

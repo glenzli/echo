@@ -157,9 +157,11 @@ pub(crate) const RENDERED_SPECTRAL_WORKING_COPY_EXPORT_SCHEMA_VERSION: CatalogSc
     CatalogSchemaRevision::new(20_260_815, 4);
 pub(crate) const SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_815, 5);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_831, 1);
+pub(crate) const SOUND_LIBRARY_PREDECESSOR_SCHEMA_VERSION: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_831, 1);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_920, 1);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260831.1-sound-assembly";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260920.1-memory-library";
 
 pub(crate) const SOUND_ASSEMBLY_MIGRATION_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS sound_assemblies (

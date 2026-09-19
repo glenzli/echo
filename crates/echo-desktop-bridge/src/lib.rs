@@ -78,6 +78,12 @@ mod ffi {
     #[derive(Debug)]
     struct AssetSummaryWire {
         id: String,
+        in_memory: bool,
+        in_materials: bool,
+        material_category: String,
+        assembly_id: String,
+        assembly_revision_id: i64,
+        provenance_json: String,
         path: String,
         codec: String,
         duration_millis: u64,
@@ -575,7 +581,39 @@ mod ffi {
         /// roots.
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
         /// Lists registered assets, newest import first.
+        fn session_save_project_clip_adjustment(
+            self: &LibrarySession,
+            document_json: &str,
+            clip_id: &str,
+            asset_id: &str,
+            adjustment: &AssetAdjustmentWire,
+        ) -> Result<SoundAssemblyRevisionWire>;
+        fn session_list_originals(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
         fn session_list_assets(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
+        fn session_set_sound_membership(
+            self: &LibrarySession,
+            id: &str,
+            memory: bool,
+            materials: bool,
+            category: &str,
+        ) -> Result<()>;
+        fn session_project_materials(
+            self: &LibrarySession,
+            assembly_id: &str,
+        ) -> Result<Vec<String>>;
+        fn session_queue_material_import(
+            self: &LibrarySession,
+            path: &str,
+            assembly_id: &str,
+            global: bool,
+            category: &str,
+        ) -> Result<()>;
+        fn session_memory_output_path(self: &LibrarySession, assembly_id: &str) -> Result<String>;
+        fn session_preserve_assembly_memory(
+            self: &LibrarySession,
+            assembly_id: &str,
+            export_id: i64,
+        ) -> Result<()>;
         /// Lists active multi-asset assembly documents.
         fn session_sound_assemblies(self: &LibrarySession)
         -> Result<Vec<SoundAssemblySummaryWire>>;
@@ -946,11 +984,55 @@ pub fn spectrogram_artifact_for_path(path: &str) -> Result<ffi::SpectrogramArtif
 }
 
 impl LibrarySession {
+    fn session_save_project_clip_adjustment(
+        &self,
+        document_json: &str,
+        clip_id: &str,
+        asset_id: &str,
+        adjustment: &ffi::AssetAdjustmentWire,
+    ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
+        self.save_project_clip_adjustment(document_json, clip_id, asset_id, adjustment)
+            .map_err(|e| e.to_string())
+    }
+    fn session_set_sound_membership(
+        &self,
+        id: &str,
+        memory: bool,
+        materials: bool,
+        category: &str,
+    ) -> Result<(), String> {
+        self.set_sound_membership(id, memory, materials, category)
+            .map_err(|e| e.to_string())
+    }
+    fn session_project_materials(&self, id: &str) -> Result<Vec<String>, String> {
+        self.project_materials(id).map_err(|e| e.to_string())
+    }
+    fn session_queue_material_import(
+        &self,
+        path: &str,
+        id: &str,
+        global: bool,
+        category: &str,
+    ) -> Result<(), String> {
+        self.queue_material_import(path, id, global, category)
+            .map_err(|e| e.to_string())
+    }
+    fn session_memory_output_path(&self, id: &str) -> Result<String, String> {
+        self.memory_output_path(id).map_err(|e| e.to_string())
+    }
+    fn session_preserve_assembly_memory(&self, id: &str, export_id: i64) -> Result<(), String> {
+        self.preserve_assembly_memory(id, export_id)
+            .map_err(|e| e.to_string())
+    }
+
     /// Lists registered assets, newest import first.
     ///
     /// # Errors
     ///
     /// Returns the session error message when the catalog read fails.
+    fn session_list_originals(&self) -> Result<Vec<ffi::AssetSummaryWire>, String> {
+        self.list_originals().map_err(|e| e.to_string())
+    }
     fn session_list_assets(&self) -> Result<Vec<ffi::AssetSummaryWire>, String> {
         self.list_assets().map_err(|error| error.message)
     }

@@ -4,11 +4,11 @@ The first macOS shell is a native Qt Quick application backed by the Rust memory
 engine and the C++ audio engine:
 
 ```text
-startup Audio Space / catalog session
+startup Memory Library / catalog session
   → DesktopBackend (Qt facade over the CXX ABI)
   → echo-desktop-bridge (long-lived LibrarySession)
   → echo-catalog single writer
-  → registered assets projected as bounded summaries
+  → recordings and accepted mix editions projected as bounded summaries
 ```
 
 Selecting a recording plays it through `PlaybackController` (Qt 6.11 callback
@@ -62,6 +62,26 @@ assembly plan for preview and PCM24 WAV mixdown. Catalog publication happens
 only after an atomic output commit and records the assembly revision, Original
 hashes, pinned adjustment revisions, and output hash.
 
+`SoundSourceBrowser.qml` owns the editor's project, memory and material bins and
+is reused for the global material page. `desktop_sound_library.cpp` exposes
+collection membership, queued durable imports and memory destinations.
+`SoundPlaybackSource.qml` maps saved processing into either the main transport
+or the independent material audition transport. `MemorySourceReferences.qml`
+shows the exact source snapshot of an accepted listening edition.
+
+“Keep in memories” renders to `media/memories` beside the catalog, commits and
+hashes the output, then pins that export as the memory's listening edition.
+Saving a project alone leaves the accepted edition unchanged. Imported materials
+live in `media/materials`; neither directory is a rebuildable cache. Global
+collection removal preserves project references and bytes.
+
+Opening a clip in the existing precision editor carries its exact source
+revision and project context. Saving writes an isolated adjustment revision and
+an updated project revision together. It leaves the recording's current saved
+adjustment unchanged. Returning to the project preserves the selected clip and
+playhead. The post-render spectral working-copy route stays in the standalone
+sound editor until it has an independent project-scoped lifecycle.
+
 QML never opens SQLite, calls FFmpeg, or interprets cache paths. Theme tokens
 live in [`qml/Theme.qml`](qml/Theme.qml); components follow the series naming
 convention (`EchoButton`, ...) shared with Shadow.
@@ -99,3 +119,12 @@ sound before capture; the transport timestamp proves the replacement session
 is consumed by the packaged audio sink.
 captures the first window and exits; add `ECHO_DEBUG_AUTOPLAY=/path/file` to
 start playback first.
+
+`EchoComboBox.qml` shares themed selectors across source browsing and project inspection; `Main.qml` supplies the matching palette to inherited Qt controls.
+
+`MemoryWorkflowSmoke.qml` is an opt-in packaged integration contract. With an isolated
+catalog containing a recording, set `ECHO_DEBUG_MEMORY_MATERIAL=file:///absolute/material.wav`
+and `ECHO_DEBUG_MEMORY_REPORT=/absolute/report.json`. It exercises project material intake,
+isolated clip precision editing, accepted mix publication, waveform access, draft retention
+and project reopening, then exits with a JSON report and numbered window captures. It invokes
+the same workspace handlers as the UI; pointer gestures and native file dialogs remain manual QA.

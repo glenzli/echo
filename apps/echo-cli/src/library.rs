@@ -118,6 +118,7 @@ impl JobKindLabel for echo_catalog::Job {
         match self.kind {
             JobKind::ScanRoot => "scan",
             JobKind::ImportFile => "import",
+            JobKind::ImportMaterial => "import material",
             JobKind::ExtractMetadata => "metadata",
             JobKind::AnalyzeWaveform => "waveform",
             JobKind::Transcribe => "transcribe",

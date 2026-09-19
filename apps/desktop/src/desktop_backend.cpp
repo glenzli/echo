@@ -647,12 +647,31 @@ void DesktopBackend::refresh() {
     emit assetsChanged();
 }
 
-QVariantList DesktopBackend::listAssets() const {
+QVariantList DesktopBackend::listAssets(bool originals) const {
     QVariantList list;
-    const auto assets = session_->session_list_assets();
+    const auto assets =
+        originals ? session_->session_list_originals() : session_->session_list_assets();
     for (const auto& asset : assets) {
         QVariantMap entry;
         entry.insert(QStringLiteral("id"), QString::fromUtf8(asset.id.data(), asset.id.size()));
+        entry.insert(QStringLiteral("inMemory"), asset.in_memory);
+        entry.insert(QStringLiteral("inMaterials"), asset.in_materials);
+        entry.insert(
+            QStringLiteral("materialCategory"),
+            QString::fromUtf8(asset.material_category.data(), asset.material_category.size())
+        );
+        entry.insert(
+            QStringLiteral("assemblyId"),
+            QString::fromUtf8(asset.assembly_id.data(), asset.assembly_id.size())
+        );
+        entry.insert(
+            QStringLiteral("assemblyRevisionId"),
+            static_cast<qlonglong>(asset.assembly_revision_id)
+        );
+        entry.insert(
+            QStringLiteral("provenanceJson"),
+            QString::fromUtf8(asset.provenance_json.data(), asset.provenance_json.size())
+        );
         entry.insert(
             QStringLiteral("path"),
             QString::fromUtf8(asset.path.data(), asset.path.size())
@@ -2007,7 +2026,9 @@ bool DesktopBackend::setAssetAdjustment(
     const QVariantList& effectMasks,
     const QVariantMap& creativeVfx,
     const QVariantMap& spectralRepair,
-    const QVariantMap& space
+    const QVariantMap& space,
+    const QVariantMap& projectDocument,
+    const QString& projectClipId
 ) {
     const int space_mode = space.value(QStringLiteral("mode"), 0).toInt();
     const int convolution_mix = space.value(QStringLiteral("convolutionMixPercent"), 35).toInt();
@@ -2189,10 +2210,23 @@ bool DesktopBackend::setAssetAdjustment(
             qWarning("effect masks are outside the supported contract");
             return false;
         }
-        session_->session_set_asset_adjustment(id.toStdString(), adjustment);
+        if (!projectClipId.isEmpty()) {
+            const auto encoded =
+                QJsonDocument::fromVariant(projectDocument).toJson(QJsonDocument::Compact);
+            const auto saved = session_->session_save_project_clip_adjustment(
+                encoded.toStdString(),
+                projectClipId.toStdString(),
+                id.toStdString(),
+                adjustment
+            );
+            emit projectClipSaved(soundAssemblyRevisionForQml(saved));
+        } else {
+            session_->session_set_asset_adjustment(id.toStdString(), adjustment);
+        }
         emit assetsChanged();
         return true;
     } catch (const rust::Error& error) {
+        emit adjustmentSaveFailed(QString::fromUtf8(error.what()));
         qWarning("cannot update adjustment for %s: %s", qPrintable(id), error.what());
         return false;
     }
@@ -2514,7 +2548,8 @@ QString DesktopBackend::recordSoundAssemblyExport(
     quint64 frameCount,
     quint64 sizeBytes,
     float integratedLufs,
-    float truePeakDbtp
+    float truePeakDbtp,
+    bool preserveMemory
 ) const {
     try {
         echo::desktop::RenderExportWire evidence;
@@ -2527,11 +2562,13 @@ QString DesktopBackend::recordSoundAssemblyExport(
         evidence.size_bytes = sizeBytes;
         evidence.integrated_lufs = integratedLufs;
         evidence.true_peak_dbtp = truePeakDbtp;
-        session_->session_record_sound_assembly_export(
+        const auto exportId = session_->session_record_sound_assembly_export(
             assemblyId.toStdString(),
             assemblyRevisionId,
             evidence
         );
+        if (preserveMemory)
+            session_->session_preserve_assembly_memory(assemblyId.toStdString(), exportId);
         return {};
     } catch (const rust::Error& error) {
         return QString::fromUtf8(error.what());

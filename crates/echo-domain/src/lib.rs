@@ -65,9 +65,10 @@ pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,
 };
 pub use assembly::{
-    AssemblyClip, AssemblyMaster, AssemblyTrack, MAX_ASSEMBLY_CLIPS, MAX_ASSEMBLY_DURATION_MILLIS,
-    MAX_ASSEMBLY_NAME_CHARACTERS, MAX_ASSEMBLY_PAN_PERCENT, MAX_ASSEMBLY_TRACK_NAME_CHARACTERS,
-    MAX_ASSEMBLY_TRACKS, MIN_ASSEMBLY_PAN_PERCENT, SoundAssembly, SoundAssemblyError,
+    AssemblyClip, AssemblyMaster, AssemblySourceRole, AssemblyTrack, MAX_ASSEMBLY_CLIPS,
+    MAX_ASSEMBLY_DURATION_MILLIS, MAX_ASSEMBLY_NAME_CHARACTERS, MAX_ASSEMBLY_PAN_PERCENT,
+    MAX_ASSEMBLY_TRACK_NAME_CHARACTERS, MAX_ASSEMBLY_TRACKS, MIN_ASSEMBLY_PAN_PERCENT,
+    SoundAssembly, SoundAssemblyError,
 };
 pub use audio_asset::AudioAsset;
 pub use creative_vfx::{

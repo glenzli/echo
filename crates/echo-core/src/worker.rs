@@ -162,6 +162,12 @@ fn dispatch(catalog: &Catalog, config: &WorkerConfig, job: &ClaimedJob) -> Resul
             import_file(catalog, config, &payload.path)?;
             Ok(())
         }
+        JobKind::ImportMaterial => {
+            let request: echo_catalog::MaterialImportPayload =
+                serde_json::from_value(job.payload.clone())
+                    .map_err(|error| CoreError::new(CoreErrorKind::Other, error.to_string()))?;
+            crate::material_import::import_material(catalog, &request)
+        }
         JobKind::ExtractMetadata => {
             let asset_id = asset_id_of(&job.payload)?;
             let source = source_path_of(catalog, &asset_id)?;
@@ -225,6 +231,7 @@ fn dispatch_analysis(
         JobKind::EmbedAudio => audio_semantic_search::dispatch_document(catalog, config, job),
         JobKind::ScanRoot
         | JobKind::ImportFile
+        | JobKind::ImportMaterial
         | JobKind::ExtractMetadata
         | JobKind::AnalyzeWaveform => unreachable!("structural jobs use dispatch"),
     }

@@ -26,7 +26,17 @@ class DesktopBackend : public QObject {
     ~DesktopBackend() override = default;
 
     Q_INVOKABLE void refresh();
-    Q_INVOKABLE QVariantList listAssets() const;
+    Q_INVOKABLE QVariantList listAssets(bool originals = false) const;
+    Q_INVOKABLE QString
+    setSoundMembership(const QString& id, bool memory, bool materials, const QString& category);
+    Q_INVOKABLE QVariantList projectMaterials(const QString& assemblyId) const;
+    Q_INVOKABLE QString importMaterial(
+        const QUrl& file,
+        const QString& assemblyId,
+        bool global,
+        const QString& category
+    );
+    [[nodiscard]] QVariantMap memoryOutputDestination(const QString& assemblyId) const;
     Q_INVOKABLE QVariantList listSoundAssemblies() const;
     Q_INVOKABLE QVariantMap
     createSoundAssembly(const QString& name, const QVariantList& assetIds, const QString& layout);
@@ -234,7 +244,9 @@ class DesktopBackend : public QObject {
         const QVariantList& effectMasks,
         const QVariantMap& creativeVfx,
         const QVariantMap& spectralRepair,
-        const QVariantMap& space
+        const QVariantMap& space,
+        const QVariantMap& projectDocument = {},
+        const QString& projectClipId = {}
     );
     Q_INVOKABLE QVariantList search(const QString& query) const;
     Q_INVOKABLE QVariantMap analysisStatusForAsset(const QString& id) const;
@@ -276,7 +288,8 @@ class DesktopBackend : public QObject {
         quint64 frameCount,
         quint64 sizeBytes,
         float integratedLufs,
-        float truePeakDbtp
+        float truePeakDbtp,
+        bool preserveMemory = false
     ) const;
     /// Records a user delivery from a verified post-effect repair copy and
     /// persists an immutable snapshot of that copy's current provenance.
@@ -326,6 +339,8 @@ class DesktopBackend : public QObject {
     removeRenderedSpectralWorkingCopy(const QString& assetId, qint64 workingCopyId) const;
 
   signals:
+    void projectClipSaved(const QVariantMap& revision);
+    void adjustmentSaveFailed(const QString& message);
     void assetsChanged();
     void soundAssembliesChanged();
     void albumsChanged();

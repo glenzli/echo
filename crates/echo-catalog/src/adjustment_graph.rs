@@ -77,6 +77,7 @@ pub fn latest_adjustment_graph(
              de_click_json, channel_repair_json, effect_chain_json, edit_timeline_json, effect_masks_json, limiter_enabled, \
              limiter_ceiling_centibels, limiter_release_millis, creative_vfx_json, spectral_repair_json, created_at_millis \
              FROM asset_adjustment_revisions WHERE asset_id = ?1 \
+             AND NOT EXISTS (SELECT 1 FROM project_adjustment_revisions p WHERE p.revision_id = asset_adjustment_revisions.id) \
              ORDER BY id DESC LIMIT 1",
             [asset_id.to_string()],
             stored_adjustment_from_row,
@@ -371,6 +372,29 @@ pub fn record_adjustment_graph(
         graph: validated,
         created_at_millis: now_millis,
     })
+}
+
+/// Saves an isolated clip processing revision without changing the source's listening edition.
+///
+/// # Errors
+/// Returns a catalog failure for an invalid graph or project reference.
+pub fn record_project_adjustment_graph(
+    transaction: &Transaction<'_>,
+    asset_id: AssetId,
+    assembly_id: &str,
+    clip_id: &str,
+    graph: AdjustmentGraph,
+    now_millis: i64,
+) -> Result<AssetAdjustmentRevision, CatalogError> {
+    let previous = latest_adjustment_graph(transaction, asset_id)?.map(|r| r.revision_id);
+    let revision = record_adjustment_graph(transaction, asset_id, graph, now_millis)?;
+    if previous != Some(revision.revision_id) {
+        transaction.execute(
+            "INSERT INTO project_adjustment_revisions VALUES (?1,?2,?3)",
+            rusqlite::params![revision.revision_id, assembly_id, clip_id],
+        )?;
+    }
+    Ok(revision)
 }
 
 fn encode_channel_repair(settings: ChannelRepairSettings) -> Result<String, CatalogError> {

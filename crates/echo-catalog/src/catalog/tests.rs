@@ -79,7 +79,7 @@ fn true_stereo_revision_backfills_v4_layouts_and_preserves_import_rows() {
             crate::record_asset_listening_progress(transaction, asset_id, 40_000, 0, 120_000, 20)?;
             let seeded_listening: (i64, i64) = transaction.query_row(
                 "SELECT last_listened_at_millis, resume_position_millis
-                 FROM asset_user_state WHERE asset_id = ?1",
+                 FROM sound_user_state WHERE asset_id = ?1",
                 [asset_id.to_string()],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )?;
@@ -765,7 +765,7 @@ fn deterministic_vfx_revision_preserves_listening_state_and_legacy_json() {
                 )?,
                 transaction.query_row(
                     "SELECT last_listened_at_millis, resume_position_millis
-                     FROM asset_user_state WHERE asset_id = ?1",
+                     FROM sound_user_state WHERE asset_id = ?1",
                     [asset_id.to_string()],
                     |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
                 )?,

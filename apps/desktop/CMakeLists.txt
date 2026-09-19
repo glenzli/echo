@@ -95,7 +95,7 @@ add_dependencies(echo-desktop-rust echo-desktop-rust-build)
 
 # The audio engine's dynamic dependencies arrive through Cargo's static
 # archive; CMake owns the FFmpeg link for the final executable.
-pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswresample)
+include("${PROJECT_SOURCE_DIR}/cmake/EchoFFmpeg.cmake")
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -107,6 +107,7 @@ qt_add_executable(
     src/main.cpp
     src/application_paths.cpp
     src/application_paths.hpp
+    src/desktop_sound_library.cpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
     src/impulse_response_controller.cpp
@@ -202,6 +203,7 @@ qt_add_qml_module(
         qml/EchoSectionLabel.qml
         qml/EchoSettingsDialog.qml
         qml/EchoSwitch.qml
+        qml/EchoComboBox.qml
         qml/EchoTextField.qml
         qml/InspectorSection.qml
         qml/LoudnessTargetControl.qml
@@ -228,6 +230,10 @@ qt_add_qml_module(
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
         qml/SoundAssemblyTrack.qml
+        qml/MemoryWorkflowSmoke.qml
+        qml/MemorySourceReferences.qml
+        qml/SoundPlaybackSource.qml
+        qml/SoundSourceBrowser.qml
         qml/SoundAssemblyWorkspace.qml
         qml/SpaceReverbPanel.qml
         qml/SpectrogramView.qml

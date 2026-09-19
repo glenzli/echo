@@ -16,6 +16,7 @@ Item {
     property string searchText: ""
     property string sortMode: "date"
     property string viewMode: "grid"
+    property string tapeScope: "memories"
     property int preferredCardWidth: 224
     property bool likedOnly: false
     property int minimumRating: 0
@@ -39,11 +40,12 @@ Item {
     readonly property bool revisitActive: selectedFilter === "revisit" && viewMode === "grid" && normalizedSearchText().length === 0
     readonly property int visibleAssetCount: revisitActive ? revisitState.visibleAssetCount : filteredAssets.length
     readonly property string cardDensity: preferredCardWidth <= 205 ? "overview" : preferredCardWidth <= 330 ? "browse" : "rich"
-    readonly property int incompleteAnalysisCount: allAssets.filter(asset => asset.analysisState !== "done").length
+    readonly property int incompleteAnalysisCount: allAssets.filter(asset => !asset.assemblyId && asset.analysisState !== "done").length
     readonly property int failedAnalysisCount: allAssets.filter(asset => asset.analysisState === "failed" || asset.analysisState === "cancelled").length
     readonly property int manualAnalysisCount: allAssets.filter(asset => asset.analysisRecovery === "manual").length
     readonly property var selectedAssetIds: soundSelection.selectedIds
 
+    signal openProjectRequested(string assemblyId)
     signal openLibraryRequested
     signal assemblyRequested(var assetIds, string layout)
 
@@ -84,9 +86,13 @@ Item {
         return searchText.trim().replace(/\s+/g, " ");
     }
 
+    onTapeScopeChanged: { selectedFilter = "all"; refreshAssets(); }
+    onViewModeChanged: refreshAssets()
+
     function refreshAssets(): void {
         const selectedId = selectedAsset !== null ? selectedAsset.id : "";
-        const assets = backend.listAssets();
+        const inTape = viewMode === "tape";
+        const assets = backend.listAssets(inTape && tapeScope === "originals").filter(asset => inTape && tapeScope === "materials" ? asset.inMaterials : asset.inMemory);
         allAssets = assets;
         albumState.refresh();
         revisitState.refresh();
@@ -274,7 +280,7 @@ Item {
             if (album !== null)
                 return album.label;
         }
-        return qsTr("All sounds");
+        return qsTr("Memory library");
     }
 
     function matchesCollection(asset: var): bool {
@@ -663,6 +669,8 @@ Item {
                     collectionName: workspace.collectionTitle()
                     visibleCount: workspace.visibleAssetCount
                     viewMode: workspace.viewMode
+                    tapeScope: workspace.tapeScope
+                    onTapeScopeRequested: scope => workspace.tapeScope = scope
                     cardWidth: workspace.preferredCardWidth
                     searchText: workspace.searchText
                     semanticSearching: semanticSearch.running
@@ -761,6 +769,7 @@ Item {
             }
 
             SoundInspector {
+                onOpenProjectRequested: id => workspace.openProjectRequested(id)
                 Layout.preferredWidth: 390
                 Layout.minimumWidth: 350
                 Layout.fillHeight: true

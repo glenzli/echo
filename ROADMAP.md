@@ -4,9 +4,9 @@
 
 ## 1. 产品定义
 
-> Echo 是一个 local-first、source-anchored 的声音记忆系统。它负责保存、理解、索引、修复、重新聆听，并允许用户用资料库中的真实录音形成可追溯的声音编排。
+> Echo 是一个 local-first、非破坏性的声音记忆与编辑系统。记忆库保存用户希望留下的原录音、调整版本与多轨作品；编辑器可以引用这些记忆，并从全局或项目素材中加入配乐、环境声和音效。每个结果保留清楚、版本固定的来源关系。
 
-Echo 不以空白工程、多轨录音、音乐制作或插件宿主为核心；它不是 Audacity + AI，也不是 TTS Playground。跨资产编排必须从 Library 中的真实录音出发，永远保留来源与调整版本，不把 Echo 扩张为通用 DAW。
+记忆库是日常收藏、搜索和重温的入口；完整多轨编辑与精细声音处理服务于这些内容。素材是否进入记忆库由用户决定，外部声音不再被强制当作值得长期重温的记忆。当前仍不新增录音、MIDI、插件宿主或生成式声音执行能力。
 
 能力划分为六个域：
 
@@ -14,12 +14,12 @@ Echo 不以空白工程、多轨录音、音乐制作或插件宿主为核心；
 Preserve   原始记录、provenance、非破坏性版本
 Understand ASR、人物、情绪、声音事件、语义索引
 Restore    降噪、响度、EQ、去混响、修复录制缺陷
-Revisit    声音空间 / 声音相册（最高层）
+Revisit    记忆库 / 声音相册 / 记忆、素材与原始磁带
 Creative   对所选真实录音做显式、可旁路的确定性场景与角色化处理
-Assemble   用多个 Library 资产形成非破坏性、可追溯的声音编排与交付
+Assemble   引用记忆和素材，形成非破坏性、可追溯的声音编排与交付
 ```
 
-关键定位：**Library 是一等公民，Editor 是 Library 的能力，而不是反过来。**
+关键定位：**记忆表达保留意图，素材表达制作用途；同一来源可以同时具有两种身份。**
 
 系列定位：Shadow = Photo Library + RAW Developer + AI Understanding；Echo = Audio Library + Audio Restoration + AI Understanding。
 
@@ -29,7 +29,7 @@ Assemble   用多个 Library 资产形成非破坏性、可追溯的声音编排
 2. **Analysis 不是事实**：所有 AI 结果必须存 `value + model + model_version + confidence + timestamp`，模型升级后可重新分析。
 3. **Cache 可全部删除**：waveform、embedding、transcript cache、render proxy 全部可重建。
 4. **实时音频路径保持极度简单**：audio callback 里绝不出现 Rust→AI→Python→allocator→async 链。AI 只在后台工作，绝不侵入播放链路。
-5. **Audio Space 是首屏**：Listen first, Edit second。第一屏不是 Timeline Editor。
+5. **记忆库是首屏**：Listen first, Edit second。第一屏不是 Timeline Editor。
 6. **调整克制**：恢复性调整（Loudness/EQ/降噪/去混响/Dynamics/Trim/Fade/Channel）与
    Creative VFX 必须在产品语言、持久化身份和执行 owner 上分域。Creative 只处理用户显式选择的
    既有录音，默认关闭、可旁路、静音不生声、不改词、不克隆具体人物、不覆盖 Original，也不冒充
@@ -37,9 +37,24 @@ Assemble   用多个 Library 资产形成非破坏性、可追溯的声音编排
    Audio Studio；AI 降噪、源分离和神经修复继续等待独立 InferenceBackend 里程碑。
 7. **编排独立**：单资产 `AdjustmentGraph` 始终只拥有 Original／源时间调整；跨资产轨道、
    Clip 放置、混合时间、编排版本和 Mixdown provenance 由独立 `SoundAssembly` owner 负责。
-   Clip 引用 Library 资产及一个明确调整 revision；播放与导出先把该 revision 确定性准备为
-   线性声音来源，再在编排时间混合。外部文件必须先进入 Library，编排结果是可追溯的派生交付，
-   不伪装成 immutable Original。
+   Clip 引用已登记声音来源及一个明确调整 revision；播放与导出先把该 revision 确定性准备为
+   线性声音来源，再在编排时间混合。外部文件可以作为素材登记；编排结果可以作为记忆保存，
+   但始终保留 assembly revision 与各个原始来源，不伪装成现场 Original。
+
+### 2026-09-20：记忆、素材与现有编辑工作区
+
+- `sound_items` 负责记忆／全局素材的用户收集身份，引用真实 `AudioAsset` 或独立 `SoundAssembly`。
+  原资产 ID 保持不变；已保存编排使用其自己的稳定身份，保存聆听版本不制造假的 Original。
+  收藏、评分、相册和聆听状态使用统一声音条目身份；旧原录音、调整与 Analysis 字节不改写。
+- 素材可以在全局复用，也可以只归属于项目。文件导入后受管保存，已经被项目引用的素材不会被
+  当作可删除的渲染缓存。取消收集只改变浏览身份，不删除素材字节或破坏已有项目引用。
+- 编排记忆的每个聆听版本固定一个已完成的混音及其精确 provenance；混音存放在 Catalog
+  旁的持久媒体目录，和可重建 cache 分开。编辑草稿／保存工程不会悄悄替换记忆库聆听版本。
+- 沿用现有声音空间、单音处理和编排工作区。声音空间承接记忆库；编辑器内提供本项目、记忆库、
+  素材浏览与独立试听；全局素材页复用同一来源与分类数据。已有 AI 事件、关键词和用户校准作为
+  可解释查找依据，分类不是现场事实，也不引入第二套推理调度器。
+- 编排片段检查器展示来源名称、身份、区间与固定版本。精细处理必须明确是修改来源记忆还是
+  当前项目的处理版本，返回编排保留当前文档、选中片段和时间位置。
 
 ## 3. 技术架构
 

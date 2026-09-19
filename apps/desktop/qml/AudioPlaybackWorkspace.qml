@@ -33,6 +33,7 @@ Rectangle {
         })
 
     readonly property bool hasAsset: asset !== null && asset !== undefined
+    readonly property bool isAssemblyMemory: hasAsset && !!asset.assemblyId
     readonly property bool analysisActive: analysisStatus.state === "pending" || analysisStatus.state === "running"
     readonly property bool analysisFailed: analysisStatus.state === "failed" || analysisStatus.state === "cancelled"
     readonly property int sourceDurationMillis: hasAsset ? Number(asset.durationMillis) : 0
@@ -149,6 +150,7 @@ Rectangle {
     }
 
     function analysisHint(): string {
+        if (isAssemblyMemory) return qsTr("Saved project edition");
         if (assetFieldCalibrated("transcript_text"))
             return asset && asset.textPreview.length > 0 ? qsTr("User-calibrated text") : qsTr("Text cleared by user");
         if (analysisStatus.recovery === "automatic")
@@ -187,9 +189,9 @@ Rectangle {
                 });
             return;
         }
-        analysisStatus = backend.analysisStatusForAsset(asset.id);
+        analysisStatus = isAssemblyMemory ? ({stage:"assembly",state:"done",recovery:"none",progress:0}) : backend.analysisStatusForAsset(asset.id);
         waveformLevels = backend.waveformForAsset(asset.id);
-        const records = backend.transcriptsForAsset(asset.id);
+        const records = isAssemblyMemory ? [] : backend.transcriptsForAsset(asset.id);
         if (assetFieldCalibrated("transcript_text") && asset.textPreview.length > 0) {
             transcriptModel.append({
                 text: asset.textPreview,
@@ -274,7 +276,7 @@ Rectangle {
 
         function onJobsChanged(): void {
             if (preview.active && preview.hasAsset) {
-                preview.analysisStatus = backend.analysisStatusForAsset(preview.asset.id);
+                if (!preview.isAssemblyMemory) preview.analysisStatus = backend.analysisStatusForAsset(preview.asset.id);
             }
         }
     }
@@ -364,7 +366,7 @@ Rectangle {
                 Text {
                     id: statusText
                     anchors.centerIn: parent
-                    text: preview.hasAsset && preview.asset.pathStatus === "missing" ? qsTr("Missing") : preview.hasAsset && Number(preview.asset.adjustmentRevision) > 0 ? qsTr("Saved version") : qsTr("Original preserved")
+                    text: preview.isAssemblyMemory ? qsTr("Saved mix · sources preserved") : preview.hasAsset && preview.asset.pathStatus === "missing" ? qsTr("Missing") : preview.hasAsset && Number(preview.asset.adjustmentRevision) > 0 ? qsTr("Saved version") : qsTr("Original preserved")
                     color: preview.hasAsset && preview.asset.pathStatus === "missing" ? Theme.warningText : Theme.accentSelectionText
                     font.pixelSize: Theme.fontMeta
                 }
@@ -465,7 +467,7 @@ Rectangle {
 
             EchoSectionLabel {
                 Layout.fillWidth: true
-                text: qsTr("Text")
+                text: preview.isAssemblyMemory ? qsTr("Source references") : qsTr("Text")
                 hint: preview.analysisHint()
             }
 
@@ -483,7 +485,7 @@ Rectangle {
                 ghost: true
                 onClicked: {
                     if (backend.retryAnalysis(preview.asset.id)) {
-                        preview.analysisStatus = backend.analysisStatusForAsset(preview.asset.id);
+                        if (!preview.isAssemblyMemory) preview.analysisStatus = backend.analysisStatusForAsset(preview.asset.id);
                     }
                 }
             }
@@ -501,7 +503,7 @@ Rectangle {
                 anchors.centerIn: parent
                 width: parent.width - 48
                 visible: transcriptModel.count === 0
-                text: preview.assetFieldCalibrated("transcript_text") ? qsTr("Text has been cleared by the user.") : preview.analysisStatus.recovery === "automatic" ? qsTr("Echo will resume when Infer Runtime is available.") : preview.analysisStatus.recovery === "source" ? qsTr("Reconnect the Original before analysis can continue.") : preview.analysisFailed ? qsTr("Background text extraction did not complete. You can retry this sound.") : preview.analysisStatus.stage === "sound_events" ? qsTr("No speech was detected. Echo is identifying audible events.") : preview.analysisStatus.stage === "complete" ? qsTr("No speech was detected in this sound.") : preview.analysisActive ? qsTr("Echo is extracting text from this sound through Infer Runtime.") : qsTr("Text is extracted automatically after import.")
+                text: preview.isAssemblyMemory ? qsTr("This listening edition keeps its project and exact source references. Open the project to continue editing.") : preview.assetFieldCalibrated("transcript_text") ? qsTr("Text has been cleared by the user.") : preview.analysisStatus.recovery === "automatic" ? qsTr("Echo will resume when Infer Runtime is available.") : preview.analysisStatus.recovery === "source" ? qsTr("Reconnect the Original before analysis can continue.") : preview.analysisFailed ? qsTr("Background text extraction did not complete. You can retry this sound.") : preview.analysisStatus.stage === "sound_events" ? qsTr("No speech was detected. Echo is identifying audible events.") : preview.analysisStatus.stage === "complete" ? qsTr("No speech was detected in this sound.") : preview.analysisActive ? qsTr("Echo is extracting text from this sound through Infer Runtime.") : qsTr("Text is extracted automatically after import.")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap

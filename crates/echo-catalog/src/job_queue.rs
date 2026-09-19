@@ -30,6 +30,8 @@ pub enum JobKind {
     ScanRoot,
     /// Registers one discovered file (hash + probe).
     ImportFile,
+    /// Copies and registers a global or project-only material.
+    ImportMaterial,
     /// Extracts technical and embedded metadata from the original container.
     ExtractMetadata,
     /// Builds and caches the waveform pyramid for an asset.
@@ -147,7 +149,7 @@ pub fn claim_next_job(
             "SELECT id, kind, payload, attempts FROM jobs WHERE state = 'pending' \
              ORDER BY CASE kind \
                  WHEN 'scan_root' THEN 0 \
-                 WHEN 'import_file' THEN 1 \
+                 WHEN 'import_file' THEN 1 WHEN 'import_material' THEN 1 \
                  WHEN 'extract_metadata' THEN 2 \
                  WHEN 'analyze_waveform' THEN 3 \
                  WHEN 'transcribe' THEN 4 \
@@ -421,6 +423,39 @@ impl FileJobPayload {
     }
 }
 
+/// Persistent material intake intent; an empty project requires global collection.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct MaterialImportPayload {
+    pub path: PathBuf,
+    pub assembly_id: String,
+    pub collect_globally: bool,
+    pub category: String,
+}
+
+impl MaterialImportPayload {
+    /// Validates the target identity and user category before work is queued.
+    ///
+    /// # Errors
+    /// Rejects unowned intake and unknown categories or project identifiers.
+    pub fn validate(&self) -> Result<(), CatalogError> {
+        if !self.path.is_absolute()
+            || (!self.collect_globally && self.assembly_id.is_empty())
+            || !["", "music", "ambience", "effects", "voice"].contains(&self.category.as_str())
+            || (!self.assembly_id.is_empty()
+                && self
+                    .assembly_id
+                    .parse::<echo_domain::SoundAssemblyId>()
+                    .is_err())
+        {
+            return Err(CatalogError::new(
+                crate::CatalogErrorKind::Other,
+                "invalid material import destination",
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// The on-disk payload helper: a job targeting one scan root.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScanRootJobPayload {
@@ -459,6 +494,7 @@ pub(crate) const fn kind_text(kind: JobKind) -> &'static str {
     match kind {
         JobKind::ScanRoot => "scan_root",
         JobKind::ImportFile => "import_file",
+        JobKind::ImportMaterial => "import_material",
         JobKind::ExtractMetadata => "extract_metadata",
         JobKind::AnalyzeWaveform => "analyze_waveform",
         JobKind::Transcribe => "transcribe",
@@ -474,6 +510,7 @@ pub(crate) fn parse_kind(text: &str) -> Result<JobKind, CatalogError> {
     match text {
         "scan_root" => Ok(JobKind::ScanRoot),
         "import_file" => Ok(JobKind::ImportFile),
+        "import_material" => Ok(JobKind::ImportMaterial),
         "extract_metadata" => Ok(JobKind::ExtractMetadata),
         "analyze_waveform" => Ok(JobKind::AnalyzeWaveform),
         "transcribe" => Ok(JobKind::Transcribe),

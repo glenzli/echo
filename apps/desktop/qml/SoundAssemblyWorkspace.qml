@@ -23,6 +23,9 @@ Rectangle {
     property bool dirty: false
     property string savedDocumentJson: ""
     property string errorText: ""
+    property string noticeText: ""
+    signal editClipRequested(var asset, var revision, string clipId)
+    signal memoryOpened(string assemblyId)
 
     readonly property bool canUndo: undoStack.length > 0
     readonly property bool canRedo: redoStack.length > 0
@@ -69,6 +72,7 @@ Rectangle {
     }
 
     function refreshAssemblies(): void {
+        libraryAssets = backend.listAssets();
         assemblies = backend.listSoundAssemblies();
         if (!hasDocument && assemblies.length > 0)
             openAssembly(assemblies[0].assemblyId);
@@ -93,6 +97,9 @@ Rectangle {
     }
 
     function openAssembly(assemblyId: string): void {
+        if (dirty && !saveRevision()) return;
+        soundAssemblyController.cancel();
+        materialPlayer.stop();
         loadRevision(backend.soundAssembly(assemblyId));
     }
 
@@ -164,6 +171,7 @@ Rectangle {
     }
 
     function preview(): void {
+        materialPlayer.stop();
         const revision = dirty ? saveRevision() : document;
         if (revision)
             soundAssemblyController.preparePreview(revision);
@@ -175,6 +183,41 @@ Rectangle {
             return;
         exportDialog.revision = clone(revision);
         exportDialog.open();
+    }
+
+    function keepMemory(): void {
+        materialPlayer.stop();
+        const revision = dirty ? saveRevision() : document;
+        if (revision) soundAssemblyController.saveToMemory(revision);
+    }
+
+    function sourceAsset(clip: var): var {
+        return clip ? libraryAssets.find(asset => asset.id === clip.assetId) || null : null;
+    }
+    function sourceName(clip: var): string {
+        const asset = sourceAsset(clip);
+        return asset ? (asset.soundCaption || asset.sourceTitle || asset.path.split("/").pop()) : qsTr("Unavailable source");
+    }
+    function openClipEditor(): void {
+        if (!selectedClip) return;
+        const clipId = selectedClip.id;
+        const revision = dirty ? saveRevision() : document;
+        if (!revision) return;
+        const source = revision.clipSources.find(source => source.clipId === clipId);
+        const original = sourceAsset(clipById(clipId));
+        if (!source || !original) return;
+        const asset = clone(original);
+        for (const key of Object.keys(source)) asset[key] = source[key];
+        asset.adjustmentRevision = source.adjustmentRevisionId;
+        editClipRequested(asset,clone(revision),clipId);
+    }
+    function acceptClipRevision(revision: var): void {
+        pushUndo();
+        document = clone(revision);
+        savedDocumentJson = authoredJson(document);
+        dirty = false;
+        refreshAssemblies();
+        reconcileSelection();
     }
 
     function assemblyDuration(value: var): real {
@@ -377,9 +420,15 @@ Rectangle {
         return duration;
     }
 
-    function addLibraryAsset(asset: var): void {
-        if (!hasDocument || !asset || totalClipCount() >= 256)
+    function addLibraryAsset(asset: var, role: string): void {
+        if (!asset || asset.assemblyId || totalClipCount() >= 256)
             return;
+        if (!hasDocument) {
+            const created = backend.createSoundAssembly(qsTr("New memory"),[asset.id],"sequence");
+            loadRevision(created);
+            if (hasDocument && role === "material") mutate(next => next.tracks[0].clips[0].sourceRole = role);
+            return;
+        }
         const targetTrack = selectedTrackIndex >= 0 ? selectedTrackIndex : 0;
         const duration = linearAssetDuration(asset);
         if (duration <= 0) {
@@ -390,6 +439,7 @@ Rectangle {
         mutate(next => next.tracks[targetTrack].clips.push({
             id: clipId,
             assetId: asset.id,
+            sourceRole: role || "memory",
             adjustmentRevisionId: Number(asset.adjustmentRevision || 0),
             sourceStartMillis: 0,
             sourceEndMillis: duration,
@@ -404,7 +454,7 @@ Rectangle {
         }));
         selectedClipId = clipId;
         selectedTrackIndex = targetTrack;
-        addSoundDialog.close();
+
     }
 
     function formatTime(millis: real): string {
@@ -421,91 +471,30 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
-            Layout.preferredWidth: 252
+        ColumnLayout {
+            Layout.preferredWidth: 282
+            Layout.minimumWidth: 282
+            Layout.maximumWidth: 282
             Layout.fillHeight: true
-            color: Theme.panel
-            border.width: 1
-            border.color: Theme.border
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 10
-
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: qsTr("Assemblies")
-                        color: Theme.textPrimary
-                        font.pixelSize: 14
-                        font.weight: Font.DemiBold
-                    }
-
-                    EchoIconButton {
-                        source: "qrc:/EchoDesktop/icons/refresh.svg"
-                        toolTipText: qsTr("Refresh assemblies")
-                        buttonSize: 28
-                        iconSize: 15
-                        onClicked: workspace.refreshAssemblies()
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: qsTr("Create from one or more selected Library sounds. Each clip keeps its exact source version.")
-                    color: Theme.textMuted
-                    font.pixelSize: Theme.fontMeta
-                    wrapMode: Text.WordWrap
-                }
-
-                ListView {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    model: workspace.assemblies
-                    spacing: 6
-                    clip: true
-
-                    delegate: Rectangle {
-                        required property var modelData
-                        width: ListView.view.width
-                        height: 72
-                        radius: 8
-                        color: workspace.hasDocument && workspace.document.id === modelData.assemblyId
-                            ? Theme.surfaceSelected : assemblyTap.hovered ? Theme.buttonGhostHover : Theme.transparent
-                        border.width: 1
-                        border.color: workspace.hasDocument && workspace.document.id === modelData.assemblyId
-                            ? Theme.accentBorder : Theme.border
-
-                        Column {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.margins: 10
-                            spacing: 4
-
-                            Text {
-                                width: parent.width
-                                text: modelData.name
-                                color: Theme.textPrimary
-                                font.pixelSize: Theme.fontBody
-                                font.weight: Font.DemiBold
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                text: qsTr("%1 tracks · %2 clips · v%3").arg(modelData.trackCount).arg(modelData.clipCount).arg(modelData.revisionNumber)
-                                color: Theme.textMuted
-                                font.pixelSize: Theme.fontMeta
-                            }
-                        }
-
-                        HoverHandler { id: assemblyTap }
-                        TapHandler { onTapped: workspace.openAssembly(modelData.assemblyId) }
-                    }
-                }
+            spacing: 0
+            EchoComboBox {
+                Layout.fillWidth: true
+                Layout.margins: 12
+                model: workspace.assemblies
+                textRole: "name"
+                currentIndex: workspace.assemblies.findIndex(value => workspace.hasDocument && value.assemblyId === workspace.document.id)
+                displayText: workspace.hasDocument ? workspace.document.name : qsTr("Choose a project")
+                onActivated: workspace.openAssembly(workspace.assemblies[currentIndex].assemblyId)
+            }
+            SoundSourceBrowser {
+                id: sourceBrowser
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                editorMode: true
+                assemblyId: workspace.hasDocument ? workspace.document.id : ""
+                projectDocument: workspace.document
+                onAddRequested: (asset, role) => workspace.addLibraryAsset(asset, role)
+                onOpenAssemblyRequested: id => workspace.openAssembly(id)
             }
         }
 
@@ -527,8 +516,9 @@ Rectangle {
                     anchors.rightMargin: 14
                     spacing: 8
 
-                    TextField {
-                        Layout.preferredWidth: 250
+                    EchoTextField {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 100
                         enabled: workspace.hasDocument
                         text: workspace.hasDocument ? workspace.document.name : ""
                         placeholderText: qsTr("Assembly name")
@@ -542,10 +532,7 @@ Rectangle {
                         text: qsTr("Add sound")
                         ghost: true
                         enabled: workspace.hasDocument && workspace.totalClipCount() < 256
-                        onClicked: {
-                            workspace.libraryAssets = backend.listAssets();
-                            addSoundDialog.open();
-                        }
+                        onClicked: sourceBrowser.sourceTab = 2
                     }
 
                     EchoButton {
@@ -555,7 +542,6 @@ Rectangle {
                         onClicked: workspace.addTrack()
                     }
 
-                    Item { Layout.fillWidth: true }
 
                     Text {
                         visible: soundAssemblyController.running
@@ -583,9 +569,9 @@ Rectangle {
                     }
 
                     EchoButton {
-                        text: qsTr("Mixdown…")
+                        text: qsTr("Keep in memories")
                         enabled: workspace.hasDocument && !soundAssemblyController.running
-                        onClicked: workspace.exportMix()
+                        onClicked: workspace.keepMemory()
                     }
 
                     EchoIconButton {
@@ -598,6 +584,11 @@ Rectangle {
 
                 Menu {
                     id: assemblyMenu
+                    MenuItem {
+                        text: qsTr("Mixdown…")
+                        enabled: workspace.hasDocument && !soundAssemblyController.running
+                        onTriggered: workspace.exportMix()
+                    }
                     MenuItem {
                         text: qsTr("Archive assembly")
                         onTriggered: {
@@ -694,6 +685,17 @@ Rectangle {
                                     required property var modelData
                                     required property int index
                                     width: trackColumn.width
+                                    sourceAssets: workspace.libraryAssets
+                                    onSourceDropped: function (asset, targetTrack, positionMillis) {
+                                        workspace.selectedTrackIndex = targetTrack;
+                                        workspace.playheadMillis = positionMillis;
+                                        workspace.addLibraryAsset(asset,sourceBrowser.roleFor(asset));
+                                    }
+                                    onClipEditRequested: function (trackIndex, clipId) {
+                                        workspace.selectedTrackIndex = trackIndex;
+                                        workspace.selectedClipId = clipId;
+                                        workspace.openClipEditor();
+                                    }
                                     track: modelData
                                     trackIndex: index
                                     pixelsPerSecond: workspace.pixelsPerSecond
@@ -766,7 +768,9 @@ Rectangle {
                 }
 
                 Rectangle {
-                    Layout.preferredWidth: 310
+                    Layout.preferredWidth: 280
+                    Layout.minimumWidth: 280
+                    Layout.maximumWidth: 280
                     Layout.fillHeight: true
                     color: Theme.panel
                     border.width: 1
@@ -799,12 +803,30 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: workspace.selectedClip !== null ? workspace.selectedClip.assetId : ""
+                                    text: workspace.sourceName(workspace.selectedClip)
                                     color: Theme.textMuted
                                     font.pixelSize: Theme.fontMeta
                                     elide: Text.ElideMiddle
                                 }
 
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: workspace.selectedClip ? (workspace.selectedClip.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (workspace.selectedClip.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(workspace.selectedClip.adjustmentRevisionId) : qsTr("Original recording")) : ""
+                                    color: Theme.textSecondary
+                                    font.pixelSize: Theme.fontMeta
+                                    wrapMode: Text.WordWrap
+                                }
+                                EchoButton {
+                                    text: qsTr("Edit this clip’s sound")
+                                    enabled: workspace.selectedClip !== null && !soundAssemblyController.running
+                                    onClicked: workspace.openClipEditor()
+                                }
+                                EchoComboBox {
+                                    Layout.fillWidth: true
+                                    model: [qsTr("Memory reference"),qsTr("Material reference")]
+                                    currentIndex: workspace.selectedClip && workspace.selectedClip.sourceRole === "material" ? 1 : 0
+                                    onActivated: workspace.setClipValue("sourceRole",currentIndex === 1 ? "material" : "memory")
+                                }
                                 RowLayout {
                                     Layout.fillWidth: true
                                     EchoButton { text: qsTr("Split"); ghost: true; onClicked: workspace.splitSelectedClip() }
@@ -882,7 +904,7 @@ Rectangle {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Label { text: qsTr("Fade-in curve"); Layout.fillWidth: true }
-                                    ComboBox {
+                                    EchoComboBox {
                                         Layout.preferredWidth: 128
                                         model: [qsTr("Linear"), qsTr("Smooth"), qsTr("Equal power")]
                                         currentIndex: workspace.selectedClip !== null
@@ -894,7 +916,7 @@ Rectangle {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Label { text: qsTr("Fade-out curve"); Layout.fillWidth: true }
-                                    ComboBox {
+                                    EchoComboBox {
                                         Layout.preferredWidth: 128
                                         model: [qsTr("Linear"), qsTr("Smooth"), qsTr("Equal power")]
                                         currentIndex: workspace.selectedClip !== null
@@ -1002,60 +1024,6 @@ Rectangle {
         }
     }
 
-    Dialog {
-        id: addSoundDialog
-        anchors.centerIn: parent
-        modal: true
-        width: 520
-        height: 560
-        title: qsTr("Add Library sound")
-        standardButtons: Dialog.Close
-
-        ListView {
-            anchors.fill: parent
-            model: workspace.libraryAssets
-            clip: true
-            spacing: 4
-
-            delegate: Rectangle {
-                required property var modelData
-                width: ListView.view.width
-                height: 58
-                radius: 7
-                color: assetHover.hovered ? Theme.buttonGhostHover : Theme.transparent
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.soundCaption || modelData.path.split("/").pop()
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontBody
-                            elide: Text.ElideRight
-                        }
-                        Text {
-                            text: (workspace.linearAssetDuration(modelData) / 1000).toFixed(2) + qsTr(" s")
-                            color: Theme.textMuted
-                            font.pixelSize: Theme.fontMeta
-                        }
-                    }
-
-                    EchoButton {
-                        text: qsTr("Add")
-                        enabled: modelData.pathStatus === "present"
-                        onClicked: workspace.addLibraryAsset(modelData)
-                    }
-                }
-                HoverHandler { id: assetHover }
-            }
-        }
-    }
-
     FileDialog {
         id: exportDialog
         property var revision: null
@@ -1073,30 +1041,41 @@ Rectangle {
         y: 18
         width: Math.min(620, errorLabel.implicitWidth + 36)
         height: errorLabel.implicitHeight + 24
-        visible: workspace.errorText.length > 0 || soundAssemblyController.errorText.length > 0
+        visible: workspace.errorText.length > 0 || soundAssemblyController.errorText.length > 0 || workspace.noticeText.length > 0
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         background: Rectangle {
             radius: Theme.controlRadius
-            color: Theme.warningSurface
+            color: workspace.errorText || soundAssemblyController.errorText ? Theme.warningSurface : Theme.accentSurface
             border.width: 1
-            border.color: Theme.warningText
+            border.color: workspace.errorText || soundAssemblyController.errorText ? Theme.warningText : Theme.accentBorder
         }
 
         contentItem: Text {
             id: errorLabel
-            text: workspace.errorText.length > 0 ? workspace.errorText : soundAssemblyController.errorText
-            color: Theme.warningText
+            text: workspace.errorText || soundAssemblyController.errorText || workspace.noticeText
+            color: workspace.errorText || soundAssemblyController.errorText ? Theme.warningText : Theme.accentSelectionText
             font.pixelSize: Theme.fontBody
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
         }
     }
 
+    Connections {
+        target: backend
+        function onAssetsChanged(): void { workspace.libraryAssets = backend.listAssets(); }
+    }
+    Connections {
+        target: soundAssemblyController
+        function onMemorySaved(assemblyId): void {
+            workspace.noticeText = qsTr("This version is now in your memory library.");
+            errorTimer.restart();
+        }
+    }
     Timer {
         id: errorTimer
         interval: 5000
-        onTriggered: workspace.errorText = ""
+        onTriggered: { workspace.errorText = ""; workspace.noticeText = ""; }
     }
 
     Connections {

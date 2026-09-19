@@ -43,7 +43,7 @@ pub struct CreateUserAlbum<'a> {
 pub fn list_user_albums(transaction: &Transaction<'_>) -> Result<Vec<UserAlbum>, CatalogError> {
     let mut statement = transaction.prepare(
         "SELECT id, name, cover_asset_id, created_at_millis, updated_at_millis \
-         FROM user_albums ORDER BY updated_at_millis DESC, id DESC",
+         FROM memory_albums ORDER BY updated_at_millis DESC, id DESC",
     )?;
     let rows = statement.query_map([], |row| {
         Ok((
@@ -58,7 +58,7 @@ pub fn list_user_albums(transaction: &Transaction<'_>) -> Result<Vec<UserAlbum>,
     for row in rows {
         let (id, name, cover_asset_id, created_at_millis, updated_at_millis) = row?;
         let mut member_statement = transaction.prepare(
-            "SELECT asset_id FROM user_album_members WHERE album_id = ?1 \
+            "SELECT asset_id FROM memory_album_members WHERE album_id = ?1 \
              ORDER BY added_at_millis, asset_id",
         )?;
         let member_rows =
@@ -107,7 +107,7 @@ pub fn create_user_album(
     }
 
     transaction.execute(
-        "INSERT INTO user_albums \
+        "INSERT INTO memory_albums \
          (name, cover_asset_id, created_at_millis, updated_at_millis) \
          VALUES (?1, ?2, ?3, ?3)",
         params![
@@ -119,7 +119,7 @@ pub fn create_user_album(
     let album_id = transaction.last_insert_rowid();
     for asset_id in members {
         transaction.execute(
-            "INSERT INTO user_album_members (album_id, asset_id, added_at_millis) \
+            "INSERT INTO memory_album_members (album_id, asset_id, added_at_millis) \
              VALUES (?1, ?2, ?3)",
             params![album_id, asset_id.to_string(), now_millis],
         )?;
@@ -143,7 +143,7 @@ pub fn rename_user_album(
     ensure_album_exists(transaction, album_id)?;
     ensure_unique_name(transaction, name, Some(album_id))?;
     transaction.execute(
-        "UPDATE user_albums SET name = ?1, updated_at_millis = ?2 WHERE id = ?3",
+        "UPDATE memory_albums SET name = ?1, updated_at_millis = ?2 WHERE id = ?3",
         params![name, now_millis, album_id],
     )?;
     Ok(())
@@ -160,10 +160,10 @@ pub fn delete_user_album(
 ) -> Result<(), CatalogError> {
     ensure_album_exists(transaction, album_id)?;
     transaction.execute(
-        "DELETE FROM user_album_members WHERE album_id = ?1",
+        "DELETE FROM memory_album_members WHERE album_id = ?1",
         [album_id],
     )?;
-    transaction.execute("DELETE FROM user_albums WHERE id = ?1", [album_id])?;
+    transaction.execute("DELETE FROM memory_albums WHERE id = ?1", [album_id])?;
     Ok(())
 }
 
@@ -186,13 +186,13 @@ pub fn set_user_album_membership(
     ensure_asset_exists(transaction, asset_id)?;
     let changed = if included {
         transaction.execute(
-            "INSERT OR IGNORE INTO user_album_members \
+            "INSERT OR IGNORE INTO memory_album_members \
              (album_id, asset_id, added_at_millis) VALUES (?1, ?2, ?3)",
             params![album_id, asset_id.to_string(), now_millis],
         )? > 0
     } else {
         transaction.execute(
-            "DELETE FROM user_album_members WHERE album_id = ?1 AND asset_id = ?2",
+            "DELETE FROM memory_album_members WHERE album_id = ?1 AND asset_id = ?2",
             params![album_id, asset_id.to_string()],
         )? > 0
     };
@@ -202,7 +202,7 @@ pub fn set_user_album_membership(
 
     let cover_asset_id = transaction
         .query_row(
-            "SELECT cover_asset_id FROM user_albums WHERE id = ?1",
+            "SELECT cover_asset_id FROM memory_albums WHERE id = ?1",
             [album_id],
             |row| row.get::<_, Option<String>>(0),
         )?
@@ -217,7 +217,7 @@ pub fn set_user_album_membership(
         cover_asset_id
     };
     transaction.execute(
-        "UPDATE user_albums SET cover_asset_id = ?1, updated_at_millis = ?2 WHERE id = ?3",
+        "UPDATE memory_albums SET cover_asset_id = ?1, updated_at_millis = ?2 WHERE id = ?3",
         params![next_cover.map(|id| id.to_string()), now_millis, album_id],
     )?;
     Ok(true)
@@ -243,7 +243,7 @@ fn ensure_unique_name(
 ) -> Result<(), CatalogError> {
     let duplicate = transaction
         .query_row(
-            "SELECT id FROM user_albums WHERE name = ?1 COLLATE NOCASE AND id != ?2",
+            "SELECT id FROM memory_albums WHERE name = ?1 COLLATE NOCASE AND id != ?2",
             params![name, except_album_id.unwrap_or(-1)],
             |row| row.get::<_, i64>(0),
         )
@@ -259,7 +259,7 @@ fn ensure_album_exists(
     album_id: UserAlbumId,
 ) -> Result<(), CatalogError> {
     let exists = transaction.query_row(
-        "SELECT EXISTS(SELECT 1 FROM user_albums WHERE id = ?1)",
+        "SELECT EXISTS(SELECT 1 FROM memory_albums WHERE id = ?1)",
         [album_id],
         |row| row.get::<_, bool>(0),
     )?;
@@ -274,7 +274,7 @@ fn ensure_asset_exists(
     asset_id: AssetId,
 ) -> Result<(), CatalogError> {
     let exists = transaction.query_row(
-        "SELECT EXISTS(SELECT 1 FROM assets WHERE id = ?1)",
+        "SELECT EXISTS(SELECT 1 FROM sound_items WHERE id = ?1)",
         [asset_id.to_string()],
         |row| row.get::<_, bool>(0),
     )?;
@@ -290,7 +290,7 @@ fn oldest_member(
 ) -> Result<Option<AssetId>, CatalogError> {
     transaction
         .query_row(
-            "SELECT asset_id FROM user_album_members WHERE album_id = ?1 \
+            "SELECT asset_id FROM memory_album_members WHERE album_id = ?1 \
              ORDER BY added_at_millis, asset_id LIMIT 1",
             [album_id],
             |row| row.get::<_, String>(0),

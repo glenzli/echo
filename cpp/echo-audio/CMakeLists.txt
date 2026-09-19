@@ -1,6 +1,4 @@
-find_package(PkgConfig REQUIRED)
-
-pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswresample)
+include("${PROJECT_SOURCE_DIR}/cmake/EchoFFmpeg.cmake")
 
 add_library(
     echo-audio STATIC

@@ -10,6 +10,12 @@ use crate::error::CatalogError;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AudioSpaceAsset {
     pub id: String,
+    pub in_memory: bool,
+    pub in_materials: bool,
+    pub material_category: String,
+    pub assembly_id: String,
+    pub assembly_revision_id: i64,
+    pub provenance_json: String,
     pub path: std::path::PathBuf,
     pub codec: Option<String>,
     pub duration_millis: Option<u64>,
@@ -104,11 +110,11 @@ pub fn list_audio_space(
          calibration.id, calibration.sound_caption, calibration.summary, \
          calibration.event_type, calibration.mood, calibration.keywords_json, \
          calibration.transcript_text, calibration.language, calibration.created_at_millis \
-         FROM assets a LEFT JOIN asset_user_state u ON u.asset_id = a.id \
+         FROM assets a LEFT JOIN sound_user_state u ON u.asset_id = a.id \
          LEFT JOIN asset_source_metadata m ON m.asset_id = a.id \
          LEFT JOIN asset_adjustment_revisions adj ON adj.id = (\
              SELECT id FROM asset_adjustment_revisions latest_adjustment \
-             WHERE latest_adjustment.asset_id = a.id ORDER BY id DESC LIMIT 1\
+             WHERE latest_adjustment.asset_id = a.id AND NOT EXISTS (SELECT 1 FROM project_adjustment_revisions p WHERE p.revision_id = latest_adjustment.id) ORDER BY id DESC LIMIT 1\
          ) \
          LEFT JOIN metadata_calibration_revisions calibration ON calibration.id = (\
              SELECT id FROM metadata_calibration_revisions latest_calibration \
@@ -121,9 +127,81 @@ pub fn list_audio_space(
     for row in rows {
         assets.push(row?);
     }
+    let memberships = crate::sound_memberships(transaction)?;
+    for asset in &mut assets {
+        if let Some(membership) = memberships.get(&asset.id) {
+            asset.in_memory = membership.in_memory;
+            asset.in_materials = membership.in_materials;
+            asset
+                .material_category
+                .clone_from(&membership.material_category);
+        }
+    }
+    for memory in crate::assembly_memories(transaction)? {
+        let Some(membership) = memberships.get(&memory.id) else {
+            continue;
+        };
+        assets.push(assembly_memory_summary(memory, membership));
+    }
+    assets.sort_by(|left, right| {
+        right
+            .imported_at_millis
+            .cmp(&left.imported_at_millis)
+            .then_with(|| right.id.cmp(&left.id))
+    });
     Ok(assets)
 }
 
+fn assembly_memory_summary(
+    memory: crate::AssemblyMemory,
+    membership: &crate::SoundMembership,
+) -> AudioSpaceAsset {
+    AudioSpaceAsset {
+        id: memory.id.clone(),
+        in_memory: membership.in_memory,
+        in_materials: membership.in_materials,
+        material_category: membership.material_category.clone(),
+        assembly_id: memory.id,
+        assembly_revision_id: memory.assembly_revision_id,
+        provenance_json: memory.provenance_json,
+        path_status: if memory.path.is_file() {
+            "present"
+        } else {
+            "missing"
+        }
+        .to_owned(),
+        path: memory.path,
+        codec: Some("pcm_s24le".to_owned()),
+        duration_millis: Some(memory.duration_millis),
+        recorded_at_millis: None,
+        imported_at_millis: memory.created_at_millis,
+        max_level: 0,
+        liked: memory.liked,
+        rating: memory.rating,
+        last_listened_at_millis: memory.last_listened_at_millis,
+        resume_position_millis: memory.resume_position_millis,
+        adjustment: None,
+        contextual: None,
+        contextual_keywords: Vec::new(),
+        contextual_mood: None,
+        contextual_event_type: None,
+        transcript: None,
+        model_metadata: MetadataFields::default(),
+        effective_metadata: MetadataFields {
+            sound_caption: memory.name,
+            ..MetadataFields::default()
+        },
+        metadata_calibration: None,
+        source_metadata: Some(crate::SourceMetadata {
+            container_format: "wav".to_owned(),
+            sample_rate: memory.sample_rate,
+            channel_count: u32::from(memory.channel_count),
+            entries: Vec::new(),
+        }),
+    }
+}
+
+#[allow(clippy::too_many_lines)] // One SQL row is projected together to preserve positional correspondence.
 fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AudioSpaceAsset> {
     let id: String = row.get(0)?;
     let asset_id = id.parse::<AssetId>().map_err(|error| {
@@ -186,6 +264,12 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
     );
     Ok(AudioSpaceAsset {
         id,
+        in_memory: true,
+        in_materials: false,
+        material_category: String::new(),
+        assembly_id: String::new(),
+        assembly_revision_id: 0,
+        provenance_json: String::new(),
         path: row.get::<_, String>(1)?.into(),
         codec: row.get(2)?,
         duration_millis,

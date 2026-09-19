@@ -51,16 +51,16 @@ pub fn revisit_snapshot(
     Ok(RevisitSnapshot {
         continue_listening_asset_ids: query_ids(
             transaction,
-            "SELECT a.id FROM assets a \
-             JOIN asset_user_state u ON u.asset_id = a.id \
+            "SELECT a.id FROM memory_sources a \
+             JOIN sound_user_state u ON u.asset_id = a.id \
              WHERE a.path_status = 'present' AND u.resume_position_millis > 0 \
              ORDER BY u.last_listened_at_millis DESC, a.id DESC LIMIT ?1",
             MAX_CONTINUE_LISTENING,
         )?,
         recently_listened_asset_ids: query_ids(
             transaction,
-            "SELECT a.id FROM assets a \
-             JOIN asset_user_state u ON u.asset_id = a.id \
+            "SELECT a.id FROM memory_sources a \
+             JOIN sound_user_state u ON u.asset_id = a.id \
              WHERE a.path_status = 'present' AND u.last_listened_at_millis > 0 \
                AND u.resume_position_millis = 0 \
              ORDER BY u.last_listened_at_millis DESC, a.id DESC LIMIT ?1",
@@ -68,7 +68,7 @@ pub fn revisit_snapshot(
         )?,
         on_this_day_asset_ids: query_ids_with_now(
             transaction,
-            "SELECT a.id FROM assets a \
+            "SELECT a.id FROM memory_sources a \
              WHERE a.path_status = 'present' AND a.recorded_at_millis > 0 \
                AND strftime('%m-%d', a.recorded_at_millis / 1000, 'unixepoch', 'localtime') = \
                    strftime('%m-%d', ?1 / 1000, 'unixepoch', 'localtime') \
@@ -80,10 +80,10 @@ pub fn revisit_snapshot(
         )?,
         recently_added_asset_ids: query_ids(
             transaction,
-            "SELECT a.id FROM assets a \
+            "SELECT a.id FROM memory_sources a \
              WHERE a.path_status = 'present' \
                AND NOT EXISTS ( \
-                   SELECT 1 FROM asset_user_state u \
+                   SELECT 1 FROM sound_user_state u \
                    WHERE u.asset_id = a.id AND u.last_listened_at_millis > 0 \
                ) \
              ORDER BY a.imported_at_millis DESC, a.id DESC LIMIT ?1",

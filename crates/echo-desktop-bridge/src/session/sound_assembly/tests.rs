@@ -15,6 +15,12 @@ fn library_selection_creates_and_reopens_a_revision_pinned_sequence() {
     .expect("session opens");
     let first = register(&session.catalog, 0x21, "/sounds/first.wav", 1_500);
     let second = register(&session.catalog, 0x22, "/sounds/second.wav", 2_000);
+    session
+        .catalog
+        .with_transaction(|tx| {
+            echo_catalog::set_sound_membership(tx, &second.to_string(), false, true, "ambience")
+        })
+        .unwrap();
     let created = session
         .create_sound_assembly(
             "Field sequence",
@@ -29,6 +35,14 @@ fn library_selection_creates_and_reopens_a_revision_pinned_sequence() {
         serde_json::from_str(&created.document_json).expect("document decodes");
     assert_eq!(document.duration_millis(), 3_500);
     assert_eq!(document.tracks().len(), 1);
+    assert_eq!(
+        document.tracks()[0].clips()[0].source_role(),
+        echo_domain::AssemblySourceRole::Memory
+    );
+    assert_eq!(
+        document.tracks()[0].clips()[1].source_role(),
+        echo_domain::AssemblySourceRole::Material
+    );
     assert_eq!(
         document.tracks()[0].clips()[1].timeline_start_millis(),
         1_500
@@ -139,4 +153,56 @@ fn fixture_root(label: &str) -> std::path::PathBuf {
         std::process::id(),
         uuid::Uuid::now_v7(),
     ))
+}
+
+#[test]
+fn clip_processing_is_isolated_and_reopens_the_exact_revision() {
+    let root = fixture_root("clip-scope");
+    let session = open_session(
+        root.join("catalog.sqlite").to_str().unwrap(),
+        root.join("cache").to_str().unwrap(),
+    )
+    .unwrap();
+    let asset = register(&session.catalog, 0x74, "/sounds/source.wav", 2000);
+    let created = session
+        .create_sound_assembly("A memory", &[asset.to_string()], 0)
+        .unwrap();
+    let source = &created.clip_sources[0];
+    let fields = crate::session::adjustment_wire_fields(None, Some(2000));
+    let mut adjustment = crate::session::asset_adjustment_wire(fields);
+    adjustment.gain_centibels = -600;
+    let saved = session
+        .save_project_clip_adjustment(
+            &created.document_json,
+            &source.clip_id,
+            &asset.to_string(),
+            &adjustment,
+        )
+        .unwrap();
+    assert_eq!(saved.clip_sources[0].adjustment.gain_centibels, -600);
+    assert!(saved.clip_sources[0].adjustment_revision_id > 0);
+    let original = session.list_assets().unwrap().remove(0);
+    assert_eq!(original.gain_centibels, 0);
+    assert_eq!(original.adjustment_revision, 0);
+    let reopened = session.sound_assembly(&created.assembly_id).unwrap();
+    assert_eq!(
+        reopened.clip_sources[0].adjustment_revision_id,
+        saved.clip_sources[0].adjustment_revision_id
+    );
+    let invalid = session.save_project_clip_adjustment(
+        &saved.document_json,
+        "deleted-clip",
+        &asset.to_string(),
+        &adjustment,
+    );
+    assert!(invalid.is_err());
+    assert_eq!(
+        session
+            .sound_assembly(&created.assembly_id)
+            .unwrap()
+            .revision_id,
+        saved.revision_id
+    );
+    drop(session);
+    std::fs::remove_dir_all(root).unwrap();
 }

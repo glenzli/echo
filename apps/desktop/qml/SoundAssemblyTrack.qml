@@ -15,6 +15,9 @@ Rectangle {
     required property string selectedClipId
     required property bool canDeleteTrack
     property real timelineWidth: 1200
+    property var sourceAssets: []
+    signal sourceDropped(var asset, int trackIndex, real positionMillis)
+    signal clipEditRequested(int trackIndex, string clipId)
 
     signal trackValueRequested(int trackIndex, string key, var value)
     signal trackDeleteRequested(int trackIndex)
@@ -162,7 +165,16 @@ Rectangle {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         clip: true
-
+        DropArea {
+            anchors.fill: parent
+            keys: ["echo-sound"]
+            onDropped: drop => {
+                if (drop.source && drop.source.asset) {
+                    trackRow.sourceDropped(drop.source.asset,trackRow.trackIndex,Math.max(0,drop.x*1000/trackRow.pixelsPerSecond));
+                    drop.acceptProposedAction();
+                }
+            }
+        }
         Repeater {
             model: trackRow.track.clips
 
@@ -215,7 +227,10 @@ Rectangle {
 
                     Text {
                         width: parent.width
-                        text: qsTr("Clip %1").arg(index + 1)
+                        text: {
+                            const source = trackRow.sourceAssets.find(asset => asset.id === modelData.assetId);
+                            return source ? (source.soundCaption || source.sourceTitle || source.path.split("/").pop()) : qsTr("Clip %1").arg(index + 1);
+                        }
                         color: Theme.textPrimary
                         font.pixelSize: Theme.fontBody
                         font.weight: Font.DemiBold
@@ -224,7 +239,7 @@ Rectangle {
 
                     Text {
                         width: parent.width
-                        text: (clipBlock.durationMillis / 1000).toFixed(2) + qsTr(" s")
+                        text: (modelData.sourceRole === "material" ? qsTr("Material") : qsTr("Memory")) + " · " + (clipBlock.durationMillis / 1000).toFixed(2) + qsTr(" s")
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontMeta
                         elide: Text.ElideRight
@@ -234,6 +249,7 @@ Rectangle {
                 TapHandler {
                     acceptedButtons: Qt.LeftButton
                     onTapped: trackRow.clipSelected(trackRow.trackIndex, clipBlock.modelData.id)
+                    onDoubleTapped: trackRow.clipEditRequested(trackRow.trackIndex, clipBlock.modelData.id)
                 }
 
                 DragHandler {

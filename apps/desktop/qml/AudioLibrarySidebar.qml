@@ -109,7 +109,7 @@ Rectangle {
                 },
                 {
                     key: "all",
-                    label: qsTr("All sounds"),
+                    label: qsTr("Memory library"),
                     iconSource: "qrc:/EchoDesktop/icons/review-grid.svg"
                 },
                 {

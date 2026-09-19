@@ -9,7 +9,7 @@
 //! background work queue, [`adjustment_graph`] for authored non-destructive
 //! revisions, [`processing_recipe`] for reusable processing definitions and
 //! explicit batch receipts, [`user_albums`] for durable user-authored
-//! collections, and [`scan_root`] for the directories Echo watches.
+//! collections, [`sound_library`] for memory/material membership and accepted mixes, and [`scan_root`] for the directories Echo watches.
 
 mod adjustment_graph;
 mod analysis;
@@ -40,12 +40,13 @@ mod search;
 mod semantic_search;
 mod smart_albums;
 mod sound_assembly;
+mod sound_library;
 mod source_metadata;
 mod user_albums;
 
 pub use adjustment_graph::{
     AssetAdjustmentRevision, adjustment_graph_at_revision, latest_adjustment_graph,
-    record_adjustment_graph,
+    record_adjustment_graph, record_project_adjustment_graph,
 };
 pub use analysis::{
     AnalysisQueryError, AppendAnalysisRecord, list_assets_missing_analysis,
@@ -89,9 +90,9 @@ pub use inference_run::{
     InferenceRun, InferenceRunState, UpsertInferenceRun, inference_run, upsert_inference_run,
 };
 pub use job_queue::{
-    ClaimedJob, FileJobPayload, Job, JobKind, JobState, JobStats, ScanRootJobPayload,
-    claim_next_job, complete_job, enqueue_job, fail_job, job_by_id, job_stats, list_failed_jobs,
-    recover_interrupted_jobs, requeue_scan_job, retry_job, update_job_progress,
+    ClaimedJob, FileJobPayload, Job, JobKind, JobState, JobStats, MaterialImportPayload,
+    ScanRootJobPayload, claim_next_job, complete_job, enqueue_job, fail_job, job_by_id, job_stats,
+    list_failed_jobs, recover_interrupted_jobs, requeue_scan_job, retry_job, update_job_progress,
 };
 pub use listening_state::{
     AssetListeningState, asset_listening_state, record_asset_listening_progress,
@@ -160,3 +161,9 @@ pub use user_albums::{
 
 #[cfg(test)]
 mod tests;
+
+pub use sound_library::{
+    AssemblyMemory, SoundMembership, assembly_memories, assembly_memory_path,
+    attach_project_material, preserve_assembly_memory, project_material_ids, set_sound_membership,
+    sound_memberships,
+};

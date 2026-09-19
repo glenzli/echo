@@ -36,9 +36,9 @@ use crate::{
         RENDERED_SPECTRAL_WORKING_COPY_SCHEMA_VERSION, RESTORATION_CHAIN_MIGRATION_SQL,
         RESTORATIVE_EFFECTS_SCHEMA_VERSION, SCHEMA_IDENTITY, SCHEMA_SQL, SCHEMA_VERSION,
         SEMANTIC_SEARCH_MIGRATION_SQL, SOUND_ASSEMBLY_MIGRATION_SQL,
-        SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION, SOURCE_EDIT_MIGRATION_SQL,
-        SOURCE_EDIT_SCHEMA_VERSION, SPACE_CHARACTERS_SCHEMA_VERSION, TRUE_STEREO_IR_MIGRATION_SQL,
-        USER_ALBUMS_MIGRATION_SQL,
+        SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION, SOUND_LIBRARY_PREDECESSOR_SCHEMA_VERSION,
+        SOURCE_EDIT_MIGRATION_SQL, SOURCE_EDIT_SCHEMA_VERSION, SPACE_CHARACTERS_SCHEMA_VERSION,
+        TRUE_STEREO_IR_MIGRATION_SQL, USER_ALBUMS_MIGRATION_SQL,
     },
 };
 
@@ -96,10 +96,30 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         )
         .optional()?;
     match stored_version {
+        Some(ref version)
+            if version
+                .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == SOUND_LIBRARY_PREDECESSOR_SCHEMA_VERSION) =>
+        {
+            let transaction = connection.unchecked_transaction()?;
+            crate::sound_library::migrate(&transaction)?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
+                [SCHEMA_VERSION.to_string()],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_identity'",
+                [SCHEMA_IDENTITY],
+            )?;
+            transaction.commit()?;
+        }
         None => {
             connection.execute_batch(SCHEMA_SQL)?;
             connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
             connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
+            let transaction = connection.unchecked_transaction()?;
+            crate::sound_library::migrate(&transaction)?;
+            transaction.commit()?;
             connection.execute(
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_version', ?1)",
                 [SCHEMA_VERSION.to_string()],
@@ -346,6 +366,21 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                      {SCHEMA_VERSION} ({SCHEMA_IDENTITY})",
                     self_path_display(connection)?
                 ),
+            ));
+        }
+    }
+    let library_tables: i64 = connection.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN \
+         ('sound_items', 'project_materials', 'assembly_memory_editions', 'project_adjustment_revisions', 'memory_waveform_artifacts', \
+          'sound_user_state', 'memory_albums', 'memory_album_members')",
+        [], |row| row.get(0),
+    )?;
+    match library_tables {
+        8 => {}
+        _ => {
+            return Err(CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                "catalog has a partial sound-library schema",
             ));
         }
     }
@@ -656,6 +691,7 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
     apply_rendered_spectral_working_copy_edit_migration(transaction)?;
     apply_rendered_spectral_working_copy_export_migration(transaction)?;
     apply_sound_assembly_migration(transaction)?;
+    crate::sound_library::migrate(transaction)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

@@ -125,6 +125,50 @@ pub fn load_or_build_waveform(
     Ok(built.payload)
 }
 
+/// Reads a mix waveform by its accepted immutable export identity. Draft changes
+/// never replace this reference, and mixes are not registered as original assets.
+///
+/// # Errors
+/// Returns a core failure for unavailable media, corrupt records or cache writes.
+pub fn load_or_build_memory_waveform(
+    catalog: &Catalog,
+    sound_id: &str,
+    cache_root: &Path,
+) -> Result<Option<WaveformArtifactPayload>, CoreError> {
+    let source = catalog.with_transaction(|tx| -> Result<_,echo_catalog::CatalogError> {
+        let mut statement = tx.prepare("SELECT e.id,e.output_path FROM sound_items s JOIN sound_assembly_exports e ON e.id=s.listening_export_id WHERE s.id=?1")?;
+        let mut rows = statement.query([sound_id])?;
+        Ok(if let Some(row) = rows.next()? {Some((row.get::<_,i64>(0)?,row.get::<_,String>(1)?))} else {None})
+    })?;
+    let Some((export_id, path)) = source else {
+        return Ok(None);
+    };
+    let reference = catalog.with_transaction(|tx| -> Result<_, echo_catalog::CatalogError> {
+        let mut statement = tx.prepare(
+            "SELECT content_hash,size_bytes FROM memory_waveform_artifacts WHERE export_id=?1",
+        )?;
+        let mut rows = statement.query([export_id])?;
+        Ok(if let Some(row) = rows.next()? {
+            Some((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+        } else {
+            None
+        })
+    })?;
+    if let Some((hash, size)) = reference
+        && let (Ok(hash), Ok(size)) = (hash.parse(), u64::try_from(size))
+        && let Ok(payload) = read_waveform_payload(cache_root, hash, size)
+    {
+        return Ok(Some(payload));
+    }
+    let built = build_waveform_artifact(Path::new(&path), cache_root, 8)?;
+    catalog.with_transaction(|tx| -> Result<_,echo_catalog::CatalogError> {
+        tx.execute("INSERT INTO memory_waveform_artifacts VALUES (?1,?2,?3) ON CONFLICT(export_id) DO UPDATE SET content_hash=excluded.content_hash,size_bytes=excluded.size_bytes",
+            (export_id,built.artifact.content_hash.to_string(),i64::try_from(built.size_bytes).unwrap_or(i64::MAX)))?;
+        Ok(())
+    })?;
+    Ok(Some(built.payload))
+}
+
 struct BuiltWaveformArtifact {
     artifact: WaveformArtifact,
     payload: WaveformArtifactPayload,

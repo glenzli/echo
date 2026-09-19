@@ -220,10 +220,21 @@ void SoundAssemblyController::exportAssembly(const QVariantMap& revision, const 
     start(revision, normalized_destination(destination), false);
 }
 
+void SoundAssemblyController::saveToMemory(const QVariantMap& revision) {
+    const auto destination =
+        backend_.memoryOutputDestination(revision.value(QStringLiteral("id")).toString());
+    if (destination.contains(QStringLiteral("error"))) {
+        reject(destination.value(QStringLiteral("error")).toString());
+        return;
+    }
+    start(revision, destination.value(QStringLiteral("path")).toString(), false, true);
+}
+
 void SoundAssemblyController::start(
     const QVariantMap& revision,
     const QString& destination,
-    bool preview
+    bool preview,
+    bool preserveMemory
 ) {
     if (destination.isEmpty()) {
         reject(tr("The assembly destination is invalid."));
@@ -269,6 +280,7 @@ void SoundAssemblyController::start(
                             generation,
                             destination,
                             preview,
+                            preserveMemory,
                             preparation_root,
                             job = std::move(*projected)](std::stop_token stop_token) mutable {
         try {
@@ -378,12 +390,20 @@ void SoundAssemblyController::start(
                     result.frame_count,
                     result.size_bytes,
                     result.integrated_lufs,
-                    result.true_peak_dbtp
+                    result.true_peak_dbtp,
+                    preserveMemory
                 );
             }
             QMetaObject::invokeMethod(
                 this,
-                [this, generation, destination, preview, result, publication_error] {
+                [this,
+                 generation,
+                 destination,
+                 preview,
+                 preserveMemory,
+                 assemblyId = job.assembly_id,
+                 result,
+                 publication_error] {
                     if (generation_.load() != generation) {
                         return;
                     }
@@ -399,6 +419,10 @@ void SoundAssemblyController::start(
                         player_.play(destination);
                     } else {
                         output_path_ = destination;
+                    }
+                    if (preserveMemory && publication_error.isEmpty()) {
+                        backend_.refresh();
+                        emit memorySaved(assemblyId);
                     }
                     emit progressChanged();
                     emit stateChanged();

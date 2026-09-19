@@ -28,7 +28,7 @@ pub fn asset_listening_state(
 ) -> Result<AssetListeningState, CatalogError> {
     let mut statement = transaction.prepare(
         "SELECT last_listened_at_millis, resume_position_millis \
-         FROM asset_user_state WHERE asset_id = ?1",
+         FROM sound_user_state WHERE asset_id = ?1",
     )?;
     let mut rows = statement.query([asset_id.to_string()])?;
     let Some(row) = rows.next()? else {
@@ -85,7 +85,7 @@ pub fn record_asset_listening_progress(
     };
 
     transaction.execute(
-        "INSERT INTO asset_user_state (asset_id, last_listened_at_millis, \
+        "INSERT INTO sound_user_state (asset_id, last_listened_at_millis, \
          resume_position_millis, updated_at_millis) VALUES (?1, ?2, ?3, ?2) \
          ON CONFLICT(asset_id) DO UPDATE SET \
          last_listened_at_millis = excluded.last_listened_at_millis, \

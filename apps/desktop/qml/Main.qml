@@ -19,6 +19,31 @@ ApplicationWindow {
     title: Qt.platform.os === "osx" ? "" : qsTr("Echo")
     flags: Qt.Window | Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
     color: Theme.window
+    palette.window: Theme.window
+    palette.windowText: Theme.textPrimary
+    palette.base: Theme.control
+    palette.alternateBase: Theme.panel
+    palette.text: Theme.textPrimary
+    palette.button: Theme.buttonSurface
+    palette.buttonText: Theme.textPrimary
+    palette.highlight: Theme.accent
+    palette.highlightedText: Theme.accentText
+    palette.placeholderText: Theme.textDisabled
+    palette.mid: Theme.border
+    palette.dark: Theme.borderStrong
+    palette.light: Theme.surfaceSubtle
+
+    readonly property alias memorySmokeReport: memorySmoke.reportJson
+    readonly property alias memorySmokeStage: memorySmoke.stage
+    MemoryWorkflowSmoke {
+        id: memorySmoke
+        shell: window
+        assembly: soundAssembly
+        editor: soundEditor
+        library: audioSpace
+        materials: materialsLibrary
+        materialPath: memorySmokeMaterial
+    }
 
     property var jobSnapshot: ({
             pending: 0,
@@ -29,6 +54,8 @@ ApplicationWindow {
     property bool jobsWereActive: false
     property string jobSignature: ""
     property int workspaceIndex: 0
+    property var projectEditAsset: null
+    property string projectClipId: ""
 
     readonly property bool jobsActive: jobSnapshot.pending > 0 || jobSnapshot.running > 0
 
@@ -47,12 +74,20 @@ ApplicationWindow {
 
     function showSoundEditor(): void {
         if (audioSpace.selectedAsset !== null) {
+            if (audioSpace.selectedAsset.assemblyId) {
+                showSoundAssembly();
+                soundAssembly.openAssembly(audioSpace.selectedAsset.assemblyId);
+                return;
+            }
+            projectClipId = "";
+            soundEditor.projectDocument = ({});
             workspaceIndex = 1;
         }
     }
 
     function showSoundAssembly(): void {
         workspaceIndex = 3;
+        materialPlayer.stop();
         soundAssembly.refreshAssemblies();
     }
 
@@ -163,6 +198,7 @@ ApplicationWindow {
         onSoundWallRequested: window.showAudioSpace()
         onSoundEditorRequested: window.showSoundEditor()
         onSoundAssemblyRequested: window.showSoundAssembly()
+        onMaterialsRequested: window.workspaceIndex = 4
         onSettingsRequested: window.openSettings()
     }
 
@@ -177,6 +213,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             jobStats: window.jobSnapshot
             onOpenLibraryRequested: window.openLibrary()
+            onOpenProjectRequested: id => { window.showSoundAssembly(); soundAssembly.openAssembly(id); }
         }
 
         SoundEditingWorkspace {
@@ -184,7 +221,13 @@ ApplicationWindow {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            asset: audioSpace.selectedAsset
+            asset: window.projectClipId ? window.projectEditAsset : audioSpace.selectedAsset
+            projectClipId: window.projectClipId
+            onReturnToProjectRequested: {
+                if (dirty) save();
+                if (!dirty) window.showSoundAssembly();
+            }
+            onProjectClipSaved: revision => soundAssembly.acceptClipRevision(revision)
         }
 
         AudioLibraryWorkspace {
@@ -202,6 +245,18 @@ ApplicationWindow {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
+            onEditClipRequested: function (asset, revision, clipId) {
+                window.projectEditAsset = asset;
+                window.projectClipId = clipId;
+                soundEditor.projectDocument = revision;
+                window.workspaceIndex = 1;
+            }
+        }
+        SoundSourceBrowser {
+            id: materialsLibrary
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            onOpenAssemblyRequested: id => { window.showSoundAssembly(); soundAssembly.openAssembly(id); }
         }
     }
 
@@ -209,7 +264,7 @@ ApplicationWindow {
         target: audioSpace
 
         function onSelectedAssetChanged(): void {
-            if (window.workspaceIndex === 1 && audioSpace.selectedAsset === null) {
+            if (window.workspaceIndex === 1 && !window.projectClipId && audioSpace.selectedAsset === null) {
                 window.showAudioSpace();
             }
         }

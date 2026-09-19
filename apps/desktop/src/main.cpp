@@ -20,7 +20,10 @@
 #include "mac_titlebar.hpp"
 #endif
 
+#include <QFile>
 #include <QGuiApplication>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -67,6 +70,7 @@ int main(int argc, char* argv[]) {
 
         DesktopBackend backend(std::move(session));
         PlaybackController player;
+        PlaybackController material_player;
         SoundAssemblyController sound_assembly(backend, player);
         LoudnessAnalysisController loudness_analyzer;
         RenderExportController render_exporter(backend);
@@ -100,6 +104,10 @@ int main(int argc, char* argv[]) {
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("materialPlayer"),
+            &material_player
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("soundAssemblyController"),
             &sound_assembly
@@ -138,6 +146,10 @@ int main(int argc, char* argv[]) {
             QStringLiteral("spectrogramPreview"),
             &spectrogram_preview
         );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("memorySmokeMaterial"),
+            qEnvironmentVariable("ECHO_DEBUG_MEMORY_MATERIAL")
+        );
         ui_prefs.attachEngine(engine);
         engine.loadFromModule("EchoDesktop", "Main");
         if (engine.rootObjects().isEmpty()) {
@@ -152,6 +164,42 @@ int main(int argc, char* argv[]) {
             title_toolbar == nullptr ? 48 : qRound(title_toolbar->property("height").toReal());
         installMacTitleBarAlignment(qobject_cast<QQuickWindow*>(root_object), title_bar_height);
 #endif
+        // Optional fixture-driven memory workflow. Readiness comes from QML and
+        // real catalog/render results; each distinct page is captured once.
+        if (const auto report_path = qEnvironmentVariable("ECHO_DEBUG_MEMORY_REPORT");
+            !report_path.isEmpty()) {
+            auto* root = engine.rootObjects().first();
+            auto* timer = new QTimer(root);
+            timer->setInterval(150);
+            QObject::connect(
+                timer,
+                &QTimer::timeout,
+                root,
+                [root, report_path, last_stage = -1]() mutable {
+                    const int stage = root->property("memorySmokeStage").toInt();
+                    if (stage != last_stage) {
+                        if (auto* window = qobject_cast<QQuickWindow*>(root))
+                            window->grabWindow().save(
+                                report_path + QStringLiteral(".%1.png").arg(stage)
+                            );
+                        last_stage = stage;
+                    }
+                    const auto report = root->property("memorySmokeReport").toString().toUtf8();
+                    if (report.isEmpty())
+                        return;
+                    QFile file(report_path);
+                    const bool written =
+                        file.open(QIODevice::WriteOnly) && file.write(report) == report.size();
+                    const bool passed = QJsonDocument::fromJson(report)
+                                            .object()
+                                            .value(QStringLiteral("ok"))
+                                            .toBool();
+                    QGuiApplication::exit(written && passed ? 0 : 1);
+                }
+            );
+            timer->start();
+            QTimer::singleShot(90'000, &application, [] { QGuiApplication::exit(2); });
+        }
         // Headless smoke aids: ECHO_DEBUG_SCREENSHOT=/path.png captures the
         // first window after the shell settles; ECHO_DEBUG_AUTOPLAY=/file.wav
         // plays a recording first (used together for automated playback

@@ -3,6 +3,7 @@
 //! This crate orchestrates the catalog, the cache, and (later) the C++ audio
 //! engine and AI workers. It knows nothing about Qt.
 //!
+//! [`material_import`] owns durable global and project material intake.
 //! Start with [`import`] for the idempotent import path. The background queue
 //! performs rebuildable Level 0 work; model execution remains behind an
 //! inference boundary and never enters playback.
@@ -17,6 +18,7 @@ mod import;
 mod infer_runtime;
 mod infer_runtime_credentials;
 mod long_audio;
+mod material_import;
 mod metadata_queue;
 mod scanner;
 mod search;
@@ -69,7 +71,7 @@ pub use spectrogram_artifact::{
 };
 pub use waveform_artifact::{
     WaveformArtifact, WaveformArtifactLevel, WaveformArtifactPayload, build_and_cache_waveform,
-    load_or_build_waveform,
+    load_or_build_memory_waveform, load_or_build_waveform,
 };
 pub use worker::{WorkerConfig, WorkerPool};
 
