@@ -130,7 +130,7 @@ Rectangle {
             onClicked: albumMenu.popup(albumButton, 0, -albumMenu.implicitHeight - 6)
 
             ToolTip.visible: hovered
-            ToolTip.text: qsTr("Add to album")
+            ToolTip.text: qsTr("Add to collection")
             ToolTip.delay: 500
             Accessible.name: ToolTip.text
 
@@ -166,13 +166,13 @@ Rectangle {
         MenuItem {
             visible: toolbar.userAlbums.length === 0
             enabled: false
-            text: qsTr("No albums yet")
+            text: qsTr("No collections yet")
         }
 
         MenuSeparator {}
 
         MenuItem {
-            text: qsTr("New album…")
+            text: qsTr("New collection…")
             onTriggered: toolbar.createAlbumRequested()
         }
     }

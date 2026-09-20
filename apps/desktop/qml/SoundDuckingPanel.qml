@@ -21,6 +21,12 @@ ColumnLayout {
     readonly property var references: (document.tracks || []).map((track, index) => ({name: track.name, index: index})).filter(track => track.index !== targetTrackIndex)
     signal applyRequested(var candidates)
     spacing: 8
+    component ParameterLabel: Text {
+        font.pixelSize: Theme.fontSection
+        color: Theme.textSecondary
+        Layout.fillWidth: true
+        wrapMode: Text.WordWrap
+    }
     onDocumentChanged: cancel()
     onTargetTrackIndexChanged: cancel()
     onBlockedChanged: { if (blocked) cancel(); }
@@ -36,34 +42,36 @@ ColumnLayout {
         if (snapshot.reference.muted) { message = qsTr("Unmute the reference track before detecting activity."); return; }
         stepper.start();
     }
-    Label { text: qsTr("Automatic music ducking"); font.weight: Font.DemiBold }
-    Label { Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.textSecondary; text: qsTr("Detect peaks in the reference recording and replace this track's clip envelopes. Source effects are not part of detection.") }
-    EchoComboBox { id: referenceBox; Layout.fillWidth: true; model: panel.references; textRole: "name"; enabled: !panel.running; onActivated: panel.cancel() }
+    Text { font.pixelSize: Theme.fontSection; color: Theme.textSecondary; Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Detect peaks in the reference recording and replace this track's clip envelopes. Source effects are not part of detection.") }
+    EchoComboBox { id: referenceBox; Layout.fillWidth: true; implicitHeight: 26; font.pixelSize: Theme.fontSection; model: panel.references; textRole: "name"; enabled: !panel.running; onActivated: panel.cancel() }
     GridLayout {
         columns: 2
+        columnSpacing: 8
+        rowSpacing: 6
         Layout.fillWidth: true
         enabled: !panel.running
-        Label { text: qsTr("Peak threshold (dBFS)"); Layout.fillWidth: true }
-        SpinBox { id: threshold; from: -60; to: -6; value: -30; editable: true; onValueModified: panel.cancel() }
-        Label { text: qsTr("Reduction (dB)") }
-        SpinBox { id: amount; from: 1; to: 36; value: 12; editable: true; onValueModified: panel.cancel() }
-        Label { text: qsTr("Anticipation (ms)") }
-        SpinBox { id: attack; from: 10; to: 3000; value: 180; stepSize: 10; editable: true; onValueModified: panel.cancel() }
-        Label { text: qsTr("Hold (ms)") }
-        SpinBox { id: hold; from: 0; to: 5000; value: 250; stepSize: 10; editable: true; onValueModified: panel.cancel() }
-        Label { text: qsTr("Recovery (ms)") }
-        SpinBox { id: release; from: 10; to: 5000; value: 600; stepSize: 10; editable: true; onValueModified: panel.cancel() }
+        ParameterLabel { text: qsTr("Peak threshold (dBFS)") }
+        EchoValueSpinBox { Layout.preferredWidth: 128; id: threshold; from: -60; to: -6; value: -30; Accessible.name: qsTr("Peak threshold (dBFS)"); onValueModified: panel.cancel() }
+        ParameterLabel { text: qsTr("Reduction (dB)") }
+        EchoValueSpinBox { Layout.preferredWidth: 128; id: amount; from: 1; to: 36; value: 12; Accessible.name: qsTr("Reduction (dB)"); onValueModified: panel.cancel() }
+        ParameterLabel { text: qsTr("Anticipation (ms)") }
+        EchoValueSpinBox { Layout.preferredWidth: 128; id: attack; from: 10; to: 3000; value: 180; stepSize: 10; Accessible.name: qsTr("Anticipation (ms)"); onValueModified: panel.cancel() }
+        ParameterLabel { text: qsTr("Hold (ms)") }
+        EchoValueSpinBox { Layout.preferredWidth: 128; id: hold; from: 0; to: 5000; value: 250; stepSize: 10; Accessible.name: qsTr("Hold (ms)"); onValueModified: panel.cancel() }
+        ParameterLabel { text: qsTr("Recovery (ms)") }
+        EchoValueSpinBox { Layout.preferredWidth: 128; id: release; from: 10; to: 5000; value: 600; stepSize: 10; Accessible.name: qsTr("Recovery (ms)"); onValueModified: panel.cancel() }
     }
     RowLayout {
-        EchoButton { text: panel.running ? qsTr("Cancel") : qsTr("Generate envelopes"); enabled: panel.references.length > 0 && !panel.blocked; onClicked: panel.running ? panel.cancel() : panel.generate() }
+        EchoButton { Layout.fillWidth: true; implicitHeight: 26; font.pixelSize: Theme.fontSection; ghost: true; text: panel.running ? qsTr("Cancel") : qsTr("Generate"); enabled: panel.references.length > 0 && !panel.blocked; onClicked: panel.running ? panel.cancel() : panel.generate() }
         EchoButton {
+            Layout.fillWidth: true; implicitHeight: 26; font.pixelSize: Theme.fontSection
             text: qsTr("Apply to track")
             enabled: panel.candidates.length > 0 && !panel.blocked && !panel.running
             onClicked: { const result = panel.candidates; panel.cancel(); panel.applyRequested(result); }
         }
     }
     ProgressBar { visible: panel.running; Layout.fillWidth: true; value: panel.snapshot ? panel.cursor / Math.max(1, panel.snapshot.reference.clips.length) : 0 }
-    Label { Layout.fillWidth: true; visible: text.length > 0; text: panel.message; wrapMode: Text.Wrap; color: Theme.textSecondary }
+    Text { font.pixelSize: Theme.fontSection; color: Theme.textSecondary; Layout.fillWidth: true; visible: text.length > 0; text: panel.message; wrapMode: Text.Wrap }
     Timer {
         id: stepper
         interval: 1

@@ -2,13 +2,12 @@
 import QtQuick
 import QtQuick.Controls
 
-SpinBox {
+EchoValueSpinBox {
     id: control
     from: 0
     to: 14400000
     stepSize: 10
     editable: true
-    implicitHeight: 30
     textFromValue: (value, locale) => Number(value / 1000).toLocaleString(locale, "f", 3)
     valueFromText: (text, locale) => Math.round(Number.fromLocaleString(locale, text) * 1000)
     validator: DoubleValidator {

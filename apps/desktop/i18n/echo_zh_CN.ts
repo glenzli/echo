@@ -271,14 +271,14 @@
         </message>
         <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="71" />
-            <location filename="../qml/AudioLibrarySidebar.qml" line="260" />
-            <source>New album</source>
-            <translation>新建相册</translation>
+            <source>Create</source>
+            <translation>创建</translation>
         </message>
         <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="71" />
-            <source>Create</source>
-            <translation>创建</translation>
+            <location filename="../qml/AudioLibrarySidebar.qml" line="260" />
+            <source>New collection</source>
+            <translation>新建声音集</translation>
         </message>
         <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="92" />
@@ -316,9 +316,14 @@
             <translation>原始文件缺失</translation>
         </message>
         <message>
-            <location filename="../qml/AudioLibrarySidebar.qml" line="310" />
-            <source>Album suggestions will appear when at least two sounds share time, place, event, or people.</source>
-            <translation>当至少两段声音在时间、地点、事件或人物方面有关联时，相册建议会出现在这里。</translation>
+            <location filename="../qml/AudioLibrarySidebar.qml" line="208" />
+            <source>COLLECTIONS</source>
+            <translation>声音集</translation>
+        </message>
+        <message>
+            <location filename="../qml/AudioLibrarySidebar.qml" line="408" />
+            <source>Delete collection?</source>
+            <translation>删除声音集？</translation>
         </message>
         <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="35" />
@@ -356,29 +361,19 @@
             <translation>最近聆听</translation>
         </message>
         <message>
-            <location filename="../qml/AudioLibrarySidebar.qml" line="208" />
-            <source>ALBUMS</source>
-            <translation>声音相册</translation>
-        </message>
-        <message>
-            <location filename="../qml/AudioLibrarySidebar.qml" line="226" />
-            <source>Rename album</source>
-            <translation>重命名相册</translation>
-        </message>
-        <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="226" />
             <source>Rename</source>
             <translation>重命名</translation>
         </message>
         <message>
-            <location filename="../qml/AudioLibrarySidebar.qml" line="281" />
-            <source>SUGGESTED</source>
-            <translation>建议相册</translation>
+            <location filename="../qml/AudioLibrarySidebar.qml" line="226" />
+            <source>Rename collection</source>
+            <translation>重命名声音集</translation>
         </message>
         <message>
-            <location filename="../qml/AudioLibrarySidebar.qml" line="301" />
-            <source>Save suggested album</source>
-            <translation>保存建议相册</translation>
+            <location filename="../qml/AudioLibrarySidebar.qml" line="281" />
+            <source>SUGGESTED</source>
+            <translation>建议声音集</translation>
         </message>
         <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="301" />
@@ -386,14 +381,19 @@
             <translation>保存</translation>
         </message>
         <message>
+            <location filename="../qml/AudioLibrarySidebar.qml" line="301" />
+            <source>Save suggested collection</source>
+            <translation>保存建议声音集</translation>
+        </message>
+        <message>
+            <location filename="../qml/AudioLibrarySidebar.qml" line="310" />
+            <source>Collection suggestions will appear when at least two sounds share time, place, event, or people.</source>
+            <translation>当至少两段声音在时间、地点、事件或人物方面有关联时，声音集建议会出现在这里。</translation>
+        </message>
+        <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="360" />
             <source>Manage folders</source>
             <translation>管理目录</translation>
-        </message>
-        <message>
-            <location filename="../qml/AudioLibrarySidebar.qml" line="408" />
-            <source>Delete album?</source>
-            <translation>删除相册？</translation>
         </message>
         <message>
             <location filename="../qml/AudioLibrarySidebar.qml" line="416" />
@@ -920,7 +920,7 @@
         <message>
             <location filename="../qml/AutoWahVfxPanel.qml" line="61" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/AutoWahVfxPanel.qml" line="66" />
@@ -1209,7 +1209,7 @@
         <message>
             <location filename="../qml/BeatRepeatVfxPanel.qml" line="40" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/BeatRepeatVfxPanel.qml" line="41" />
@@ -1587,7 +1587,7 @@
         <message>
             <location filename="../qml/DelayVfxPanel.qml" line="81" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/DelayVfxPanel.qml" line="87" />
@@ -1649,7 +1649,7 @@
         <message>
             <location filename="../qml/DigitalDegradeVfxPanel.qml" line="109" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/DigitalDegradeVfxPanel.qml" line="125" />
@@ -1699,7 +1699,7 @@
         <message>
             <location filename="../qml/DriveVfxPanel.qml" line="93" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/DriveVfxPanel.qml" line="121" />
@@ -2114,7 +2114,7 @@
         <message>
             <location filename="../qml/FreezeVfxPanel.qml" line="81" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/FreezeVfxPanel.qml" line="95" />
@@ -2143,7 +2143,7 @@
         <message>
             <location filename="../qml/GranularVfxPanel.qml" line="81" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/GranularVfxPanel.qml" line="93" />
@@ -2921,7 +2921,7 @@
         <message>
             <location filename="../qml/ModulationVfxPanel.qml" line="65" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/ModulationVfxPanel.qml" line="70" />
@@ -3079,7 +3079,7 @@
         <message>
             <location filename="../qml/PitchVfxPanel.qml" line="65" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/PitchVfxPanel.qml" line="70" />
@@ -3985,8 +3985,8 @@
         </message>
         <message>
             <location filename="../qml/RevisitDashboard.qml" line="118" />
-            <source>Your albums</source>
-            <translation>你的声音相册</translation>
+            <source>Your collections</source>
+            <translation>你的声音集</translation>
         </message>
         <message>
             <location filename="../qml/RevisitDashboard.qml" line="126" />
@@ -4030,8 +4030,8 @@
         </message>
         <message>
             <location filename="../qml/RevisitDashboard.qml" line="249" />
-            <source>Listen to a sound or create an album. Echo will keep the original source and your place in it.</source>
-            <translation>聆听声音或创建相册后，Echo 会保留原始来源和你的聆听位置。</translation>
+            <source>Listen to a sound or create a collection. Echo will keep the original source and your place in it.</source>
+            <translation>聆听声音或创建声音集后，Echo 会保留原始来源和你的聆听位置。</translation>
         </message>
     </context>
     <context>
@@ -4065,7 +4065,7 @@
         <message>
             <location filename="../qml/RotaryVfxPanel.qml" line="93" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/RotaryVfxPanel.qml" line="107" />
@@ -4124,7 +4124,7 @@
         <message>
             <location filename="../qml/SceneVfxPanel.qml" line="71" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/SceneVfxPanel.qml" line="81" />
@@ -4202,8 +4202,8 @@
         <name>SoundAlbumNameDialog</name>
         <message>
             <location filename="../qml/SoundAlbumNameDialog.qml" line="62" />
-            <source>Album name</source>
-            <translation>相册名称</translation>
+            <source>Collection name</source>
+            <translation>声音集名称</translation>
         </message>
         <message>
             <location filename="../qml/SoundAlbumNameDialog.qml" line="84" />
@@ -4212,21 +4212,21 @@
         </message>
         <message>
             <location filename="../qml/SoundAlbumNameDialog.qml" line="97" />
-            <source>Enter an album name.</source>
-            <translation>请输入相册名称。</translation>
+            <source>Enter a collection name.</source>
+            <translation>请输入声音集名称。</translation>
         </message>
     </context>
     <context>
         <name>SoundAlbumRow</name>
         <message>
             <location filename="../qml/SoundAlbumRow.qml" line="102" />
-            <source>Save as album</source>
-            <translation>保存为相册</translation>
+            <source>Save as collection</source>
+            <translation>保存为声音集</translation>
         </message>
         <message>
             <location filename="../qml/SoundAlbumRow.qml" line="102" />
-            <source>Album actions</source>
-            <translation>相册操作</translation>
+            <source>Collection actions</source>
+            <translation>声音集操作</translation>
         </message>
         <message>
             <location filename="../qml/SoundAlbumRow.qml" line="122" />
@@ -4235,31 +4235,31 @@
         </message>
         <message>
             <location filename="../qml/SoundAlbumRow.qml" line="127" />
-            <source>Delete album</source>
-            <translation>删除相册</translation>
+            <source>Delete collection</source>
+            <translation>删除声音集</translation>
         </message>
     </context>
     <context>
         <name>SoundAlbumState</name>
         <message>
             <location filename="../qml/SoundAlbumState.qml" line="48" />
-            <source>The album could not be created. Its name may already be in use.</source>
-            <translation>无法创建相册，该名称可能已被使用。</translation>
+            <source>The collection could not be created. Its name may already be in use.</source>
+            <translation>无法创建声音集，该名称可能已被使用。</translation>
         </message>
         <message>
             <location filename="../qml/SoundAlbumState.qml" line="56" />
-            <source>The album could not be renamed. Its name may already be in use.</source>
-            <translation>无法重命名相册，该名称可能已被使用。</translation>
+            <source>The collection could not be renamed. Its name may already be in use.</source>
+            <translation>无法重命名声音集，该名称可能已被使用。</translation>
         </message>
         <message>
             <location filename="../qml/SoundAlbumState.qml" line="65" />
-            <source>The album could not be deleted.</source>
-            <translation>无法删除相册。</translation>
+            <source>The collection could not be deleted.</source>
+            <translation>无法删除声音集。</translation>
         </message>
         <message>
             <location filename="../qml/SoundAlbumState.qml" line="74" />
-            <source>The sound could not be moved into the album.</source>
-            <translation>无法更改声音的相册归属。</translation>
+            <source>The sound could not be moved into the collection.</source>
+            <translation>无法更改声音的声音集归属。</translation>
         </message>
     </context>
     <context>
@@ -4331,6 +4331,244 @@
             <location filename="../src/sound_assembly_controller.cpp" line="293" />
             <source>Cannot create the private assembly preparation directory.</source>
             <translation>无法创建编排准备所需的私有目录。</translation>
+        </message>
+    </context>
+    <context>
+        <name>SoundAssemblyInspector</name>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="79" />
+            <source>Clip inspector</source>
+            <translation>片段检查器</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="79" />
+            <location filename="../qml/SoundAssemblyInspector.qml" line="239" />
+            <source>Master output</source>
+            <translation>总输出</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="99" />
+            <source>Project source</source>
+            <translation>工程来源</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="99" />
+            <location filename="../qml/SoundAssemblyInspector.qml" line="114" />
+            <source>Material reference</source>
+            <translation>素材引用</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="99" />
+            <location filename="../qml/SoundAssemblyInspector.qml" line="114" />
+            <source>Memory reference</source>
+            <translation>记忆引用</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="99" />
+            <source>Source version %1</source>
+            <translation>来源版本 %1</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="99" />
+            <source>Original source</source>
+            <translation>原始来源</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="110" />
+            <source>Edit this clip’s sound</source>
+            <translation>精细编辑此片段</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="120" />
+            <source>Split</source>
+            <translation>分割</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="121" />
+            <source>Duplicate</source>
+            <translation>复制</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="123" />
+            <source>Clip actions</source>
+            <translation>片段操作</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="127" />
+            <source>Track ↑</source>
+            <translation>移至上一轨</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="128" />
+            <source>Track ↓</source>
+            <translation>移至下一轨</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="130" />
+            <source>Delete</source>
+            <translation>删除</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="136" />
+            <source>Timing</source>
+            <translation>位置与范围</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="138" />
+            <source>Position (s)</source>
+            <translation>位置（秒）</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="138" />
+            <source>Source in (s)</source>
+            <translation>源起点（秒）</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="138" />
+            <source>Source out (s)</source>
+            <translation>源终点（秒）</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="156" />
+            <source>Mix</source>
+            <translation>混音</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="157" />
+            <location filename="../qml/SoundAssemblyInspector.qml" line="240" />
+            <source>Gain</source>
+            <translation>增益</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="157" />
+            <source>Clip gain</source>
+            <translation>片段增益</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="158" />
+            <source>Pan</source>
+            <translation>声像</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="158" />
+            <source>Clip pan</source>
+            <translation>片段声像</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="158" />
+            <source>Center</source>
+            <translation>居中</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="161" />
+            <source>Muted</source>
+            <translation>静音</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="162" />
+            <source>Clip muted</source>
+            <translation>片段静音</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="166" />
+            <source>Fades</source>
+            <translation>淡化</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="168" />
+            <source>Fade in (ms)</source>
+            <translation>淡入（毫秒）</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="168" />
+            <source>Fade-in curve</source>
+            <translation>淡入曲线</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="168" />
+            <source>Fade out (ms)</source>
+            <translation>淡出（毫秒）</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="168" />
+            <source>Fade-out curve</source>
+            <translation>淡出曲线</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="186" />
+            <source>Curve</source>
+            <translation>曲线</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="189" />
+            <source>Linear</source>
+            <translation>线性</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="189" />
+            <source>Smooth</source>
+            <translation>平滑</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="189" />
+            <source>Equal power</source>
+            <translation>等功率</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="199" />
+            <source>Volume envelope</source>
+            <translation>音量包络</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="202" />
+            <source>Enabled</source>
+            <translation>启用</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="205" />
+            <source>Envelope enabled</source>
+            <translation>启用包络</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="212" />
+            <source>Edit points</source>
+            <translation>编辑节点</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="214" />
+            <source>Clear envelope</source>
+            <translation>清除包络</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="219" />
+            <source>Automatic music ducking</source>
+            <translation>配乐自动闪避</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="240" />
+            <source>Master gain</source>
+            <translation>总增益</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="243" />
+            <location filename="../qml/SoundAssemblyInspector.qml" line="244" />
+            <source>Limiter</source>
+            <translation>限制器</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="248" />
+            <source>Ceiling (dB)</source>
+            <translation>上限（dB）</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="260" />
+            <source>Limiter ceiling</source>
+            <translation>限制器上限</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyInspector.qml" line="263" />
+            <source>Last mix: %1 LUFS · %2 dBTP</source>
+            <translation>上次混音：%1 LUFS · %2 dBTP</translation>
         </message>
     </context>
     <context>
@@ -4509,35 +4747,7 @@
             <translation>无法归档该编排。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1153" />
-            <source>Clip inspector</source>
-            <translation>片段检查器</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1153" />
-            <source>Master output</source>
-            <translation>总输出</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1176" />
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1189" />
-            <source>Material reference</source>
-            <translation>素材引用</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1176" />
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1189" />
-            <source>Memory reference</source>
-            <translation>记忆引用</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1176" />
-            <source>Source version %1</source>
-            <translation>来源版本 %1</translation>
-        </message>
-        <message>
             <location filename="../qml/SoundAssemblyWorkspace.qml" line="667" />
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1182" />
             <source>Edit this clip’s sound</source>
             <translation>精细编辑此片段</translation>
         </message>
@@ -4632,166 +4842,12 @@
             <translation>放大</translation>
         </message>
         <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1176" />
-            <source>Original source</source>
-            <translation>原始来源</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1196" />
-            <source>Split</source>
-            <translation>分割</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1201" />
-            <source>Duplicate</source>
-            <translation>复制</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1206" />
-            <source>Delete</source>
-            <translation>删除</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1216" />
-            <source>Track ↑</source>
-            <translation>移至上一轨</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1222" />
-            <source>Track ↓</source>
-            <translation>移至下一轨</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1233" />
-            <source>Position (s)</source>
-            <translation>位置（秒）</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1237" />
-            <source>Source in (s)</source>
-            <translation>源起点（秒）</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1241" />
-            <source>Source out (s)</source>
-            <translation>源终点（秒）</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1263" />
-            <source>Automatic music ducking</source>
-            <translation>配乐自动闪避</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1285" />
-            <source>Volume envelope</source>
-            <translation>音量包络</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1287" />
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1288" />
-            <source>Edit points</source>
-            <translation>编辑节点</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1289" />
-            <source>Enabled</source>
-            <translation>启用</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1291" />
-            <source>Envelope enabled</source>
-            <translation>启用包络</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1297" />
-            <source>Clear envelope</source>
-            <translation>清除包络</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1303" />
-            <source>Clip gain</source>
-            <translation>片段增益</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1326" />
-            <source>Clip pan</source>
-            <translation>片段声像</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1333" />
-            <source>Center</source>
-            <translation>居中</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1351" />
-            <source>Fade in (ms)</source>
-            <translation>淡入（毫秒）</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1366" />
-            <source>Fade out (ms)</source>
-            <translation>淡出（毫秒）</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1381" />
-            <source>Fade-in curve</source>
-            <translation>淡入曲线</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1387" />
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1401" />
-            <source>Linear</source>
-            <translation>线性</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1387" />
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1401" />
-            <source>Smooth</source>
-            <translation>平滑</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1387" />
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1401" />
-            <source>Equal power</source>
-            <translation>等功率</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1396" />
-            <source>Fade-out curve</source>
-            <translation>淡出曲线</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1410" />
-            <source>Muted</source>
-            <translation>已静音</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1434" />
-            <source>Master gain</source>
-            <translation>总增益</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1451" />
-            <source>Limiter</source>
-            <translation>限制器</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1463" />
-            <source>Ceiling (0.01 dB)</source>
-            <translation>上限（0.01 dB）</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1478" />
-            <source>Last mix: %1 LUFS · %2 dBTP</source>
-            <translation>上次混音：%1 LUFS · %2 dBTP</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1506" />
+            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1160" />
             <source>Build a sound sequence or layered scene</source>
             <translation>构建声音序列或分层场景</translation>
         </message>
         <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1514" />
+            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1168" />
             <source>Select sounds in Audio Space, then choose Sequence or Layer. Existing assemblies remain available in the sidebar.</source>
             <translation>在声音空间选择声音，然后选择“序列”或“分层”。已有编排会保留在侧边栏中。</translation>
         </message>
@@ -4801,12 +4857,12 @@
             <translation>这个版本已收进记忆库。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1525" />
+            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1179" />
             <source>Export assembly mixdown</source>
             <translation>导出编排混音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1527" />
+            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1181" />
             <source>WAV audio (*.wav)</source>
             <translation>WAV 音频 (*.wav)</translation>
         </message>
@@ -4814,11 +4870,6 @@
             <location filename="../qml/SoundAssemblyWorkspace.qml" line="458" />
             <source>Untitled project</source>
             <translation>未命名工程</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1176" />
-            <source>Project source</source>
-            <translation>工程来源</translation>
         </message>
     </context>
     <context>
@@ -4878,71 +4929,66 @@
         </message>
         <message>
             <location filename="../qml/SoundDuckingPanel.qml" line="39" />
-            <source>Automatic music ducking</source>
-            <translation>配乐自动闪避</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="40" />
             <source>Detect peaks in the reference recording and replace this track's clip envelopes. Source effects are not part of detection.</source>
             <translation>检测参考录音的峰值活动，替换当前轨道的片段包络。检测不包含来源效果处理。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="46" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="47" />
             <source>Peak threshold (dBFS)</source>
             <translation>峰值阈值（dBFS）</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="48" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="49" />
             <source>Reduction (dB)</source>
             <translation>压低量（dB）</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="50" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="51" />
             <source>Anticipation (ms)</source>
             <translation>提前量（ms）</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="52" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="53" />
             <source>Hold (ms)</source>
             <translation>保持（ms）</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="54" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="55" />
             <source>Recovery (ms)</source>
             <translation>恢复（ms）</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="58" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="59" />
             <source>Cancel</source>
             <translation>取消</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="58" />
-            <source>Generate envelopes</source>
-            <translation>生成包络</translation>
+            <location filename="../qml/SoundDuckingPanel.qml" line="59" />
+            <source>Generate</source>
+            <translation>生成</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="60" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="62" />
             <source>Apply to track</source>
             <translation>应用到轨道</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="88" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="90" />
             <source>No activity was detected. Try a lower threshold.</source>
             <translation>未检测到声音活动，请尝试降低阈值。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="91" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="93" />
             <source>%1 activity regions; %2 clip envelopes ready. Apply creates one undo step.</source>
             <translation>检测到 %1 个活动区间，已生成 %2 条片段包络。应用后可一次撤销。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="94" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="96" />
             <source>Too many activity changes. Increase hold time or use a shorter reference.</source>
             <translation>声音活动变化过多，请增加保持时间或缩短参考片段。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundDuckingPanel.qml" line="94" />
+            <location filename="../qml/SoundDuckingPanel.qml" line="96" />
             <source>Reference waveforms are not ready. Wait for them to load and try again.</source>
             <translation>参考波形尚未就绪，请等待加载后重试。</translation>
         </message>
@@ -5690,18 +5736,18 @@
         </message>
         <message>
             <location filename="../qml/SoundSelectionToolbar.qml" line="133" />
-            <source>Add to album</source>
-            <translation>添加到相册</translation>
+            <source>Add to collection</source>
+            <translation>添加到声音集</translation>
         </message>
         <message>
             <location filename="../qml/SoundSelectionToolbar.qml" line="169" />
-            <source>No albums yet</source>
-            <translation>尚无相册</translation>
+            <source>No collections yet</source>
+            <translation>尚无声音集</translation>
         </message>
         <message>
             <location filename="../qml/SoundSelectionToolbar.qml" line="175" />
-            <source>New album…</source>
-            <translation>新建相册…</translation>
+            <source>New collection…</source>
+            <translation>新建声音集…</translation>
         </message>
     </context>
     <context>
@@ -6635,7 +6681,7 @@
             <location filename="../qml/SpaceReverbPanel.qml" line="169" />
             <location filename="../qml/SpaceReverbPanel.qml" line="368" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/SpaceReverbPanel.qml" line="228" />
@@ -6943,7 +6989,7 @@
         <message>
             <location filename="../qml/StereoVfxPanel.qml" line="40" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/StereoVfxPanel.qml" line="41" />
@@ -6977,7 +7023,7 @@
         <message>
             <location filename="../qml/TapeVfxPanel.qml" line="61" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/TapeVfxPanel.qml" line="66" />
@@ -7100,7 +7146,7 @@
         <message>
             <location filename="../qml/TransformVfxPanel.qml" line="52" />
             <source>Mix</source>
-            <translation>混合</translation>
+            <translation>混音</translation>
         </message>
         <message>
             <location filename="../qml/TransformVfxPanel.qml" line="57" />

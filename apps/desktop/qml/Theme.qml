@@ -40,6 +40,7 @@ QtObject {
     readonly property int fontBody: 12
     readonly property int fontMeta: 10
     readonly property int fontSection: 11
+    readonly property var assemblyTrackColors: ["#498eba", "#759b71", "#b49360", "#ad799e", "#6c9ea0", "#af7d63", "#8286ba", "#979561"]
 
     // Editing workbench geometry. Audio parameters remain readable at a
     // stable measure instead of stretching with the window like a timeline.

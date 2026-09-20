@@ -45,7 +45,7 @@ QtObject {
         errorMessage = ""
         const albumId = catalogBackend.createUserAlbum(name, memberIds || [])
         if (albumId < 0) {
-            errorMessage = qsTr("The album could not be created. Its name may already be in use.")
+            errorMessage = qsTr("The collection could not be created. Its name may already be in use.")
         }
         return albumId
     }
@@ -53,7 +53,7 @@ QtObject {
     function renameAlbum(albumId: var, name: string) : bool {
         errorMessage = ""
         if (!catalogBackend.renameUserAlbum(albumId, name)) {
-            errorMessage = qsTr("The album could not be renamed. Its name may already be in use.")
+            errorMessage = qsTr("The collection could not be renamed. Its name may already be in use.")
             return false
         }
         return true
@@ -62,7 +62,7 @@ QtObject {
     function deleteAlbum(albumId: var) : bool {
         errorMessage = ""
         if (!catalogBackend.deleteUserAlbum(albumId)) {
-            errorMessage = qsTr("The album could not be deleted.")
+            errorMessage = qsTr("The collection could not be deleted.")
             return false
         }
         return true
@@ -71,7 +71,7 @@ QtObject {
     function setMembership(albumId: var, assetId: string, included: bool) : bool {
         errorMessage = ""
         if (!catalogBackend.setUserAlbumMembership(albumId, assetId, included)) {
-            errorMessage = qsTr("The sound could not be moved into the album.")
+            errorMessage = qsTr("The sound could not be moved into the collection.")
             return false
         }
         return true

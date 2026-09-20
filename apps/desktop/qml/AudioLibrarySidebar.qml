@@ -68,7 +68,7 @@ Rectangle {
 
     function beginCreate(memberIds: var): void {
         pendingInitialMemberIds = memberIds || [];
-        editAlbum("create", null, qsTr("New album"), qsTr("Create"), "");
+        editAlbum("create", null, qsTr("New collection"), qsTr("Create"), "");
     }
 
     Rectangle {
@@ -205,7 +205,7 @@ Rectangle {
                     Layout.leftMargin: 7
                     Layout.topMargin: 2
                     Layout.bottomMargin: 4
-                    text: qsTr("ALBUMS")
+                    text: qsTr("COLLECTIONS")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     font.bold: true
@@ -223,7 +223,7 @@ Rectangle {
                         count: modelData.count
                         selected: sidebar.selectedFilter === "user-album:" + modelData.id
                         onActivated: sidebar.filterRequested("user-album:" + modelData.id)
-                        onRenameRequested: sidebar.editAlbum("rename", modelData, qsTr("Rename album"), qsTr("Rename"), modelData.name)
+                        onRenameRequested: sidebar.editAlbum("rename", modelData, qsTr("Rename collection"), qsTr("Rename"), modelData.name)
                         onDeleteRequested: {
                             sidebar.pendingDeleteAlbum = modelData;
                             deleteDialog.open();
@@ -257,7 +257,7 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: qsTr("New album")
+                            text: qsTr("New collection")
                             color: Theme.textSecondary
                             font.pixelSize: Theme.fontBody
                         }
@@ -298,7 +298,7 @@ Rectangle {
                         count: modelData.count
                         selected: sidebar.selectedFilter === "suggested-album:" + modelData.key
                         onActivated: sidebar.filterRequested("suggested-album:" + modelData.key)
-                        onSaveRequested: sidebar.editAlbum("save-suggestion", modelData, qsTr("Save suggested album"), qsTr("Save"), modelData.label)
+                        onSaveRequested: sidebar.editAlbum("save-suggestion", modelData, qsTr("Save suggested collection"), qsTr("Save"), modelData.label)
                     }
                 }
 
@@ -307,7 +307,7 @@ Rectangle {
                     Layout.leftMargin: 8
                     Layout.rightMargin: 8
                     visible: sidebar.suggestedAlbums.length === 0
-                    text: qsTr("Album suggestions will appear when at least two sounds share time, place, event, or people.")
+                    text: qsTr("Collection suggestions will appear when at least two sounds share time, place, event, or people.")
                     color: Theme.textDisabled
                     font.pixelSize: Theme.fontMeta
                     wrapMode: Text.WordWrap
@@ -405,7 +405,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Delete album?")
+                text: qsTr("Delete collection?")
                 color: Theme.textPrimary
                 font.pixelSize: 16
                 font.bold: true

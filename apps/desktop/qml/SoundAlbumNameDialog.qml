@@ -59,7 +59,7 @@ Dialog {
             id: nameField
 
             Layout.fillWidth: true
-            placeholderText: qsTr("Album name")
+            placeholderText: qsTr("Collection name")
             maximumLength: 80
             onAccepted: confirmButton.clicked()
             onTextChanged: validationText.text = ""
@@ -94,7 +94,7 @@ Dialog {
                 onClicked: {
                     const name = nameField.text.trim()
                     if (name.length === 0) {
-                        validationText.text = qsTr("Enter an album name.")
+                        validationText.text = qsTr("Enter a collection name.")
                         return
                     }
                     dialog.submitted(name)

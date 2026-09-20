@@ -249,6 +249,7 @@ qt_add_qml_module(
         qml/SoundAlbumState.qml
         qml/SoundAdjustmentDraft.qml
         qml/SoundAdjustmentEditor.qml
+        qml/EchoValueSpinBox.qml
         qml/EchoTimeSpinBox.qml
         qml/SoundAssemblyEditing.js
         qml/SoundAutomation.js
@@ -264,6 +265,7 @@ qt_add_qml_module(
         qml/SoundPlaybackSource.qml
         qml/SoundSourceSearch.js
         qml/SoundSourceBrowser.qml
+        qml/SoundAssemblyInspector.qml
         qml/SoundAssemblyWorkspace.qml
         qml/SpaceReverbPanel.qml
         qml/SpectrogramView.qml

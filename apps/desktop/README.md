@@ -55,9 +55,13 @@ persists or recompiles playback; the prepared graph is rebuilt only when the
 user explicitly auditions the changed draft.
 
 Sound Assembly is a third peer workspace. `SoundAssemblyWorkspace.qml` owns
-the versioned document, bounded undo/redo history, timeline commands, clip and
-master inspectors, preview, and mixdown presentation. `SoundAssemblyTrack.qml`
-owns a lane and its fixed mix controls. `SoundAssemblyClip.qml` owns the complete
+the versioned document, bounded undo/redo history, timeline commands, preview,
+and mixdown presentation. `SoundAssemblyInspector.qml` owns compact clip/master parameter presentation,
+reusing track colors and typography; it dispatches edits to the workspace
+without owning another undo stack. `EchoValueSpinBox.qml` owns themed numeric
+input, and `EchoTimeSpinBox.qml` adds the seconds-to-milliseconds projection.
+`SoundAssemblyTrack.qml` owns a lane and its fixed mix controls.
+`SoundAssemblyClip.qml` owns the complete
 move, trim and fade gesture lifecycle; `SoundAssemblyEditing.js` owns bounded
 geometry, magnetic snapping, split/crossfade transforms and source-time mapping.
 `AssemblyWaveformController` serializes asynchronous source waveform reads and
@@ -168,8 +172,8 @@ QML never opens SQLite, calls FFmpeg, or interprets cache paths. Theme tokens
 live in [`qml/Theme.qml`](qml/Theme.qml); components follow the series naming
 convention (`EchoButton`, ...) shared with Shadow.
 
-Sound albums remain split by authority. `SoundAlbumState.qml` owns the live
-projection and mutation lifecycle for durable user albums and rebuildable
+Sound collections remain split by authority. `SoundAlbumState.qml` owns the live
+projection and mutation lifecycle for durable user collections and rebuildable
 suggestions; `AudioLibrarySidebar.qml` owns creation, rename, delete, and
 suggestion-confirmation presentation; `SoundSelectionToolbar.qml` owns the
 selected sound's membership popup. `AudioSpaceWorkspace.qml` only composes

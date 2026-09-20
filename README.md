@@ -16,7 +16,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 
 ### 设计方向
 
-- **先聆听，后编辑**：Audio Space 以声音墙、相册和重温为入口；时间轴不是应用的默认首页。
+- **先聆听，后编辑**：Audio Space 以声音墙、声音集和重温为入口；时间轴不是应用的默认首页。
 - **Original 保持不变**：调整以版本保存，缓存可以重建，导出记录所使用的来源与处理版本。
 - **Analysis 不是事实**：文字、事件、情绪、地点和语义近邻都保留模型与执行来源；用户校准独立于模型证据。
 - **本地智能**：后台理解通过本地 Infer Runtime 执行，不进入实时音频回调，也不阻断资料库浏览和播放。
@@ -27,7 +27,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 
 - **独立编辑**：直接打开音频，使用单音处理或多轨编排，保存包含素材的 `.echo` 工程或导出音频；此入口使用隔离会话，不启动记忆库维护和自动分析。`./scripts/run_debug.sh --edit` 可启动。
 
-- **记忆库与重温**：导入本地文件夹，通过声音墙、声音带、单音详情、搜索、复合筛选、Like、评分和声音相册整理录音；磁带可切换记忆、素材或原录音，将当前结果虚拟首尾相接以连续试听，不生成新的拼接文件；继续聆听、往年今日、最近聆听和新内容由可追溯的本地状态生成。
+- **记忆库与重温**：导入本地文件夹，通过声音墙、声音带、单音详情、搜索、复合筛选、Like、评分和声音集整理录音；磁带可切换记忆、素材或原录音，将当前结果虚拟首尾相接以连续试听，不生成新的拼接文件；继续聆听、往年今日、最近聆听和新内容由可追溯的本地状态生成。
 - **素材**：编辑器内提供本项目、记忆库和素材入口，可搜索、独立试听并加入轨道。导入文件保存为 Catalog 旁的持久副本，可只归项目或保留为全局素材；独立素材页提供类别与已有 AI 声音事件筛选。
 - **声音理解**：导入后在后台渐进提取文字、时间对齐、声音事件与情境信息，并允许用户校准展示结果；精确文字检索、基于证据的自然语言检索，以及面向短、无文字录音的有限 CLAP 检索彼此保留独立证据空间。
 - **非破坏性调整**：独立的声音调整工作区提供裁剪、淡入淡出、增益、EQ、Dynamics、响度测量、录制缺陷修复、空间处理、效果顺序与局部作用范围，并支持 Original／Adjusted A/B、撤销重做和显式保存版本。
@@ -78,7 +78,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 
 ### Design direction
 
-- **Listen first, edit second**: Audio Space starts with the Sound Wall, albums, and Revisit. A timeline is not the application's home screen.
+- **Listen first, edit second**: Audio Space starts with the Sound Wall, collections, and Revisit. A timeline is not the application's home screen.
 - **Keep the Original unchanged**: adjustments are saved as revisions, caches are rebuildable, and exports record the source and processing revision they used.
 - **Analysis is not fact**: text, events, emotion, location, and semantic neighbors retain model and execution provenance. User calibration remains separate from model evidence.
 - **Local intelligence**: background understanding runs through the local Infer Runtime, stays outside the real-time audio callback, and never blocks Library browsing or playback.
@@ -89,7 +89,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 
 - **Independent editing**: open audio directly, use the shared single-source and multitrack editors, save a portable `.echo` project with its sources, or export audio. This session starts no library maintenance or automatic analysis. Launch with `./scripts/run_debug.sh --edit`.
 
-- **Memory library and Revisit**: import local folders and organize recordings through the Sound Wall, Sound Tape, single-sound detail, search, compound filters, Likes, ratings, and sound albums. Sound Tape switches between memories, materials, and originals and virtually joins the results for continuous listening without creating a concatenated file. Continue Listening, On This Day, Recently Played, and new additions are derived from traceable local state.
+- **Memory library and Revisit**: import local folders and organize recordings through the Sound Wall, Sound Tape, single-sound detail, search, compound filters, Likes, ratings, and sound collections. Sound Tape switches between memories, materials, and originals and virtually joins the results for continuous listening without creating a concatenated file. Continue Listening, On This Day, Recently Played, and new additions are derived from traceable local state.
 - **Materials**: the editor contains Project, Memories, and Materials bins with search, independent audition, and track placement. Imported files are durable copies beside the Catalog and can stay project-only or enter global materials. A separate material page filters by user category and existing AI sound events.
 - **Sound understanding**: progressively extract text, alignment, sound events, and contextual information in the background, with user calibration over the displayed result. Exact text retrieval, evidence-based natural-language retrieval, and limited CLAP retrieval for short recordings without text remain separate evidence spaces.
 - **Non-destructive adjustment**: a dedicated workspace provides trim, fades, gain, EQ, dynamics, loudness measurement, recording repair, space processing, effect ordering, and bounded effect regions, with Original/Adjusted A/B, undo/redo, and explicit version saving.

@@ -115,7 +115,7 @@ Rectangle {
 
                         Text {
                             Layout.fillWidth: true
-                            text: qsTr("Your albums")
+                            text: qsTr("Your collections")
                             color: Theme.textPrimary
                             font.pixelSize: 15
                             font.bold: true
@@ -246,7 +246,7 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Listen to a sound or create an album. Echo will keep the original source and your place in it.")
+                    text: qsTr("Listen to a sound or create a collection. Echo will keep the original source and your place in it.")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontBody
                     wrapMode: Text.WordWrap

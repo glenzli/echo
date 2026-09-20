@@ -16,6 +16,7 @@ Button {
     implicitHeight: Theme.controlHeight
     implicitWidth: Math.max(72, implicitContentWidth + 24)
     padding: 8
+    font.pixelSize: Theme.fontBody
 
     background: Rectangle {
         radius: Theme.controlRadius
@@ -46,7 +47,7 @@ Button {
         color: !root.enabled ? Theme.textDisabled
                              : root.selected ? Theme.accentSelectionText
                              : root.ghost ? Theme.textPrimary : root.textColor
-        font.pixelSize: Theme.fontBody
+        font: root.font
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }

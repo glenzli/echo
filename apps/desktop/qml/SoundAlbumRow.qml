@@ -99,7 +99,7 @@ Rectangle {
             }
 
             ToolTip.visible: hovered
-            ToolTip.text: row.suggested ? qsTr("Save as album") : qsTr("Album actions")
+            ToolTip.text: row.suggested ? qsTr("Save as collection") : qsTr("Collection actions")
             ToolTip.delay: 500
 
             background: Rectangle {
@@ -124,7 +124,7 @@ Rectangle {
         }
         MenuSeparator {}
         MenuItem {
-            text: qsTr("Delete album")
+            text: qsTr("Delete collection")
             onTriggered: row.deleteRequested()
         }
     }
