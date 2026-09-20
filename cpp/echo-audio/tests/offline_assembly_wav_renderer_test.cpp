@@ -143,6 +143,80 @@ int main() {
     expect_close(pcm24(faded_sink.bytes_, 36'000, 0), 0.2F);
     expect_close(pcm24(faded_sink.bytes_, 60'000, 0), 0.0F);
 
+    auto automated = plan;
+    automated.tracks.resize(1);
+    auto& clip = automated.tracks[0].clips[0];
+    clip.gain_envelope_enabled = true;
+    clip.gain_envelope = {{0, 0}, {500, -1200}, {1000, 0}};
+    MemorySink envelope_sink;
+    [[maybe_unused]] const auto envelope_result =
+        echo::audio::OfflineAssemblyWavRenderer::render(automated, envelope_sink);
+    expect_close(pcm24(envelope_sink.bytes_, 12000, 0), 0.2F * std::pow(10.0F, -6.0F / 20.0F));
+    expect_close(pcm24(envelope_sink.bytes_, 24000, 0), 0.2F * std::pow(10.0F, -12.0F / 20.0F));
+    // A bounded preview must retain the full clip's source coordinate and fades.
+    automated.render_start_millis = 250;
+    automated.render_end_millis = 750;
+    MemorySink range_sink;
+    const auto range_result =
+        echo::audio::OfflineAssemblyWavRenderer::render(automated, range_sink);
+    assert(range_result.frame_count == 24000);
+    for (std::size_t frame = 0; frame < 24000; frame += 100)
+        expect_close(
+            pcm24(range_sink.bytes_, frame, 0),
+            pcm24(envelope_sink.bytes_, frame + 12000, 0)
+        );
+    automated.render_start_millis = 0;
+    automated.render_end_millis = 0;
+    auto right = clip;
+    clip.source_end_millis = 500;
+    right.source_start_millis = 500;
+    right.timeline_start_millis = 500;
+    automated.tracks[0].clips.push_back(right);
+    MemorySink split_sink;
+    [[maybe_unused]] const auto split_result =
+        echo::audio::OfflineAssemblyWavRenderer::render(automated, split_sink);
+    for (std::size_t frame = 0; frame < 48000; frame += 100)
+        expect_close(pcm24(split_sink.bytes_, frame, 0), pcm24(envelope_sink.bytes_, frame, 0));
+    for (auto& part : automated.tracks[0].clips)
+        part.gain_envelope_enabled = false;
+    MemorySink bypass_sink;
+    [[maybe_unused]] const auto bypass_result =
+        echo::audio::OfflineAssemblyWavRenderer::render(automated, bypass_sink);
+    expect_close(pcm24(bypass_sink.bytes_, 24000, 0), 0.2F);
+    automated.tracks[0].clips[0].gain_envelope[1].source_millis = 0;
+    bool rejected = false;
+    try {
+        MemorySink invalid;
+        [[maybe_unused]] const auto invalid_result =
+            echo::audio::OfflineAssemblyWavRenderer::render(automated, invalid);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    // A near-four-hour, 256-clip session prepares only the selected output window.
+    echo::audio::AssemblyMixPlan large;
+    large.limiter_enabled = false;
+    for (std::size_t track_index = 0; track_index < 8; ++track_index) {
+        echo::audio::AssemblyTrackMix track;
+        for (std::size_t clip_index = 0; clip_index < 32; ++clip_index) {
+            echo::audio::AssemblyClipSource piece;
+            piece.path = first.string();
+            piece.source_end_millis = 1000;
+            piece.timeline_start_millis = (track_index * 32 + clip_index) * 55000;
+            piece.gain_envelope_enabled = true;
+            piece.gain_envelope = {{0, 0}, {1000, -1200}};
+            track.clips.push_back(piece);
+        }
+        large.tracks.push_back(track);
+    }
+    large.render_start_millis = 255 * 55000 + 250;
+    large.render_end_millis = large.render_start_millis + 50;
+    MemorySink large_sink;
+    const auto large_result = echo::audio::OfflineAssemblyWavRenderer::render(large, large_sink);
+    assert(large_result.frame_count == 2400);
+    expect_close(pcm24(large_sink.bytes_, 0, 0), 0.2F * std::pow(10.0F, -3.0F / 20.0F));
+
     std::filesystem::remove_all(root);
     return 0;
 }

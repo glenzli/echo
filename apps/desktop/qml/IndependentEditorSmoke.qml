@@ -24,6 +24,7 @@ Item {
             if(reopening) {
                 require(assembly.hasDocument && assembly.tracks.length===2,"portable assembly missing");
                 require(shell.assets.some(value=>value.gainCentibels===-600),"source adjustment lost");
+                require(assembly.tracks[1].clips[0].gainEnvelope.enabled,"portable envelope lost");
                 stage=6; return;
             }
             shell.chooseSource(0); ++stage; break;
@@ -50,22 +51,40 @@ Item {
             facts.singleExport=renderExporter.outputPath;
             shell.showMultitrack();require(assembly.hasDocument,"assembly creation failed");
             assembly.mutate(next=>{next.name='Independent arrangement';next.tracks[0].clips[0].fadeInMillis=120;next.tracks[1].clips[0].timelineStartMillis=500;});
+            assembly.selectClip(1, assembly.tracks[1].clips[0].id);
+            stage=20;break;
+        case 20:
+            if(Object.values(assemblyWaveforms.waveforms).filter(levels=>levels.length>0).length!==2) return;
+            assembly.ducking.generate();stage=21;break;
+        case 21:
+            if(assembly.ducking.running) return;
+            require(assembly.ducking.candidates.length>0,assembly.ducking.message || "ducking generated no candidate");
+            assembly.ducking.applyRequested(assembly.ducking.candidates);
+            require(assembly.selectedClip.gainEnvelope.points.length>=2,"ducking curve missing");
+            facts.duckingEnvelope=assembly.selectedClip.gainEnvelope;
+            assembly.undo();require(!assembly.selectedClip.gainEnvelope,"ducking undo failed");
+            assembly.redo();require(assembly.selectedClip.gainEnvelope.enabled,"ducking redo failed");
             require(shell.flushDrafts(),"assembly failed to save");
-            independentEditor.saveProject('file://'+fixtureRoot+'/portable.echo');++stage;break;
+            independentEditor.saveProject('file://'+fixtureRoot+'/portable.echo');stage=4;break;
         case 4:
             if(independentEditor.busy) return;
             require(!independentEditor.errorText,independentEditor.errorText);
+            assembly.previewSelection=true;
             assembly.preview();++stage;break;
         case 5:
             if(soundAssemblyController.running) return;
             require(soundAssemblyController.hasPreview,soundAssemblyController.errorText || "preview failed");
-            player.stop();stage=6;break;
+            facts.previewDuration=player.duration;
+            require(Math.abs(player.duration-(assembly.previewRangeEnd-assembly.previewRangeStart))<2,"range preview duration mismatch");
+            assembly.stopPlayback();stage=6;break;
         case 6:
             soundAssemblyController.exportAssembly(assembly.document,'file://'+fixtureRoot+(reopening?'/reopened.wav':'/mix.wav'));++stage;break;
         case 7:
             if(soundAssemblyController.running) return;
             require(soundAssemblyController.hasResult,soundAssemblyController.errorText || "mix export failed");
             if(Object.keys(assemblyWaveforms.waveforms).length!==2) return;
+            facts.reusedSources=soundAssemblyController.reusedSourceCount;
+            if(!reopening) require(facts.reusedSources===2,"unchanged source preparation was not reused");
             facts.mixExport=soundAssemblyController.outputPath;
             facts.timelineScale=assembly.pixelsPerSecond;
             require(assembly.durationMillis*assembly.pixelsPerSecond/1000>200,"timeline was fitted before layout");

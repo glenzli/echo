@@ -15,6 +15,7 @@ Rectangle {
     required property bool selected
     required property color trackColor
     required property var snapPosition
+    property bool automationEditing: false
     property real viewportStart: 0
     property real viewportWidth: 1200
     property string gesture: ""
@@ -200,6 +201,7 @@ Rectangle {
         }
         DragHandler {
             id: moveHandler
+            enabled: !(clipItem.automationEditing && clipItem.selected)
             objectName: "clipMoveHandle"
             target: null
             yAxis.enabled: false
@@ -214,6 +216,18 @@ Rectangle {
                     clipItem.dragMove(translation.x, centroid.modifiers);
             }
         }
+    }
+    SoundGainEnvelope {
+        x: clipItem.visibleStart
+        y: 29
+        width: clipItem.visibleWidth
+        height: 53
+        clipData: clipItem.shown
+        pixelsPerSecond: clipItem.pixelsPerSecond
+        pixelOffset: clipItem.visibleStart
+        curveColor: Theme.textPrimary
+        editing: clipItem.automationEditing && clipItem.selected
+        onEdited: envelope => clipItem.patchRequested(Object.assign({}, clipItem.clipData, {gainEnvelope: envelope}))
     }
     Repeater {
         model: ["left", "right"]

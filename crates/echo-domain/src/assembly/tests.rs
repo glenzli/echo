@@ -150,3 +150,25 @@ fn serialized_master_cannot_bypass_the_output_contract() {
 
     assert_eq!(decoded.validate(), Err(SoundAssemblyError::InvalidLimiter));
 }
+
+#[test]
+fn legacy_clips_round_trip_without_an_envelope_and_new_curves_validate() {
+    let original = clip(AssemblyClipId::new(), 0);
+    let json = serde_json::to_value(&original).expect("serialize");
+    assert!(json.get("gainEnvelope").is_none());
+    let reopened: AssemblyClip = serde_json::from_value(json.clone()).expect("legacy");
+    assert_eq!(original, reopened);
+    let mut authored = json;
+    authored["gainEnvelope"] = serde_json::json!({"enabled": true, "points": [
+        {"sourceMillis": 0, "gainCentibels": 0}, {"sourceMillis": 1500, "gainCentibels": -1800}
+    ]});
+    let reopened: AssemblyClip = serde_json::from_value(authored.clone()).expect("curve");
+    assert!(reopened.validate().is_ok());
+    assert_eq!(serde_json::to_value(reopened).expect("save"), authored);
+    authored["gainEnvelope"]["points"][1]["sourceMillis"] = serde_json::json!(0);
+    let malformed: AssemblyClip = serde_json::from_value(authored).expect("malformed");
+    assert_eq!(
+        malformed.validate(),
+        Err(SoundAssemblyError::InvalidGainEnvelope)
+    );
+}

@@ -188,6 +188,16 @@ std::vector<ClipState> prepare_clip_states(const AssemblyMixPlan& plan) {
                 || clip.timeline_start_millis + duration > kMaximumDurationMillis) {
                 throw std::invalid_argument("assembly clip duration or fades are invalid");
             }
+            const auto& points = clip.gain_envelope;
+            if (points.size() > 2048)
+                throw std::invalid_argument("too many gain envelope points");
+            for (std::size_t i = 0; i < points.size(); ++i) {
+                if (points[i].gain_centibels < -9600 || points[i].gain_centibels > 1200
+                    || points[i].source_millis
+                           > std::numeric_limits<std::uint64_t>::max() / kSampleRate
+                    || (i > 0 && points[i - 1].source_millis >= points[i].source_millis))
+                    throw std::invalid_argument("invalid gain envelope point");
+            }
             ClipState state;
             state.clip = &clip;
             state.track = &track;
@@ -282,6 +292,32 @@ void mix_clip(
                 static_cast<float>(remaining) / static_cast<float>(state.fade_out_frames)
             );
         }
+        if (state.clip->gain_envelope_enabled && !state.clip->gain_envelope.empty()) {
+            const auto& points = state.clip->gain_envelope;
+            const double source_millis =
+                static_cast<double>(state.source_start_frame + clip_frame) / 48.0;
+            const auto upper = std::upper_bound(
+                points.begin(),
+                points.end(),
+                source_millis,
+                [](double time, const AssemblyGainPoint& point) {
+                    return time < static_cast<double>(point.source_millis);
+                }
+            );
+            double gain = 0;
+            if (upper == points.begin())
+                gain = points.front().gain_centibels;
+            else if (upper == points.end())
+                gain = points.back().gain_centibels;
+            else {
+                const auto& a = *(upper - 1);
+                const auto& b = *upper;
+                const double t = (source_millis - static_cast<double>(a.source_millis))
+                                 / static_cast<double>(b.source_millis - a.source_millis);
+                gain = a.gain_centibels + t * (b.gain_centibels - a.gain_centibels);
+            }
+            fade *= static_cast<float>(std::pow(10.0, gain / 2000.0));
+        }
         float left = scratch[frame * kChannels] * state.gain * fade;
         float right = scratch[frame * kChannels + 1] * state.gain * fade;
         apply_pan(left, right, state.clip->pan_percent);
@@ -308,8 +344,19 @@ OfflineRenderResult OfflineAssemblyWavRenderer::render(
         throw std::invalid_argument("assembly master mix is outside the supported range");
     }
     auto states = prepare_clip_states(plan);
-    const std::uint64_t expected_frames =
+    const std::uint64_t project_frames =
         std::ranges::max(states | std::views::transform(&ClipState::timeline_end_frame));
+    if (plan.render_start_millis > kMaximumDurationMillis
+        || plan.render_end_millis > kMaximumDurationMillis)
+        throw std::invalid_argument("assembly preview window is outside the supported range");
+    const auto start_frame = frames_from_millis(plan.render_start_millis);
+    const auto end_frame =
+        plan.render_end_millis == 0
+            ? project_frames
+            : std::min(project_frames, frames_from_millis(plan.render_end_millis));
+    if (start_frame >= end_frame)
+        throw std::invalid_argument("assembly preview window is empty");
+    const auto expected_frames = end_frame - start_frame;
     constexpr std::uint64_t bytes_per_frame = kChannels * (kBitDepth / 8U);
     if (expected_frames > (std::numeric_limits<std::uint32_t>::max() - 36U) / bytes_per_frame) {
         throw std::invalid_argument("assembly exceeds the WAV v1 size limit");
@@ -329,15 +376,14 @@ OfflineRenderResult OfflineAssemblyWavRenderer::render(
     std::vector<float> measured;
     std::vector<std::byte> encoded;
     Dither dither;
-    std::uint64_t cursor = 0;
+    std::uint64_t cursor = start_frame;
     std::uint64_t data_bytes = 0;
-    while (cursor < expected_frames) {
+    while (cursor < end_frame) {
         if (cancelled(callbacks)) {
             throw OfflineRenderCancelled();
         }
-        const auto frames = static_cast<std::size_t>(
-            std::min<std::uint64_t>(kChunkFrames, expected_frames - cursor)
-        );
+        const auto frames =
+            static_cast<std::size_t>(std::min<std::uint64_t>(kChunkFrames, end_frame - cursor));
         mix.assign(frames * kChannels, 0.0F);
         for (auto& state : states) {
             mix_clip(state, cursor, frames, mix, scratch, callbacks);
@@ -353,7 +399,7 @@ OfflineRenderResult OfflineAssemblyWavRenderer::render(
         data_bytes += encoded.size();
         report_progress(
             callbacks,
-            static_cast<double>(cursor) / static_cast<double>(expected_frames)
+            static_cast<double>(cursor - start_frame) / static_cast<double>(expected_frames)
         );
     }
     sink.seek(0);

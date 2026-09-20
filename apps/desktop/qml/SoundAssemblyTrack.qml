@@ -21,6 +21,7 @@ Rectangle {
     property var waveforms: ({})
     property var snapPosition
     property bool anySolo: false
+    property bool automationEditing: false
     readonly property color trackColor: ["#498eba", "#759b71", "#b49360", "#ad799e", "#6c9ea0", "#af7d63", "#8286ba", "#979561"][trackIndex % 8]
     readonly property var crossfades: {
         const pairs = [];
@@ -91,6 +92,7 @@ Rectangle {
             delegate: SoundAssemblyClip {
                 required property var modelData
                 clipData: modelData
+                automationEditing: trackRow.automationEditing
                 title: {
                     const source = trackRow.assetFor(modelData);
                     return SoundSemantics.sourceTitle(source) || qsTr("Unavailable source");

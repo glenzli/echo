@@ -3,6 +3,7 @@
 #include "desktop_backend.hpp"
 #include "playback_adjustment_projection.hpp"
 #include "playback_controller.hpp"
+#include "prepared_assembly_source_cache.hpp"
 #include "qt_render_byte_sink.hpp"
 
 #include <QDir>
@@ -28,6 +29,7 @@ struct PreparedSourceJob {
     QString source_path;
     QString prepared_path;
     echo::audio::PlaybackAdjustment adjustment;
+    QVariantMap identity;
 };
 
 struct AssemblyJob {
@@ -126,7 +128,7 @@ assembly_job(const QVariantMap& revision, const QString& preparation_root, QStri
                     QDir(preparation_root)
                         .filePath(QStringLiteral("source-%1.wav").arg(job.sources.size()));
                 prepared_by_key.insert(source_key, prepared_path);
-                job.sources.push_back({source_path, prepared_path, *adjustment});
+                job.sources.push_back({source_path, prepared_path, *adjustment, source});
             }
             echo::audio::AssemblyClipSource clip;
             clip.path = prepared_path.toStdString();
@@ -161,6 +163,17 @@ assembly_job(const QVariantMap& revision, const QString& preparation_root, QStri
             clip.fade_in_curve = *fade_in_curve;
             clip.fade_out_curve = *fade_out_curve;
             clip.muted = clip_value.value(QStringLiteral("muted")).toBool();
+            const auto envelope = clip_value.value(QStringLiteral("gainEnvelope")).toMap();
+            clip.gain_envelope_enabled = envelope.value(QStringLiteral("enabled")).toBool();
+            for (const auto& value : envelope.value(QStringLiteral("points")).toList()) {
+                const auto point = value.toMap();
+                clip.gain_envelope.push_back(
+                    {point.value(QStringLiteral("sourceMillis")).toULongLong(),
+                     static_cast<std::int16_t>(
+                         point.value(QStringLiteral("gainCentibels")).toInt()
+                     )}
+                );
+            }
             track.clips.push_back(std::move(clip));
         }
         job.plan.tracks.push_back(std::move(track));
@@ -199,6 +212,18 @@ SoundAssemblyController::~SoundAssemblyController() {
 }
 
 void SoundAssemblyController::preparePreview(const QVariantMap& revision) {
+    prepareRangePreview(revision, 0, 0);
+}
+
+void SoundAssemblyController::prepareRangePreview(
+    const QVariantMap& revision,
+    qint64 startMillis,
+    qint64 endMillis
+) {
+    if (startMillis < 0 || endMillis < 0 || (endMillis > 0 && endMillis <= startMillis)) {
+        reject(tr("The preview range is invalid."));
+        return;
+    }
     if (!preview_directory_.isValid()) {
         reject(tr("Cannot create the private assembly preview directory."));
         return;
@@ -208,7 +233,10 @@ void SoundAssemblyController::preparePreview(const QVariantMap& revision) {
         revision,
         QDir(preview_directory_.path())
             .filePath(QStringLiteral("preview-%1.wav").arg(next_generation)),
-        true
+        true,
+        false,
+        startMillis,
+        endMillis
     );
 }
 
@@ -234,7 +262,9 @@ void SoundAssemblyController::start(
     const QVariantMap& revision,
     const QString& destination,
     bool preview,
-    bool preserveMemory
+    bool preserveMemory,
+    qint64 startMillis,
+    qint64 endMillis
 ) {
     if (destination.isEmpty()) {
         reject(tr("The assembly destination is invalid."));
@@ -276,6 +306,21 @@ void SoundAssemblyController::start(
     error_text_.clear();
     emit stateChanged();
     emit progressChanged();
+    projected->plan.render_start_millis = static_cast<std::uint64_t>(startMillis);
+    projected->plan.render_end_millis = static_cast<std::uint64_t>(endMillis);
+    if (preview && endMillis > 0) {
+        std::erase_if(projected->sources, [&](const PreparedSourceJob& source) {
+            for (const auto& track : projected->plan.tracks)
+                for (const auto& clip : track.clips)
+                    if (clip.path == source.prepared_path.toStdString()
+                        && clip.timeline_start_millis < static_cast<std::uint64_t>(endMillis)
+                        && clip.timeline_start_millis + clip.source_end_millis
+                                   - clip.source_start_millis
+                               > static_cast<std::uint64_t>(startMillis))
+                        return false;
+            return true;
+        });
+    }
     worker_ = std::jthread([this,
                             generation,
                             destination,
@@ -285,56 +330,53 @@ void SoundAssemblyController::start(
                             job = std::move(*projected)](std::stop_token stop_token) mutable {
         try {
             const double preparation_share = 0.6;
+            PreparedAssemblySourceCache source_cache(
+                QDir(preview_directory_.path()).filePath(QStringLiteral("sources"))
+            );
+            int reused_sources = 0;
             auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
             for (std::size_t index = 0; index < job.sources.size(); ++index) {
                 if (stop_token.stop_requested()) {
                     throw echo::audio::OfflineRenderCancelled();
                 }
                 const auto& source = job.sources[index];
-                QSaveFile prepared(source.prepared_path);
-                prepared.setDirectWriteFallback(false);
-                if (!prepared.open(QIODevice::WriteOnly)) {
-                    throw std::runtime_error(prepared.errorString().toStdString());
-                }
-                QtRenderByteSink sink(prepared);
-                [[maybe_unused]] const auto prepared_result =
-                    echo::audio::OfflineWavRenderer::render(
-                        source.source_path.toStdString(),
-                        source.adjustment,
-                        sink,
-                        {
-                            .cancelled = [&stop_token] { return stop_token.stop_requested(); },
-                            .progress =
-                                [this,
-                                 generation,
-                                 index,
-                                 count = job.sources.size(),
-                                 &last_progress](double value) {
-                                    const auto now = std::chrono::steady_clock::now();
-                                    if (value < 1.0
-                                        && now - last_progress < std::chrono::milliseconds(80)) {
-                                        return;
-                                    }
-                                    last_progress = now;
-                                    const double overall = 0.6
-                                                           * (static_cast<double>(index) + value)
-                                                           / static_cast<double>(count);
-                                    QMetaObject::invokeMethod(
-                                        this,
-                                        [this, generation, overall] {
-                                            if (generation_.load() == generation) {
-                                                progress_ = overall;
-                                                emit progressChanged();
-                                            }
-                                        },
-                                        Qt::QueuedConnection
-                                    );
-                                },
-                        }
-                    );
-                if (!prepared.commit()) {
-                    throw std::runtime_error(prepared.errorString().toStdString());
-                }
+                const auto prepared_result = source_cache.prepare(
+                    source.source_path,
+                    source.identity,
+                    source.adjustment,
+                    {
+                        .cancelled = [&stop_token] { return stop_token.stop_requested(); },
+                        .progress =
+                            [this, generation, index, count = job.sources.size(), &last_progress](
+                                double value
+                            ) {
+                                const auto now = std::chrono::steady_clock::now();
+                                if (value < 1.0
+                                    && now - last_progress < std::chrono::milliseconds(80)) {
+                                    return;
+                                }
+                                last_progress = now;
+                                const double overall = 0.6 * (static_cast<double>(index) + value)
+                                                       / static_cast<double>(count);
+                                QMetaObject::invokeMethod(
+                                    this,
+                                    [this, generation, overall] {
+                                        if (generation_.load() == generation) {
+                                            progress_ = overall;
+                                            emit progressChanged();
+                                        }
+                                    },
+                                    Qt::QueuedConnection
+                                );
+                            },
+                    }
+                );
+                if (prepared_result.reused)
+                    ++reused_sources;
+                for (auto& track : job.plan.tracks)
+                    for (auto& clip : track.clips)
+                        if (clip.path == source.prepared_path.toStdString())
+                            clip.path = prepared_result.path.toStdString();
             }
 
             QSaveFile output(destination);
@@ -378,6 +420,7 @@ void SoundAssemblyController::start(
                 throw std::runtime_error(output.errorString().toStdString());
             }
             QDir(preparation_root).removeRecursively();
+            source_cache.trim();
             QString publication_error;
             if (!preview) {
                 publication_error = backend_.recordSoundAssemblyExport(
@@ -403,11 +446,13 @@ void SoundAssemblyController::start(
                  preserveMemory,
                  assemblyId = job.assembly_id,
                  result,
+                 reused_sources,
                  publication_error] {
                     if (generation_.load() != generation) {
                         return;
                     }
                     running_ = false;
+                    reused_source_count_ = reused_sources;
                     has_result_ = !preview && publication_error.isEmpty();
                     has_preview_ = preview;
                     progress_ = 1.0;

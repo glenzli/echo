@@ -30,14 +30,23 @@ Rectangle {
     readonly property string noticeText: memorySavedNotice ? qsTr("This version is now in your memory library.") : ""
     property bool sourcesVisible: false
     property bool inspectorVisible: true
+    property alias ducking: duckingPanel
+    property bool duckingVisible: false
+    property bool automationEditing: false
     property bool snapping: true
     property bool followPlayback: true
     property real snapGuideMillis: -1
     property string previewDocumentJson: ""
     property string pendingPreviewJson: ""
     property bool playbackOwned: false
+    property bool previewSelection: false
+    property bool loopPreview: false
+    readonly property real previewRangeStart: previewSelection && selectedClip ? selectedClip.timelineStartMillis : 0
+    readonly property real previewRangeEnd: previewSelection && selectedClip ? Editing.end(selectedClip) : durationMillis
+    readonly property string previewKey: authoredJson(document) + "|" + previewRangeStart + ":" + previewRangeEnd
+    onPreviewKeyChanged: { if (playbackOwned) stopPlayback(); }
     property real previewStartMillis: 0
-    readonly property bool previewCurrent: soundAssemblyController.hasPreview && previewDocumentJson === authoredJson(document)
+    readonly property bool previewCurrent: soundAssemblyController.hasPreview && previewDocumentJson === previewKey
     readonly property real scrollPosition: timelineFlick.contentX
     readonly property real laneViewportWidth: Math.max(1, timelineFlick.width - trackHeaderWidth)
     signal editClipRequested(var asset, var revision, string clipId)
@@ -198,10 +207,10 @@ Rectangle {
         materialPlayer.stop();
         const revision = dirty ? saveRevision() : document;
         if (revision) {
-            pendingPreviewJson = authoredJson(revision);
-            previewStartMillis = playheadMillis >= durationMillis ? 0 : playheadMillis;
+            pendingPreviewJson = previewKey;
+            previewStartMillis = playheadMillis < previewRangeStart || playheadMillis >= previewRangeEnd ? previewRangeStart : playheadMillis;
             playbackOwned = true;
-            soundAssemblyController.preparePreview(revision);
+            soundAssemblyController.prepareRangePreview(revision, previewRangeStart, previewRangeEnd);
         }
     }
 
@@ -548,9 +557,9 @@ Rectangle {
         reconcileSelection();
     }
     function stopPlayback(): void {
-        if (playbackOwned)
-            player.stop();
+        const owned = playbackOwned;
         playbackOwned = false;
+        if (owned) player.stop();
     }
     function togglePlayback(): void {
         if (soundAssemblyController.running) {
@@ -567,7 +576,7 @@ Rectangle {
             else {
                 playbackOwned = true;
                 player.play(soundAssemblyController.previewPath);
-                player.seek(Math.round(playheadMillis >= durationMillis ? 0 : playheadMillis));
+                player.seek(Math.round(playheadMillis < previewRangeStart || playheadMillis >= previewRangeEnd ? 0 : playheadMillis - previewRangeStart));
             }
         } else
             preview();
@@ -575,7 +584,7 @@ Rectangle {
     function seekTo(position: real): void {
         playheadMillis = Editing.clamp(Math.round(position), 0, durationMillis);
         if (playbackOwned && previewCurrent && player.active)
-            player.seek(Math.round(playheadMillis));
+            player.seek(Math.round(Editing.clamp(playheadMillis - previewRangeStart, 0, previewRangeEnd - previewRangeStart)));
     }
     function fitProject(): void {
         if (!hasDocument) return;
@@ -686,10 +695,14 @@ Rectangle {
     }
     Connections {
         target: player
+        function onStateChanged(): void {
+            if (!player.active && workspace.visible && workspace.playbackOwned && workspace.previewCurrent && workspace.loopPreview)
+                Qt.callLater(() => { if (workspace.playbackOwned && workspace.previewCurrent && workspace.loopPreview) player.play(soundAssemblyController.previewPath); });
+        }
         function onPositionChanged(): void {
             if (!workspace.visible || !workspace.playbackOwned || !workspace.previewCurrent)
                 return;
-            workspace.playheadMillis = player.position;
+            workspace.playheadMillis = workspace.previewRangeStart + player.position;
             const x = workspace.playheadMillis * workspace.pixelsPerSecond / 1000;
             if (workspace.followPlayback && player.playing && (x < timelineFlick.contentX || x > timelineFlick.contentX + workspace.laneViewportWidth - 50))
                 timelineFlick.contentX = Math.max(0, x - 50);
@@ -782,6 +795,19 @@ Rectangle {
                         font.pixelSize: Theme.fontMeta
                     }
 
+                    EchoIconButton {
+                        source: "qrc:/EchoDesktop/icons/fit-selection.svg"
+                        toolTipText: qsTr("Preview selected clip range")
+                        selected: workspace.previewSelection
+                        enabled: workspace.selectedClip !== null && !soundAssemblyController.running
+                        onClicked: workspace.previewSelection = !workspace.previewSelection
+                    }
+                    EchoIconButton {
+                        source: "qrc:/EchoDesktop/icons/loop.svg"
+                        toolTipText: qsTr("Loop preview")
+                        selected: workspace.loopPreview
+                        onClicked: workspace.loopPreview = !workspace.loopPreview
+                    }
                     EchoButton {
                         objectName: "assemblyPreviewButton"
                         text: soundAssemblyController.running ? qsTr("Cancel") : workspace.playbackOwned && player.playing ? qsTr("Pause") : qsTr("Preview")
@@ -949,6 +975,7 @@ Rectangle {
                                         required property var modelData
                                         required property int index
                                         width: trackColumn.width
+                                        automationEditing: workspace.automationEditing
                                         sourceAssets: workspace.libraryAssets
                                         clipSources: workspace.document.clipSources || []
                                         waveforms: assemblyWaveforms.waveforms
@@ -1232,6 +1259,45 @@ Rectangle {
                                         }
                                     }
                                 }
+                                EchoButton {
+                                    text: qsTr("Automatic music ducking")
+                                    onClicked: workspace.duckingVisible = !workspace.duckingVisible
+                                }
+                                SoundDuckingPanel {
+                                    id: duckingPanel
+                                    visible: workspace.duckingVisible
+                                    Layout.fillWidth: true
+                                    document: workspace.document
+                                    targetTrackIndex: workspace.selectedTrackIndex
+                                    assets: workspace.libraryAssets
+                                    waveforms: assemblyWaveforms.waveforms
+                                    blocked: soundAssemblyController.running
+                                    onApplyRequested: candidates => {
+                                        workspace.mutate(next => {
+                                            for (const clip of next.tracks[workspace.selectedTrackIndex].clips) {
+                                                const candidate = candidates.find(c => c.id === clip.id);
+                                                if (candidate) clip.gainEnvelope = candidate.envelope;
+                                            }
+                                        });
+                                        workspace.automationEditing = true;
+                                    }
+                                }
+                                Label { text: qsTr("Volume envelope"); font.weight: Font.DemiBold }
+                                RowLayout {
+                                    Label { text: qsTr("Edit points") }
+                                    EchoSwitch { accessibleName: qsTr("Edit points"); checked: workspace.automationEditing; onToggled: workspace.automationEditing = checked }
+                                    Label { text: qsTr("Enabled") }
+                                    EchoSwitch {
+                                        accessibleName: qsTr("Envelope enabled")
+                                        checked: workspace.selectedClip !== null && !!(workspace.selectedClip.gainEnvelope || {}).enabled
+                                        onToggled: workspace.setClipValue("gainEnvelope", {enabled: checked, points: (workspace.selectedClip.gainEnvelope || {}).points || []})
+                                    }
+                                }
+                                EchoButton {
+                                    text: qsTr("Clear envelope")
+                                    enabled: workspace.selectedClip !== null && ((workspace.selectedClip.gainEnvelope || {}).points || []).length > 0
+                                    onClicked: workspace.setClipValue("gainEnvelope", {enabled: false, points: []})
+                                }
                                 EchoParameterSlider {
                                     Layout.fillWidth: true
                                     label: qsTr("Clip gain")
@@ -1504,7 +1570,7 @@ Rectangle {
                     workspace.previewDocumentJson = workspace.pendingPreviewJson;
                     if (workspace.previewCurrent && workspace.visible) {
                         workspace.playbackOwned = true;
-                        player.seek(Math.round(workspace.previewStartMillis));
+                        player.seek(Math.round(workspace.previewStartMillis - workspace.previewRangeStart));
                     } else
                         workspace.stopPlayback();
                 }

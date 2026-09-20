@@ -137,6 +137,8 @@ qt_add_executable(
     src/semantic_search_controller.hpp
     src/assembly_waveform_controller.cpp
     src/assembly_waveform_controller.hpp
+    src/prepared_assembly_source_cache.cpp
+    src/prepared_assembly_source_cache.hpp
     src/sound_assembly_controller.cpp
     src/sound_assembly_controller.hpp
     src/noise_profile_controller.cpp
@@ -243,6 +245,9 @@ qt_add_qml_module(
         qml/SoundAdjustmentEditor.qml
         qml/EchoTimeSpinBox.qml
         qml/SoundAssemblyEditing.js
+        qml/SoundAutomation.js
+        qml/SoundDuckingPanel.qml
+        qml/SoundGainEnvelope.qml
         qml/SoundAssemblyClip.qml
         qml/SoundAssemblyTrack.qml
         qml/MemoryWorkflowSmoke.qml
@@ -386,6 +391,12 @@ qt_add_translations(
 )
 
 if(BUILD_TESTING)
+    add_executable(echo-prepared-assembly-source-cache-test tests/prepared_assembly_source_cache_test.cpp src/prepared_assembly_source_cache.cpp)
+    target_include_directories(echo-prepared-assembly-source-cache-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_compile_features(echo-prepared-assembly-source-cache-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-prepared-assembly-source-cache-test PRIVATE Echo::Audio Qt6::Core)
+    echo_audio_enable_warnings(echo-prepared-assembly-source-cache-test)
+    add_test(NAME echo-prepared-assembly-source-cache-test COMMAND echo-prepared-assembly-source-cache-test)
     add_executable(echo-semantic-search-controller-test tests/semantic_search_controller_test.cpp src/semantic_search_controller.cpp src/semantic_search_controller.hpp)
     target_include_directories(echo-semantic-search-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
     target_compile_features(echo-semantic-search-controller-test PRIVATE cxx_std_20)

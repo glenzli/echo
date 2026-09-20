@@ -16,6 +16,7 @@ class PlaybackController;
 
 class SoundAssemblyController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(int reusedSourceCount READ reusedSourceCount NOTIFY stateChanged)
     Q_PROPERTY(bool running READ running NOTIFY stateChanged)
     Q_PROPERTY(bool hasPreview READ hasPreview NOTIFY stateChanged)
     Q_PROPERTY(bool hasResult READ hasResult NOTIFY stateChanged)
@@ -35,10 +36,15 @@ class SoundAssemblyController : public QObject {
     ~SoundAssemblyController() override;
 
     Q_INVOKABLE void preparePreview(const QVariantMap& revision);
+    Q_INVOKABLE void
+    prepareRangePreview(const QVariantMap& revision, qint64 startMillis, qint64 endMillis);
     Q_INVOKABLE void exportAssembly(const QVariantMap& revision, const QUrl& destination);
     Q_INVOKABLE void saveToMemory(const QVariantMap& revision);
     Q_INVOKABLE void cancel();
 
+    int reusedSourceCount() const {
+        return reused_source_count_;
+    }
     [[nodiscard]] bool running() const;
     [[nodiscard]] bool hasPreview() const;
     [[nodiscard]] bool hasResult() const;
@@ -59,7 +65,9 @@ class SoundAssemblyController : public QObject {
         const QVariantMap& revision,
         const QString& destination,
         bool preview,
-        bool preserveMemory = false
+        bool preserveMemory = false,
+        qint64 startMillis = 0,
+        qint64 endMillis = 0
     );
     void stopWorker();
     void reject(const QString& message);
@@ -69,6 +77,7 @@ class SoundAssemblyController : public QObject {
     QTemporaryDir preview_directory_;
     std::jthread worker_;
     std::atomic<std::uint64_t> generation_{0};
+    int reused_source_count_ = 0;
     bool running_ = false;
     bool has_preview_ = false;
     bool has_result_ = false;

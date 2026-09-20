@@ -10,6 +10,9 @@ use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
+mod envelope;
+pub use envelope::{GainEnvelope, GainEnvelopePoint, MAX_GAIN_ENVELOPE_POINTS};
+
 use crate::{
     AssemblyClipId, AssemblyTrackId, AssetId, FadeCurve, MAX_GAIN_CENTIBELS, MIN_GAIN_CENTIBELS,
     SoundAssemblyId,
@@ -53,6 +56,8 @@ pub struct AssemblyClip {
     fade_in_curve: FadeCurve,
     fade_out_curve: FadeCurve,
     muted: bool,
+    #[serde(default, skip_serializing_if = "GainEnvelope::is_empty")]
+    gain_envelope: GainEnvelope,
 }
 
 impl AssemblyClip {
@@ -115,6 +120,7 @@ impl AssemblyClip {
             fade_in_curve,
             fade_out_curve,
             muted,
+            gain_envelope: GainEnvelope::default(),
         })
     }
 
@@ -211,6 +217,7 @@ impl AssemblyClip {
     ///
     /// Returns the violated clip contract.
     pub fn validate(&self) -> Result<(), SoundAssemblyError> {
+        self.gain_envelope.validate()?;
         Self::new(
             self.id,
             self.asset_id,
@@ -560,6 +567,7 @@ pub enum SoundAssemblyError {
     PanOutOfRange,
     DurationOutOfRange,
     InvalidLimiter,
+    InvalidGainEnvelope,
 }
 
 impl std::fmt::Display for SoundAssemblyError {
@@ -578,6 +586,7 @@ impl std::fmt::Display for SoundAssemblyError {
             Self::PanOutOfRange => "assembly pan must be between -100 and 100 percent",
             Self::DurationOutOfRange => "assembly duration must not exceed 4 hours",
             Self::InvalidLimiter => "assembly limiter is outside the supported range",
+            Self::InvalidGainEnvelope => "gain envelope requires ordered unique source times, at most 2048 points and gains from -96 to +12 dB",
         })
     }
 }

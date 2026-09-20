@@ -25,7 +25,7 @@ TestCase {
     EchoComboBox { id: translatedChoice; x: 800; y: 30; model: ["Linear", "Smooth", "Equal power"]; selectionIndex: 2 }
     SignalSpy { id: patches; target: clip; signalName: "patchRequested" }
     function initTestCase() { Theme.mode = Theme.AppearanceMode.Dark; }
-    function init() { patches.clear(); }
+    function init() { patches.clear(); clip.automationEditing = false; }
     function dragAt(x, y, dx, modifiers) {
         mousePress(clip, x, y, Qt.LeftButton, modifiers || Qt.NoModifier);
         mouseMove(clip, x + dx / 2, y, 40, Qt.LeftButton, modifiers || Qt.NoModifier);
@@ -53,6 +53,16 @@ TestCase {
         const pixels = grabImage(tintedIcon);
         const color = pixels.pixel(6, 24);
         verify(color.b > 0.8 && color.g > 0.5 && color.r > 0.4, "black vector did not acquire its light theme color");
+    }
+    function test_envelope_drag_is_one_patch_and_does_not_move_clip() {
+        clip.automationEditing = true;
+        dragAt(150, 55, 80, Qt.ShiftModifier);
+        compare(patches.count, 1);
+        const patch = patches.signalArguments[0][0];
+        compare(patch.timelineStartMillis, 1000);
+        compare(patch.gainEnvelope.enabled, true);
+        compare(patch.gainEnvelope.points.length, 1);
+        verify(patch.gainEnvelope.points[0].sourceMillis >= 2000);
     }
     function test_move_is_single_undo_patch() {
         dragAt(150, 50, 50, Qt.ShiftModifier);

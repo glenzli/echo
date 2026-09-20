@@ -61,7 +61,11 @@ retains bounded overview buckets for the active project's sources. The overview
 follows pinned source segments and gaps; it does not claim to show rendered DSP.
 Library selection creates a sequence or layered document. Every clip pins an
 exact asset adjustment revision. `SoundAssemblyController` first renders each
-unique pinned revision through the existing single-sound offline renderer,
+unique pinned revision through the existing single-sound offline renderer.
+`PreparedAssemblySourceCache` reuses canonical sources by source bytes, pinned
+adjustment identity, impulse-response bytes and renderer version. Writes are atomic,
+cancellation never admits partial outputs, and completed jobs trim retained sources
+to 4 GiB. The cache is private to the editing process and removed on exit. The controller
 then feeds the resulting canonical 48 kHz stereo sources to one shared native
 assembly plan for preview and PCM24 WAV mixdown. Catalog publication happens
 only after an atomic output commit and records the assembly revision, Original
@@ -69,11 +73,22 @@ hashes, pinned adjustment revisions, and output hash.
 
 Sources and the inspector can be collapsed independently. The ruler, grid and
 playhead share the scrolling timeline's coordinates. Preview reuse is bound to
-the authored document, including exact source versions; saving after an edit
+the authored document and preview range, including exact source versions; saving after an edit
 cannot reuse an older preview. Space toggles playback, S splits at the playhead,
 Cmd/Ctrl+D duplicates after the clip, arrows nudge 10 ms (Shift: 100 ms), F fits
 the project, and +/- zoom. Shift bypasses magnetic snapping while dragging.
-Right-click a clip for crossfade and same-track gap-closing deletion.
+Right-click a clip for crossfade and same-track gap-closing deletion. Selected-clip
+range preview mixes all tracks over that interval; repeat playback reuses this render.
+This is bounded offline preview, not live mixer automation.
+
+`SoundGainEnvelope.qml` owns viewport-sized point gestures; `SoundAutomation.js`
+owns source-time dB interpolation and deterministic ducking geometry.
+`SoundDuckingPanel.qml` detects original-waveform peak activity in bounded per-clip
+steps, maps it through source cuts/gaps, and generates replacement envelopes for
+one target track. It reports source activity, not speech detection or post-effect
+loudness. Applying a candidate is one undo step. Gain envelopes remain editable,
+bypassable, persistent, and stable under move, split and trim; the native mixer uses
+the same source-time dB interpolation for preview and export.
 
 Interaction references: [Audition clip editing](https://helpx.adobe.com/ca/audition/using/arranging-editing-multitrack-clips.html),
 [Audacity tracks and clips](https://manual.audacityteam.org/man/audacity_tracks_and_clips.html),
