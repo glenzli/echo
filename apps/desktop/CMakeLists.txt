@@ -122,6 +122,7 @@ qt_add_executable(
     src/batch_export_controller.hpp
     src/playback_controller.cpp
     src/playback_controller.hpp
+    src/playback_session_handoff.hpp
     src/creative_vfx_projection.cpp
     src/creative_vfx_projection.hpp
     src/creative_vfx_presets.cpp
@@ -403,6 +404,13 @@ qt_add_translations(
 )
 
 if(BUILD_TESTING)
+    add_executable(echo-playback-session-handoff-test tests/playback_session_handoff_test.cpp)
+    target_include_directories(echo-playback-session-handoff-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_compile_features(echo-playback-session-handoff-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-playback-session-handoff-test PRIVATE Echo::Audio Qt6::Core)
+    echo_audio_enable_warnings(echo-playback-session-handoff-test)
+    add_test(NAME echo-playback-session-handoff-test COMMAND echo-playback-session-handoff-test)
+    set_tests_properties(echo-playback-session-handoff-test PROPERTIES TIMEOUT 30)
     add_executable(echo-selection-transcription-controller-test tests/selection_transcription_controller_test.cpp src/selection_transcription_controller.cpp src/selection_transcription_controller.hpp)
     target_include_directories(echo-selection-transcription-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
     target_compile_features(echo-selection-transcription-controller-test PRIVATE cxx_std_20)

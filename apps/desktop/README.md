@@ -54,6 +54,12 @@ duplicate global history commands. Pointer movement never
 persists or recompiles playback; the prepared graph is rebuilt only when the
 user explicitly auditions the changed draft.
 
+`PlaybackSessionHandoff` owns the control-thread publication and reclamation of
+sessions borrowed by the audio callback. Replaced sessions survive in-flight reads,
+then retire on the control thread; a temporary cleanup timer also runs after stop
+or pause. Replaying does not accumulate decoder buffers until the window closes,
+and the callback never allocates, releases shared ownership, or destroys a session.
+
 Sound Assembly is a third peer workspace. `SoundAssemblyWorkspace.qml` owns
 the versioned document, bounded undo/redo history, timeline commands, preview,
 and mixdown presentation. `SoundAssemblyInspector.qml` owns compact clip/master parameter presentation,

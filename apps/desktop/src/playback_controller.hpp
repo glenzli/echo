@@ -3,7 +3,7 @@
 //! One sink is created for the controller lifetime and reused across plays:
 //! disposing a CoreAudio audio unit on replay crashes Qt 6.11.1's CoreAudio
 //! backend, so pause uses suspend/resume and a new recording just swaps the
-//! session the callback reads from (shared_ptr-protected).
+//! session the callback borrows until its current read finishes.
 
 #pragma once
 
@@ -13,11 +13,10 @@
 #include <QVariantList>
 #include <QVariantMap>
 
-#include <atomic>
 #include <memory>
-#include <vector>
 
 #include "echo/audio/playback.hpp"
+#include "playback_session_handoff.hpp"
 
 class PlaybackController : public QObject {
     Q_OBJECT
@@ -158,15 +157,13 @@ class PlaybackController : public QObject {
     void startSession(const QString& path, const echo::audio::PlaybackAdjustment& adjustment);
     void pumpPosition();
     void fillBuffer(QSpan<float> buffer);
+    void publishSession(std::shared_ptr<echo::audio::PlaybackSession> session);
 
     std::shared_ptr<echo::audio::PlaybackSession> current_session_;
-    // The audio callback reads this raw pointer; the session it names stays
-    // alive through `current_session_` or `retired_sessions_` until the sink
-    // is destroyed, so the callback can never touch a freed object.
-    std::atomic<echo::audio::PlaybackSession*> callback_session_{nullptr};
-    std::vector<std::shared_ptr<echo::audio::PlaybackSession>> retired_sessions_;
+    PlaybackSessionHandoff callback_sessions_;
     std::unique_ptr<QAudioSink> sink_;
     QTimer position_timer_;
+    QTimer session_cleanup_timer_;
     qreal volume_ = 0.8;
     qreal momentary_lufs_ = -70.0;
     qreal output_peak_db_ = -70.0;

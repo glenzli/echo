@@ -12,6 +12,9 @@ Item {
     property int ticks: 0
     property string reportJson: ""
     property var facts: ({})
+    property int auditionCycle: 0
+    property int auditionWaitTicks: 0
+    property real auditionVolume: 0.8
     function require(value, message) { if (!value) throw new Error(message); }
     function checkBatchEditing() {
         const before = JSON.stringify(assembly.document);
@@ -104,7 +107,29 @@ Item {
             require(soundAssemblyController.hasPreview,soundAssemblyController.errorText || "preview failed");
             facts.previewDuration=player.duration;
             require(Math.abs(player.duration-(assembly.previewRangeEnd-assembly.previewRangeStart))<2,"range preview duration mismatch");
-            assembly.stopPlayback();stage=6;break;
+            assembly.stopPlayback();
+            auditionVolume=player.volume;player.volume=0;
+            stage=30;break;
+        case 30:
+            if(auditionCycle===24) {
+                player.stop();player.volume=auditionVolume;
+                facts.repeatedAuditions=auditionCycle;
+                stage=6;break;
+            }
+            player.play(soundAssemblyController.previewPath);
+            require(player.active && player.duration>0,"repeated audition failed to start");
+            player.seek(100);auditionWaitTicks=0;stage=31;break;
+        case 31:
+            if(player.position<150) {
+                require(++auditionWaitTicks<12,"device callback did not advance the audition");
+                return;
+            }
+            player.togglePause();require(player.paused,"audition did not pause");
+            player.togglePause();require(player.playing,"audition did not resume");
+            ++auditionCycle;
+            // Alternate explicit stop/replay with direct replacement while active.
+            if(auditionCycle%2===0) player.stop();
+            stage=30;break;
         case 6:
             soundAssemblyController.exportAssembly(assembly.document,'file://'+fixtureRoot+(reopening?'/reopened.wav':'/mix.wav'));++stage;break;
         case 7:

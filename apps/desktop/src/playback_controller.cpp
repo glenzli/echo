@@ -22,19 +22,23 @@
 PlaybackController::PlaybackController(QObject* parent) : QObject(parent) {
     position_timer_.setInterval(100);
     connect(&position_timer_, &QTimer::timeout, this, &PlaybackController::pumpPosition);
+    session_cleanup_timer_.setInterval(100);
+    connect(&session_cleanup_timer_, &QTimer::timeout, this, [this] {
+        if (callback_sessions_.collectRetired())
+            session_cleanup_timer_.stop();
+    });
 }
 
 PlaybackController::~PlaybackController() {
-    // Stop the sink while the session is still alive so no callback can touch
-    // a destroyed session; the shared_ptr in the callback keeps the session
-    // valid even if a callback is in flight.
+    // Quiesce the device before releasing the callback's borrowing owner.
     position_timer_.stop();
+    session_cleanup_timer_.stop();
     if (sink_ != nullptr) {
         sink_->stop();
+        sink_.reset();
     }
-    callback_session_.store(nullptr);
     current_session_.reset();
-    retired_sessions_.clear();
+    (void)callback_sessions_.publish(nullptr);
 }
 
 void PlaybackController::play(const QString& path) {
@@ -408,15 +412,12 @@ void PlaybackController::startSession(
         return;
     }
 
-    // Retire the previous session: the producer stops promptly, and the
-    // object itself stays alive through the retired pool until the sink is
-    // destroyed, so an in-flight audio callback can never touch freed memory.
+    // Stop its producer before publication. The handoff preserves an old
+    // session only while an in-flight callback might still read from it.
     if (current_session_ != nullptr) {
         current_session_->stop();
-        retired_sessions_.push_back(current_session_);
     }
-    current_session_ = session;
-    callback_session_.store(session.get());
+    publishSession(session);
 
     if (sink_ == nullptr) {
         const QAudioDevice output = QMediaDevices::defaultAudioOutput();
@@ -430,8 +431,7 @@ void PlaybackController::startSession(
                 format.sampleRate(),
                 format.channelCount()
             );
-            current_session_.reset();
-            callback_session_.store(nullptr);
+            publishSession(nullptr);
             return;
         }
         sink_ = std::make_unique<QAudioSink>(output, format);
@@ -451,8 +451,17 @@ void PlaybackController::startSession(
     emit meterChanged();
 }
 
+void PlaybackController::publishSession(std::shared_ptr<echo::audio::PlaybackSession> session) {
+    current_session_ = session;
+    if (callback_sessions_.publish(std::move(session)))
+        session_cleanup_timer_.stop();
+    else
+        session_cleanup_timer_.start();
+}
+
 void PlaybackController::fillBuffer(QSpan<float> buffer) {
-    echo::audio::PlaybackSession* const session = callback_session_.load();
+    const auto read = callback_sessions_.read();
+    echo::audio::PlaybackSession* const session = read.session();
     const std::size_t count = static_cast<std::size_t>(buffer.size());
     if (session == nullptr) {
         std::fill(buffer.begin(), buffer.end(), 0.0F);
@@ -488,10 +497,8 @@ void PlaybackController::stop() {
     }
     if (current_session_ != nullptr) {
         current_session_->stop();
-        retired_sessions_.push_back(current_session_);
     }
-    callback_session_.store(nullptr);
-    current_session_.reset();
+    publishSession(nullptr);
     ended_ = false;
     momentary_lufs_ = -70.0;
     output_peak_db_ = -70.0;
