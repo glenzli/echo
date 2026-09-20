@@ -253,15 +253,28 @@ impl LibrarySession {
                         let old_revision = clip["adjustmentRevisionId"]
                             .as_i64()
                             .ok_or_else(|| session_error("missing source revision"))?;
-                        let old_duration = if old_revision == 0 {
-                            duration
+                        let old_timeline = if old_revision == 0 {
+                            echo_domain::EditTimeline::identity(0, duration)
+                                .map_err(|e| session_error(e.to_string()))?
                         } else {
                             adjustment_graph_at_revision(tx, source_id, old_revision)?
                                 .ok_or_else(|| session_error("missing source revision"))?
                                 .graph
                                 .edit_timeline()
-                                .output_duration_millis()
+                                .clone()
                         };
+                        let old_duration = old_timeline.output_duration_millis();
+                        if let Some(value) = clip.get("gainEnvelope") {
+                            let envelope: echo_domain::GainEnvelope =
+                                serde_json::from_value(value.clone())
+                                    .map_err(|e| session_error(e.to_string()))?;
+                            clip["gainEnvelope"] = serde_json::to_value(
+                                envelope
+                                    .remap_source_edits(&old_timeline, graph.edit_timeline())
+                                    .map_err(|e| session_error(e.to_string()))?,
+                            )
+                            .map_err(|e| session_error(e.to_string()))?;
+                        }
                         let saved = echo_catalog::record_project_adjustment_graph(
                             tx,
                             source_id,

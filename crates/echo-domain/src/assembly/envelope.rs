@@ -3,6 +3,8 @@
 use super::SoundAssemblyError;
 use serde::{Deserialize, Serialize};
 
+mod remap;
+
 pub const MAX_GAIN_ENVELOPE_POINTS: usize = 2048;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

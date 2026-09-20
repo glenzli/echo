@@ -296,6 +296,7 @@ fn parse_asset_ids(
 
 const fn minimum_level_for(kind: AnalysisKind) -> AnalysisLevel {
     match kind {
+        AnalysisKind::SelectionTranscript => AnalysisLevel::Metadata,
         AnalysisKind::Transcript | AnalysisKind::Alignment => AnalysisLevel::Asr,
         AnalysisKind::Speakers | AnalysisKind::Emotions | AnalysisKind::AudioEvents => {
             AnalysisLevel::Understanding
@@ -308,6 +309,7 @@ const fn minimum_level_for(kind: AnalysisKind) -> AnalysisLevel {
 const fn kind_text(kind: AnalysisKind) -> &'static str {
     match kind {
         AnalysisKind::Transcript => "transcript",
+        AnalysisKind::SelectionTranscript => "selection_transcript",
         AnalysisKind::Alignment => "alignment",
         AnalysisKind::Speakers => "speakers",
         AnalysisKind::Emotions => "emotions",
@@ -321,6 +323,7 @@ const fn kind_text(kind: AnalysisKind) -> &'static str {
 fn parse_kind(text: &str) -> Option<AnalysisKind> {
     match text {
         "transcript" => Some(AnalysisKind::Transcript),
+        "selection_transcript" => Some(AnalysisKind::SelectionTranscript),
         "alignment" => Some(AnalysisKind::Alignment),
         "speakers" => Some(AnalysisKind::Speakers),
         "emotions" => Some(AnalysisKind::Emotions),

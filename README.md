@@ -32,7 +32,8 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - **声音理解**：导入后在后台渐进提取文字、时间对齐、声音事件与情境信息，并允许用户校准展示结果；精确文字检索、基于证据的自然语言检索，以及面向短、无文字录音的有限 CLAP 检索彼此保留独立证据空间。
 - **非破坏性调整**：独立的声音调整工作区提供裁剪、淡入淡出、增益、EQ、Dynamics、响度测量、录制缺陷修复、空间处理、效果顺序与局部作用范围，并支持 Original／Adjusted A/B、撤销重做和显式保存版本。
 - **确定性 Creative VFX**：Scene、Delay、Modulation、Tape、Pitch、Freeze、Granular 等处理与恢复性调整分域，可独立启用、旁路和保存，不把生成内容伪装成原录音。
-- **声音编排**：可从资料库多选按顺序或分层创建独立编排，在最多 8 条轨道、256 个片段和 4 小时范围内移动、跨轨、分割、裁剪、复制、淡化、叠加和混合；轨道提供增益、声像、Mute／Solo，Master 提供增益与 limiter，并支持撤销重做、保存不可变版本、试听和 PCM24 WAV 混音导出。
+- **编辑中的 AI**：显式转写最多五分钟的原始音频选区，按句段或可用的对齐词段定位、试听、隐藏或仅保留音频，保留边界余量与撤销。独立模式只把结果保存在当前工程。素材搜索先显示字面结果，再补充已有索引的语义候选。
+- **声音编排**：可从资料库多选按顺序或分层创建独立编排，在最多 8 条轨道、256 个片段和 4 小时范围内移动、跨轨、分割、裁剪、复制、淡化、叠加和混合；轨道提供增益、声像、Mute／Solo，Master 提供增益与 limiter，并支持撤销重做、保存不可变版本、试听和 PCM24 WAV 混音导出。片段音量包络可编辑和旁路，也可根据参考轨峰值活动生成配乐闪避曲线；来源处理可复用，并提供所选片段范围的循环试听。
 - **方案与交付**：可保存和应用处理方案，将单条录音导出为 WAV，或将有界批次导出为 WAV／FLAC；导出与频谱修复工作副本保留来源版本和处理记录。
 
 ### 当前边界
@@ -43,7 +44,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - CLAP 原声音检索当前只覆盖有界的短录音切片；长录音的完整分段语义检索仍在建设中。
 - 神经降噪、源分离和生成式声音能力不是当前开发版已完成的产品功能；公共仓库也不分发模型文件。
 - 已保存混音可从记忆库重新打开来源项目；当前不将一个混音项目嵌套为另一个项目的片段。项目内精细编辑使用原始频谱修复，渲染后工作副本仍属于单音处理入口。
-- 声音编排不是通用 DAW：当前不提供录音、输入监听、MIDI、速度网格、时间拉伸、插件宿主、发送总线、任意路由、自动化或视频同步。
+- 声音编排不是通用 DAW：当前不提供录音、输入监听、MIDI、速度网格、时间拉伸、插件宿主、发送总线、任意路由、轨道参数自动化或视频同步。
 
 ### 运行开发版
 
@@ -93,6 +94,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - **Sound understanding**: progressively extract text, alignment, sound events, and contextual information in the background, with user calibration over the displayed result. Exact text retrieval, evidence-based natural-language retrieval, and limited CLAP retrieval for short recordings without text remain separate evidence spaces.
 - **Non-destructive adjustment**: a dedicated workspace provides trim, fades, gain, EQ, dynamics, loudness measurement, recording repair, space processing, effect ordering, and bounded effect regions, with Original/Adjusted A/B, undo/redo, and explicit version saving.
 - **Deterministic Creative VFX**: Scene, Delay, Modulation, Tape, Pitch, Freeze, Granular, and related processing remain separate from restoration. Each can be enabled, bypassed, and saved without presenting generated material as the original recording.
+- **Editor AI**: explicitly transcribe up to five minutes of original audio, then locate, audition, hide or keep a segment or available aligned unit with boundary padding and undo. Independent mode keeps evidence in the current project. Material search shows literal matches first, followed by semantic candidates from existing indexes.
 - **Sound Assembly**: create a sequence or layered assembly from a Library selection, then move, re-track, split, trim, duplicate, fade, overlap, and mix up to 256 clips across 8 tracks and 4 hours. Track gain, pan, mute/solo, master gain and limiting, undo/redo, immutable version saves, preview, and PCM24 WAV mixdown are included.
 - **Recipes and delivery**: save and apply processing recipes, then export one recording as WAV or a bounded batch as WAV/FLAC. Exports and rendered spectral-repair working copies retain their source revision and processing record.
 
@@ -104,7 +106,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - Raw-audio CLAP retrieval currently covers a bounded short-recording slice. Complete segment-level semantic retrieval for long recordings is still under development.
 - Neural denoise, source separation, and generative audio are not completed product features in the current build. The public repository does not distribute model files.
 - Saved mixes reopen their source project; nesting a mix project inside another project is not supported. Project clip editing supports original spectral repair; post-render working copies remain in the single-sound workspace.
-- Sound Assembly is not a general-purpose DAW. Recording, input monitoring, MIDI, tempo grids, time stretching, plug-in hosting, sends, arbitrary routing, automation, and video sync are outside the current module.
+- Sound Assembly is not a general-purpose DAW. Recording, input monitoring, MIDI, tempo grids, time stretching, plug-in hosting, sends, arbitrary routing, track-parameter automation, and video sync are outside the current module.
 
 ### Run the development build
 

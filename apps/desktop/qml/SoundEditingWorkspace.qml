@@ -31,6 +31,7 @@ Rectangle {
     property string lastProcessingRecipeBatchId: ""
     property var renderedSpectralWorkingCopies: []
     property bool renderedSpectralEraseMode: false
+    property bool transcriptFocus: false
     property bool spectralFocus: false
     property string diagnosticMode: ""
     readonly property bool listeningToSourceBand: diagnosticMode==="source-band"
@@ -44,6 +45,8 @@ Rectangle {
     readonly property bool canUndo: adjustmentDraft.canUndo
     readonly property bool canRedo: adjustmentDraft.canRedo
     readonly property alias spectralEditor: spectralView
+    readonly property alias transcriptPanel: transcriptPanel
+    readonly property alias timeline: editorTimeline
     readonly property alias adjustment: adjustmentDraft
 
     color: Theme.window
@@ -126,7 +129,8 @@ Rectangle {
         }
     }
 
-    onSpectralFocusChanged: refreshSpectrogramPreview()
+    onSpectralFocusChanged: { if (spectralFocus) transcriptFocus=false; refreshSpectrogramPreview(); }
+    onTranscriptFocusChanged: { if (transcriptFocus) spectralFocus=false; }
     onVisibleChanged: {
         if(!visible) {spectrogramPreview.clear(); spectralPreviewTimer.stop(); noiseProfile.cancel(); noiseCaptureIdentity=""; if(diagnosticMode.length) player.stop();}
         else refreshSpectrogramPreview();
@@ -802,9 +806,9 @@ Rectangle {
             Layout.preferredHeight: 36
             spacing: 10
             EchoSegmentedControl {
-                model: [qsTr("Effects"),qsTr("Spectral repair")]
-                currentIndex: workspace.spectralFocus ? 1 : 0
-                onActivated: index => workspace.spectralFocus=index===1
+                model: [qsTr("Effects"),qsTr("Spectral repair"),qsTr("Transcript")]
+                currentIndex: workspace.transcriptFocus ? 2 : workspace.spectralFocus ? 1 : 0
+                onActivated: index => { workspace.spectralFocus=index===1; workspace.transcriptFocus=index===2; }
             }
 
             Text {
@@ -1028,9 +1032,29 @@ Rectangle {
                 }
             }
 
+            SoundTranscriptPanel {
+                id: transcriptPanel
+                visible: workspace.transcriptFocus
+                SplitView.fillWidth: true; SplitView.fillHeight: true; SplitView.minimumHeight: 330
+                asset: workspace.asset
+                revisionKey: workspace.adjustmentKey()
+                rangeStart: editorTimeline.hasTimeSelection ? editorTimeline.selectionStartMillis : adjustmentDraft.trimStartMillis
+                rangeEnd: editorTimeline.hasTimeSelection ? editorTimeline.selectionEndMillis : adjustmentDraft.trimEndMillis
+                trimStart: adjustmentDraft.trimStartMillis; trimEnd: adjustmentDraft.trimEndMillis
+                onRangeRequested: (start,end,play) => {
+                    editorTimeline.selectionStartMillis=start; editorTimeline.selectionEndMillis=end; editorTimeline.hasTimeSelection=true;
+                    editorTimeline.fitSelection();
+                    if (play) { editorTimeline.loopSelection=true; workspace.playFrom(start); }
+                }
+                onEditRequested: (kind,start,end) => {
+                    player.stop();
+                    if (kind === "hide") adjustmentDraft.setSelectionState(start,end,2);
+                    else adjustmentDraft.setTrimRange(start,end);
+                }
+            }
             SoundAdjustmentEditor {
                 id: adjustmentEditor
-                visible: !workspace.spectralFocus
+                visible: !workspace.spectralFocus && !workspace.transcriptFocus
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 SplitView.minimumHeight: 330

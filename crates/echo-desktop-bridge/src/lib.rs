@@ -7,6 +7,7 @@
 mod editor_project;
 mod editor_session;
 mod render_exports;
+mod selection_transcription;
 mod session;
 
 use crate::session::LibrarySession;
@@ -579,6 +580,20 @@ mod ffi {
         /// copy. This path is intentionally not catalog-owned: the working
         /// copy cache identity already anchors its mutable lifecycle.
         fn spectrogram_artifact_for_path(path: &str) -> Result<SpectrogramArtifactWire>;
+        fn transcribe_editor_selection(
+            catalog: &str,
+            cache: &str,
+            id: &str,
+            start: u64,
+            end: u64,
+            endpoint: &str,
+        ) -> Result<String>;
+        fn session_accept_selection_transcript(
+            self: &LibrarySession,
+            id: &str,
+            value: &str,
+        ) -> Result<()>;
+        fn session_selection_transcripts(self: &LibrarySession, id: &str) -> Result<String>;
         fn open_editor_session(root: &str) -> Result<Box<LibrarySession>>;
         fn editor_import_audio(root: &str, input: &str) -> Result<String>;
         fn editor_save_project(root: &str, destination: &str) -> Result<()>;
@@ -1637,6 +1652,25 @@ pub fn editor_open_project(project: &str, root: &str) -> Result<(), String> {
 impl LibrarySession {
     fn session_is_independent(&self) -> bool {
         self.independent
+    }
+}
+
+fn transcribe_editor_selection(
+    catalog: &str,
+    cache: &str,
+    id: &str,
+    start: u64,
+    end: u64,
+    endpoint: &str,
+) -> Result<String, String> {
+    selection_transcription::transcribe(catalog, cache, id, start, end, endpoint)
+}
+impl LibrarySession {
+    fn session_accept_selection_transcript(&self, id: &str, value: &str) -> Result<(), String> {
+        self.accept_selection_transcript(id, value)
+    }
+    fn session_selection_transcripts(&self, id: &str) -> Result<String, String> {
+        self.selection_transcripts(id)
     }
 }
 

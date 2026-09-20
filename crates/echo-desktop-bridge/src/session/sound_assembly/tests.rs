@@ -206,3 +206,50 @@ fn clip_processing_is_isolated_and_reopens_the_exact_revision() {
     drop(session);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn precision_source_trim_reanchors_bypassed_assembly_gain() {
+    let root = fixture_root("envelope-source-edit");
+    let session = open_session(
+        root.join("catalog.sqlite").to_str().unwrap(),
+        root.join("cache").to_str().unwrap(),
+    )
+    .unwrap();
+    let asset = register(&session.catalog, 0x75, "/sounds/source.wav", 4000);
+    let created = session
+        .create_sound_assembly("Trimmed speech", &[asset.to_string()], 0)
+        .unwrap();
+    let mut document: serde_json::Value = serde_json::from_str(&created.document_json).unwrap();
+    document["tracks"][0]["clips"][0]["gainEnvelope"] = serde_json::json!({"enabled":false,"points":[
+        {"sourceMillis":0,"gainCentibels":0}, {"sourceMillis":4000,"gainCentibels":-4000}
+    ]});
+    let mut adjustment = crate::session::asset_adjustment_wire(
+        crate::session::adjustment_wire_fields(None, Some(4000)),
+    );
+    adjustment.trim_start_millis = 1000;
+    adjustment.trim_end_millis = 3500;
+    adjustment.edit_segments.clear();
+    let saved = session
+        .save_project_clip_adjustment(
+            &document.to_string(),
+            &created.clip_sources[0].clip_id,
+            &asset.to_string(),
+            &adjustment,
+        )
+        .unwrap();
+    let authored: SoundAssembly = serde_json::from_str(&saved.document_json).unwrap();
+    let envelope: echo_domain::GainEnvelope = serde_json::from_value(serde_json::from_str::<serde_json::Value>(&saved.document_json).unwrap()["tracks"][0]["clips"][0]["gainEnvelope"].clone()).unwrap();
+    assert!(!envelope.enabled);
+    assert_eq!(envelope.points[0].source_millis, 0);
+    assert_eq!(envelope.points[0].gain_centibels, -1000);
+    assert_eq!(authored.duration_millis(), 2500);
+    assert_eq!(
+        session
+            .sound_assembly(&created.assembly_id)
+            .unwrap()
+            .document_json,
+        saved.document_json
+    );
+    drop(session);
+    std::fs::remove_dir_all(root).unwrap();
+}

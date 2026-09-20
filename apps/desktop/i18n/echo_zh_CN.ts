@@ -1612,6 +1612,11 @@
             <source>Choose a local audio file.</source>
             <translation>请选择本地音频文件。</translation>
         </message>
+        <message>
+            <location filename="../src/desktop_selection_transcription.cpp" line="22" />
+            <source>The transcript could not be saved for this source.</source>
+            <translation>无法为此来源保存转写结果。</translation>
+        </message>
     </context>
     <context>
         <name>DigitalDegradeVfxPanel</name>
@@ -2273,7 +2278,7 @@
         <name>IndependentEditor</name>
         <message>
             <location filename="../qml/IndependentEditor.qml" line="15" />
-            <location filename="../qml/IndependentEditor.qml" line="60" />
+            <location filename="../qml/IndependentEditor.qml" line="61" />
             <source>Untitled project</source>
             <translation>未命名工程</translation>
         </message>
@@ -2283,155 +2288,155 @@
             <translation>Echo · 独立编辑</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="88" />
+            <location filename="../qml/IndependentEditor.qml" line="89" />
             <source>Finish or cancel the current operation before closing.</source>
             <translation>请先完成或取消当前操作，再关闭窗口。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="121" />
+            <location filename="../qml/IndependentEditor.qml" line="122" />
             <source>File</source>
             <translation>文件</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="122" />
+            <location filename="../qml/IndependentEditor.qml" line="123" />
             <source>New editing window</source>
             <translation>新建编辑窗口</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="123" />
-            <location filename="../qml/IndependentEditor.qml" line="143" />
-            <location filename="../qml/IndependentEditor.qml" line="172" />
+            <location filename="../qml/IndependentEditor.qml" line="124" />
+            <location filename="../qml/IndependentEditor.qml" line="144" />
+            <location filename="../qml/IndependentEditor.qml" line="173" />
             <source>Open audio…</source>
             <translation>打开音频…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="124" />
-            <location filename="../qml/IndependentEditor.qml" line="173" />
+            <location filename="../qml/IndependentEditor.qml" line="125" />
+            <location filename="../qml/IndependentEditor.qml" line="174" />
             <source>Open project…</source>
             <translation>打开工程…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="126" />
-            <location filename="../qml/IndependentEditor.qml" line="144" />
-            <location filename="../qml/IndependentEditor.qml" line="229" />
-            <location filename="../qml/IndependentEditor.qml" line="241" />
+            <location filename="../qml/IndependentEditor.qml" line="127" />
+            <location filename="../qml/IndependentEditor.qml" line="145" />
+            <location filename="../qml/IndependentEditor.qml" line="230" />
+            <location filename="../qml/IndependentEditor.qml" line="242" />
             <source>Save project</source>
             <translation>保存工程</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="127" />
+            <location filename="../qml/IndependentEditor.qml" line="128" />
             <source>Save project as…</source>
             <translation>工程另存为…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="128" />
-            <location filename="../qml/IndependentEditor.qml" line="145" />
+            <location filename="../qml/IndependentEditor.qml" line="129" />
+            <location filename="../qml/IndependentEditor.qml" line="146" />
             <source>Export audio…</source>
             <translation>导出音频…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="130" />
+            <location filename="../qml/IndependentEditor.qml" line="131" />
             <source>Close window</source>
             <translation>关闭窗口</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="138" />
+            <location filename="../qml/IndependentEditor.qml" line="139" />
             <source>Independent editing</source>
             <translation>独立编辑</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="140" />
+            <location filename="../qml/IndependentEditor.qml" line="141" />
             <source>Waveform / Spectrum</source>
             <translation>波形 / 频谱</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="141" />
+            <location filename="../qml/IndependentEditor.qml" line="142" />
             <source>Multitrack</source>
             <translation>多轨编排</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="155" />
+            <location filename="../qml/IndependentEditor.qml" line="156" />
             <source>Project sources</source>
             <translation>工程素材</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="158" />
+            <location filename="../qml/IndependentEditor.qml" line="159" />
             <source>Original files stay unchanged</source>
             <translation>原始文件保持不变</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="168" />
+            <location filename="../qml/IndependentEditor.qml" line="169" />
             <source>A space for the sound in front of you</source>
             <translation>专注眼前的声音</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="169" />
+            <location filename="../qml/IndependentEditor.qml" line="170" />
             <source>Drop audio here to edit, repair or arrange it. Save a project to continue later, or export your finished sound.</source>
             <translation>拖入音频，开始编辑、修复或编排。保存工程以便继续编辑，或导出处理后的声音。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="177" />
+            <location filename="../qml/IndependentEditor.qml" line="178" />
             <source>Recover editing session · %1</source>
             <translation>恢复未关闭的编辑 · %1</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="205" />
+            <location filename="../qml/IndependentEditor.qml" line="206" />
             <source>Working on your project…</source>
             <translation>正在处理工程…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="205" />
+            <location filename="../qml/IndependentEditor.qml" line="206" />
             <source>Changes are recoverable. Save the project to keep a portable copy.</source>
             <translation>编辑记录可恢复。保存工程后，可携带素材继续编辑。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="205" />
+            <location filename="../qml/IndependentEditor.qml" line="206" />
             <source>Only this project is open. Automatic library analysis is off.</source>
             <translation>仅处理当前工程，不自动分析记忆库。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="219" />
+            <location filename="../qml/IndependentEditor.qml" line="220" />
             <source>Open audio</source>
             <translation>打开音频</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="220" />
+            <location filename="../qml/IndependentEditor.qml" line="221" />
             <source>Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</source>
             <translation>音频文件 (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="220" />
+            <location filename="../qml/IndependentEditor.qml" line="221" />
             <source>All files (*)</source>
             <translation>所有文件 (*)</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="224" />
+            <location filename="../qml/IndependentEditor.qml" line="225" />
             <source>Open project</source>
             <translation>打开工程</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="225" />
-            <location filename="../qml/IndependentEditor.qml" line="230" />
+            <location filename="../qml/IndependentEditor.qml" line="226" />
+            <location filename="../qml/IndependentEditor.qml" line="231" />
             <source>Echo projects (*.echo)</source>
             <translation>Echo 工程 (*.echo)</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="236" />
+            <location filename="../qml/IndependentEditor.qml" line="237" />
             <source>Save this project before closing?</source>
             <translation>关闭前保存工程吗？</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="237" />
+            <location filename="../qml/IndependentEditor.qml" line="238" />
             <source>The saved project includes your audio sources and editing state.</source>
             <translation>保存的工程包含音频素材与编辑状态。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="239" />
+            <location filename="../qml/IndependentEditor.qml" line="240" />
             <source>Cancel</source>
             <translation>取消</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="240" />
+            <location filename="../qml/IndependentEditor.qml" line="241" />
             <source>Discard changes</source>
             <translation>放弃修改</translation>
         </message>
@@ -4107,6 +4112,19 @@
         </message>
     </context>
     <context>
+        <name>SelectionTranscriptionController</name>
+        <message>
+            <location filename="../src/selection_transcription_controller.cpp" line="52" />
+            <source>Select up to five minutes of original audio.</source>
+            <translation>请选择不超过五分钟的原始音频。</translation>
+        </message>
+        <message>
+            <location filename="../src/selection_transcription_controller.cpp" line="69" />
+            <source>Transcription is unavailable. Check Infer Runtime and its local speech model.</source>
+            <translation>转写暂不可用，请检查 Infer Runtime 及本地语音模型。</translation>
+        </message>
+    </context>
+    <context>
         <name>SoundAdvancedFilterPopup</name>
         <message>
             <location filename="../qml/SoundAdvancedFilterPopup.qml" line="122" />
@@ -4911,172 +4929,177 @@
     <context>
         <name>SoundEditingWorkspace</name>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="854" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="858" />
             <source>Apply recipe</source>
             <translation>应用处理方案</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1146" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1170" />
             <source>Processing recipe applied.</source>
             <translation>处理方案已应用。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1129" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1153" />
             <source>Processing recipe saved.</source>
             <translation>处理方案已保存。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="845" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="849" />
             <source>Save as recipe</source>
             <translation>保存为处理方案</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1149" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1173" />
             <source>The processing recipe could not be applied.</source>
             <translation>无法应用处理方案。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1131" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1155" />
             <source>The processing recipe could not be saved.</source>
             <translation>无法保存处理方案。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="863" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="867" />
             <source>Manage processing recipes</source>
             <translation>管理处理方案</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="405" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="409" />
             <source>%1 restored · %2 conflicts · %3 failed</source>
             <translation>已恢复 %1 个 · %2 个冲突 · %3 个失败</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="874" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="878" />
             <source>Processing history</source>
             <translation>处理历史</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1161" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1185" />
             <source>Processing recipe renamed.</source>
             <translation>处理方案已重命名。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1170" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1194" />
             <source>Processing recipe version %1 added.</source>
             <translation>已添加处理方案版本 %1。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1178" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1202" />
             <source>Processing recipe archived.</source>
             <translation>处理方案已归档。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="401" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="405" />
             <source>The processing recipe application could not be undone.</source>
             <translation>无法撤销本次处理方案应用。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1163" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1187" />
             <source>The processing recipe could not be renamed.</source>
             <translation>无法重命名处理方案。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1172" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1196" />
             <source>The processing recipe could not be updated.</source>
             <translation>无法更新处理方案。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1180" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1204" />
             <source>The processing recipe could not be archived.</source>
             <translation>无法归档处理方案。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1227" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1251" />
             <source>Undo batch</source>
             <translation>撤销本批次</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="79" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="82" />
             <source>%1 channels</source>
             <translation>%1 声道</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="760" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="764" />
             <source>Select a sound in Audio Space</source>
             <translation>请先在声音空间中选择声音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="769" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="773" />
             <source>Choose a sound before opening adjustments.</source>
             <translation>选择声音后即可进入调整工作区。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="788" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="792" />
             <source>Back to project</source>
             <translation>返回项目</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="794" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="798" />
             <source>Editing this project clip. Its source memory stays unchanged.</source>
             <translation>正在编辑项目片段，来源记忆的版本保持不变。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="805" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="809" />
             <source>Effects</source>
             <translation>效果链</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="805" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="809" />
             <source>Spectral repair</source>
             <translation>频谱精修</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="832" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="809" />
+            <source>Transcript</source>
+            <translation>文字</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundEditingWorkspace.qml" line="836" />
             <source>Listening to original frequency band</source>
             <translation>正在监听原始频段</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="832" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="836" />
             <source>Listening to removed noise</source>
             <translation>正在监听被移除的噪声</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="884" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="888" />
             <source>Export</source>
             <translation>导出</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1064" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1088" />
             <source>Play</source>
             <translation>播放</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1100" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1124" />
             <source>Audition</source>
             <translation>试听对比</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1106" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1130" />
             <source>Adjusted</source>
             <translation>调整后</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1113" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1137" />
             <source>Original</source>
             <translation>原始</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1064" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1088" />
             <source>Pause</source>
             <translation>暂停</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="1073" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="1097" />
             <source>Stop</source>
             <translation>停止</translation>
         </message>
         <message>
-            <location filename="../qml/SoundEditingWorkspace.qml" line="794" />
+            <location filename="../qml/SoundEditingWorkspace.qml" line="798" />
             <source>Editing this clip. The project source stays unchanged.</source>
             <translation>正在编辑此片段，工程来源保持不变。</translation>
         </message>
@@ -5791,179 +5814,194 @@
     <context>
         <name>SoundSourceBrowser</name>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="25" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="30" />
             <source>All materials</source>
             <translation>全部素材</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="25" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="30" />
             <source>Music</source>
             <translation>音乐</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="25" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="30" />
             <source>Ambience</source>
             <translation>环境音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="25" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="30" />
             <source>Sound effects</source>
             <translation>音效</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="25" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="30" />
             <source>Voice</source>
             <translation>人声</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="33" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="38" />
             <source>All sound events</source>
             <translation>全部声音事件</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="122" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="126" />
             <source>Add to your project</source>
             <translation>加入项目</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="122" />
-            <location filename="../qml/SoundSourceBrowser.qml" line="149" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="126" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="153" />
             <source>Materials</source>
             <translation>素材</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="129" />
-            <location filename="../qml/SoundSourceBrowser.qml" line="317" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="133" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="328" />
             <source>Import audio materials</source>
             <translation>导入声音素材</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="136" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="140" />
             <source>Find reusable sounds by name, keywords or AI sound events. Used materials stay available to their projects.</source>
             <translation>按名称、关键词或 AI 识别的声音事件查找素材。项目引用的素材会持续保留。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="147" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="151" />
             <source>Project</source>
             <translation>本项目</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="148" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="152" />
             <source>Memories</source>
             <translation>记忆库</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="154" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="158" />
             <source>Search sounds and keywords</source>
             <translation>查找声音或关键词</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="182" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="183" />
+            <source>Semantic suggestions</source>
+            <translation>语义候选</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundSourceBrowser.qml" line="186" />
+            <source>Semantic search is unavailable; literal matches are still shown.</source>
+            <translation>语义搜索暂不可用，仍显示字面匹配结果。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundSourceBrowser.qml" line="193" />
             <source>Keep imports in global materials</source>
             <translation>将导入的声音保留为全局素材</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="217" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="228" />
             <source>Audition sound</source>
             <translation>试听声音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="227" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="238" />
             <source> s</source>
             <translation> 秒</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="227" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="238" />
             <source>Saved mix</source>
             <translation>已保存的混音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="227" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="238" />
             <source>Adjusted recording</source>
             <translation>已处理的录音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="227" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="238" />
             <source>Original source</source>
             <translation>原始来源</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="233" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="238" />
+            <source>Semantic candidate</source>
+            <translation>语义候选</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundSourceBrowser.qml" line="244" />
             <source>AI: %1</source>
             <translation>AI 识别：%1</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="263" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="274" />
             <source>Open source project</source>
             <translation>打开来源项目</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="263" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="274" />
             <source>Add at playhead</source>
             <translation>加入播放头位置</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="270" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="281" />
             <source>Collection and category</source>
             <translation>收集与分类</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="279" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="290" />
             <source>No matching sounds</source>
             <translation>没有匹配的声音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="279" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="290" />
             <source>Add memories or import materials to this project.</source>
             <translation>从记忆库加入声音，或为项目导入素材。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="279" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="290" />
             <source>No sounds in this collection yet.</source>
             <translation>这里暂时还没有声音。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="287" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="298" />
             <source>%1 sounds</source>
             <translation>%1 段声音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="295" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="306" />
             <source>Remove from memory library</source>
             <translation>从记忆库移出</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="295" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="306" />
             <source>Keep in memory library</source>
             <translation>收进记忆库</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="299" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="310" />
             <source>Remove from global materials</source>
             <translation>从全局素材移出</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="299" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="310" />
             <source>Keep in global materials</source>
             <translation>保留为全局素材</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="308" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="319" />
             <source>Uncategorized</source>
             <translation>未分类</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="319" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="330" />
             <source>Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</source>
             <translation>音频文件 (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="319" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="330" />
             <source>All files (*)</source>
             <translation>所有文件 (*)</translation>
         </message>
         <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="327" />
+            <location filename="../qml/SoundSourceBrowser.qml" line="338" />
             <source>Import queued. Sounds appear here when ready.</source>
             <translation>已加入导入队列，完成后会显示在这里。</translation>
         </message>
@@ -6004,6 +6042,99 @@
             <location filename="../qml/SoundTapeView.qml" line="334" />
             <source>Stop sound tape</source>
             <translation>停止声音带</translation>
+        </message>
+    </context>
+    <context>
+        <name>SoundTranscriptPanel</name>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="31" />
+            <source>Selection %1–%2 s</source>
+            <translation>选区 %1–%2 秒</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="32" />
+            <source>Whole recording</source>
+            <translation>完整录音</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="64" />
+            <source>Transcript editing</source>
+            <translation>文字选段</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="65" />
+            <source>Original-time evidence</source>
+            <translation>原录音时间</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="66" />
+            <source>Aligned units</source>
+            <translation>对齐词段</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="67" />
+            <source>Boundary margin (ms)</source>
+            <translation>边界余量（ms）</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="71" />
+            <source>Discard result</source>
+            <translation>放弃结果</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="71" />
+            <source>Transcribe selection</source>
+            <translation>转写选区</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="78" />
+            <source>The result will be discarded. Infer Runtime may still be processing the request.</source>
+            <translation>将丢弃此结果。Infer Runtime 可能仍在处理请求。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="78" />
+            <source>Transcribing the selected original audio…</source>
+            <translation>正在转写所选原始音频…</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="79" />
+            <source>Select a sentence to locate or audition it. Hiding or keeping audio creates a reversible edit; it does not change the transcript.</source>
+            <translation>选择句段以定位或试听。隐藏或保留音频均可撤销，不会修改转写文字。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="84" />
+            <source>Units without a reliable duration are omitted from editing.</source>
+            <translation>没有可靠时长的词段不会作为编辑目标。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="103" />
+            <source>Select</source>
+            <translation>选中</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="104" />
+            <source>Audition</source>
+            <translation>试听</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="105" />
+            <source>Hide audio</source>
+            <translation>隐藏音频</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="106" />
+            <source>Keep only</source>
+            <translation>仅保留</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="109" />
+            <source>No usable sentence timing is available for this range.</source>
+            <translation>此范围内没有可用的句段时间。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="109" />
+            <source>No transcript yet. Select a range of up to five minutes and transcribe it.</source>
+            <translation>暂无转写。请选择不超过五分钟的音频区间进行转写。</translation>
         </message>
     </context>
     <context>

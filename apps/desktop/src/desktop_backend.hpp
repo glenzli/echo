@@ -100,6 +100,8 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE bool
     setUserAlbumMembership(qlonglong albumId, const QString& assetId, bool included);
     Q_INVOKABLE QVariantList waveformForAsset(const QString& id) const;
+    Q_INVOKABLE QVariantList selectionTranscripts(const QString& id) const;
+    Q_INVOKABLE QString acceptSelectionTranscript(const QString& id, const QString& value);
     Q_INVOKABLE QVariantList transcriptsForAsset(const QString& id) const;
     Q_INVOKABLE QVariantList longAudioChaptersForAsset(const QString& id) const;
     Q_INVOKABLE bool setAssetAffinity(const QString& id, bool liked, int rating);

@@ -99,6 +99,26 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         Some(ref version)
             if version
                 .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| {
+                    revision == crate::schema::SELECTION_TRANSCRIPT_PREDECESSOR
+                }) =>
+        {
+            // Only the analysis-kind vocabulary changes; old binaries must not
+            // try to read a kind they cannot distinguish from whole-source ASR.
+            let transaction = connection.unchecked_transaction()?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
+                [SCHEMA_VERSION.to_string()],
+            )?;
+            transaction.execute(
+                "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_identity'",
+                [SCHEMA_IDENTITY],
+            )?;
+            transaction.commit()?;
+        }
+        Some(ref version)
+            if version
+                .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == SOUND_LIBRARY_PREDECESSOR_SCHEMA_VERSION) =>
         {
             let transaction = connection.unchecked_transaction()?;

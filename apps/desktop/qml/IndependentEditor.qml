@@ -21,9 +21,10 @@ ApplicationWindow {
     palette.buttonText: Theme.textPrimary
     palette.highlight: Theme.accent
     palette.highlightedText: Theme.accentText
-    readonly property alias independentSmokeReport: smoke.reportJson
-    readonly property alias independentSmokeStage: smoke.stage
-    IndependentEditorSmoke { id: smoke; shell: window; editor: editor; assembly: assembly; fixtureRoot: independentSmokeRoot; reopening: independentSmokeReopen }
+    readonly property string independentSmokeReport: independentAiValidation ? aiSmoke.reportJson : smoke.reportJson
+    readonly property int independentSmokeStage: independentAiValidation ? aiSmoke.stage : smoke.stage
+    IndependentEditorSmoke { id: smoke; shell: window; editor: editor; assembly: assembly; fixtureRoot: independentAiValidation ? "" : independentSmokeRoot; reopening: independentSmokeReopen }
+    IndependentAiSmoke { id: aiSmoke; shell: window; editor: editor; fixtureRoot: independentAiValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
     property var assets: []
     property var selectedAsset: null
     property var clipAsset: null
@@ -34,7 +35,7 @@ ApplicationWindow {
     property bool allowClose: false
     property bool closeAfterSave: false
     property string notice: ""
-    readonly property bool processing: independentEditor.busy || renderExporter.running || renderedSpectralWorkingCopy.running || soundAssemblyController.running || noiseProfile.running
+    readonly property bool processing: selectionTranscription.running || independentEditor.busy || renderExporter.running || renderedSpectralWorkingCopy.running || soundAssemblyController.running || noiseProfile.running
 
     function refreshSources(): void {
         const selectedId = selectedAsset ? selectedAsset.id : "";

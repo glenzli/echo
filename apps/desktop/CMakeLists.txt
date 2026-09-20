@@ -110,6 +110,9 @@ qt_add_executable(
     src/independent_editor_controller.hpp
     src/application_paths.cpp
     src/application_paths.hpp
+    src/desktop_selection_transcription.cpp
+    src/selection_transcription_controller.cpp
+    src/selection_transcription_controller.hpp
     src/desktop_sound_library.cpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
@@ -178,6 +181,7 @@ qt_add_qml_module(
     QML_FILES
         qml/EditorOpenError.qml
         qml/IndependentEditor.qml
+        qml/IndependentAiSmoke.qml
         qml/IndependentEditorSmoke.qml
         qml/Main.qml
         qml/AudioMetadataBar.qml
@@ -256,6 +260,7 @@ qt_add_qml_module(
         qml/NoiseWorkflowSmoke.qml
         qml/MemorySourceReferences.qml
         qml/SoundPlaybackSource.qml
+        qml/SoundSourceSearch.js
         qml/SoundSourceBrowser.qml
         qml/SoundAssemblyWorkspace.qml
         qml/SpaceReverbPanel.qml
@@ -270,6 +275,8 @@ qt_add_qml_module(
         qml/SourceEditTimeline.qml
         qml/SourceRegionInspector.qml
         qml/EffectMaskEditor.qml
+        qml/SoundTranscriptEditing.js
+        qml/SoundTranscriptPanel.qml
         qml/SoundEditingWorkspace.qml
         qml/SoundExportDialog.qml
         qml/SoundCard.qml
@@ -391,6 +398,13 @@ qt_add_translations(
 )
 
 if(BUILD_TESTING)
+    add_executable(echo-selection-transcription-controller-test tests/selection_transcription_controller_test.cpp src/selection_transcription_controller.cpp src/selection_transcription_controller.hpp)
+    target_include_directories(echo-selection-transcription-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
+    target_compile_features(echo-selection-transcription-controller-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-selection-transcription-controller-test PRIVATE Qt6::Core Qt6::Concurrent echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
+    add_dependencies(echo-selection-transcription-controller-test echo-desktop-rust-build)
+    echo_audio_enable_warnings(echo-selection-transcription-controller-test)
+    add_test(NAME echo-selection-transcription-controller-test COMMAND echo-selection-transcription-controller-test)
     add_executable(echo-prepared-assembly-source-cache-test tests/prepared_assembly_source_cache_test.cpp src/prepared_assembly_source_cache.cpp)
     target_include_directories(echo-prepared-assembly-source-cache-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_compile_features(echo-prepared-assembly-source-cache-test PRIVATE cxx_std_20)

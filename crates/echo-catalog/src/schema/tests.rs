@@ -5,13 +5,13 @@ use crate::{CatalogError, CatalogErrorKind, open_catalog};
 
 #[test]
 fn revision_round_trips_in_date_dot_sequence_form() {
-    assert_eq!(SCHEMA_VERSION.to_string(), "20260920.1");
+    assert_eq!(SCHEMA_VERSION.to_string(), "20260920.2");
     assert_eq!(
         CatalogSchemaRevision::from_str("20260815.5"),
         Ok(SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION)
     );
     assert_eq!(SCHEMA_VERSION.date(), 20_260_920);
-    assert_eq!(SCHEMA_VERSION.daily_sequence(), 1);
+    assert_eq!(SCHEMA_VERSION.daily_sequence(), 2);
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn catalog_persists_only_the_canonical_revision_text() {
                 .map_err(CatalogError::from)
         })
         .expect("revision reads");
-    assert_eq!(stored, "20260920.1");
+    assert_eq!(stored, "20260920.2");
 
     catalog
         .with_transaction(|transaction| -> Result<(), CatalogError> {
@@ -114,4 +114,38 @@ fn catalog_persists_only_the_canonical_revision_text() {
     let error = open_catalog(&path).expect_err("compact revision is rejected");
     assert_eq!(error.kind, CatalogErrorKind::SchemaMismatch);
     let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn selection_transcript_vocabulary_upgrade_preserves_existing_records() {
+    let root =
+        std::env::temp_dir().join(format!("echo-selection-migration-{}", uuid::Uuid::now_v7()));
+    let path = root.join("catalog.sqlite");
+    let catalog = open_catalog(&path).expect("catalog");
+    catalog.with_transaction(|tx| -> Result<(),CatalogError> {
+        tx.execute("UPDATE catalog_meta SET value = '20260920.1' WHERE key = 'schema_version'",[])?;
+        tx.execute("UPDATE catalog_meta SET value = 'echo-catalog-20260920.1-memory-library' WHERE key = 'schema_identity'",[])?;
+        tx.execute("INSERT INTO catalog_meta (key,value) VALUES ('keep','sentinel')",[])?;
+        Ok(())
+    }).expect("old vocabulary");
+    drop(catalog);
+    let migrated = open_catalog(&path).expect("upgrade");
+    migrated
+        .with_transaction(|tx| -> Result<(), CatalogError> {
+            let kept: String =
+                tx.query_row("SELECT value FROM catalog_meta WHERE key='keep'", [], |r| {
+                    r.get(0)
+                })?;
+            let version: String = tx.query_row(
+                "SELECT value FROM catalog_meta WHERE key='schema_version'",
+                [],
+                |r| r.get(0),
+            )?;
+            assert_eq!(kept, "sentinel");
+            assert_eq!(version, "20260920.2");
+            Ok(())
+        })
+        .expect("preserved");
+    drop(migrated);
+    std::fs::remove_dir_all(root).expect("cleanup");
 }

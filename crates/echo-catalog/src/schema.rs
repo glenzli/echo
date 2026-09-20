@@ -159,9 +159,11 @@ pub(crate) const SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION: CatalogSchemaRevisio
     CatalogSchemaRevision::new(20_260_815, 5);
 pub(crate) const SOUND_LIBRARY_PREDECESSOR_SCHEMA_VERSION: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_831, 1);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_920, 1);
+pub(crate) const SELECTION_TRANSCRIPT_PREDECESSOR: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_920, 1);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_920, 2);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260920.1-memory-library";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260920.2-selection-transcripts";
 
 pub(crate) const SOUND_ASSEMBLY_MIGRATION_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS sound_assemblies (

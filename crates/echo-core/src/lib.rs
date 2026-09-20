@@ -4,7 +4,8 @@
 //! engine and AI workers. It knows nothing about Qt.
 //!
 //! [`material_import`] owns durable global and project material intake.
-//! Start with [`import`] for the idempotent import path. The background queue
+//! [`editor_transcription`] owns explicit original-range AI evidence without
+//! starting automatic Library jobs. Start with [`import`] for the idempotent import path. The background queue
 //! performs rebuildable Level 0 work; model execution remains behind an
 //! inference boundary and never enters playback.
 
@@ -13,6 +14,7 @@ mod analysis_queue;
 mod analysis_recovery;
 mod audio_semantic_search;
 mod contextual;
+mod editor_transcription;
 mod error;
 mod import;
 mod infer_runtime;
@@ -37,6 +39,10 @@ pub use analysis::{
 pub use analysis_queue::contextual_job_id;
 pub use contextual::{
     CONTEXTUAL_JOB_REVISION, CONTEXTUAL_SCHEMA_VERSION, ContextualPayload, record_contextual,
+};
+pub use editor_transcription::{
+    MAX_SELECTION_TRANSCRIPTION_MILLIS, SelectionTranscript, record_selection_transcript,
+    transcribe_selection,
 };
 pub use error::{CoreError, CoreErrorKind};
 pub use import::{ImportOutcome, hash_file, import_asset, import_asset_with_probe};

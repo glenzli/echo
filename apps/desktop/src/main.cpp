@@ -14,6 +14,7 @@
 #include "playback_controller.hpp"
 #include "render_export_controller.hpp"
 #include "rendered_spectral_working_copy_controller.hpp"
+#include "selection_transcription_controller.hpp"
 #include "semantic_search_controller.hpp"
 #include "sound_assembly_controller.hpp"
 #include "spectrogram_preview_controller.hpp"
@@ -111,6 +112,20 @@ int main(int argc, char* argv[]) {
             QString::fromStdString(catalog),
             inference_prefs.runtimeEndpoint()
         );
+        SelectionTranscriptionController selection_transcription(
+            QString::fromStdString(catalog),
+            QString::fromStdString(cache_root)
+        );
+        SemanticSearchController material_search(
+            QString::fromStdString(catalog),
+            inference_prefs.runtimeEndpoint()
+        );
+        QObject::connect(
+            &inference_prefs,
+            &InferencePreferences::runtimeEndpointChanged,
+            &material_search,
+            [&] { material_search.setRuntimeEndpoint(inference_prefs.runtimeEndpoint()); }
+        );
         SpectrogramPreviewController spectrogram_preview;
         NoiseProfileController noise_profile;
         QObject::connect(
@@ -129,6 +144,14 @@ int main(int argc, char* argv[]) {
         // executable module keeps its generated qmldir at qrc:/EchoDesktop.
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("selectionTranscription"),
+            &selection_transcription
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("materialSearch"),
+            &material_search
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("independentEditor"),
             &independent_editor
@@ -209,6 +232,10 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(
             QStringLiteral("independentSmokeReopen"),
             qEnvironmentVariableIsSet("ECHO_DEBUG_INDEPENDENT_REOPEN")
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("independentAiValidation"),
+            qEnvironmentVariableIsSet("ECHO_DEBUG_EDITOR_AI")
         );
         engine.loadFromModule(
             "EchoDesktop",

@@ -5,6 +5,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import EchoDesktop
+import "SoundSourceSearch.js" as SourceSearch
 
 Rectangle {
     id: browser
@@ -17,6 +18,10 @@ Rectangle {
     property var selectedAsset: null
     property int sourceTab: editorMode ? 0 : 2
     property string query: ""
+    property bool semanticEnabled: true
+    onQueryChanged: { if (visible && !independentMode) { materialSearch.clear(); semanticTimer.restart(); } }
+    onSemanticEnabledChanged: { materialSearch.clear(); if (semanticEnabled) semanticTimer.restart(); }
+    Timer { id: semanticTimer; interval: 350; onTriggered: if (browser.visible && browser.semanticEnabled && !browser.independentMode && browser.query.trim()) materialSearch.request(browser.query); }
     property string category: ""
     property string eventFilter: ""
     property string notice: ""
@@ -56,16 +61,15 @@ Rectangle {
             for (const clip of track.clips)
                 ids.push(clip.assetId);
         }
-        const terms = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
-        return assets.filter(asset => {
+        const eligible = assets.filter(asset => {
             if (!independentMode && sourceTab === 0 && ids.indexOf(asset.id) < 0) return false;
             if (!independentMode && sourceTab === 1 && !asset.inMemory) return false;
             if (!independentMode && sourceTab === 2 && !asset.inMaterials) return false;
             if (category && asset.materialCategory !== category) return false;
             if (eventFilter && asset.eventType !== eventFilter) return false;
-            const haystack = [titleFor(asset),asset.path,asset.summary,asset.eventType,asset.mood,(asset.keywords || []).join(" ")].join(" ").toLocaleLowerCase();
-            return terms.every(term => haystack.indexOf(term) >= 0);
+            return true;
         });
+        return SourceSearch.ranked(eligible.map(asset => Object.assign({},asset,{sourceTitle:titleFor(asset)})), query, semanticEnabled ? materialSearch.results : [], materialSearch.resultsQuery);
     }
     function setMembership(memory: bool, materials: bool, newCategory: string): void {
         if (!selectedAsset) return;
@@ -90,7 +94,7 @@ Rectangle {
         });
     }
     onAssemblyIdChanged: refresh()
-    onVisibleChanged: { if (!visible) { materialPlayer.stop(); auditionId = ""; } else refresh(); }
+    onVisibleChanged: { if (!visible) { materialPlayer.stop(); auditionId = ""; materialSearch.clear(); } else { refresh(); semanticTimer.restart(); } }
     onSourceTabChanged: { category = ""; eventFilter = ""; }
     Component.onCompleted: refresh()
     Connections { target: backend; function onAssetsChanged(): void { browser.refresh(); } }
@@ -173,6 +177,13 @@ Rectangle {
                 onActivated: browser.eventFilter = currentIndex === 0 ? "" : currentText
             }
         }
+        RowLayout {
+            visible: !browser.independentMode
+            Layout.fillWidth: true
+            CheckBox { text: qsTr("Semantic suggestions"); checked: browser.semanticEnabled; onToggled: browser.semanticEnabled=checked }
+            BusyIndicator { running: materialSearch.running; visible: running; implicitWidth: 24; implicitHeight: 24 }
+        }
+        Label { visible: !browser.independentMode && !!materialSearch.errorText; Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Semantic search is unavailable; literal matches are still shown."); color: Theme.textMuted }
         CheckBox {
             id: collectGlobally
             enabled: browser.assemblyId.length > 0
@@ -224,7 +235,7 @@ Rectangle {
                         Text { Layout.fillWidth: true; text: browser.titleFor(sourceRow.asset); color: Theme.textPrimary; font.pixelSize: Theme.fontBody; elide: Text.ElideRight }
                         Text {
                             Layout.fillWidth: true
-                            text: (Number(sourceRow.asset.durationMillis)/1000).toFixed(1) + qsTr(" s") + " · " + (sourceRow.asset.assemblyId ? qsTr("Saved mix") : Number(sourceRow.asset.adjustmentRevision) > 0 ? qsTr("Adjusted recording") : qsTr("Original source"))
+                            text: (sourceRow.asset.semanticCandidate ? qsTr("Semantic candidate") + " · " : "") + (Number(sourceRow.asset.durationMillis)/1000).toFixed(1) + qsTr(" s") + " · " + (sourceRow.asset.assemblyId ? qsTr("Saved mix") : Number(sourceRow.asset.adjustmentRevision) > 0 ? qsTr("Adjusted recording") : qsTr("Original source"))
                             color: Theme.textMuted; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight
                         }
                         Text {

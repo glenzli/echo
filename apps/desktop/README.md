@@ -88,7 +88,10 @@ steps, maps it through source cuts/gaps, and generates replacement envelopes for
 one target track. It reports source activity, not speech detection or post-effect
 loudness. Applying a candidate is one undo step. Gain envelopes remain editable,
 bypassable, persistent, and stable under move, split and trim; the native mixer uses
-the same source-time dB interpolation for preview and export.
+the same source-time dB interpolation for preview and export. `echo-domain`'s
+`assembly/envelope/remap.rs` re-anchors curves on surviving original audio when
+a precision edit changes source topology; restored audio starts at unity gain.
+A remapping that exceeds the keyframe limit rejects the revision transaction.
 
 Interaction references: [Audition clip editing](https://helpx.adobe.com/ca/audition/using/arranging-editing-multitrack-clips.html),
 [Audacity tracks and clips](https://manual.audacityteam.org/man/audacity_tracks_and_clips.html),
@@ -175,7 +178,8 @@ those owners into filtering and selection.
 opening audio, drag-and-drop, source selection, single-source processing, multitrack
 arrangement, project save/Save As, and the existing audio exporters. `Echo --project
 /path/project.echo` opens a saved project. Independent windows do not open the
-normal Library catalog or start its worker pool, scans, transcription, or indexes.
+normal Library catalog or start its worker pool, scans, automatic transcription, or indexes. Explicit range transcription
+is available in the shared editor and saves only to the project catalog.
 
 `independent_editor_controller.*` owns process entry, a locked recovery directory,
 async source admission and portable file operations. The shared `DesktopBackend`
@@ -280,3 +284,24 @@ measures the actual WAV outputs against immutable source hashes and the clean na
 The interaction follows the explicit sample/preview/residue workflow documented by
 [Audacity](https://manual.audacityteam.org/man/noise_reduction.html) and
 [Audition](https://helpx.adobe.com/audition/desktop/effects-reference/noise-reduction-restoration-effects.html).
+
+
+## Explicit editor AI
+
+`SelectionTranscriptionController` owns one background original-range request.
+`SoundTranscriptPanel.qml` shows sentence evidence, source-time selection and
+reversible hide/keep actions, with optional boundary padding. The core
+`editor_transcription` owner creates a bounded proxy (up to five minutes), verifies
+source content before and after inference, and retains the accepted Runtime model
+and Job identity. Optional forced alignment supplies finer units only when its
+text and timing match the transcript; otherwise sentence segments remain available. `SelectionTranscript` records never complete whole-source ASR
+or enqueue library analysis. Independent projects retain this evidence in their
+private portable catalog. Superseded source, draft or selection keys cannot accept
+late results. The current synchronous ASR SDK exposes the Job ID only on completion:
+Discard result prevents acceptance but does not promise to stop Runtime computation.
+
+The editor source browser adds asynchronous semantic candidates after literal
+matches, using a separate search presentation controller. Collection, project and
+category filters remain authoritative. Similarity is labeled as a candidate, and
+an unavailable Runtime leaves literal results usable. This reuses existing text and
+CLAP indexes; it does not extend CLAP coverage to unindexed long recordings.
