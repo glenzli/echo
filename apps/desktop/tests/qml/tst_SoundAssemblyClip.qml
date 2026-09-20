@@ -24,8 +24,25 @@ TestCase {
     EchoIcon { id: tintedIcon; x: 800; y: 100; width: 48; height: 48; size: 48; source: Qt.resolvedUrl("../../icons/folder.svg"); color: "#81b5e6" }
     EchoComboBox { id: translatedChoice; x: 800; y: 30; model: ["Linear", "Smooth", "Equal power"]; selectionIndex: 2 }
     SignalSpy { id: patches; target: clip; signalName: "patchRequested" }
+    SignalSpy { id: selections; target: clip; signalName: "selectedRequested" }
+    SignalSpy { id: previews; target: clip; signalName: "movePreviewRequested" }
     function initTestCase() { Theme.mode = Theme.AppearanceMode.Dark; }
-    function init() { patches.clear(); clip.automationEditing = false; }
+    function init() { patches.clear(); selections.clear(); previews.clear(); clip.automationEditing = false; }
+    function test_modifier_click_preserves_selection_intent() {
+        mouseClick(clip, 50, 8, Qt.LeftButton, Qt.ControlModifier);
+        compare(selections.count, 1);
+        verify(selections.signalArguments[0][0] & Qt.ControlModifier);
+        compare(selections.signalArguments[0][1], false);
+    }
+    function test_alt_drag_slips_source_without_moving_timeline() {
+        dragAt(150, 50, -50, Qt.AltModifier);
+        compare(patches.count, 1);
+        const patch = patches.signalArguments[0][0];
+        compare(patch.timelineStartMillis, 1000);
+        verify(patch.sourceStartMillis > 0);
+        compare(patch.sourceEndMillis - patch.sourceStartMillis, 5000);
+        compare(patches.signalArguments[0][1], "slip");
+    }
     function dragAt(x, y, dx, modifiers) {
         mousePress(clip, x, y, Qt.LeftButton, modifiers || Qt.NoModifier);
         mouseMove(clip, x + dx / 2, y, 40, Qt.LeftButton, modifiers || Qt.NoModifier);
@@ -68,6 +85,10 @@ TestCase {
         dragAt(150, 50, 50, Qt.ShiftModifier);
         compare(patches.count, 1);
         verify(patches.signalArguments[0][0].timelineStartMillis > 1000);
+        compare(patches.signalArguments[0][1], "move");
+        compare(selections.signalArguments[0][1], true);
+        verify(previews.count > 1);
+        compare(previews.signalArguments[previews.count - 1][0], 0);
         compare(clip.gesture, "");
     }
     function test_trim_right_is_bounded() {

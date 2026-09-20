@@ -17,6 +17,7 @@ TestCase {
         property var tracks: document.tracks
         property var libraryAssets: []
         property int selectedTrackIndex: 0
+        property int selectionCount: 1
         property bool hasDocument: true
         property bool independentMode: false
         property bool automationEditing: false
@@ -72,7 +73,9 @@ TestCase {
         mouseClick(findChild(inspector,"inspectorDuplicate"));
         compare(changes[0].scope,"duplicate");
         verify(inspector.ducking!==null);compare(inspector.ducking.references.length,1);
-        workspace.duckingVisible=true;waitForRendering(inspector);
+        workspace.duckingVisible=true;
+        verify(waitForPolish(inspector.Window.window));
+        verify(waitForRendering(inspector));
         verify(inspector.ducking.width<=256);
         workspace.duckingVisible=false;
     }

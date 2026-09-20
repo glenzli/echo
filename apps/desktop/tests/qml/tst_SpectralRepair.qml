@@ -120,7 +120,9 @@ TestCase {
     function test_noise_capture_button_uses_a_bounded_time_selection() {
         view.noiseTools=true;
         view.setSelection({startMillis:100,endMillis:1100,lowHertz:100,highHertz:1000,attenuationCentibels:2400,timeFeatherMillis:24,frequencyFeatherHertz:20},-1);
-        wait(20);
+        // Native layout/render timing need not fit inside one 20 ms frame.
+        verify(waitForPolish(view.Window.window));
+        verify(waitForRendering(view));
         mouseClick(findChild(view,'captureNoise'));
         compare(captureSpy.count,1);
         compare(captureSpy.signalArguments[0][0],100); compare(captureSpy.signalArguments[0][1],1100);

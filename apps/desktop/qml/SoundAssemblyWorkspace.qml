@@ -7,6 +7,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import EchoDesktop
 import "SoundAssemblyEditing.js" as Editing
+import "SoundAssemblySelection.js" as Selection
 
 Rectangle {
     id: workspace
@@ -16,6 +17,15 @@ Rectangle {
     property var assemblies: []
     property var libraryAssets: []
     property string selectedClipId: ""
+    property var selectedClipIds: []
+    property string groupMoveId: ""
+    property real groupMoveDelta: 0
+    onSelectedClipIdChanged: {
+        if (!selectedClipIds.includes(selectedClipId)) selectedClipIds = selectedClipId ? [selectedClipId] : [];
+    }
+    onDocumentChanged: { groupMoveId = ""; groupMoveDelta = 0; }
+    readonly property var selectionBounds: Selection.bounds(tracks, selectedClipIds)
+    readonly property int selectionCount: selectedClipIds.length
     property int selectedTrackIndex: -1
     property bool fitPending: false
     property real pixelsPerSecond: 90
@@ -41,8 +51,8 @@ Rectangle {
     property bool playbackOwned: false
     property bool previewSelection: false
     property bool loopPreview: false
-    readonly property real previewRangeStart: previewSelection && selectedClip ? selectedClip.timelineStartMillis : 0
-    readonly property real previewRangeEnd: previewSelection && selectedClip ? Editing.end(selectedClip) : durationMillis
+    readonly property real previewRangeStart: previewSelection && selectionBounds ? selectionBounds.start : 0
+    readonly property real previewRangeEnd: previewSelection && selectionBounds ? selectionBounds.end : durationMillis
     readonly property string previewKey: authoredJson(document) + "|" + previewRangeStart + ":" + previewRangeEnd
     onPreviewKeyChanged: { if (playbackOwned) stopPlayback(); }
     property real previewStartMillis: 0
@@ -114,6 +124,7 @@ Rectangle {
         document = clone(revision);
         selectedTrackIndex = document.tracks.length > 0 ? 0 : -1;
         selectedClipId = document.tracks.length > 0 && document.tracks[0].clips.length > 0 ? document.tracks[0].clips[0].id : "";
+        selectedClipIds = selectedClipId ? [selectedClipId] : [];
         playheadMillis = 0;
         undoStack = [];
         redoStack = [];
@@ -133,9 +144,13 @@ Rectangle {
         loadRevision(backend.soundAssembly(assemblyId));
     }
 
+    function historySnapshot(): var {
+        return {document: clone(document), ids: selectedClipIds.slice(), primary: selectedClipId};
+    }
+
     function pushUndo(): void {
         const next = undoStack.slice();
-        next.push(clone(document));
+        next.push(historySnapshot());
         if (next.length > 80)
             next.shift();
         undoStack = next;
@@ -151,6 +166,7 @@ Rectangle {
         callback(next);
         document = next;
         dirty = authoredJson(next) !== savedDocumentJson;
+        reconcileSelection();
     }
 
     function undo(): void {
@@ -160,11 +176,13 @@ Rectangle {
         const previous = undoStack.slice();
         const target = previous.pop();
         const future = redoStack.slice();
-        future.push(clone(document));
+        future.push(historySnapshot());
         undoStack = previous;
         redoStack = future;
-        document = target;
-        dirty = authoredJson(target) !== savedDocumentJson;
+        document = target.document;
+        selectedClipIds = target.ids;
+        selectedClipId = target.primary;
+        dirty = authoredJson(document) !== savedDocumentJson;
         reconcileSelection();
     }
 
@@ -175,11 +193,13 @@ Rectangle {
         const future = redoStack.slice();
         const target = future.pop();
         const previous = undoStack.slice();
-        previous.push(clone(document));
+        previous.push(historySnapshot());
         undoStack = previous;
         redoStack = future;
-        document = target;
-        dirty = authoredJson(target) !== savedDocumentJson;
+        document = target.document;
+        selectedClipIds = target.ids;
+        selectedClipId = target.primary;
+        dirty = authoredJson(document) !== savedDocumentJson;
         reconcileSelection();
     }
 
@@ -302,20 +322,35 @@ Rectangle {
     }
 
     function reconcileSelection(): void {
-        const location = clipLocation(selectedClipId);
-        if (location !== null) {
-            selectedTrackIndex = location.trackIndex;
-            return;
-        }
-        selectedClipId = "";
-        for (let trackIndex = 0; trackIndex < tracks.length; ++trackIndex) {
-            if (tracks[trackIndex].clips.length > 0) {
-                selectedTrackIndex = trackIndex;
-                selectedClipId = tracks[trackIndex].clips[0].id;
-                return;
+        selectedClipIds = selectedClipIds.filter(id => clipLocation(id) !== null);
+        if (!selectedClipIds.includes(selectedClipId)) selectedClipId = selectedClipIds[0] || "";
+        let location = clipLocation(selectedClipId);
+        if (location === null) {
+            for (let index = 0; index < tracks.length; ++index) {
+                if (tracks[index].clips.length) { selectedClipId = tracks[index].clips[0].id; location = {trackIndex: index}; break; }
             }
         }
-        selectedTrackIndex = tracks.length > 0 ? 0 : -1;
+        selectedTrackIndex = location ? location.trackIndex : tracks.length ? 0 : -1;
+    }
+
+    function applySelectionResult(result: var): bool {
+        if (!hasDocument || soundAssemblyController.running) return false;
+        if (result.error) {
+            const messages = {capacity: qsTr("This edit would exceed the 256-clip limit."),
+                duration: qsTr("This edit would exceed the four-hour timeline."),
+                empty: qsTr("Keep at least one clip in the project."),
+                split: qsTr("Place the playhead inside a selected clip before splitting."),
+                track: qsTr("The selected clips cannot move beyond the first or last track.")};
+            if (messages[result.error]) presentError(messages[result.error]);
+            return false;
+        }
+        if (JSON.stringify(result.tracks) === JSON.stringify(tracks)) return false;
+        const activeId = selectedClipId;
+        mutate(next => next.tracks = result.tracks);
+        selectedClipIds = result.ids || [];
+        selectedClipId = selectedClipIds.includes(activeId) ? activeId : selectedClipIds[0] || "";
+        reconcileSelection();
+        return true;
     }
 
     function setTrackValue(trackIndex: int, key: string, value: var): void {
@@ -341,12 +376,10 @@ Rectangle {
     }
 
     function moveClip(trackIndex: int, clipId: string, timelineStartMillis: real): void {
-        const location = clipLocation(clipId);
-        if (location === null)
-            return;
-        selectedClipId = clipId;
-        selectedTrackIndex = trackIndex;
-        mutate(next => next.tracks[location.trackIndex].clips[location.clipIndex].timelineStartMillis = Editing.clamp(Math.round(timelineStartMillis), 0, 14400000 - Editing.duration(clipById(clipId))));
+        const clip = clipById(clipId);
+        if (!clip) return;
+        if (!selectedClipIds.includes(clipId)) selectClip(trackIndex, clipId);
+        applySelectionResult({tracks: Selection.move(tracks, selectedClipIds, timelineStartMillis - clip.timelineStartMillis), ids: selectedClipIds.slice()});
     }
 
     function sourceDurationFor(clip: var): real {
@@ -366,54 +399,19 @@ Rectangle {
             patchClip(selectedClipId, Editing.trim(selectedClip, key === "sourceStartMillis" ? "left" : "right", value - selectedClip[key], sourceDurationFor(selectedClip)));
     }
     function deleteSelectedClip(): void {
-        const location = clipLocation(selectedClipId);
-        if (location === null || totalClipCount() <= 1)
-            return;
-        mutate(next => next.tracks[location.trackIndex].clips.splice(location.clipIndex, 1));
-        reconcileSelection();
+        applySelectionResult(Selection.remove(tracks, selectedClipIds));
     }
 
     function duplicateSelectedClip(): void {
-        const location = clipLocation(selectedClipId);
-        if (location === null || totalClipCount() >= 256 || Editing.end(selectedClip) + Editing.duration(selectedClip) > 14400000)
-            return;
-        const newId = backend.newAssemblyObjectId();
-        mutate(next => {
-            const copy = clone(next.tracks[location.trackIndex].clips[location.clipIndex]);
-            copy.id = newId;
-            copy.timelineStartMillis = Editing.end(copy);
-            next.tracks[location.trackIndex].clips.splice(location.clipIndex + 1, 0, copy);
-        });
-        selectedClipId = newId;
+        applySelectionResult(Selection.duplicate(tracks, selectedClipIds, () => backend.newAssemblyObjectId()));
     }
 
     function splitSelectedClip(): void {
-        const location = clipLocation(selectedClipId);
-        if (location === null || totalClipCount() >= 256)
-            return;
-        const halves = Editing.split(selectedClip, playheadMillis);
-        if (!halves) {
-            presentError(qsTr("Place the playhead inside the selected clip before splitting."));
-            return;
-        }
-        const newId = backend.newAssemblyObjectId();
-        halves[1].id = newId;
-        mutate(next => next.tracks[location.trackIndex].clips.splice(location.clipIndex, 1, halves[0], halves[1]));
-        selectedClipId = newId;
+        applySelectionResult(Selection.split(tracks, selectedClipIds, playheadMillis, () => backend.newAssemblyObjectId()));
     }
 
     function moveSelectedClipToTrack(delta: int): void {
-        const location = clipLocation(selectedClipId);
-        if (location === null)
-            return;
-        const target = location.trackIndex + delta;
-        if (target < 0 || target >= tracks.length)
-            return;
-        mutate(next => {
-            const clip = next.tracks[location.trackIndex].clips.splice(location.clipIndex, 1)[0];
-            next.tracks[target].clips.push(clip);
-        });
-        selectedTrackIndex = target;
+        applySelectionResult(Selection.moveTracks(tracks, selectedClipIds, delta));
     }
 
     function addTrack(): void {
@@ -496,26 +494,51 @@ Rectangle {
         return hours > 0 ? String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0") : String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
     }
 
-    function selectClip(trackIndex: int, clipId: string): void {
-        selectedTrackIndex = trackIndex;
-        selectedClipId = clipId;
+    function selectClip(trackIndex: int, clipId: string, modifiers: int, preserve: bool): void {
+        if (modifiers & (Qt.ControlModifier | Qt.MetaModifier | Qt.ShiftModifier)) {
+            selectedClipIds = selectedClipIds.includes(clipId) ? selectedClipIds.filter(id => id !== clipId) : selectedClipIds.concat([clipId]);
+            selectedClipId = selectedClipIds.includes(clipId) ? clipId : selectedClipIds[selectedClipIds.length - 1] || "";
+        } else {
+            if (!preserve || !selectedClipIds.includes(clipId)) selectedClipIds = [clipId];
+            selectedClipId = clipId;
+        }
+        const location = clipLocation(selectedClipId);
+        selectedTrackIndex = location ? location.trackIndex : trackIndex;
         forceActiveFocus();
     }
-    function patchClip(clipId: string, patch: var): void {
+    function selectAllClips(): void {
+        selectedClipIds = tracks.reduce((all, track) => all.concat(track.clips.map(clip => clip.id)), []);
+        selectedClipId = selectedClipIds[0] || "";
+        reconcileSelection();
+        forceActiveFocus();
+    }
+
+    function patchClip(clipId: string, patch: var, kind: string): void {
         const location = clipLocation(clipId);
-        if (!location)
+        if (!location) return;
+        if (kind === "move") {
+            moveClip(location.trackIndex, clipId, patch.timelineStartMillis);
             return;
+        }
         mutate(next => next.tracks[location.trackIndex].clips[location.clipIndex] = clone(patch));
     }
+
     function snapPosition(position: real, length: real, excludedId: string, bypass: bool): var {
+        const moving = length > 0 && selectedClipIds.includes(excludedId);
+        const excluded = moving ? selectedClipIds : [excludedId];
         const points = [0, playheadMillis];
-        for (const track of tracks)
-            for (const clip of track.clips) {
-                if (clip.id !== excludedId)
-                    points.push(clip.timelineStartMillis, Editing.end(clip));
-            }
-        return Editing.snap(position, length, points, tickStepSeconds * 1000, 8 * 1000 / pixelsPerSecond, snapping && !bypass);
+        for (const track of tracks) for (const clip of track.clips) {
+            if (!excluded.includes(clip.id)) points.push(clip.timelineStartMillis, Editing.end(clip));
+        }
+        const clip = clipById(excludedId);
+        const limit = moving ? Selection.moveLimits(tracks, selectedClipIds) : null;
+        const low = limit ? clip.timelineStartMillis + limit.minimum : 0;
+        const high = limit ? clip.timelineStartMillis + limit.maximum : 14400000 - length;
+        const result = Editing.snap(Editing.clamp(position, low, high), length, points, tickStepSeconds * 1000, 8 * 1000 / pixelsPerSecond, snapping && !bypass, high);
+        if (result.position < low) return {position: low, guide: -1};
+        return result;
     }
+
     function crossfadeCandidate(): var {
         if (!selectedClip || selectedTrackIndex < 0)
             return null;
@@ -540,22 +563,11 @@ Rectangle {
             }
         });
     }
-    function rippleDelete(): void {
-        const location = clipLocation(selectedClipId);
-        if (!location || totalClipCount() <= 1)
-            return;
-        const start = selectedClip.timelineStartMillis, end = Editing.end(selectedClip), length = Editing.duration(selectedClip);
-        // Close the gap on this track only; overlapping clips keep their placement.
-        mutate(next => {
-            const clips = next.tracks[location.trackIndex].clips;
-            clips.splice(location.clipIndex, 1);
-            for (const clip of clips)
-                if (clip.timelineStartMillis >= end)
-                    clip.timelineStartMillis -= length;
-        });
-        seekTo(start);
-        reconcileSelection();
+    function rippleDelete(allTracks: bool): void {
+        const result = Selection.ripple(tracks, selectedClipIds, !!allTracks, () => backend.newAssemblyObjectId());
+        if (applySelectionResult(result)) seekTo(result.position);
     }
+
     function stopPlayback(): void {
         const owned = playbackOwned;
         playbackOwned = false;
@@ -594,10 +606,10 @@ Rectangle {
         timelineFlick.contentX = 0;
     }
     function fitSelection(): void {
-        if (!selectedClip)
+        if (!selectionBounds)
             return;
-        pixelsPerSecond = Editing.clamp((laneViewportWidth - 80) * 1000 / Editing.duration(selectedClip), 0.02, 800);
-        Qt.callLater(() => timelineFlick.contentX = Math.max(0, selectedClip.timelineStartMillis * pixelsPerSecond / 1000 - 40));
+        pixelsPerSecond = Editing.clamp((laneViewportWidth - 80) * 1000 / Math.max(10, selectionBounds.end - selectionBounds.start), 0.02, 800);
+        Qt.callLater(() => { if (selectionBounds) timelineFlick.contentX = Math.max(0, selectionBounds.start * pixelsPerSecond / 1000 - 40); });
     }
     function zoomBy(factor: real): void {
         const anchor = Math.max(0, (playheadMillis * pixelsPerSecond / 1000 - timelineFlick.contentX));
@@ -632,6 +644,8 @@ Rectangle {
             togglePlayback();
         else if (event.key === Qt.Key_S && !command)
             splitSelectedClip();
+        else if (event.key === Qt.Key_A && command)
+            selectAllClips();
         else if (event.key === Qt.Key_D && command)
             duplicateSelectedClip();
         else if (event.key === Qt.Key_Z && command) {
@@ -673,7 +687,7 @@ Rectangle {
             onTriggered: workspace.splitSelectedClip()
         }
         MenuItem {
-            text: qsTr("Duplicate after clip")
+            text: qsTr("Duplicate after selection")
             onTriggered: workspace.duplicateSelectedClip()
         }
         MenuItem {
@@ -683,15 +697,22 @@ Rectangle {
         }
         MenuSeparator {}
         MenuItem {
-            text: qsTr("Delete clip")
+            text: qsTr("Delete selected clips")
             enabled: workspace.totalClipCount() > 1
             onTriggered: workspace.deleteSelectedClip()
         }
         MenuItem {
-            text: qsTr("Delete and close gap on this track")
+            text: qsTr("Ripple delete time ranges on selected tracks")
             enabled: workspace.totalClipCount() > 1
-            onTriggered: workspace.rippleDelete()
+            onTriggered: workspace.rippleDelete(false)
         }
+        MenuItem {
+            text: qsTr("Ripple delete time ranges on all tracks")
+            enabled: workspace.selectionCount > 0 && workspace.totalClipCount() > workspace.selectionCount
+            onTriggered: workspace.rippleDelete(true)
+        }
+        MenuSeparator {}
+        MenuItem { text: qsTr("Select all clips"); onTriggered: workspace.selectAllClips() }
     }
     Connections {
         target: player
@@ -797,7 +818,7 @@ Rectangle {
 
                     EchoIconButton {
                         source: "qrc:/EchoDesktop/icons/fit-selection.svg"
-                        toolTipText: qsTr("Preview selected clip range")
+                                toolTipText: qsTr("Preview selection range")
                         selected: workspace.previewSelection
                         enabled: workspace.selectedClip !== null && !soundAssemblyController.running
                         onClicked: workspace.previewSelection = !workspace.previewSelection
@@ -988,6 +1009,10 @@ Rectangle {
                                         pixelsPerSecond: workspace.pixelsPerSecond
                                         playheadMillis: workspace.playheadMillis
                                         selectedClipId: workspace.selectedClipId
+                                        selectedClipIds: workspace.selectedClipIds
+                                        groupMoveId: workspace.groupMoveId
+                                        groupMoveDelta: workspace.groupMoveDelta
+                                        onMovePreviewRequested: (clipId, delta) => { workspace.groupMoveId = clipId; workspace.groupMoveDelta = delta; }
                                         canDeleteTrack: workspace.tracks.length > 1 && workspace.totalClipCount() > modelData.clips.length
                                         headerWidth: workspace.trackHeaderWidth
                                         timelineWidth: workspace.timelineWidth
@@ -1006,8 +1031,8 @@ Rectangle {
                                                 next.tracks[trackIndex].panPercent = 0;
                                             })
                                         onTrackDeleteRequested: workspace.deleteTrack(trackIndex)
-                                        onClipSelected: (trackIndex, clipId) => workspace.selectClip(trackIndex, clipId)
-                                        onClipPatchRequested: (clipId, patch) => workspace.patchClip(clipId, patch)
+                                        onClipSelected: (trackIndex, clipId, modifiers, preserve) => workspace.selectClip(trackIndex, clipId, modifiers, preserve)
+                                        onClipPatchRequested: (clipId, patch, kind) => workspace.patchClip(clipId, patch, kind)
                                         onContextRequested: clipMenu.popup()
                                         onGuideChanged: position => workspace.snapGuideMillis = position
                                         onSeekRequested: position => {
@@ -1098,6 +1123,12 @@ Rectangle {
                             Item {
                                 Layout.fillWidth: true
                             }
+                            Text {
+                                visible: workspace.selectionCount > 1
+                                text: qsTr("%1 clips selected").arg(workspace.selectionCount)
+                                font.pixelSize: Theme.fontMeta
+                                color: Theme.textSecondary
+                            }
                             EchoIconButton {
                                 source: "qrc:/EchoDesktop/icons/fit-all.svg"
                                 toolTipText: qsTr("Fit project (F)")
@@ -1105,7 +1136,7 @@ Rectangle {
                             }
                             EchoIconButton {
                                 source: "qrc:/EchoDesktop/icons/fit-selection.svg"
-                                toolTipText: qsTr("Fit selected clip")
+                                toolTipText: qsTr("Fit selection")
                                 enabled: workspace.selectedClip !== null
                                 onClicked: workspace.fitSelection()
                             }

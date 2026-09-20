@@ -252,6 +252,7 @@ qt_add_qml_module(
         qml/EchoValueSpinBox.qml
         qml/EchoTimeSpinBox.qml
         qml/SoundAssemblyEditing.js
+        qml/SoundAssemblySelection.js
         qml/SoundAutomation.js
         qml/SoundDuckingPanel.qml
         qml/SoundGainEnvelope.qml

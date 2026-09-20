@@ -13,6 +13,33 @@ Item {
     property string reportJson: ""
     property var facts: ({})
     function require(value, message) { if (!value) throw new Error(message); }
+    function checkBatchEditing() {
+        const before = JSON.stringify(assembly.document);
+        const a = assembly.tracks[0].clips[0], b = assembly.tracks[1].clips[0];
+        const undoCount = assembly.undoStack.length;
+        assembly.selectClip(0, a.id, 0, false);
+        assembly.selectClip(1, b.id, Qt.ControlModifier, false);
+        require(assembly.selectionCount === 2, "multi-selection failed");
+        assembly.moveClip(1, b.id, b.timelineStartMillis + 1500);
+        require(assembly.tracks[0].clips[0].timelineStartMillis === a.timelineStartMillis + 1500, "group move lost alignment");
+        require(assembly.selectedClipId === b.id, "group move changed the active inspector clip");
+        require(assembly.undoStack.length === undoCount + 1, "group move created multiple history steps");
+        assembly.undo(); require(JSON.stringify(assembly.document) === before && assembly.selectionCount === 2, "group undo failed");
+        assembly.redo(); assembly.undo();
+        assembly.duplicateSelectedClip(); require(assembly.totalClipCount() === 4 && assembly.selectionCount === 2, "batch duplicate failed");
+        assembly.undo();
+        assembly.playheadMillis = 2000;
+        assembly.splitSelectedClip(); require(assembly.totalClipCount() === 4 && assembly.selectionCount === 4, "batch split failed");
+        assembly.undo();
+        assembly.mutate(next => { const c = next.tracks[1].clips[0]; c.timelineStartMillis = 2000; c.sourceStartMillis = 0; c.sourceEndMillis = 2000; });
+        assembly.selectClip(1, b.id, 0, false);
+        assembly.rippleDelete(true);
+        require(assembly.tracks[0].clips.length === 2 && assembly.tracks[1].clips.length === 0, "global ripple did not preserve background tails");
+        require(assembly.tracks[0].clips[1].timelineStartMillis === 2000 && assembly.tracks[0].clips[1].sourceStartMillis === 4000, "ripple source mapping failed");
+        assembly.undo(); assembly.undo();
+        require(JSON.stringify(assembly.document) === before, "batch editing changed originals after undo");
+        facts.batchEditing = {selection: true, move: true, duplicate: true, split: true, ripple: true, undoRedo: true};
+    }
     function step() {
         switch(stage) {
         case 0:
@@ -50,6 +77,7 @@ Item {
             require(renderExporter.hasResult,renderExporter.errorText || "single-source export failed");
             facts.singleExport=renderExporter.outputPath;
             shell.showMultitrack();require(assembly.hasDocument,"assembly creation failed");
+            checkBatchEditing();
             assembly.mutate(next=>{next.name='Independent arrangement';next.tracks[0].clips[0].fadeInMillis=120;next.tracks[1].clips[0].timelineStartMillis=500;});
             assembly.selectClip(1, assembly.tracks[1].clips[0].id);
             stage=20;break;

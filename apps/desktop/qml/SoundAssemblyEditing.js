@@ -47,6 +47,10 @@ function trim(clip, edge, deltaMillis, sourceDuration) {
     }
     return fitFades(next);
 }
+function slip(clip, deltaMillis, sourceDuration) {
+    const delta = Math.round(clamp(deltaMillis, -clip.sourceStartMillis, sourceDuration - clip.sourceEndMillis));
+    return Object.assign({}, clip, {sourceStartMillis: clip.sourceStartMillis + delta, sourceEndMillis: clip.sourceEndMillis + delta});
+}
 function split(clip, position) {
     const offset = Math.round(position - clip.timelineStartMillis);
     if (offset < 10 || offset > duration(clip) - 10) return null;

@@ -64,6 +64,10 @@ input, and `EchoTimeSpinBox.qml` adds the seconds-to-milliseconds projection.
 `SoundAssemblyClip.qml` owns the complete
 move, trim and fade gesture lifecycle; `SoundAssemblyEditing.js` owns bounded
 geometry, magnetic snapping, split/crossfade transforms and source-time mapping.
+`SoundAssemblySelection.js` owns atomic batch transforms for transient clip
+selections, including shared movement limits and source-preserving ripple cuts.
+Command/Control- or Shift-click toggles selection; dragging a selected clip moves
+the selection, while Alt-drag slips only the active source inside fixed boundaries.
 `AssemblyWaveformController` serializes asynchronous source waveform reads and
 retains bounded overview buckets for the active project's sources. The overview
 follows pinned source segments and gaps; it does not claim to show rendered DSP.

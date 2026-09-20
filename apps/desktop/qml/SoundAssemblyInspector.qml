@@ -100,6 +100,12 @@ Rectangle {
                     text: inspector.clipData ? (workspace.independentMode ? qsTr("Project source") : inspector.clipData.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (inspector.clipData.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(inspector.clipData.adjustmentRevisionId) : qsTr("Original source")) : ""
                     font.pixelSize: Theme.fontMeta; color: Theme.textMuted; wrapMode: Text.WordWrap
                 }
+                Text {
+                    visible: workspace.selectionCount > 1
+                    Layout.fillWidth: true
+                    text: qsTr("%1 clips selected · Parameters below apply to the active clip.").arg(workspace.selectionCount || 1)
+                    font.pixelSize: Theme.fontMeta; color: Theme.accent; wrapMode: Text.WordWrap
+                }
             }
             ColumnLayout {
                 visible: inspector.clipData !== null

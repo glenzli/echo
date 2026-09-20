@@ -10,6 +10,10 @@ Rectangle {
     required property int trackIndex
     required property real pixelsPerSecond
     required property real playheadMillis
+    property var selectedClipIds: [selectedClipId]
+    property string groupMoveId: ""
+    property real groupMoveDelta: 0
+    signal movePreviewRequested(string clipId, real delta)
     required property string selectedClipId
     required property bool canDeleteTrack
     property real timelineWidth: 1200
@@ -46,8 +50,8 @@ Rectangle {
     signal trackValueRequested(int trackIndex, string key, var value)
     signal trackMixResetRequested(int trackIndex)
     signal trackDeleteRequested(int trackIndex)
-    signal clipSelected(int trackIndex, string clipId)
-    signal clipPatchRequested(string clipId, var patch)
+    signal clipSelected(int trackIndex, string clipId, int modifiers, bool preserve)
+    signal clipPatchRequested(string clipId, var patch, string kind)
     signal contextRequested
     signal guideChanged(real position)
     signal seekRequested(real position)
@@ -102,15 +106,17 @@ Rectangle {
                 originalDuration: Number(trackRow.assetFor(modelData).durationMillis || sourceDuration)
                 waveformLevels: trackRow.waveforms[modelData.assetId] || []
                 pixelsPerSecond: trackRow.pixelsPerSecond
-                selected: trackRow.selectedClipId === modelData.id
+                selected: trackRow.selectedClipIds.includes(modelData.id)
+                groupMoveOffset: selected && trackRow.groupMoveId && trackRow.groupMoveId !== modelData.id ? trackRow.groupMoveDelta : 0
+                onMovePreviewRequested: delta => trackRow.movePreviewRequested(delta === 0 ? "" : modelData.id, delta)
                 trackColor: trackRow.trackColor
                 snapPosition: trackRow.snapPosition
                 viewportStart: trackRow.horizontalOffset
                 viewportWidth: trackRow.viewportWidth - trackRow.headerWidth
                 opacity: modelData.muted || trackRow.track.muted || (trackRow.anySolo && !trackRow.track.solo) ? 0.38 : 1
-                onSelectedRequested: trackRow.clipSelected(trackRow.trackIndex, modelData.id)
+                onSelectedRequested: (modifiers, preserve) => trackRow.clipSelected(trackRow.trackIndex, modelData.id, modifiers, preserve)
                 onEditRequested: trackRow.clipEditRequested(trackRow.trackIndex, modelData.id)
-                onPatchRequested: patch => trackRow.clipPatchRequested(modelData.id, patch)
+                onPatchRequested: (patch, kind) => trackRow.clipPatchRequested(modelData.id, patch, kind)
                 onContextRequested: trackRow.contextRequested()
                 onGuideChanged: position => trackRow.guideChanged(position)
             }
