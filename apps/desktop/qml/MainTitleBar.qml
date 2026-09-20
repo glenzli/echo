@@ -1,6 +1,4 @@
-//! Echo's one window-chrome owner. Brand, primary workspace navigation,
-//! settings, native safe areas, and the system-move gesture share one toolbar,
-//! mirroring Shadow's MainTitleBar boundary.
+//! Library workspace navigation and editor actions inside EchoWindowChrome.
 
 import QtQuick
 import QtQuick.Controls
@@ -8,10 +6,9 @@ import QtQuick.Layouts
 import QtQuick.Window
 import EchoDesktop
 
-ToolBar {
+EchoWindowChrome {
     id: titleBar
 
-    required property var hostWindow
     required property var editor
     required property var assembly
     required property int workspaceIndex
@@ -25,49 +22,10 @@ ToolBar {
     signal settingsRequested()
     signal materialsRequested()
 
-    objectName: "titleToolBar"
     Accessible.name: qsTr("Echo toolbar")
-    implicitHeight: 44
-    topPadding: 0
-    bottomPadding: 0
-    leftPadding: Math.max(
-        SafeArea.margins.left,
-        Qt.platform.os === "osx"
-            && hostWindow.visibility !== Window.FullScreen ? 96 : 16
-    )
-    rightPadding: Math.max(
-        SafeArea.margins.right,
-        Qt.platform.os === "windows" ? 152 : 16
-    )
-
-    background: Rectangle {
-        color: Theme.chrome
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: 1
-            color: Theme.border
-        }
-    }
 
     contentItem: Item {
-        Item {
-            anchors.fill: parent
-
-            DragHandler {
-                target: null
-                acceptedButtons: Qt.LeftButton
-                onActiveChanged: {
-                    if (active) {
-                        titleBar.hostWindow.startSystemMove()
-                    }
-                }
-            }
-        }
-
-        Row {
+        RowLayout {
             id: brandRow
 
             anchors.left: parent.left
@@ -75,6 +33,8 @@ ToolBar {
             spacing: 10
 
             Text {
+                objectName: "brandLabel"
+                Layout.alignment: Qt.AlignVCenter
                 text: "ECHO"
                 color: Theme.textPrimary
                 font.pixelSize: 14
@@ -83,14 +43,15 @@ ToolBar {
             }
 
             EchoIconButton {
+                objectName: "independentEditorButton"
+                Layout.alignment: Qt.AlignVCenter
                 source: "qrc:/EchoDesktop/icons/edit.svg"
                 toolTipText: qsTr("Independent editing…")
                 onClicked: independentEditor.launchEditor([])
             }
             Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 1
-                height: 18
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 18
                 color: Theme.border
             }
         }
@@ -98,6 +59,7 @@ ToolBar {
         Row {
             id: workspaceNavigation
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.horizontalCenterOffset: titleBar.windowCenterOffset
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             spacing: 10

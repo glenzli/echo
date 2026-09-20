@@ -36,6 +36,7 @@ Rectangle {
                 required property var modelData
 
                 objectName: "segmentedChoice-" + index
+                Accessible.name: String(choice.modelData)
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true

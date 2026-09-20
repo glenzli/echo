@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix="echo-qml-contract-") as temporary:
     module = Path(temporary) / "EchoDesktop"
     module.mkdir()
     entries = ["module EchoDesktop", "singleton Theme 0.1 Theme.qml", "singleton SoundSemantics 0.1 SoundSemantics.qml"]
-    for name in ["Theme.qml", "SoundSemantics.qml", "WaveformView.qml", "SoundAssemblyClip.qml", "SoundGainEnvelope.qml", "SoundAutomation.js", "SoundAssemblyEditing.js", "EchoIcon.qml", "EchoComboBox.qml", "SpectralEditing.js", "NoiseProfileEditing.js", "NoiseReductionPanel.qml", "EchoSegmentedControl.qml", "SpectrogramView.qml", "SpectralRepairSurface.qml", "SoundAdjustmentDraft.qml", "EchoTimeSpinBox.qml", "EchoParameterSlider.qml", "EchoSwitch.qml"]:
+    for name in ["EchoWindowChrome.qml", "MainTitleBar.qml", "IndependentTitleBar.qml", "EchoButton.qml", "EchoIconButton.qml", "Theme.qml", "SoundSemantics.qml", "WaveformView.qml", "SoundAssemblyClip.qml", "SoundGainEnvelope.qml", "SoundAutomation.js", "SoundAssemblyEditing.js", "EchoIcon.qml", "EchoComboBox.qml", "SpectralEditing.js", "NoiseProfileEditing.js", "NoiseReductionPanel.qml", "EchoSegmentedControl.qml", "SpectrogramView.qml", "SpectralRepairSurface.qml", "SoundAdjustmentDraft.qml", "EchoTimeSpinBox.qml", "EchoParameterSlider.qml", "EchoSwitch.qml"]:
         (module / name).symlink_to(root / "apps/desktop/qml" / name)
         if name.endswith(".qml") and name not in ("Theme.qml", "SoundSemantics.qml"):
             entries.append(f"{Path(name).stem} 0.1 {name}")

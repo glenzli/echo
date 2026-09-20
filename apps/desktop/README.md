@@ -44,7 +44,11 @@ timeline, so both ratios can be resized without changing draft semantics.
 Meanwhile,
 `SoundEditingWorkspace.qml` owns source, transport, selection looping,
 adjusted/original audition, backend lifecycle, and the small command projection
-consumed by the window chrome. `MainTitleBar.qml` presents editor-wide draft
+consumed by the window chrome. `EchoWindowChrome.qml` shares the 44 px titlebar,
+native safe areas, surface and drag gesture between both application shells.
+`IndependentTitleBar.qml` owns the project identity and document actions; native
+window titles remain available to macOS menus without a second painted titlebar.
+`MainTitleBar.qml` presents editor-wide draft
 state and undo/redo beside the workspace navigation; the inspector does not
 duplicate global history commands. Pointer movement never
 persists or recompiles playback; the prepared graph is rebuilt only when the

@@ -2278,7 +2278,8 @@
         <name>IndependentEditor</name>
         <message>
             <location filename="../qml/IndependentEditor.qml" line="15" />
-            <location filename="../qml/IndependentEditor.qml" line="61" />
+            <location filename="../qml/IndependentEditor.qml" line="62" />
+            <location filename="../qml/IndependentEditor.qml" line="137" />
             <source>Untitled project</source>
             <translation>未命名工程</translation>
         </message>
@@ -2288,155 +2289,137 @@
             <translation>Echo · 独立编辑</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="89" />
+            <location filename="../qml/IndependentEditor.qml" line="90" />
             <source>Finish or cancel the current operation before closing.</source>
             <translation>请先完成或取消当前操作，再关闭窗口。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="122" />
+            <location filename="../qml/IndependentEditor.qml" line="123" />
             <source>File</source>
             <translation>文件</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="123" />
+            <location filename="../qml/IndependentEditor.qml" line="124" />
             <source>New editing window</source>
             <translation>新建编辑窗口</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="124" />
-            <location filename="../qml/IndependentEditor.qml" line="144" />
-            <location filename="../qml/IndependentEditor.qml" line="173" />
+            <location filename="../qml/IndependentEditor.qml" line="125" />
+            <location filename="../qml/IndependentEditor.qml" line="172" />
             <source>Open audio…</source>
             <translation>打开音频…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="125" />
-            <location filename="../qml/IndependentEditor.qml" line="174" />
+            <location filename="../qml/IndependentEditor.qml" line="126" />
+            <location filename="../qml/IndependentEditor.qml" line="173" />
             <source>Open project…</source>
             <translation>打开工程…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="127" />
-            <location filename="../qml/IndependentEditor.qml" line="145" />
-            <location filename="../qml/IndependentEditor.qml" line="230" />
-            <location filename="../qml/IndependentEditor.qml" line="242" />
+            <location filename="../qml/IndependentEditor.qml" line="128" />
+            <location filename="../qml/IndependentEditor.qml" line="229" />
+            <location filename="../qml/IndependentEditor.qml" line="241" />
             <source>Save project</source>
             <translation>保存工程</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="128" />
+            <location filename="../qml/IndependentEditor.qml" line="129" />
             <source>Save project as…</source>
             <translation>工程另存为…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="129" />
-            <location filename="../qml/IndependentEditor.qml" line="146" />
+            <location filename="../qml/IndependentEditor.qml" line="130" />
             <source>Export audio…</source>
             <translation>导出音频…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="131" />
+            <location filename="../qml/IndependentEditor.qml" line="132" />
             <source>Close window</source>
             <translation>关闭窗口</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="139" />
-            <source>Independent editing</source>
-            <translation>独立编辑</translation>
-        </message>
-        <message>
-            <location filename="../qml/IndependentEditor.qml" line="141" />
-            <source>Waveform / Spectrum</source>
-            <translation>波形 / 频谱</translation>
-        </message>
-        <message>
-            <location filename="../qml/IndependentEditor.qml" line="142" />
-            <source>Multitrack</source>
-            <translation>多轨编排</translation>
-        </message>
-        <message>
-            <location filename="../qml/IndependentEditor.qml" line="156" />
+            <location filename="../qml/IndependentEditor.qml" line="155" />
             <source>Project sources</source>
             <translation>工程素材</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="159" />
+            <location filename="../qml/IndependentEditor.qml" line="158" />
             <source>Original files stay unchanged</source>
             <translation>原始文件保持不变</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="169" />
+            <location filename="../qml/IndependentEditor.qml" line="168" />
             <source>A space for the sound in front of you</source>
             <translation>专注眼前的声音</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="170" />
+            <location filename="../qml/IndependentEditor.qml" line="169" />
             <source>Drop audio here to edit, repair or arrange it. Save a project to continue later, or export your finished sound.</source>
             <translation>拖入音频，开始编辑、修复或编排。保存工程以便继续编辑，或导出处理后的声音。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="178" />
+            <location filename="../qml/IndependentEditor.qml" line="177" />
             <source>Recover editing session · %1</source>
             <translation>恢复未关闭的编辑 · %1</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="206" />
+            <location filename="../qml/IndependentEditor.qml" line="205" />
             <source>Working on your project…</source>
             <translation>正在处理工程…</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="206" />
+            <location filename="../qml/IndependentEditor.qml" line="205" />
             <source>Changes are recoverable. Save the project to keep a portable copy.</source>
             <translation>编辑记录可恢复。保存工程后，可携带素材继续编辑。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="206" />
+            <location filename="../qml/IndependentEditor.qml" line="205" />
             <source>Only this project is open. Automatic library analysis is off.</source>
             <translation>仅处理当前工程，不自动分析记忆库。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="220" />
+            <location filename="../qml/IndependentEditor.qml" line="219" />
             <source>Open audio</source>
             <translation>打开音频</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="221" />
+            <location filename="../qml/IndependentEditor.qml" line="220" />
             <source>Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</source>
             <translation>音频文件 (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="221" />
+            <location filename="../qml/IndependentEditor.qml" line="220" />
             <source>All files (*)</source>
             <translation>所有文件 (*)</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="225" />
+            <location filename="../qml/IndependentEditor.qml" line="224" />
             <source>Open project</source>
             <translation>打开工程</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="226" />
-            <location filename="../qml/IndependentEditor.qml" line="231" />
+            <location filename="../qml/IndependentEditor.qml" line="225" />
+            <location filename="../qml/IndependentEditor.qml" line="230" />
             <source>Echo projects (*.echo)</source>
             <translation>Echo 工程 (*.echo)</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="237" />
+            <location filename="../qml/IndependentEditor.qml" line="236" />
             <source>Save this project before closing?</source>
             <translation>关闭前保存工程吗？</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="238" />
+            <location filename="../qml/IndependentEditor.qml" line="237" />
             <source>The saved project includes your audio sources and editing state.</source>
             <translation>保存的工程包含音频素材与编辑状态。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="240" />
+            <location filename="../qml/IndependentEditor.qml" line="239" />
             <source>Cancel</source>
             <translation>取消</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="241" />
+            <location filename="../qml/IndependentEditor.qml" line="240" />
             <source>Discard changes</source>
             <translation>放弃修改</translation>
         </message>
@@ -2493,6 +2476,44 @@
             <location filename="../src/independent_editor_controller.cpp" line="201" />
             <source>The editor window could not be opened.</source>
             <translation>无法打开编辑窗口。</translation>
+        </message>
+    </context>
+    <context>
+        <name>IndependentTitleBar</name>
+        <message>
+            <location filename="../qml/IndependentTitleBar.qml" line="18" />
+            <source>Echo · Independent editing</source>
+            <translation>Echo · 独立编辑</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentTitleBar.qml" line="54" />
+            <source>Unsaved changes</source>
+            <translation>有未保存的更改</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentTitleBar.qml" line="63" />
+            <source>Waveform / Spectrum</source>
+            <translation>波形 / 频谱</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentTitleBar.qml" line="63" />
+            <source>Multitrack</source>
+            <translation>多轨编排</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentTitleBar.qml" line="77" />
+            <source>Open audio…</source>
+            <translation>打开音频…</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentTitleBar.qml" line="84" />
+            <source>Save project</source>
+            <translation>保存工程</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentTitleBar.qml" line="92" />
+            <source>Export audio…</source>
+            <translation>导出音频…</translation>
         </message>
     </context>
     <context>
@@ -2559,67 +2580,67 @@
     <context>
         <name>MainTitleBar</name>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="29" />
+            <location filename="../qml/MainTitleBar.qml" line="25" />
             <source>Echo toolbar</source>
             <translation>Echo 工具栏</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="217" />
+            <location filename="../qml/MainTitleBar.qml" line="179" />
             <source>Indexing %1</source>
             <translation>正在索引 %1 项</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="291" />
+            <location filename="../qml/MainTitleBar.qml" line="253" />
             <source>Settings</source>
             <translation>设置</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="242" />
+            <location filename="../qml/MainTitleBar.qml" line="204" />
             <source>Draft</source>
             <translation>草稿</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="114" />
+            <location filename="../qml/MainTitleBar.qml" line="76" />
             <source>Memory library</source>
             <translation>记忆库</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="139" />
+            <location filename="../qml/MainTitleBar.qml" line="101" />
             <source>Edit sound</source>
             <translation>编辑声音</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="165" />
+            <location filename="../qml/MainTitleBar.qml" line="127" />
             <source>Projects</source>
             <translation>项目</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="188" />
+            <location filename="../qml/MainTitleBar.qml" line="150" />
             <source>Materials</source>
             <translation>素材</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="242" />
+            <location filename="../qml/MainTitleBar.qml" line="204" />
             <source>Saved</source>
             <translation>已保存</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="256" />
+            <location filename="../qml/MainTitleBar.qml" line="218" />
             <source>Undo</source>
             <translation>撤销</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="269" />
+            <location filename="../qml/MainTitleBar.qml" line="231" />
             <source>Redo</source>
             <translation>重做</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="281" />
+            <location filename="../qml/MainTitleBar.qml" line="243" />
             <source>Save version</source>
             <translation>保存版本</translation>
         </message>
         <message>
-            <location filename="../qml/MainTitleBar.qml" line="87" />
+            <location filename="../qml/MainTitleBar.qml" line="49" />
             <source>Independent editing…</source>
             <translation>独立编辑…</translation>
         </message>

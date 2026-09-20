@@ -227,6 +227,8 @@ qt_add_qml_module(
         qml/LoudnessTargetControl.qml
         qml/ListeningProgressTracker.qml
         qml/MainTitleBar.qml
+        qml/EchoWindowChrome.qml
+        qml/IndependentTitleBar.qml
         qml/MasterOutputPanel.qml
         qml/MetadataCalibrationEditor.qml
         qml/ParametricEqGraph.qml

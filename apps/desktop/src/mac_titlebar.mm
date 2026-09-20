@@ -62,6 +62,9 @@ class MacTitleBarAlignment final : public QObject {
         if (native_window == nil) {
             return;
         }
+        // Keep the document title for Window menus, without drawing a second
+        // title over the QML navigation in the expanded client area.
+        native_window.titleVisibility = NSWindowTitleHidden;
         const NSRect window_frame = native_window.frame;
         const NSPoint target_in_screen = NSMakePoint(
             NSMidX(window_frame),

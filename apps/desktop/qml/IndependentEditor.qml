@@ -13,6 +13,7 @@ ApplicationWindow {
     visible: true
     color: Theme.window
     title: (independentEditor.projectPath ? independentEditor.projectPath.split("/").pop() : qsTr("Untitled project")) + (projectDirty ? " *" : "") + " — " + qsTr("Echo · Independent editing")
+    flags: Qt.Window | Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
     palette.window: Theme.window
     palette.windowText: Theme.textPrimary
     palette.text: Theme.textPrimary
@@ -131,20 +132,18 @@ ApplicationWindow {
             MenuItem { text: qsTr("Close window"); onTriggered: window.close() }
         }
     }
-    header: ToolBar {
-        background: Rectangle { color: Theme.chrome; border.color: Theme.border }
-        contentItem: RowLayout {
-            spacing: 12
-            Text { Layout.leftMargin: 16; text: "ECHO"; font.letterSpacing: 2; font.weight: Font.DemiBold; color: Theme.textPrimary }
-            Text { text: qsTr("Independent editing"); color: Theme.textMuted; font.pixelSize: Theme.fontMeta }
-            Item { Layout.fillWidth: true }
-            EchoButton { text: qsTr("Waveform / Spectrum"); ghost: window.multitrack; enabled: window.selectedAsset !== null && !window.processing; onClicked: { if (window.flushDrafts()) { window.clipId = ""; window.multitrack = false; } } }
-            EchoButton { text: qsTr("Multitrack"); ghost: !window.multitrack; enabled: !window.processing; onClicked: window.showMultitrack() }
-            Item { Layout.fillWidth: true }
-            EchoButton { text: qsTr("Open audio…"); enabled: !window.processing; onClicked: audioDialog.open() }
-            EchoButton { text: qsTr("Save project"); enabled: !window.processing; onClicked: window.saveProject(false) }
-            EchoButton { Layout.rightMargin: 12; text: qsTr("Export audio…"); enabled: window.selectedAsset !== null && !window.processing; onClicked: window.exportAudio() }
-        }
+    header: IndependentTitleBar {
+        hostWindow: window
+        projectName: independentEditor.projectPath ? independentEditor.projectPath.split("/").pop() : qsTr("Untitled project")
+        dirty: window.projectDirty
+        processing: window.processing
+        hasSource: window.selectedAsset !== null
+        multitrack: window.multitrack
+        onWaveformRequested: if (window.flushDrafts()) { window.clipId = ""; window.multitrack = false; }
+        onMultitrackRequested: window.showMultitrack()
+        onOpenRequested: audioDialog.open()
+        onSaveRequested: window.saveProject(false)
+        onExportRequested: window.exportAudio()
     }
     ColumnLayout {
         anchors.fill: parent; spacing: 0
