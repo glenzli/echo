@@ -30,6 +30,8 @@ TestCase {
     }
     SignalSpy { id: openAction; target: independent; signalName: "openRequested" }
     SignalSpy { id: modeAction; target: independent; signalName: "multitrackRequested" }
+    SignalSpy { id: undoAction; target: independent; signalName: "undoRequested" }
+    SignalSpy { id: redoAction; target: independent; signalName: "redoRequested" }
 
     function centerY(item, target) { return item.mapToItem(target, item.width/2, item.height/2).y; }
     function test_brand_and_action_share_vertical_center() {
@@ -45,7 +47,8 @@ TestCase {
     }
     function test_document_header_stays_centered_and_separate(data) {
         testCase.width=data.w;host.visibility=data.full ? Window.FullScreen : Window.Windowed;
-        waitForRendering(independent);
+        verify(waitForPolish(independent.Window.window));
+        verify(waitForRendering(independent));
         const modes=findChild(independent,"editorModes");
         const identity=findChild(independent,"projectIdentity"), actions=findChild(independent,"projectActions");
         const left=modes.mapToItem(independent,0,0).x;
@@ -58,12 +61,26 @@ TestCase {
         openAction.clear();modeAction.clear();host.moves=0;
         mouseClick(findChild(independent,"openAudioButton"));
         compare(openAction.count,1);compare(host.moves,0);
-        mouseClick(findChild(findChild(independent,"editorModes"),"segmentedChoice-1"));
+        mouseClick(findChild(independent,"multitrackModeButton"));
         compare(modeAction.count,1);compare(host.moves,0);
         independent.processing=true;
         mouseClick(findChild(independent,"openAudioButton"));
         compare(openAction.count,1);
         independent.processing=false;
+    }
+    function test_history_icons_preserve_availability_and_route_without_drag() {
+        undoAction.clear();redoAction.clear();host.moves=0;
+        independent.canUndo=true;independent.canRedo=false;
+        mouseClick(findChild(independent,"undoProjectButton"));
+        mouseClick(findChild(independent,"redoProjectButton"));
+        compare(undoAction.count,1);compare(redoAction.count,0);
+        independent.canRedo=true;
+        mouseClick(findChild(independent,"redoProjectButton"));
+        compare(redoAction.count,1);compare(host.moves,0);
+        independent.processing=true;
+        mouseClick(findChild(independent,"undoProjectButton"));
+        compare(undoAction.count,1);
+        independent.processing=false;independent.canUndo=false;independent.canRedo=false;
     }
     function test_blank_chrome_moves_the_window() {
         host.moves=0;

@@ -208,6 +208,7 @@ SoundAssemblyController::SoundAssemblyController(
 }
 
 SoundAssemblyController::~SoundAssemblyController() {
+    player_.stop();
     stopWorker();
 }
 
@@ -228,16 +229,7 @@ void SoundAssemblyController::prepareRangePreview(
         reject(tr("Cannot create the private assembly preview directory."));
         return;
     }
-    const std::uint64_t next_generation = generation_.load() + 1U;
-    start(
-        revision,
-        QDir(preview_directory_.path())
-            .filePath(QStringLiteral("preview-%1.wav").arg(next_generation)),
-        true,
-        false,
-        startMillis,
-        endMillis
-    );
+    start(revision, preview_directory_.path(), true, false, startMillis, endMillis);
 }
 
 void SoundAssemblyController::exportAssembly(const QVariantMap& revision, const QUrl& destination) {
@@ -272,10 +264,7 @@ void SoundAssemblyController::start(
     }
     if (preview) {
         player_.stop();
-        if (!preview_path_.isEmpty()) {
-            QFile::remove(preview_path_);
-            preview_path_.clear();
-        }
+        preview_plan_.reset();
         has_preview_ = false;
     }
     const QVariantList source_values = revision.value(QStringLiteral("clipSources")).toList();
@@ -321,15 +310,21 @@ void SoundAssemblyController::start(
             return true;
         });
     }
+    QSet<QString> pinned_sources;
+    if (preview_plan_)
+        for (const auto& track : preview_plan_->tracks)
+            for (const auto& clip : track.clips)
+                pinned_sources.insert(QString::fromStdString(clip.path));
     worker_ = std::jthread([this,
                             generation,
                             destination,
                             preview,
                             preserveMemory,
                             preparation_root,
+                            pinned_sources,
                             job = std::move(*projected)](std::stop_token stop_token) mutable {
         try {
-            const double preparation_share = 0.6;
+            const double preparation_share = preview ? 1.0 : 0.6;
             PreparedAssemblySourceCache source_cache(
                 QDir(preview_directory_.path()).filePath(QStringLiteral("sources"))
             );
@@ -379,6 +374,33 @@ void SoundAssemblyController::start(
                             clip.path = prepared_result.path.toStdString();
             }
 
+            if (preview) {
+                if (stop_token.stop_requested())
+                    throw echo::audio::OfflineRenderCancelled();
+                for (const auto& track : job.plan.tracks)
+                    for (const auto& clip : track.clips)
+                        pinned_sources.insert(QString::fromStdString(clip.path));
+                source_cache.trim(4ULL * 1024ULL * 1024ULL * 1024ULL, pinned_sources);
+                QDir(preparation_root).removeRecursively();
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, generation, plan = std::move(job.plan), reused_sources]() mutable {
+                        if (generation_.load() != generation)
+                            return;
+                        preview_plan_ = std::move(plan);
+                        has_preview_ = true;
+                        running_ = false;
+                        reused_source_count_ = reused_sources;
+                        progress_ = 1.0;
+                        // The UI owns admission to playback and its initial seek.
+                        emit progressChanged();
+                        emit stateChanged();
+                    },
+                    Qt::QueuedConnection
+                );
+                return;
+            }
+
             QSaveFile output(destination);
             output.setDirectWriteFallback(false);
             if (!output.open(QIODevice::WriteOnly)) {
@@ -420,7 +442,7 @@ void SoundAssemblyController::start(
                 throw std::runtime_error(output.errorString().toStdString());
             }
             QDir(preparation_root).removeRecursively();
-            source_cache.trim();
+            source_cache.trim(4ULL * 1024ULL * 1024ULL * 1024ULL, pinned_sources);
             QString publication_error;
             if (!preview) {
                 publication_error = backend_.recordSoundAssemblyExport(
@@ -454,17 +476,11 @@ void SoundAssemblyController::start(
                     running_ = false;
                     reused_source_count_ = reused_sources;
                     has_result_ = !preview && publication_error.isEmpty();
-                    has_preview_ = preview;
                     progress_ = 1.0;
                     integrated_lufs_ = result.integrated_lufs;
                     true_peak_dbtp_ = result.true_peak_dbtp;
                     error_text_ = publication_error;
-                    if (preview) {
-                        preview_path_ = destination;
-                        player_.play(destination);
-                    } else {
-                        output_path_ = destination;
-                    }
+                    output_path_ = destination;
                     if (preserveMemory && publication_error.isEmpty()) {
                         backend_.refresh();
                         emit memorySaved(assemblyId);
@@ -526,8 +542,17 @@ bool SoundAssemblyController::hasResult() const {
 qreal SoundAssemblyController::progress() const {
     return progress_;
 }
-QString SoundAssemblyController::previewPath() const {
-    return preview_path_;
+bool SoundAssemblyController::playPreview(qint64 startMillis) {
+    if (running_ || !has_preview_ || !preview_plan_ || startMillis < 0)
+        return false;
+    if (!player_.playAssembly(*preview_plan_)) {
+        error_text_ = player_.errorText();
+        emit stateChanged();
+        return false;
+    }
+    if (startMillis > 0)
+        player_.seek(startMillis);
+    return true;
 }
 QString SoundAssemblyController::outputPath() const {
     return output_path_;

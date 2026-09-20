@@ -69,14 +69,14 @@ PreparedAssemblySourceCache::Result PreparedAssemblySourceCache::prepare(
     return {path, false};
 }
 
-void PreparedAssemblySourceCache::trim(quint64 maximumBytes) {
+void PreparedAssemblySourceCache::trim(quint64 maximumBytes, const QSet<QString>& pinnedPaths) {
     const auto entries =
         QDir(root_).entryInfoList({QStringLiteral("*.wav")}, QDir::Files, QDir::Time);
     quint64 total = 0;
     for (const auto& file : entries)
         total += static_cast<quint64>(file.size());
     for (auto it = entries.crbegin(); it != entries.crend() && total > maximumBytes; ++it) {
-        if (QFile::remove(it->absoluteFilePath()))
+        if (!pinnedPaths.contains(it->absoluteFilePath()) && QFile::remove(it->absoluteFilePath()))
             total -= static_cast<quint64>(it->size());
     }
 }

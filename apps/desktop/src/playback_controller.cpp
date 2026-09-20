@@ -3,6 +3,7 @@
 //! position timer (main thread) observes end-of-stream and drives UI state.
 
 #include "playback_controller.hpp"
+#include "echo/audio/assembly_playback.hpp"
 #include "noise_profile_projection.hpp"
 
 #include <QAudioFormat>
@@ -235,7 +236,7 @@ void PlaybackController::playAdjusted(
 }
 
 bool PlaybackController::updateRestoration(const QVariantMap& restorationValue) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     const auto restoration = RestorationProjection::fromQml(restorationValue);
     if (session == nullptr || !restoration.has_value()) {
         return false;
@@ -250,7 +251,7 @@ bool PlaybackController::updateRestoration(const QVariantMap& restorationValue) 
 }
 
 bool PlaybackController::updateDeHum(const QVariantMap& deHumValue) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     const auto adjustment = PlaybackAdjustmentProjection::deHumFromQml(deHumValue);
     if (session == nullptr || !adjustment.has_value()) {
         return false;
@@ -265,7 +266,7 @@ bool PlaybackController::updateDeHum(const QVariantMap& deHumValue) {
 }
 
 bool PlaybackController::updateDeClick(const QVariantMap& deClickValue) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     const auto adjustment = PlaybackAdjustmentProjection::deClickFromQml(deClickValue);
     if (session == nullptr || !adjustment.has_value()) {
         return false;
@@ -280,7 +281,7 @@ bool PlaybackController::updateDeClick(const QVariantMap& deClickValue) {
 }
 
 bool PlaybackController::updateChannelRepair(const QVariantMap& channelRepairValue) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     const auto adjustment = PlaybackAdjustmentProjection::channelRepairFromQml(channelRepairValue);
     if (session == nullptr || !adjustment.has_value()) {
         return false;
@@ -295,7 +296,7 @@ bool PlaybackController::updateChannelRepair(const QVariantMap& channelRepairVal
 }
 
 bool PlaybackController::updateReverb(const QVariantMap& reverbValue) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     const auto reverb = ReverbProjection::fromQml(reverbValue);
     const auto space =
         reverb.has_value() ? SpaceProjection::fromQml(reverbValue, *reverb) : std::nullopt;
@@ -312,7 +313,7 @@ bool PlaybackController::updateReverb(const QVariantMap& reverbValue) {
 }
 
 bool PlaybackController::updateCreativeVfx(const QVariantMap& creativeVfxValue) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     const auto creative_vfx = CreativeVfxProjection::fromQml(creativeVfxValue);
     if (session == nullptr || !creative_vfx.has_value()) {
         return false;
@@ -327,7 +328,7 @@ bool PlaybackController::updateCreativeVfx(const QVariantMap& creativeVfxValue) 
 }
 
 bool PlaybackController::updateEqualizer(bool enabled, const QVariantList& equalizerBands) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     auto equalizer = ParametricEqualizerProjection::fromQml(equalizerBands);
     if (session == nullptr || !equalizer.has_value()) {
         return false;
@@ -358,7 +359,7 @@ bool PlaybackController::updateCompressor(
     int releaseMillis,
     int makeupCentibels
 ) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     if (session == nullptr || thresholdCentibels < -6000 || thresholdCentibels > 0
         || ratioTenths < 10 || ratioTenths > 200 || attackMillis < 1 || attackMillis > 200
         || releaseMillis < 20 || releaseMillis > 2000 || makeupCentibels < 0
@@ -382,7 +383,7 @@ bool PlaybackController::updateCompressor(
 }
 
 bool PlaybackController::updateLimiter(bool enabled, int ceilingCentibels, int releaseMillis) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = std::dynamic_pointer_cast<echo::audio::PlaybackSession>(current_session_);
     if (session == nullptr || ceilingCentibels < -600 || ceilingCentibels > 0 || releaseMillis < 20
         || releaseMillis > 1000) {
         return false;
@@ -412,6 +413,22 @@ void PlaybackController::startSession(
         return;
     }
 
+    startStream(std::move(session));
+}
+
+bool PlaybackController::playAssembly(const echo::audio::AssemblyMixPlan& plan) {
+    try {
+        return startStream(std::make_shared<echo::audio::AssemblyPlaybackSession>(plan));
+    } catch (const std::exception& error) {
+        qWarning("cannot start assembly playback: %s", error.what());
+        error_text_ = tr("Could not play the mix. Check that its sources are available.");
+        emit stateChanged();
+        return false;
+    }
+}
+
+bool PlaybackController::startStream(std::shared_ptr<echo::audio::PlaybackStream> session) {
+    error_text_.clear();
     // Stop its producer before publication. The handoff preserves an old
     // session only while an in-flight callback might still read from it.
     if (current_session_ != nullptr) {
@@ -432,7 +449,9 @@ void PlaybackController::startSession(
                 format.channelCount()
             );
             publishSession(nullptr);
-            return;
+            error_text_ = tr("The audio output device does not support this format.");
+            emit stateChanged();
+            return false;
         }
         sink_ = std::make_unique<QAudioSink>(output, format);
         sink_->setVolume(volume_);
@@ -449,9 +468,10 @@ void PlaybackController::startSession(
     position_timer_.start();
     emit stateChanged();
     emit meterChanged();
+    return true;
 }
 
-void PlaybackController::publishSession(std::shared_ptr<echo::audio::PlaybackSession> session) {
+void PlaybackController::publishSession(std::shared_ptr<echo::audio::PlaybackStream> session) {
     current_session_ = session;
     if (callback_sessions_.publish(std::move(session)))
         session_cleanup_timer_.stop();
@@ -461,7 +481,7 @@ void PlaybackController::publishSession(std::shared_ptr<echo::audio::PlaybackSes
 
 void PlaybackController::fillBuffer(QSpan<float> buffer) {
     const auto read = callback_sessions_.read();
-    echo::audio::PlaybackSession* const session = read.session();
+    echo::audio::PlaybackStream* const session = read.session();
     const std::size_t count = static_cast<std::size_t>(buffer.size());
     if (session == nullptr) {
         std::fill(buffer.begin(), buffer.end(), 0.0F);
@@ -476,7 +496,7 @@ void PlaybackController::fillBuffer(QSpan<float> buffer) {
 }
 
 void PlaybackController::togglePause() {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = current_session_;
     if (session == nullptr || sink_ == nullptr) {
         return;
     }
@@ -509,7 +529,7 @@ void PlaybackController::stop() {
 }
 
 void PlaybackController::seek(qint64 millis) {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = current_session_;
     if (session == nullptr || millis < 0) {
         return;
     }
@@ -530,12 +550,12 @@ bool PlaybackController::isActive() const {
 }
 
 qint64 PlaybackController::position() const {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = current_session_;
     return session != nullptr ? static_cast<qint64>(session->position_millis()) : 0;
 }
 
 qint64 PlaybackController::duration() const {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = current_session_;
     return session != nullptr ? static_cast<qint64>(session->duration_millis()) : 0;
 }
 
@@ -572,7 +592,13 @@ void PlaybackController::setVolume(qreal volume) {
 }
 
 void PlaybackController::pumpPosition() {
-    const std::shared_ptr<echo::audio::PlaybackSession> session = current_session_;
+    const auto session = current_session_;
+    if (session && !session->error().empty()) {
+        qWarning("assembly playback failed: %s", session->error().c_str());
+        error_text_ = tr("Could not play the mix. Check that its sources are available.");
+        stop();
+        return;
+    }
     if (session != nullptr) {
         const echo::audio::PlaybackMeterSnapshot snapshot = session->meter_snapshot();
         const bool changed =

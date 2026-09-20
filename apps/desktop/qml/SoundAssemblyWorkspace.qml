@@ -587,8 +587,7 @@ Rectangle {
                 player.togglePause();
             else {
                 playbackOwned = true;
-                player.play(soundAssemblyController.previewPath);
-                player.seek(Math.round(playheadMillis < previewRangeStart || playheadMillis >= previewRangeEnd ? 0 : playheadMillis - previewRangeStart));
+                soundAssemblyController.playPreview(Math.round(playheadMillis < previewRangeStart || playheadMillis >= previewRangeEnd ? 0 : playheadMillis - previewRangeStart));
             }
         } else
             preview();
@@ -717,8 +716,13 @@ Rectangle {
     Connections {
         target: player
         function onStateChanged(): void {
+            if (workspace.playbackOwned && player.errorText) {
+                workspace.playbackOwned=false;
+                workspace.presentError(player.errorText);
+                return;
+            }
             if (!player.active && workspace.visible && workspace.playbackOwned && workspace.previewCurrent && workspace.loopPreview)
-                Qt.callLater(() => { if (workspace.playbackOwned && workspace.previewCurrent && workspace.loopPreview) player.play(soundAssemblyController.previewPath); });
+                Qt.callLater(() => { if (workspace.playbackOwned && workspace.previewCurrent && workspace.loopPreview) soundAssemblyController.playPreview(); });
         }
         function onPositionChanged(): void {
             if (!workspace.visible || !workspace.playbackOwned || !workspace.previewCurrent)
@@ -1255,7 +1259,7 @@ Rectangle {
                     workspace.previewDocumentJson = workspace.pendingPreviewJson;
                     if (workspace.previewCurrent && workspace.visible) {
                         workspace.playbackOwned = true;
-                        player.seek(Math.round(workspace.previewStartMillis - workspace.previewRangeStart));
+                        soundAssemblyController.playPreview(Math.round(workspace.previewStartMillis - workspace.previewRangeStart));
                     } else
                         workspace.stopPlayback();
                 }

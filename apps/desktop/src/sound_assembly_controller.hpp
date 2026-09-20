@@ -7,8 +7,10 @@
 #include <QUrl>
 #include <QVariantMap>
 
+#include "echo/audio/assembly.hpp"
 #include <atomic>
 #include <cstdint>
+#include <optional>
 #include <thread>
 
 class DesktopBackend;
@@ -21,7 +23,6 @@ class SoundAssemblyController : public QObject {
     Q_PROPERTY(bool hasPreview READ hasPreview NOTIFY stateChanged)
     Q_PROPERTY(bool hasResult READ hasResult NOTIFY stateChanged)
     Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged)
-    Q_PROPERTY(QString previewPath READ previewPath NOTIFY stateChanged)
     Q_PROPERTY(QString outputPath READ outputPath NOTIFY stateChanged)
     Q_PROPERTY(qreal integratedLufs READ integratedLufs NOTIFY stateChanged)
     Q_PROPERTY(qreal truePeakDbtp READ truePeakDbtp NOTIFY stateChanged)
@@ -41,6 +42,7 @@ class SoundAssemblyController : public QObject {
     Q_INVOKABLE void exportAssembly(const QVariantMap& revision, const QUrl& destination);
     Q_INVOKABLE void saveToMemory(const QVariantMap& revision);
     Q_INVOKABLE void cancel();
+    Q_INVOKABLE bool playPreview(qint64 startMillis = 0);
 
     int reusedSourceCount() const {
         return reused_source_count_;
@@ -49,7 +51,6 @@ class SoundAssemblyController : public QObject {
     [[nodiscard]] bool hasPreview() const;
     [[nodiscard]] bool hasResult() const;
     [[nodiscard]] qreal progress() const;
-    [[nodiscard]] QString previewPath() const;
     [[nodiscard]] QString outputPath() const;
     [[nodiscard]] qreal integratedLufs() const;
     [[nodiscard]] qreal truePeakDbtp() const;
@@ -82,7 +83,7 @@ class SoundAssemblyController : public QObject {
     bool has_preview_ = false;
     bool has_result_ = false;
     qreal progress_ = 0.0;
-    QString preview_path_;
+    std::optional<echo::audio::AssemblyMixPlan> preview_plan_;
     QString output_path_;
     qreal integrated_lufs_ = -70.0;
     qreal true_peak_dbtp_ = -70.0;

@@ -116,7 +116,7 @@ Item {
                 facts.repeatedAuditions=auditionCycle;
                 stage=6;break;
             }
-            player.play(soundAssemblyController.previewPath);
+            require(soundAssemblyController.playPreview(),"streaming preview could not restart");
             require(player.active && player.duration>0,"repeated audition failed to start");
             player.seek(100);auditionWaitTicks=0;stage=31;break;
         case 31:

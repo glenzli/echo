@@ -10,11 +10,15 @@ EchoWindowChrome {
     required property bool processing
     required property bool hasSource
     required property bool multitrack
+    property bool canUndo: false
+    property bool canRedo: false
     signal waveformRequested()
     signal multitrackRequested()
     signal openRequested()
     signal saveRequested()
     signal exportRequested()
+    signal undoRequested()
+    signal redoRequested()
     Accessible.name: qsTr("Echo · Independent editing")
 
     contentItem: Item {
@@ -54,16 +58,31 @@ EchoWindowChrome {
                 Accessible.name: qsTr("Unsaved changes")
             }
         }
-        EchoSegmentedControl {
+        Row {
             id: modes
             objectName: "editorModes"
-            anchors.centerIn: parent
+            anchors.horizontalCenter: parent.horizontalCenter
             anchors.horizontalCenterOffset: titleBar.windowCenterOffset
-            width: 250
-            model: [qsTr("Waveform / Spectrum"), qsTr("Multitrack")]
-            currentIndex: titleBar.multitrack ? 1 : 0
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            spacing: 10
             enabled: titleBar.hasSource && !titleBar.processing
-            onActivated: index => { if (index === 0) titleBar.waveformRequested(); else titleBar.multitrackRequested(); }
+            EchoWorkspaceTab {
+                objectName: "waveformModeButton"
+                height: parent.height
+                source: "qrc:/EchoDesktop/icons/edit.svg"
+                toolTipText: qsTr("Waveform / Spectrum")
+                selected: !titleBar.multitrack
+                onClicked: titleBar.waveformRequested()
+            }
+            EchoWorkspaceTab {
+                objectName: "multitrackModeButton"
+                height: parent.height
+                source: "qrc:/EchoDesktop/icons/assembly.svg"
+                toolTipText: qsTr("Multitrack")
+                selected: titleBar.multitrack
+                onClicked: titleBar.multitrackRequested()
+            }
         }
         RowLayout {
             id: actions
@@ -71,6 +90,23 @@ EchoWindowChrome {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
+            EchoIconButton {
+                objectName: "undoProjectButton"
+                source: "qrc:/EchoDesktop/icons/undo.svg"
+                toolTipText: qsTr("Undo")
+                enabled: titleBar.canUndo && !titleBar.processing
+                buttonSize: 28; iconSize: 16
+                onClicked: titleBar.undoRequested()
+            }
+            EchoIconButton {
+                objectName: "redoProjectButton"
+                source: "qrc:/EchoDesktop/icons/redo.svg"
+                toolTipText: qsTr("Redo")
+                enabled: titleBar.canRedo && !titleBar.processing
+                buttonSize: 28; iconSize: 16
+                onClicked: titleBar.redoRequested()
+            }
+            Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 18; color: Theme.border }
             EchoIconButton {
                 objectName: "openAudioButton"
                 source: "qrc:/EchoDesktop/icons/folder.svg"
@@ -86,10 +122,10 @@ EchoWindowChrome {
                 onClicked: titleBar.saveRequested()
             }
             Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 18; color: Theme.border }
-            EchoButton {
+            EchoIconButton {
                 objectName: "exportAudioButton"
-                implicitHeight: Theme.compactControlHeight
-                text: qsTr("Export audio…")
+                source: "qrc:/EchoDesktop/icons/export.svg"
+                toolTipText: qsTr("Export audio…")
                 enabled: titleBar.hasSource && !titleBar.processing
                 onClicked: titleBar.exportRequested()
             }

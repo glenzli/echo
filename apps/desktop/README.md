@@ -46,7 +46,8 @@ Meanwhile,
 adjusted/original audition, backend lifecycle, and the small command projection
 consumed by the window chrome. `EchoWindowChrome.qml` shares the 44 px titlebar,
 native safe areas, surface and drag gesture between both application shells.
-`IndependentTitleBar.qml` owns the project identity and document actions; native
+`EchoWorkspaceTab.qml` shares icon navigation and the selection marker between both shells.
+`IndependentTitleBar.qml` owns the project identity, active-editor history and icon document actions; native
 window titles remain available to macOS menus without a second painted titlebar.
 `MainTitleBar.qml` presents editor-wide draft
 state and undo/redo beside the workspace navigation; the inspector does not
@@ -82,10 +83,20 @@ exact asset adjustment revision. `SoundAssemblyController` first renders each
 unique pinned revision through the existing single-sound offline renderer.
 `PreparedAssemblySourceCache` reuses canonical sources by source bytes, pinned
 adjustment identity, impulse-response bytes and renderer version. Writes are atomic,
-cancellation never admits partial outputs, and completed jobs trim retained sources
-to 4 GiB. The cache is private to the editing process and removed on exit. The controller
-then feeds the resulting canonical 48 kHz stereo sources to one shared native
-assembly plan for preview and PCM24 WAV mixdown. Catalog publication happens
+cancellation never admits partial outputs, and completed jobs evict unused sources
+toward a 4 GiB cache budget. Sources pinned by the active preview remain available
+even when they exceed that budget. The cache is private to the editing process and
+removed on exit. The controller
+then feeds the resulting canonical 48 kHz stereo sources to `AssemblyMixer`,
+which executes fixed 4096-frame blocks for both preview and PCM24 WAV mixdown.
+`PreparedPcmReader` reads Echo's canonical PCM16/PCM24 WAV blocks directly on that
+producer, with no per-clip DSP pipeline or decoder thread. Other source layouts
+retain the general decoder path. Reads validate the header and physical data size.
+`AssemblyPlaybackSession` mixes on a producer thread into a 16384-frame ring,
+and `PlaybackStream` is the device-facing transport for either a source DSP
+session or an assembly. The cache pins every source referenced by the prepared
+preview, including future clips, while exports may trim other cached sources.
+Preview readiness no longer represents a completed mixed WAV. Catalog publication happens
 only after an atomic output commit and records the assembly revision, Original
 hashes, pinned adjustment revisions, and output hash.
 

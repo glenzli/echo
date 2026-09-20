@@ -15,11 +15,13 @@
 
 #include <memory>
 
+#include "echo/audio/assembly.hpp"
 #include "echo/audio/playback.hpp"
 #include "playback_session_handoff.hpp"
 
 class PlaybackController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QString errorText READ errorText NOTIFY stateChanged)
     Q_PROPERTY(bool playing READ isPlaying NOTIFY stateChanged)
     Q_PROPERTY(bool paused READ isPaused NOTIFY stateChanged)
     Q_PROPERTY(bool active READ isActive NOTIFY stateChanged)
@@ -36,6 +38,10 @@ class PlaybackController : public QObject {
     ~PlaybackController() override;
 
     Q_INVOKABLE void play(const QString& path);
+    bool playAssembly(const echo::audio::AssemblyMixPlan& plan);
+    QString errorText() const {
+        return error_text_;
+    }
     Q_INVOKABLE void playNoiseResidue(
         const QString& path,
         qint64 startMillis,
@@ -157,9 +163,11 @@ class PlaybackController : public QObject {
     void startSession(const QString& path, const echo::audio::PlaybackAdjustment& adjustment);
     void pumpPosition();
     void fillBuffer(QSpan<float> buffer);
-    void publishSession(std::shared_ptr<echo::audio::PlaybackSession> session);
+    void publishSession(std::shared_ptr<echo::audio::PlaybackStream> session);
+    bool startStream(std::shared_ptr<echo::audio::PlaybackStream> session);
 
-    std::shared_ptr<echo::audio::PlaybackSession> current_session_;
+    std::shared_ptr<echo::audio::PlaybackStream> current_session_;
+    QString error_text_;
     PlaybackSessionHandoff callback_sessions_;
     std::unique_ptr<QAudioSink> sink_;
     QTimer position_timer_;

@@ -133,12 +133,17 @@ ApplicationWindow {
         }
     }
     header: IndependentTitleBar {
+        readonly property var activeEditor: window.multitrack ? assembly : editor
         hostWindow: window
         projectName: independentEditor.projectPath ? independentEditor.projectPath.split("/").pop() : qsTr("Untitled project")
         dirty: window.projectDirty
         processing: window.processing
         hasSource: window.selectedAsset !== null
         multitrack: window.multitrack
+        canUndo: activeEditor.canUndo
+        canRedo: activeEditor.canRedo
+        onUndoRequested: activeEditor.undo()
+        onRedoRequested: activeEditor.redo()
         onWaveformRequested: if (window.flushDrafts()) { window.clipId = ""; window.multitrack = false; }
         onMultitrackRequested: window.showMultitrack()
         onOpenRequested: audioDialog.open()

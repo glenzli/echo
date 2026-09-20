@@ -1,7 +1,7 @@
 //! Main-thread ownership of sessions borrowed by the device callback.
 #pragma once
 
-#include "echo/audio/playback.hpp"
+#include "echo/audio/playback_stream.hpp"
 
 #include <atomic>
 #include <cstdint>
@@ -25,13 +25,13 @@ class PlaybackSessionHandoff {
         }
         Read(const Read&) = delete;
         Read& operator=(const Read&) = delete;
-        [[nodiscard]] echo::audio::PlaybackSession* session() const {
+        [[nodiscard]] echo::audio::PlaybackStream* session() const {
             return session_;
         }
 
       private:
         PlaybackSessionHandoff& owner_;
-        echo::audio::PlaybackSession* session_;
+        echo::audio::PlaybackStream* session_;
     };
 
     [[nodiscard]] Read read() {
@@ -40,7 +40,7 @@ class PlaybackSessionHandoff {
 
     // True means no retired session remains; otherwise collect after a later
     // callback completes, including when playback has been stopped or paused.
-    [[nodiscard]] bool publish(std::shared_ptr<echo::audio::PlaybackSession> session) {
+    [[nodiscard]] bool publish(std::shared_ptr<echo::audio::PlaybackStream> session) {
         if (current_ != session) {
             if (current_)
                 retired_.push_back(std::move(current_));
@@ -61,9 +61,9 @@ class PlaybackSessionHandoff {
 
   private:
     static_assert(std::atomic<std::uint32_t>::is_always_lock_free);
-    static_assert(std::atomic<echo::audio::PlaybackSession*>::is_always_lock_free);
+    static_assert(std::atomic<echo::audio::PlaybackStream*>::is_always_lock_free);
     std::atomic<std::uint32_t> readers_{0};
-    std::atomic<echo::audio::PlaybackSession*> callback_{nullptr};
-    std::shared_ptr<echo::audio::PlaybackSession> current_;
-    std::vector<std::shared_ptr<echo::audio::PlaybackSession>> retired_;
+    std::atomic<echo::audio::PlaybackStream*> callback_{nullptr};
+    std::shared_ptr<echo::audio::PlaybackStream> current_;
+    std::vector<std::shared_ptr<echo::audio::PlaybackStream>> retired_;
 };

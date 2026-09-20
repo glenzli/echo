@@ -33,7 +33,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - **非破坏性调整**：独立的声音调整工作区提供裁剪、淡入淡出、增益、EQ、Dynamics、响度测量、录制缺陷修复、空间处理、效果顺序与局部作用范围，并支持 Original／Adjusted A/B、撤销重做和显式保存版本。
 - **确定性 Creative VFX**：Scene、Delay、Modulation、Tape、Pitch、Freeze、Granular 等处理与恢复性调整分域，可独立启用、旁路和保存，不把生成内容伪装成原录音。
 - **编辑中的 AI**：显式转写最多五分钟的原始音频选区，按句段或可用的对齐词段定位、试听、隐藏或仅保留音频，保留边界余量与撤销。独立模式只把结果保存在当前工程。素材搜索先显示字面结果，再补充已有索引的语义候选。
-- **声音编排**：可从资料库多选按顺序或分层创建独立编排，在最多 8 条轨道、256 个片段和 4 小时范围内移动、跨轨、分割、裁剪、复制、淡化、叠加和混合；轨道提供增益、声像、Mute／Solo，Master 提供增益与 limiter，并支持撤销重做、保存不可变版本、试听和 PCM24 WAV 混音导出。片段音量包络可编辑和旁路，也可根据参考轨峰值活动生成配乐闪避曲线；来源处理可复用，并提供所选片段范围的循环试听。
+- **声音编排**：可从资料库多选按顺序或分层创建独立编排，在最多 8 条轨道、256 个片段和 4 小时范围内移动、跨轨、分割、裁剪、复制、淡化、叠加和混合；轨道提供增益、声像、Mute／Solo，Master 提供增益与 limiter，并支持撤销重做、保存不可变版本、试听和 PCM24 WAV 混音导出。片段音量包络可编辑和旁路，也可根据参考轨峰值活动生成配乐闪避曲线；来源处理可复用，并提供所选片段范围的循环试听。来源准备后，混音按块生成进入短缓冲，无需等待整段混音文件；修改参数后需重新试听。
 - **方案与交付**：可保存和应用处理方案，将单条录音导出为 WAV，或将有界批次导出为 WAV／FLAC；导出与频谱修复工作副本保留来源版本和处理记录。
 - **批量编排**：Cmd／Ctrl／Shift 点选片段，整体移动、跨轨、复制、分割或删除；波纹删除可作用于所选轨道或全部轨道，保留跨越删除区间的声音首尾。Alt 拖动只滑移片段内部的来源，批量操作可以一步撤销。
 
@@ -96,7 +96,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - **Non-destructive adjustment**: a dedicated workspace provides trim, fades, gain, EQ, dynamics, loudness measurement, recording repair, space processing, effect ordering, and bounded effect regions, with Original/Adjusted A/B, undo/redo, and explicit version saving.
 - **Deterministic Creative VFX**: Scene, Delay, Modulation, Tape, Pitch, Freeze, Granular, and related processing remain separate from restoration. Each can be enabled, bypassed, and saved without presenting generated material as the original recording.
 - **Editor AI**: explicitly transcribe up to five minutes of original audio, then locate, audition, hide or keep a segment or available aligned unit with boundary padding and undo. Independent mode keeps evidence in the current project. Material search shows literal matches first, followed by semantic candidates from existing indexes.
-- **Sound Assembly**: create a sequence or layered assembly from a Library selection, then move, re-track, split, trim, duplicate, fade, overlap, and mix up to 256 clips across 8 tracks and 4 hours. Track gain, pan, mute/solo, master gain and limiting, undo/redo, immutable version saves, preview, and PCM24 WAV mixdown are included.
+- **Sound Assembly**: create a sequence or layered assembly from a Library selection, then move, re-track, split, trim, duplicate, fade, overlap, and mix up to 256 clips across 8 tracks and 4 hours. Track gain, pan, mute/solo, master gain and limiting, undo/redo, immutable version saves, preview, and PCM24 WAV mixdown are included. Once sources are prepared, preview mixes into a short streaming buffer without rendering a complete mix file; parameter changes require restarting audition.
 - **Recipes and delivery**: save and apply processing recipes, then export one recording as WAV or a bounded batch as WAV/FLAC. Exports and rendered spectral-repair working copies retain their source revision and processing record.
 - **Batch arrangement**: Cmd/Ctrl/Shift-click clips to move, re-track, duplicate, split, or delete them together. Ripple deletion affects selected tracks or all tracks while preserving the tails of crossing clips. Alt-drag slips source audio inside fixed clip boundaries; each batch edit takes one undo step.
 

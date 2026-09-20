@@ -2,6 +2,7 @@
 #pragma once
 #include "echo/audio/adjustment.hpp"
 #include "echo/audio/offline_render.hpp"
+#include <QSet>
 #include <QString>
 #include <QVariantMap>
 
@@ -18,8 +19,11 @@ class PreparedAssemblySourceCache {
         const echo::audio::PlaybackAdjustment& adjustment,
         const echo::audio::OfflineRenderCallbacks& callbacks
     );
-    // Call only after the mix has released all prepared sources.
-    void trim(quint64 maximumBytes = 4ULL * 1024ULL * 1024ULL * 1024ULL);
+    // Pinned sources may still be read by a streaming preview, including later clips.
+    void trim(
+        quint64 maximumBytes = 4ULL * 1024ULL * 1024ULL * 1024ULL,
+        const QSet<QString>& pinnedPaths = {}
+    );
 
   private:
     QString root_;

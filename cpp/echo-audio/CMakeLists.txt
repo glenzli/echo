@@ -34,6 +34,9 @@ add_library(
     src/modulated_delay_vfx.cpp
     src/modulation_vfx_processor.cpp
     src/offline_loudness_analyzer.cpp
+    src/assembly_mixer.cpp
+    src/assembly_playback.cpp
+    src/prepared_pcm_reader.cpp
     src/offline_assembly_wav_renderer.cpp
     src/offline_flac_renderer.cpp
     src/offline_render.cpp
@@ -97,6 +100,11 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(echo-assembly-playback-test tests/assembly_playback_test.cpp)
+    target_link_libraries(echo-assembly-playback-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-assembly-playback-test)
+    add_test(NAME echo-assembly-playback-test COMMAND echo-assembly-playback-test)
+    set_tests_properties(echo-assembly-playback-test PROPERTIES TIMEOUT 30)
     add_executable(echo-audio-workflow-contract-test tests/audio_workflow_contract_test.cpp)
     target_link_libraries(echo-audio-workflow-contract-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-audio-workflow-contract-test)

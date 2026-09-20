@@ -1,3 +1,4 @@
+#include "echo/audio/playback.hpp"
 #include "playback_session_handoff.hpp"
 
 #include <QCoreApplication>

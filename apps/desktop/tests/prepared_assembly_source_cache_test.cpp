@@ -72,6 +72,9 @@ int main(int argc, char** argv) {
     }
     assert(cancelled);
     assert(QDir(directory).entryList(QDir::Files).size() == 3);
+    cache.trim(0, {changed.path});
+    assert(QDir(directory).entryList(QDir::Files).size() == 1);
+    assert(QFile::exists(changed.path));
     cache.trim(0);
     assert(QDir(directory).entryList(QDir::Files).isEmpty());
 }
