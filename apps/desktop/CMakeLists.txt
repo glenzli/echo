@@ -238,6 +238,7 @@ qt_add_qml_module(
         qml/LoudnessTargetControl.qml
         qml/ListeningProgressTracker.qml
         qml/MainTitleBar.qml
+        qml/UnsavedEditDialog.qml
         qml/EchoWindowChrome.qml
         qml/EchoWorkspaceTab.qml
         qml/IndependentTitleBar.qml

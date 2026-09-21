@@ -12,6 +12,7 @@ Popup {
     property var spans: []
     property real expectedRevision: 0
     property string errorText: ""
+    property bool recordExpanded: false
     readonly property bool importedLabels: Disclosure.sources(asset).some(source => source.origin === "embedded_export")
     readonly property var generation: asset ? Disclosure.ownRevision(asset).generation || null : null
     readonly property bool readOnly: !!(asset && asset.assemblyId) || !!generation
@@ -31,7 +32,7 @@ Popup {
         asset=source; rangeStart=Math.max(0,Math.floor(start)); rangeEnd=Math.min(Number(source.durationMillis),Math.ceil(end));
         const revision=Disclosure.ownRevision(source); expectedRevision=revision.revisionId;
         spans=JSON.parse(JSON.stringify(readOnly ? Disclosure.sources(source).reduce((rows,s) => rows.concat(Disclosure.list(s.spans).map(p => Object.assign({},p,{sourceId:s.assetId}))),[]) : revision.spans));
-        note.text=""; errorText=""; kind.currentIndex=0; open();
+        note.text=""; errorText=""; kind.currentIndex=0; recordExpanded=false; open();
     }
     function append(whole) {
         if (!asset || readOnly || spans.length>=64) return;
@@ -57,10 +58,28 @@ Popup {
             font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
             text: qsTr("These labels came from the audio file and apply to its whole duration. They are declarations, not authenticated evidence; you can correct them.")
         }
-        Text {
-            Layout.fillWidth: true; visible: !!dialog.generation; wrapMode: Text.WordWrap
-            textFormat: Text.PlainText; maximumLineCount: 5; elide: Text.ElideRight; font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
-            text: dialog.generation ? qsTr("Model: %1\nBuild: %2\nNarration: %3").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text) : ""
+        EchoButton {
+            objectName: "generationRecordToggle"
+            visible: !!dialog.generation; ghost: true
+            text: dialog.recordExpanded ? qsTr("Hide generation record") : qsTr("Show generation record")
+            onClicked: dialog.recordExpanded=!dialog.recordExpanded
+        }
+        ScrollView {
+            id: recordScroll
+            objectName: "generationRecordScroll"
+            Layout.fillWidth: true; Layout.preferredHeight: 160
+            visible: !!dialog.generation && dialog.recordExpanded
+            clip: true; contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            TextArea {
+                objectName: "generationRecordText"
+                width: recordScroll.availableWidth
+                readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap
+                textFormat: TextEdit.PlainText; font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
+                selectionColor: Theme.accent; selectedTextColor: Theme.accentText; padding: 10
+                background: Rectangle { color: Theme.surfaceSubtle; radius: 7 }
+                text: dialog.generation ? qsTr("Model: %1\nBuild: %2\nNarration: %3").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text) : ""
+            }
         }
         Rectangle { Layout.fillWidth: true; implicitHeight: disclaimer.implicitHeight+16; radius: 7; color: Theme.warningSurface
             Text { id: disclaimer; anchors.fill: parent; anchors.margins: 8; wrapMode: Text.WordWrap; font.pixelSize: Theme.fontMeta; color: Theme.warningText

@@ -336,6 +336,11 @@ Rectangle {
             soundAssemblyController.saveToMemory(revision);
     }
 
+    function revealMaterial(assetId: string): void {
+        sourcesVisible = true;
+        sourceBrowser.revealAsset(assetId);
+    }
+
     function sourceAsset(clip: var): var {
         return clip ? libraryAssets.find(asset => asset.id === clip.assetId) || null : null;
     }
@@ -894,13 +899,15 @@ Rectangle {
                     }
 
                     EchoButton {
+                        objectName: "assemblyAddSound"
                         text: qsTr("Add sound")
                         ghost: true
                         enabled: workspace.hasDocument && workspace.totalClipCount() < 256
                         onClicked: {
-                            workspace.sourcesVisible = !workspace.sourcesVisible;
-                            if (workspace.sourcesVisible)
+                            if (!workspace.sourcesVisible)
                                 sourceBrowser.sourceTab = workspace.independentMode ? 0 : 2;
+                            workspace.sourcesVisible = true;
+                            sourceBrowser.focusSearch();
                         }
                     }
 

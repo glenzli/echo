@@ -194,6 +194,17 @@ ApplicationWindow {
                 onDirtyChanged: if (dirty) { window.projectDirty = true; recoveryTimer.restart(); }
                 onReturnToProjectRequested: { if (window.flushDrafts()) { window.clipId = ""; window.multitrack = true; } }
                 onProjectClipSaved: revision => assembly.acceptClipRevision(revision)
+                onShowMaterialRequested: assetId => {
+                    if (!window.flushDrafts()) return;
+                    if (window.clipId) {
+                        window.clipId=""; window.multitrack=true;
+                        assembly.revealMaterial(assetId);
+                    } else {
+                        window.refreshSources();
+                        window.selectedAsset=window.assets.find(asset => asset.id===assetId) || window.selectedAsset;
+                    }
+                    editor.acceptedNarrationId="";
+                }
             }
             SoundAssemblyWorkspace {
                 id: assembly

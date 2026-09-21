@@ -98,7 +98,7 @@ Rectangle {
                 Text {
                     visible: inspector.clipData !== null
                     Layout.fillWidth: true
-                    text: inspector.clipData ? (workspace.independentMode ? qsTr("Project source") : inspector.clipData.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (inspector.clipData.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(inspector.clipData.adjustmentRevisionId) : qsTr("Original source")) : ""
+                    text: inspector.clipData ? (workspace.independentMode ? qsTr("Project source") : inspector.clipData.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (inspector.clipData.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(inspector.clipData.adjustmentRevisionId) : qsTr("Source audio")) : ""
                     font.pixelSize: Theme.fontMeta; color: Theme.textMuted; wrapMode: Text.WordWrap
                 }
                 SourceDisclosureBadge {

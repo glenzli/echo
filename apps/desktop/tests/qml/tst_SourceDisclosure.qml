@@ -42,5 +42,15 @@ TestCase {
         openDialog(); verify(dialog.readOnly); compare(dialog.generation.input_text,"Later narration");
         verify(!findChild(dialog,"disclosureSave").visible); dialog.save(); compare(writes.length,0);
     }
+    function test_full_generation_record_can_be_read_without_clipping() {
+        const narration="这是完整的旁白。".repeat(60)+"最后一句";
+        asset={id:"source",durationMillis:10000,sourceDisclosure:{sources:[{assetId:"source",revisionId:0,origin:"runtime_generated",generation:{input_text:narration,runtime:{job:{physical_model:"/cache/"+"model/".repeat(30),model_build:"build"}}},spans:[{kind:"ai_generated",startMillis:0,endMillis:10000,note:""}]}]}};
+        openDialog(); verify(!findChild(dialog,"generationRecordScroll").visible);
+        mouseClick(findChild(dialog,"generationRecordToggle")); waitForRendering(dialog.contentItem);
+        const record=findChild(dialog,"generationRecordText"), scroll=findChild(dialog,"generationRecordScroll");
+        verify(scroll.visible); verify(record.readOnly); verify(record.selectByMouse);
+        verify(record.text.endsWith(narration)); verify(record.height>scroll.height);
+        dialog.close(); openDialog(); verify(!dialog.recordExpanded);
+    }
 
 }

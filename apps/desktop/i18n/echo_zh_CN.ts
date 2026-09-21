@@ -4418,11 +4418,6 @@
             <translation>来源版本 %1</translation>
         </message>
         <message>
-            <location filename="../qml/SoundAssemblyInspector.qml" line="100" />
-            <source>Original source</source>
-            <translation>原始来源</translation>
-        </message>
-        <message>
             <location filename="../qml/SoundAssemblyInspector.qml" line="106" />
             <source>%1 clips selected · Parameters below apply to the active clip.</source>
             <translation>已选择 %1 个片段 · 下方参数仅作用于当前片段。</translation>
@@ -4623,6 +4618,10 @@
             <location filename="../qml/SoundAssemblyInspector.qml" line="270" />
             <source>Last mix: %1 LUFS · %2 dBTP</source>
             <translation>上次混音：%1 LUFS · %2 dBTP</translation>
+        </message>
+        <message>
+            <source>Source audio</source>
+            <translation>源音频</translation>
         </message>
     </context>
     <context>
@@ -5278,6 +5277,18 @@
         <message>
             <source>Add a narration</source>
             <translation>补充旁白</translation>
+        </message>
+        <message>
+            <source>Dismiss</source>
+            <translation>收起</translation>
+        </message>
+        <message>
+            <source>Narration kept as a separate source. Your current edit is unchanged.</source>
+            <translation>旁白已作为独立素材保留，当前编辑保持不变。</translation>
+        </message>
+        <message>
+            <source>Show material</source>
+            <translation>查看素材</translation>
         </message>
     </context>
     <context>
@@ -6092,16 +6103,6 @@
         </message>
         <message>
             <location filename="../qml/SoundSourceBrowser.qml" line="238" />
-            <source>Adjusted recording</source>
-            <translation>已处理的录音</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="238" />
-            <source>Original source</source>
-            <translation>原始来源</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="238" />
             <source>Semantic candidate</source>
             <translation>语义候选</translation>
         </message>
@@ -6188,6 +6189,22 @@
         <message>
             <source>Add a narration</source>
             <translation>补充旁白</translation>
+        </message>
+        <message>
+            <source>Adjusted sound</source>
+            <translation>调整后声音</translation>
+        </message>
+        <message>
+            <source>Clear filters</source>
+            <translation>清除筛选</translation>
+        </message>
+        <message>
+            <source>Import audio to add it to this project.</source>
+            <translation>导入音频，将它加入当前项目。</translation>
+        </message>
+        <message>
+            <source>Source audio</source>
+            <translation>源音频</translation>
         </message>
     </context>
     <context>
@@ -7662,6 +7679,14 @@ Narration: %3</source>
 构建：%2
 旁白：%3</translation>
         </message>
+        <message>
+            <source>Hide generation record</source>
+            <translation>收起生成记录</translation>
+        </message>
+        <message>
+            <source>Show generation record</source>
+            <translation>查看生成记录</translation>
+        </message>
     </context>
     <context>
         <name>GeneratedNarrationController</name>
@@ -7753,8 +7778,47 @@ Narration: %3</source>
             <translation>生成试听</translation>
         </message>
         <message>
-            <source>Keep as material</source>
-            <translation>采纳为素材</translation>
+            <source>Keep in Materials</source>
+            <translation>保留到素材</translation>
+        </message>
+        <message>
+            <source>Keep in project</source>
+            <translation>保留到项目</translation>
+        </message>
+        <message>
+            <source>Kept in Materials. You can add it to a project later.</source>
+            <translation>保留到素材中，之后可以加入项目。</translation>
+        </message>
+        <message>
+            <source>Kept with this project. Add it to a track when you are ready.</source>
+            <translation>随当前项目保留，需要时再加入轨道。</translation>
+        </message>
+    </context>
+    <context>
+        <name>UnsavedEditDialog</name>
+        <message>
+            <source>Keep these edits before leaving?</source>
+            <translation>离开前保留这些调整吗？</translation>
+        </message>
+        <message>
+            <source>This sound has unsaved adjustments. Saving keeps this editing version; the original file stays unchanged.</source>
+            <translation>此声音有尚未保存的调整。保存将保留当前编辑版本，原始文件保持不变。</translation>
+        </message>
+        <message>
+            <source>The edits could not be saved. Keep editing or try again.</source>
+            <translation>未能保存调整，请继续编辑或重试。</translation>
+        </message>
+        <message>
+            <source>Keep editing</source>
+            <translation>继续编辑</translation>
+        </message>
+        <message>
+            <source>Discard edits</source>
+            <translation>放弃调整</translation>
+        </message>
+        <message>
+            <source>Save and continue</source>
+            <translation>保存并继续</translation>
         </message>
     </context>
 </TS>

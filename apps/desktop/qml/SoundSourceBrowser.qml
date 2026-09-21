@@ -26,6 +26,7 @@ Rectangle {
     property string eventFilter: ""
     property string notice: ""
     property string auditionId: ""
+    property var auditionAsset: null
     readonly property var categories: ["", "music", "ambience", "effects", "voice"]
     readonly property var categoryLabels: [qsTr("All materials"), qsTr("Music"), qsTr("Ambience"), qsTr("Sound effects"), qsTr("Voice")]
     readonly property var filteredAssets: filterAssets()
@@ -55,6 +56,17 @@ Rectangle {
         projectIds = assemblyId ? backend.projectMaterials(assemblyId) : [];
         selectedAsset = assets.find(asset => asset.id === selectedId) || null;
     }
+    function revealAsset(assetId: string): void {
+        refresh();
+        query = ""; category = ""; eventFilter = "";
+        sourceTab = assemblyId || independentMode ? 0 : 2;
+        selectedAsset = assets.find(asset => asset.id === assetId) || null;
+        Qt.callLater(() => {
+            const index = filteredAssets.findIndex(asset => asset.id === assetId);
+            if (index >= 0) sourceList.positionViewAtIndex(index, ListView.Contain);
+        });
+    }
+    function focusSearch(): void { searchField.forceActiveFocus(); }
     function filterAssets(): var {
         let ids = projectIds.slice();
         for (const track of projectDocument.tracks || []) {
@@ -82,26 +94,28 @@ Rectangle {
         addRequested(asset,roleFor(asset));
     }
     function audition(asset: var): void {
+        selectedAsset = asset;
         if (auditionId === asset.id && materialPlayer.active) {
             materialPlayer.togglePause(); return;
         }
         materialPlayer.stop();
-        selectedAsset = asset;
         auditionId = asset.id;
+        auditionAsset = asset;
         if (player.playing) player.togglePause();
         Qt.callLater(() => {
             if (browser.auditionId === asset.id && browser.visible) savedSound.play();
         });
     }
     onAssemblyIdChanged: refresh()
-    onVisibleChanged: { if (!visible) { materialPlayer.stop(); auditionId = ""; materialSearch.clear(); } else { refresh(); semanticTimer.restart(); } }
+    onVisibleChanged: { if (!visible) { materialPlayer.stop(); auditionId = ""; auditionAsset = null; materialSearch.clear(); } else { refresh(); semanticTimer.restart(); } }
     onSourceTabChanged: { category = ""; eventFilter = ""; }
     Component.onCompleted: refresh()
     Connections { target: backend; function onAssetsChanged(): void { browser.refresh(); } }
-    SoundPlaybackSource { id: savedSound; asset: browser.selectedAsset; transport: materialPlayer }
+    SoundPlaybackSource { id: savedSound; asset: browser.auditionAsset; transport: materialPlayer }
+    SourceDisclosureDialog { id: disclosure; catalogBackend: backend }
 
     GeneratedNarrationDialog { id: narrationDialog; assemblyId: browser.assemblyId
-        onMaterialAccepted: assetId => { browser.refresh(); browser.query=""; browser.category=""; browser.eventFilter=""; browser.sourceTab=browser.assemblyId?0:2; browser.selectedAsset=browser.assets.find(a=>a.id===assetId)||null; }
+        onMaterialAccepted: assetId => browser.revealAsset(assetId)
     }
     component SourceTab: TabButton {
         id: tabControl
@@ -176,24 +190,25 @@ Rectangle {
                 Layout.fillWidth: true
                 visible: !browser.independentMode && browser.sourceTab === 2
                 model: browser.categoryLabels
-                currentIndex: browser.categories.indexOf(browser.category)
+                selectionIndex: browser.categories.indexOf(browser.category)
                 onActivated: browser.category = browser.categories[currentIndex]
             }
             EchoComboBox {
                 Layout.fillWidth: true
                 visible: !browser.independentMode && browser.sourceTab === 2 && !browser.editorMode
                 model: browser.eventTypes
+                selectionIndex: browser.eventFilter ? browser.eventTypes.indexOf(browser.eventFilter) : 0
                 onActivated: browser.eventFilter = currentIndex === 0 ? "" : currentText
             }
         }
         RowLayout {
             visible: !browser.independentMode
             Layout.fillWidth: true
-            CheckBox { text: qsTr("Semantic suggestions"); checked: browser.semanticEnabled; onToggled: browser.semanticEnabled=checked }
+            EchoCheckBox { text: qsTr("Semantic suggestions"); checked: browser.semanticEnabled; onToggled: browser.semanticEnabled=checked }
             BusyIndicator { running: materialSearch.running; visible: running; implicitWidth: 24; implicitHeight: 24 }
         }
         Label { visible: !browser.independentMode && !!materialSearch.errorText; Layout.fillWidth: true; wrapMode: Text.Wrap; text: qsTr("Semantic search is unavailable; literal matches are still shown."); color: Theme.textMuted }
-        CheckBox {
+        EchoCheckBox {
             id: collectGlobally
             enabled: browser.assemblyId.length > 0
             Layout.maximumHeight: Theme.controlHeight
@@ -210,6 +225,8 @@ Rectangle {
             wrapMode: Text.WordWrap
         }
         ListView {
+            id: sourceList
+            objectName: "sourceList"
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: 0
@@ -223,7 +240,7 @@ Rectangle {
                 required property var modelData
                 readonly property var asset: modelData
                 width: ListView.view.width
-                height: browser.editorMode ? 94 : 80
+                height: Math.max(browser.editorMode ? 94 : 80, sourceDetails.implicitHeight + 20)
                 radius: 8
                 color: browser.selectedAsset && browser.selectedAsset.id === modelData.id ? Theme.surfaceSelected : rowHover.hovered ? Theme.buttonGhostHover : Theme.surfaceSubtle
                 border.color: browser.selectedAsset && browser.selectedAsset.id === modelData.id ? Theme.accentBorder : Theme.border
@@ -239,12 +256,19 @@ Rectangle {
                         onClicked: browser.audition(sourceRow.asset)
                     }
                     ColumnLayout {
+                        id: sourceDetails
                         Layout.fillWidth: true
                         spacing: 4
-                        Text { Layout.fillWidth: true; text: browser.titleFor(sourceRow.asset); color: Theme.textPrimary; font.pixelSize: Theme.fontBody; elide: Text.ElideRight }
+                        Text { Layout.fillWidth: true; text: browser.titleFor(sourceRow.asset); color: Theme.textPrimary; font.pixelSize: Theme.fontBody; font.weight: Font.Medium; elide: Text.ElideRight }
+                        SourceDisclosureBadge {
+                            objectName: "materialSourceDisclosure"
+                            asset: sourceRow.asset
+                            editable: generated || processed
+                            onActivated: disclosure.present(sourceRow.asset, 0, 0)
+                        }
                         Text {
                             Layout.fillWidth: true
-                            text: (sourceRow.asset.semanticCandidate ? qsTr("Semantic candidate") + " · " : "") + (Number(sourceRow.asset.durationMillis)/1000).toFixed(1) + qsTr(" s") + " · " + (sourceRow.asset.assemblyId ? qsTr("Saved mix") : Number(sourceRow.asset.adjustmentRevision) > 0 ? qsTr("Adjusted recording") : qsTr("Original source"))
+                            text: (sourceRow.asset.semanticCandidate ? qsTr("Semantic candidate") + " · " : "") + (Number(sourceRow.asset.durationMillis)/1000).toFixed(1) + qsTr(" s") + " · " + (sourceRow.asset.assemblyId ? qsTr("Saved mix") : Number(sourceRow.asset.adjustmentRevision) > 0 ? qsTr("Adjusted sound") : qsTr("Source audio"))
                             color: Theme.textMuted; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight
                         }
                         Text {
@@ -253,7 +277,7 @@ Rectangle {
                             text: (sourceRow.asset.materialCategory ? browser.categoryLabels[browser.categories.indexOf(sourceRow.asset.materialCategory)] : "") + (sourceRow.asset.eventType ? " · " + ((sourceRow.asset.calibratedFields || []).indexOf("event_type") >= 0 ? SoundSemantics.eventLabel(sourceRow.asset.eventType) : qsTr("AI: %1").arg(SoundSemantics.eventLabel(sourceRow.asset.eventType))) : "")
                             color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; elide: Text.ElideRight
                         }
-                        TapHandler { onTapped: browser.selectedAsset = sourceRow.asset; onDoubleTapped: { if (browser.editorMode) browser.addSource(sourceRow.asset); } }
+                        TapHandler { onTapped: browser.selectedAsset = sourceRow.asset; onDoubleTapped: { if (browser.editorMode) browser.addSource(sourceRow.asset); else browser.audition(sourceRow.asset); } }
                         DragHandler {
                             id: dragHandler
                             enabled: browser.editorMode && !sourceRow.asset.assemblyId
@@ -292,14 +316,24 @@ Rectangle {
                     }
                 }
             }
-            Text {
+            ColumnLayout {
                 anchors.centerIn: parent
                 width: parent.width - 20
                 visible: browser.filteredAssets.length === 0
-                text: browser.query ? qsTr("No matching sounds") : browser.sourceTab === 0 ? qsTr("Add memories or import materials to this project.") : qsTr("No sounds in this collection yet.")
-                color: Theme.textMuted
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
+                spacing: 10
+                Text {
+                    Layout.fillWidth: true
+                    text: browser.query || browser.category || browser.eventFilter ? qsTr("No matching sounds") : browser.independentMode ? qsTr("Import audio to add it to this project.") : browser.sourceTab === 0 ? qsTr("Add memories or import materials to this project.") : qsTr("No sounds in this collection yet.")
+                    color: Theme.textMuted; font.pixelSize: Theme.fontBody
+                    wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
+                }
+                EchoButton {
+                    objectName: "clearSourceFilters"
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: !!browser.query || !!browser.category || !!browser.eventFilter
+                    text: qsTr("Clear filters"); ghost: true
+                    onClicked: { browser.query=""; browser.category=""; browser.eventFilter=""; }
+                }
             }
         }
         Text {

@@ -16,6 +16,8 @@ Rectangle {
     readonly property bool editingProjectClip: projectClipId.length > 0
     signal returnToProjectRequested()
     signal projectClipSaved(var revision)
+    signal showMaterialRequested(string assetId)
+    property string acceptedNarrationId: ""
 
     property var waveformLevels: []
     property string loadedPath: ""
@@ -457,6 +459,7 @@ Rectangle {
         const key=current ? JSON.stringify([current.id,current.path,current.pathStatus,current.durationMillis,backend.independentEditing === true ? 0 : current.adjustmentRevision,projectClipId]) : "";
         if(key===sourceIdentity) return;
         sourceIdentity=key;
+        acceptedNarrationId="";
         noiseProfile.cancel(); noiseCaptureIdentity=""; noiseCaptureObsolete=false;
         player.stop();
         loudnessAnalyzer.cancel();
@@ -812,6 +815,23 @@ Rectangle {
         }
         RowLayout {
             Layout.fillWidth: true
+            visible: !!workspace.acceptedNarrationId
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Narration kept as a separate source. Your current edit is unchanged.")
+                color: Theme.textSecondary; font.pixelSize: Theme.fontMeta; wrapMode: Text.WordWrap
+            }
+            EchoButton {
+                text: qsTr("Show material"); ghost: true
+                onClicked: workspace.showMaterialRequested(workspace.acceptedNarrationId)
+            }
+            EchoButton {
+                text: "×"; Accessible.name: qsTr("Dismiss"); ghost: true; implicitWidth: 28
+                onClicked: workspace.acceptedNarrationId=""
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
             Layout.preferredHeight: 36
             spacing: 10
             EchoSegmentedControl {
@@ -822,7 +842,7 @@ Rectangle {
 
             Text {
                 Layout.maximumWidth: Math.min(260, implicitWidth)
-                text: workspace.hasAsset ? workspace.fileName(workspace.asset.path) : ""
+                text: SoundSemantics.sourceTitle(workspace.asset)
                 color: Theme.textPrimary
                 font.pixelSize: 16
                 font.weight: Font.DemiBold
@@ -1300,6 +1320,10 @@ Rectangle {
         interval: workspace.lastProcessingRecipeBatchId.length > 0 ? 6000 : 2600
         onTriggered: processingRecipeNoticePopup.close()
     }
-    GeneratedNarrationDialog { id: narrationDialog }
+    GeneratedNarrationDialog {
+        id: narrationDialog
+        assemblyId: workspace.editingProjectClip ? workspace.projectDocument.id || "" : ""
+        onMaterialAccepted: assetId => workspace.acceptedNarrationId=assetId
+    }
 
 }

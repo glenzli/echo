@@ -41,5 +41,25 @@ TestCase {
         openDialog(); generatedNarration.detailsJson=JSON.stringify({runtime:{job:{physical_model:"/private/cache/models--org--Qwen3-TTS/snapshots/fixed-build",model_profile:"tts"}}});
         compare(dialog.modelName(),"Qwen3-TTS");
     }
+    function test_project_material_is_private_by_default_and_target_is_captured() {
+        dialog.assemblyId="project-a"; dialog.present(); tryCompare(dialog,"opened",true);
+        verify(!findChild(dialog,"narrationCollectGlobally").checked);
+        candidate(); dialog.reviewed=true; dialog.assemblyId="project-b";
+        mouseClick(findChild(dialog,"narrationAccept")); compare(test.accepted[0],["project-a",false]);
+    }
+    function test_character_limit_matches_unicode_backend() {
+        openDialog(); findChild(dialog,"narrationText").text="  "+"😀".repeat(500)+"  ";
+        compare(dialog.characterCount,500); verify(findChild(dialog,"narrationGenerate").enabled);
+        findChild(dialog,"narrationText").text="😀".repeat(501);
+        compare(dialog.characterCount,501); verify(!findChild(dialog,"narrationGenerate").enabled);
+    }
+    function test_project_candidate_actions_fit_in_dialog() {
+        dialog.assemblyId="project"; dialog.present(); tryCompare(dialog,"opened",true);
+        candidate(); generatedNarration.errorText="A recoverable problem. Please try again.";
+        waitForRendering(dialog.contentItem);
+        const accept=findChild(dialog,"narrationAccept");
+        verify(accept.mapToItem(dialog.contentItem,0,accept.height).y<=dialog.contentItem.height+1);
+        verify(findChild(dialog,"narrationText").height>=100);
+    }
 
 }

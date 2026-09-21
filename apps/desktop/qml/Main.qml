@@ -86,6 +86,24 @@ ApplicationWindow {
     property int workspaceIndex: 0
     property var projectEditAsset: null
     property string projectClipId: ""
+    property bool allowClose: false
+    readonly property alias editNavigationDialog: editNavigation
+    UnsavedEditDialog { id: editNavigation; editor: soundEditor }
+
+    // Audio Space owns selection; resolve the draft before that selection can change.
+    function navigate(action): void {
+        if (workspaceIndex === 1) editNavigation.request(action);
+        else action();
+    }
+    function showMaterials(): void { navigate(() => { workspaceIndex=4; }); }
+    onClosing: event => {
+        if (allowClose) return;
+        event.accepted=false;
+        editNavigation.request(() => {
+            if (soundAssembly.dirty && !soundAssembly.saveRevision()) return;
+            allowClose=true; window.close();
+        });
+    }
 
     readonly property bool jobsActive: jobSnapshot.pending > 0 || jobSnapshot.running > 0
 
@@ -94,12 +112,11 @@ ApplicationWindow {
     }
 
     function openLibrary(): void {
-        workspaceIndex = 2;
-        audioLibrary.refresh();
+        navigate(() => { workspaceIndex = 2; audioLibrary.refresh(); });
     }
 
     function showAudioSpace(): void {
-        workspaceIndex = 0;
+        navigate(() => { workspaceIndex = 0; });
     }
 
     function debugOpenSpectralSource(path: string): void {
@@ -116,6 +133,7 @@ ApplicationWindow {
     }
 
     function showSoundEditor(): void {
+        if (workspaceIndex===1) return;
         if (audioSpace.selectedAsset !== null) {
             if (audioSpace.selectedAsset.assemblyId) {
                 showSoundAssembly();
@@ -129,9 +147,11 @@ ApplicationWindow {
     }
 
     function showSoundAssembly(): void {
-        workspaceIndex = 3;
-        materialPlayer.stop();
-        soundAssembly.refreshAssemblies();
+        navigate(() => {
+            workspaceIndex = 3;
+            materialPlayer.stop();
+            soundAssembly.refreshAssemblies();
+        });
     }
 
     function createSoundAssembly(assetIds: var, layout: string): void {
@@ -241,7 +261,7 @@ ApplicationWindow {
         onSoundWallRequested: window.showAudioSpace()
         onSoundEditorRequested: window.showSoundEditor()
         onSoundAssemblyRequested: window.showSoundAssembly()
-        onMaterialsRequested: window.workspaceIndex = 4
+        onMaterialsRequested: window.showMaterials()
         onSettingsRequested: window.openSettings()
     }
 
@@ -273,6 +293,19 @@ ApplicationWindow {
                 if (!dirty) window.showSoundAssembly();
             }
             onProjectClipSaved: revision => soundAssembly.acceptClipRevision(revision)
+            onShowMaterialRequested: assetId => {
+                if (soundEditor.editingProjectClip) {
+                    if (soundEditor.dirty) soundEditor.save();
+                    if (soundEditor.dirty) return;
+                    window.showSoundAssembly();
+                    soundAssembly.revealMaterial(assetId);
+                } else {
+                    window.navigate(() => {
+                        window.workspaceIndex = 4;
+                        materialsLibrary.revealAsset(assetId);
+                    });
+                }
+            }
         }
 
         AudioLibraryWorkspace {

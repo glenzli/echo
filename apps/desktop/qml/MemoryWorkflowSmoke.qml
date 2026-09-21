@@ -53,6 +53,11 @@ Item {
             require(editor.editingProjectClip && editor.asset.id === original.id, "precision route lost the selected source");
             editor.debugNudgeEqualizer();
             require(editor.dirty, "precision edit did not change the draft");
+            shell.showMaterials();
+            require(shell.workspaceIndex===1 && shell.editNavigationDialog.visible && editor.dirty,
+                    "leaving an unsaved edit bypassed the navigation guard");
+            shell.editNavigationDialog.close();
+            require(editor.dirty && shell.workspaceIndex===1, "canceling navigation discarded the edit");
             editor.save();
             require(!editor.dirty, "project clip save failed");
             pinnedRevision = assembly.selectedClip.adjustmentRevisionId;
@@ -61,6 +66,12 @@ Item {
             require(unchanged.adjustmentRevision === original.adjustmentRevision, "project edit changed library recording");
             editor.returnToProjectRequested();
             require(shell.workspaceIndex === 3 && assembly.selectedClipId === clipId, "return lost project selection");
+            assembly.openClipEditor();
+            editor.showMaterialRequested(material.id);
+            require(shell.workspaceIndex === 3 && assembly.sourcesVisible && assembly.selectedClipId === clipId,
+                    "material handoff lost the project or clip selection");
+            facts.materialHandoff = true;
+            facts.unsavedNavigation = true;
             stage = 3;
             break;
         case 3:
@@ -84,7 +95,7 @@ Item {
             library.selectedFilter = "all";
             library.refreshAssets();
             library.selectAssetOnly(retained);
-            facts = { projectId: memory.id, originalId: original.id, materialId: material.id,
+            facts = { unsavedNavigation: facts.unsavedNavigation, materialHandoff: facts.materialHandoff, projectId: memory.id, originalId: original.id, materialId: material.id,
                 materialPath: material.path, outputPath: memory.path, clipRevision: pinnedRevision,
                 acceptedRevision: memory.assemblyRevisionId, draftRevision: assembly.document.revisionId,
                 provenance: provenance, waveform: true, originalUnchanged: true, draftPreservedEdition: true };

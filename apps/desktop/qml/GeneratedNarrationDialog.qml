@@ -9,6 +9,8 @@ Popup {
     property string targetAssembly: ""
     property bool reviewed: false
     property string playbackError: ""
+    // QML string iteration counts UTF-16 units; the backend counts Unicode scalars.
+    readonly property int characterCount: input.text.trim().replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g,"_").length
     readonly property bool privateProject: backend.independentEditing
     readonly property var receipt: generatedNarration.detailsJson ? JSON.parse(generatedNarration.detailsJson) : null
     readonly property bool busy: generatedNarration.running || generatedNarration.accepting
@@ -22,7 +24,7 @@ Popup {
     function present() {
         if (busy) return;
         generatedNarration.discard(); reviewed=false; playbackError="";
-        targetAssembly=assemblyId; collect.checked=!privateProject;
+        targetAssembly=assemblyId; collect.checked=false;
         open(); input.forceActiveFocus();
     }
     function modelName() {
@@ -69,7 +71,7 @@ Popup {
         }
         RowLayout {
             Layout.fillWidth: true
-            Text { Layout.fillWidth: true; text: qsTr("%1 / 500 characters").arg(input.text.length); color: input.text.length>500 ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
+            Text { Layout.fillWidth: true; text: qsTr("%1 / 500 characters").arg(dialog.characterCount); color: dialog.characterCount>500 ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
             Text { text: qsTr("Local model · Mandarin voice"); color: Theme.textMuted; font.pixelSize: Theme.fontMeta }
         }
         Rectangle {
@@ -96,7 +98,12 @@ Popup {
             }
             EchoButton { text: qsTr("Revise text"); ghost: true; enabled: !dialog.busy; onClicked: { dialog.stopPreview(); generatedNarration.discard(); dialog.reviewed=false; dialog.playbackError=""; input.forceActiveFocus(); } }
         }
-        CheckBox { id: collect; visible: !dialog.privateProject && !!dialog.targetAssembly; enabled: !dialog.busy; text: qsTr("Also collect in Materials") }
+        Text {
+            Layout.fillWidth: true; wrapMode: Text.WordWrap
+            text: dialog.privateProject || dialog.targetAssembly ? qsTr("Kept with this project. Add it to a track when you are ready.") : qsTr("Kept in Materials. You can add it to a project later.")
+            color: Theme.textSecondary; font.pixelSize: Theme.fontMeta
+        }
+        EchoCheckBox { id: collect; objectName: "narrationCollectGlobally"; visible: !dialog.privateProject && !!dialog.targetAssembly; enabled: !dialog.busy; text: qsTr("Also collect in Materials") }
         Text { Layout.fillWidth: true; visible: !!generatedNarration.errorText || !!dialog.playbackError; text: generatedNarration.errorText || dialog.playbackError; color: Theme.warningText; font.pixelSize: Theme.fontBody; wrapMode: Text.WordWrap }
         RowLayout {
             Layout.fillWidth: true
@@ -106,12 +113,12 @@ Popup {
             EchoButton {
                 objectName: "narrationGenerate"
                 visible: !dialog.receipt; text: qsTr("Generate preview")
-                enabled: !dialog.busy && input.text.trim().length>0 && input.text.length<=500
+                enabled: !dialog.busy && dialog.characterCount>0 && dialog.characterCount<=500
                 onClicked: { dialog.reviewed=false; dialog.playbackError=""; generatedNarration.request(input.text,inferencePrefs.runtimeEndpoint); }
             }
             EchoButton {
                 objectName: "narrationAccept"
-                visible: !!dialog.receipt; text: qsTr("Keep as material")
+                visible: !!dialog.receipt; text: dialog.privateProject || dialog.targetAssembly ? qsTr("Keep in project") : qsTr("Keep in Materials")
                 enabled: !dialog.busy && dialog.reviewed && !dialog.playbackError
                 onClicked: { dialog.stopPreview(); generatedNarration.accept(dialog.targetAssembly,!dialog.privateProject && (!dialog.targetAssembly || collect.checked)); }
             }
