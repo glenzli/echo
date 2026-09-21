@@ -1,4 +1,5 @@
 #include "echo/audio/offline_wav_renderer.hpp"
+#include "echo/audio/export_metadata.hpp"
 
 #include "echo/audio/offline_loudness_analyzer.hpp"
 #include "echo/audio/playback.hpp"
@@ -37,11 +38,11 @@ void put_fourcc(std::span<std::byte> destination, std::size_t offset, const char
 }
 
 std::array<std::byte, kWavHeaderBytes>
-wav_header(std::uint32_t data_size, std::uint16_t bit_depth) {
+wav_header(std::uint32_t data_size, std::uint16_t bit_depth, std::uint32_t metadata_size = 0) {
     const auto bytes_per_sample = static_cast<std::uint16_t>(bit_depth / 8U);
     std::array<std::byte, kWavHeaderBytes> header{};
     put_fourcc(header, 0, "RIFF");
-    put_little_endian<std::uint32_t>(header, 4, 36U + data_size);
+    put_little_endian<std::uint32_t>(header, 4, 36U + data_size + metadata_size);
     put_fourcc(header, 8, "WAVE");
     put_fourcc(header, 12, "fmt ");
     put_little_endian<std::uint32_t>(header, 16, 16U);
@@ -129,9 +130,13 @@ OfflineRenderResult OfflineWavRenderer::render(
     const PlaybackAdjustment& adjustment,
     RenderByteSink& sink,
     const OfflineRenderCallbacks& callbacks,
-    WavPcmDepth depth
+    WavPcmDepth depth,
+    std::string_view comment
 ) {
-    if (adjustment.trim_end_millis <= adjustment.trim_start_millis) {
+    const auto metadata = wav_comment_chunk(comment);
+    // Zero is the shared playback contract for the complete remaining source.
+    if (adjustment.trim_end_millis != 0
+        && adjustment.trim_end_millis <= adjustment.trim_start_millis) {
         throw std::invalid_argument("offline render requires a non-empty selection");
     }
     PlaybackSession session(
@@ -147,7 +152,7 @@ OfflineRenderResult OfflineWavRenderer::render(
         throw std::invalid_argument("selection exceeds the WAV v1 size limit");
     }
     const std::uint64_t expected_data_bytes = expected_frames * bytes_per_frame;
-    if (expected_data_bytes > std::numeric_limits<std::uint32_t>::max() - 36U) {
+    if (expected_data_bytes > std::numeric_limits<std::uint32_t>::max() - 36U - metadata.size()) {
         throw std::invalid_argument("selection exceeds the WAV v1 size limit");
     }
     const auto placeholder = wav_header(0, bit_depth);
@@ -200,17 +205,24 @@ OfflineRenderResult OfflineWavRenderer::render(
             + std::to_string(expected_frames)
         );
     }
-    if (data_bytes > std::numeric_limits<std::uint32_t>::max() - 36U) {
+    if (data_bytes > std::numeric_limits<std::uint32_t>::max() - 36U - metadata.size()) {
         throw std::runtime_error("rendered data exceeds the WAV v1 size limit");
     }
+    if (!metadata.empty()) {
+        sink.write(metadata);
+    }
     sink.seek(0);
-    const auto header = wav_header(static_cast<std::uint32_t>(data_bytes), bit_depth);
+    const auto header = wav_header(
+        static_cast<std::uint32_t>(data_bytes),
+        bit_depth,
+        static_cast<std::uint32_t>(metadata.size())
+    );
     sink.write(header);
     report_progress(callbacks, 1.0);
     const OfflineLoudnessResult loudness = analyzer.result();
     return {
         .frame_count = frame_count,
-        .size_bytes = kWavHeaderBytes + data_bytes,
+        .size_bytes = kWavHeaderBytes + data_bytes + metadata.size(),
         .sample_rate = session.sample_rate(),
         .channel_count = session.channel_count(),
         .bit_depth = bit_depth,

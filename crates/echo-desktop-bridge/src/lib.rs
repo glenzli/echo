@@ -285,6 +285,7 @@ mod ffi {
     /// Completed offline-render evidence crossing the desktop ABI atomically.
     #[derive(Debug)]
     struct RenderExportWire {
+        source_disclosure_comment: String,
         output_path: String,
         format: String,
         sample_rate: u32,
@@ -614,6 +615,11 @@ mod ffi {
         ) -> Result<SoundAssemblyRevisionWire>;
         fn session_list_originals(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
         fn session_list_assets(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
+        fn session_export_source_disclosure(
+            self: &LibrarySession,
+            id: &str,
+            assembly_revision: i64,
+        ) -> Result<String>;
         fn session_set_source_disclosure(
             self: &LibrarySession,
             id: &str,
@@ -1024,6 +1030,15 @@ impl LibrarySession {
         self.save_project_clip_adjustment(document_json, clip_id, asset_id, adjustment)
             .map_err(|e| e.to_string())
     }
+    fn session_export_source_disclosure(
+        &self,
+        id: &str,
+        assembly_revision: i64,
+    ) -> Result<String, String> {
+        self.export_source_disclosure(id, assembly_revision)
+            .map_err(|e| e.message)
+    }
+
     fn session_set_source_disclosure(
         &self,
         id: &str,
@@ -1442,6 +1457,7 @@ impl LibrarySession {
             evidence.size_bytes,
             evidence.integrated_lufs,
             evidence.true_peak_dbtp,
+            &evidence.source_disclosure_comment,
         )
         .map_err(|error| error.message)
     }
@@ -1468,6 +1484,7 @@ impl LibrarySession {
             evidence.size_bytes,
             evidence.integrated_lufs,
             evidence.true_peak_dbtp,
+            &evidence.source_disclosure_comment,
         )
         .map_err(|error| error.message)
     }

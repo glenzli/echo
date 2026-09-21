@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 
 #include <string>
 
@@ -14,7 +15,8 @@ class OfflineFlacRenderer {
         const std::string& sourcePath,
         const PlaybackAdjustment& adjustment,
         RenderByteSink& sink,
-        const OfflineRenderCallbacks& callbacks = {}
+        const OfflineRenderCallbacks& callbacks = {},
+        std::string_view comment = {}
     );
 };
 

@@ -1,4 +1,5 @@
 #include "echo/audio/offline_flac_renderer.hpp"
+#include "echo/audio/export_metadata.hpp"
 
 #include "echo/audio/offline_loudness_analyzer.hpp"
 #include "echo/audio/playback.hpp"
@@ -23,6 +24,7 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
 #include <libavutil/channel_layout.h>
+#include <libavutil/dict.h>
 #include <libavutil/error.h>
 #include <libavutil/frame.h>
 #include <libavutil/mem.h>
@@ -156,9 +158,13 @@ OfflineRenderResult OfflineFlacRenderer::render(
     const std::string& sourcePath,
     const PlaybackAdjustment& adjustment,
     RenderByteSink& sink,
-    const OfflineRenderCallbacks& callbacks
+    const OfflineRenderCallbacks& callbacks,
+    std::string_view comment
 ) {
-    if (adjustment.trim_end_millis <= adjustment.trim_start_millis) {
+    validate_export_comment(comment);
+    // Zero is the shared playback contract for the complete remaining source.
+    if (adjustment.trim_end_millis != 0
+        && adjustment.trim_end_millis <= adjustment.trim_start_millis) {
         throw std::invalid_argument("offline render requires a non-empty selection");
     }
 
@@ -220,6 +226,12 @@ OfflineRenderResult OfflineFlacRenderer::render(
     }
     format->pb = avio.get();
     format->flags |= AVFMT_FLAG_CUSTOM_IO;
+    if (!comment.empty()) {
+        require_ffmpeg(
+            av_dict_set(&format->metadata, "comment", std::string(comment).c_str(), 0),
+            "set export source disclosure"
+        );
+    }
     require_ffmpeg(avformat_write_header(format.get(), nullptr), "write FLAC header");
 
     std::unique_ptr<AVFrame, FrameDeleter> frame(av_frame_alloc());

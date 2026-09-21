@@ -1,3 +1,5 @@
+#include "echo/audio/decode.hpp"
+#include "echo/audio/export_metadata.hpp"
 #include "echo/audio/offline_flac_renderer.hpp"
 #include "echo/audio/offline_wav_renderer.hpp"
 #include "echo/audio/playback.hpp"
@@ -163,6 +165,33 @@ int main() {
 
     const echo::audio::PlaybackAdjustment source_adjustment{.trim_end_millis = 1000};
     const auto baseline = render_playback(source, source_adjustment);
+    // Frozen working copies use an identity adjustment with an unspecified end.
+    MemorySink whole_source, explicit_source, whole_flac;
+    const auto whole_result =
+        echo::audio::OfflineWavRenderer::render(source.string(), {}, whole_source);
+    (void)echo::audio::OfflineWavRenderer::render(
+        source.string(),
+        source_adjustment,
+        explicit_source
+    );
+    assert(whole_result.frame_count == 48000);
+    assert(whole_source.bytes() == explicit_source.bytes());
+    assert(
+        echo::audio::OfflineFlacRenderer::render(source.string(), {}, whole_flac).frame_count
+        == 48000
+    );
+    for (const echo::audio::PlaybackAdjustment& invalid :
+         {echo::audio::PlaybackAdjustment{.trim_start_millis = 1000},
+          echo::audio::PlaybackAdjustment{.trim_start_millis = 500, .trim_end_millis = 500}}) {
+        bool rejected = false;
+        try {
+            MemorySink output;
+            (void)echo::audio::OfflineWavRenderer::render(source.string(), invalid, output);
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        assert(rejected);
+    }
     const echo::audio::PlaybackAdjustment repaired{
         .trim_end_millis = 1000,
         .spectral_repair = {
@@ -236,6 +265,88 @@ int main() {
     assert(flac.frame_count == 24000);
     assert(flac.size_bytes == flac_sink.bytes().size());
     assert(std::memcmp(flac_sink.bytes().data(), "fLaC", 4) == 0);
+
+    // Container disclosure must round-trip through the real probe and leave PCM unchanged.
+    const std::string comment =
+        R"(Echo source disclosure: {"schema":"echo.source-disclosure.v1","scope":"referenced_sources","kinds":["ai_generated"]})";
+    auto save_and_probe = [&](const MemorySink& rendered, const std::string& suffix) {
+        const auto path = source.string() + suffix;
+        {
+            std::ofstream file(path, std::ios::binary);
+            file.write(
+                reinterpret_cast<const char*>(rendered.bytes().data()),
+                static_cast<std::streamsize>(rendered.bytes().size())
+            );
+        }
+        const auto probe = echo::audio::probe(path);
+        bool found = false;
+        for (const auto& entry : probe.metadata) {
+            if (entry.key == "comment") {
+                assert(entry.value == comment);
+                found = true;
+            }
+        }
+        assert(found);
+        assert(probe.duration_millis == 500);
+        const auto decoded = render_playback(path, {.trim_end_millis = 500});
+        std::filesystem::remove(path);
+        return decoded;
+    };
+    for (const auto depth : {echo::audio::WavPcmDepth::Pcm16, echo::audio::WavPcmDepth::Pcm24}) {
+        MemorySink marked;
+        const auto marked_result = echo::audio::OfflineWavRenderer::render(
+            source.string(),
+            adjustment,
+            marked,
+            {},
+            depth,
+            comment
+        );
+        const auto& original =
+            depth == echo::audio::WavPcmDepth::Pcm16 ? pcm16_sink.bytes() : sink.bytes();
+        assert(marked_result.size_bytes == marked.bytes().size());
+        assert(u32(marked.bytes(), 4) == marked.bytes().size() - 8);
+        assert(u32(marked.bytes(), 40) == original.size() - 44);
+        assert(std::equal(original.begin() + 44, original.end(), marked.bytes().begin() + 44));
+        (void)save_and_probe(marked, ".marked.wav");
+    }
+    MemorySink marked_flac;
+    const auto marked_flac_result = echo::audio::OfflineFlacRenderer::render(
+        source.string(),
+        adjustment,
+        marked_flac,
+        {},
+        comment
+    );
+    assert(marked_flac_result.size_bytes == marked_flac.bytes().size());
+    const auto marked_pcm = save_and_probe(marked_flac, ".marked.flac");
+    const auto plain_flac_path = source.string() + ".plain.flac";
+    {
+        std::ofstream file(plain_flac_path, std::ios::binary);
+        file.write(
+            reinterpret_cast<const char*>(flac_sink.bytes().data()),
+            static_cast<std::streamsize>(flac_sink.bytes().size())
+        );
+    }
+    assert(marked_pcm == render_playback(plain_flac_path, {.trim_end_millis = 500}));
+    std::filesystem::remove(plain_flac_path);
+    // RIFF even-byte padding and early bounds reject malformed metadata before a write.
+    for (const std::string& boundary :
+         {std::string("x"), std::string("xy"), std::string(1024, 'x')}) {
+        const auto chunk = echo::audio::wav_comment_chunk(boundary);
+        assert(chunk.size() % 2 == 0);
+        assert(u32(chunk, 4) == chunk.size() - 8);
+        assert(u32(chunk, 16) == boundary.size() + 1);
+    }
+    for (const std::string& invalid : {std::string(1025, 'x'), std::string("x\0y", 3)}) {
+        bool rejected = false;
+        try {
+            (void)echo::audio::wav_comment_chunk(invalid);
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        assert(rejected);
+    }
 
     MemorySink latency_compensated_sink;
     auto latency_compensated = adjustment;

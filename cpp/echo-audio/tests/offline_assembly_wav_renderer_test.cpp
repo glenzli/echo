@@ -1,5 +1,7 @@
+#include "echo/audio/decode.hpp"
 #include "echo/audio/offline_assembly_wav_renderer.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -131,6 +133,30 @@ int main() {
     expect_close(pcm24(sink.bytes_, 12'000, 0), 0.2F);
     expect_close(pcm24(sink.bytes_, 36'000, 0), 0.3F);
     expect_close(pcm24(sink.bytes_, 60'000, 0), 0.1F);
+
+    MemorySink marked;
+    const std::string comment =
+        R"(Echo source disclosure: {"schema":"echo.source-disclosure.v1","scope":"referenced_sources","kinds":["ai_generated"]})";
+    const auto marked_result =
+        echo::audio::OfflineAssemblyWavRenderer::render(plan, marked, {}, comment);
+    assert(marked_result.size_bytes == marked.bytes_.size());
+    assert(std::equal(sink.bytes_.begin() + 44, sink.bytes_.end(), marked.bytes_.begin() + 44));
+    const auto marked_path = root / "marked.wav";
+    {
+        std::ofstream file(marked_path, std::ios::binary);
+        file.write(
+            reinterpret_cast<const char*>(marked.bytes_.data()),
+            static_cast<std::streamsize>(marked.bytes_.size())
+        );
+    }
+    bool found = false;
+    for (const auto& entry : echo::audio::probe(marked_path.string()).metadata) {
+        if (entry.key == "comment") {
+            assert(entry.value == comment);
+            found = true;
+        }
+    }
+    assert(found);
 
     auto faded = plan;
     faded.tracks[0].clips[0].fade_in_millis = 500;

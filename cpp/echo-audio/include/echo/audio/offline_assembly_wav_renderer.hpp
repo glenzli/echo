@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 
 #include "echo/audio/assembly.hpp"
 #include "echo/audio/offline_render.hpp"
@@ -14,7 +15,8 @@ class OfflineAssemblyWavRenderer {
     [[nodiscard]] static OfflineRenderResult render(
         const AssemblyMixPlan& plan,
         RenderByteSink& sink,
-        const OfflineRenderCallbacks& callbacks = {}
+        const OfflineRenderCallbacks& callbacks = {},
+        std::string_view comment = {}
     );
 };
 

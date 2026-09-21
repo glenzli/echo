@@ -31,6 +31,6 @@ Rectangle {
     TapHandler { enabled: badge.editable; onTapped: badge.activated() }
     HoverHandler { id: hover }
     ToolTip.visible: hover.hovered
-    ToolTip.text: generated ? qsTr("This sound references a source with declared AI-generated content. Labels apply to the source, not an exact mixed interval.") : qsTr("User-declared source information. An unmarked source is not a verified recording.")
+    ToolTip.text: generated ? qsTr("This sound references a source with declared AI-generated content. Labels apply to the source, not an exact mixed interval.") : qsTr("Source declarations may be entered here or carried by an imported file. An unmarked source is not a verified recording.")
     ToolTip.delay: 450
 }

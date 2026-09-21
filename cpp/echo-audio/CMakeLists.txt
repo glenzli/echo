@@ -40,6 +40,7 @@ add_library(
     src/prepared_pcm_reader.cpp
     src/offline_assembly_wav_renderer.cpp
     src/offline_flac_renderer.cpp
+    src/export_metadata.cpp
     src/offline_render.cpp
     src/offline_wav_renderer.cpp
     src/output_guard.cpp

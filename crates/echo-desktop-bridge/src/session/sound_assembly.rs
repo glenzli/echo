@@ -392,6 +392,12 @@ impl LibrarySession {
         let content_hash = echo_core::hash_file(output_path)
             .map_err(|error| session_error(format!("cannot hash assembly mixdown: {error}")))?;
         let record = self.catalog.with_transaction(|transaction| {
+            Self::verify_export_disclosure(
+                transaction,
+                &assembly_id.to_string(),
+                assembly_revision_id,
+                &evidence.source_disclosure_comment,
+            )?;
             record_sound_assembly_export(
                 transaction,
                 &RecordSoundAssemblyExport {

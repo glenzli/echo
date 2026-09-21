@@ -1,4 +1,5 @@
 #include "echo/audio/offline_assembly_wav_renderer.hpp"
+#include "echo/audio/export_metadata.hpp"
 
 #include "echo/audio/adjustment.hpp"
 #include "echo/audio/assembly_mixer.hpp"
@@ -41,11 +42,12 @@ void put_fourcc(std::span<std::byte> destination, std::size_t offset, const char
     std::memcpy(destination.data() + offset, value, 4);
 }
 
-std::array<std::byte, kWavHeaderBytes> wav_header(std::uint32_t data_size) {
+std::array<std::byte, kWavHeaderBytes>
+wav_header(std::uint32_t data_size, std::uint32_t metadata_size = 0) {
     constexpr std::uint16_t bytes_per_sample = kBitDepth / 8U;
     std::array<std::byte, kWavHeaderBytes> header{};
     put_fourcc(header, 0, "RIFF");
-    put_little_endian<std::uint32_t>(header, 4, 36U + data_size);
+    put_little_endian<std::uint32_t>(header, 4, 36U + data_size + metadata_size);
     put_fourcc(header, 8, "WAVE");
     put_fourcc(header, 12, "fmt ");
     put_little_endian<std::uint32_t>(header, 16, 16U);
@@ -117,12 +119,15 @@ void encode_pcm24(
 OfflineRenderResult OfflineAssemblyWavRenderer::render(
     const AssemblyMixPlan& plan,
     RenderByteSink& sink,
-    const OfflineRenderCallbacks& callbacks
+    const OfflineRenderCallbacks& callbacks,
+    std::string_view comment
 ) {
+    const auto metadata = wav_comment_chunk(comment);
     AssemblyMixer mixer(plan);
     const auto expected_frames = mixer.frame_count();
     constexpr std::uint64_t bytes_per_frame = kChannels * (kBitDepth / 8U);
-    if (expected_frames > (std::numeric_limits<std::uint32_t>::max() - 36U) / bytes_per_frame) {
+    if (expected_frames
+        > (std::numeric_limits<std::uint32_t>::max() - 36U - metadata.size()) / bytes_per_frame) {
         throw std::invalid_argument("assembly exceeds the WAV v1 size limit");
     }
 
@@ -146,13 +151,19 @@ OfflineRenderResult OfflineAssemblyWavRenderer::render(
             static_cast<double>(cursor) / static_cast<double>(expected_frames)
         );
     }
+    if (!metadata.empty()) {
+        sink.write(metadata);
+    }
     sink.seek(0);
-    sink.write(wav_header(static_cast<std::uint32_t>(data_bytes)));
+    sink.write(wav_header(
+        static_cast<std::uint32_t>(data_bytes),
+        static_cast<std::uint32_t>(metadata.size())
+    ));
     report_progress(callbacks, 1.0);
     const auto loudness = analyzer.result();
     return {
         .frame_count = expected_frames,
-        .size_bytes = kWavHeaderBytes + data_bytes,
+        .size_bytes = kWavHeaderBytes + data_bytes + metadata.size(),
         .sample_rate = kSampleRate,
         .channel_count = kChannels,
         .bit_depth = kBitDepth,

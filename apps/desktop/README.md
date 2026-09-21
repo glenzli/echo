@@ -403,7 +403,7 @@ and the session projects source summaries. Labels are independent of DSP undo. P
 carry their history. Mix labels follow audible references in the retained assembly revision,
 conservatively including any disclosed interval in a referenced source. This is not an exact
 mapping of generated samples after cropping or effects. Exports freeze declarations in Catalog
-provenance; standalone WAV/FLAC files do not yet embed or accompany these labels.
+provenance and embed a compact source-kind declaration in standalone WAV/FLAC files.
 
 This batch admits user declarations on imported audio, not generation execution or automatic
 origin detection. `ECHO_DEBUG_SOURCE_DISCLOSURE` with the independent-editor fixture/report
@@ -412,3 +412,22 @@ With a Library fixture and `ECHO_DEBUG_MEMORY_REPORT`, the same owner verifies T
 filters and stopping playback when the active generated source is excluded.
 Focused contracts live in domain/catalog/session `source_disclosure/tests.rs`,
 `tests/source_disclosure_contract.mjs` and `tests/qml/tst_SourceDisclosure.qml`.
+
+Audio exports carry the source-kind union in a bounded `echo.source-disclosure.v1` container
+comment (WAV LIST/INFO/ICMT or FLAC comment). `echo-domain::portable_disclosure` owns that
+schema; native `export_metadata` only transports bounded comment bytes. The render worker
+captures labels before encoding, and publication checks the same union inside the Catalog
+transaction. Batch recovery retains that captured comment; it never relabels an old file from
+current state. An export-record failure is not shown as completed delivery. Imported comments
+project as whole-file `embedded_export` declarations until a user revision overrides them.
+Native encoder tests prove metadata round trips without changing PCM; private import tests
+exercise the actual FFmpeg probe and Catalog projection.
+
+The packaged disclosure workflow also covers WAV16/WAV24/FLAC batches, assembly mixdown,
+rendered working-copy delivery and file reimport, with gain, channel polarity and spectral
+repair combined. Batch snapshots include every playback projection input; omitted optional
+values remain absent so projection defaults retain their meaning.
+
+Offline render accepts the playback contract's zero end as the remaining source duration.
+This keeps frozen working-copy spectral erasure and delivery usable without reapplying the
+original adjustment chain; invalid or empty resolved ranges still fail validation.

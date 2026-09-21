@@ -202,3 +202,74 @@ fn preceding_schema_adds_empty_unknown_disclosures_without_relabeling() {
     drop(catalog);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn imported_declarations_are_conservative_and_manual_clears_survive_refresh() {
+    let root =
+        std::env::temp_dir().join(format!("echo-imported-disclosure-{}", uuid::Uuid::now_v7()));
+    let catalog = open_catalog(&root.join("catalog.sqlite")).unwrap();
+    catalog
+        .with_transaction(|tx| -> Result<(), CatalogError> {
+            let id = register(tx, 5);
+            let comment = encode_portable_disclosure([
+                SourceDisclosureKind::AiGenerated,
+                SourceDisclosureKind::AiProcessed,
+            ]);
+            let metadata = SourceMetadata {
+                container_format: "wav".into(),
+                sample_rate: 48000,
+                channel_count: 2,
+                entries: vec![SourceMetadataEntry {
+                    key: "comment".into(),
+                    value: comment.clone(),
+                }],
+            };
+            record_source_metadata(tx, id, &metadata, None)?;
+            let summary = asset_source_disclosure(tx, id)?;
+            assert!(summary.has_generated_source());
+            assert!(summary.has_ai_processed_source());
+            assert_eq!(summary.portable_comment(), comment);
+            let imported = &summary.sources[0];
+            assert_eq!(imported.origin, SourceDisclosureOrigin::EmbeddedExport);
+            assert_eq!(imported.revision_id, 0);
+            assert!(
+                imported
+                    .spans
+                    .iter()
+                    .all(|s| s.start_millis == 0 && s.end_millis == 1000 && s.note.is_empty())
+            );
+            let cleared = record_source_disclosure(tx, id, 0, &[], 2)?;
+            assert!(cleared > 0);
+            record_source_metadata(tx, id, &metadata, None)?;
+            assert!(!asset_source_disclosure(tx, id)?.has_generated_source());
+            assert!(record_source_disclosure(tx, id, 0, &[span()], 3).is_err());
+            record_source_disclosure(tx, id, cleared, &[span()], 3)?;
+            let summary = asset_source_disclosure(tx, id)?;
+            assert_eq!(
+                summary.sources[0].origin,
+                SourceDisclosureOrigin::UserDeclared
+            );
+            assert!(!summary.portable_comment().contains("Added rain"));
+            assert!(!summary.portable_comment().contains(&id.to_string()));
+            let other = register(tx, 6);
+            let foreign = SourceMetadata {
+                entries: vec![
+                    SourceMetadataEntry {
+                        key: "title".into(),
+                        value: comment.clone(),
+                    },
+                    SourceMetadataEntry {
+                        key: "comment".into(),
+                        value: comment.replace(".v1", ".v2"),
+                    },
+                ],
+                ..metadata
+            };
+            record_source_metadata(tx, other, &foreign, None)?;
+            assert!(asset_source_disclosure(tx, other)?.sources.is_empty());
+            Ok(())
+        })
+        .unwrap();
+    drop(catalog);
+    std::fs::remove_dir_all(root).unwrap();
+}

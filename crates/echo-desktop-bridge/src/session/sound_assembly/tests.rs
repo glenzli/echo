@@ -100,6 +100,9 @@ fn complete_document_save_and_verified_export_append_history() {
             &saved.assembly_id,
             saved.revision_id,
             &RenderExportWire {
+                source_disclosure_comment: session
+                    .export_source_disclosure(&saved.assembly_id, saved.revision_id)
+                    .unwrap(),
                 output_path: output.to_string_lossy().into_owned(),
                 format: "wav_pcm24".to_owned(),
                 sample_rate: 48_000,

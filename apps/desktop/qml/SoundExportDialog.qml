@@ -131,6 +131,12 @@ Popup {
             Layout.margins: 20
             spacing: 14
 
+            Text {
+                Layout.fillWidth: true; wrapMode: Text.WordWrap
+                font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
+                text: qsTr("Source labels are embedded in the audio file. Private notes and local paths stay in Echo.")
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 62

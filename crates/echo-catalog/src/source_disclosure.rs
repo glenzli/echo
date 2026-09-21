@@ -21,10 +21,21 @@ CREATE TABLE IF NOT EXISTS render_export_disclosures (
 );
 ";
 
-/// User declaration revision, deliberately distinct from inference evidence.
+/// Where a declaration was obtained; neither origin authenticates its content.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceDisclosureOrigin {
+    #[default]
+    UserDeclared,
+    EmbeddedExport,
+}
+
+/// Source declaration revision, deliberately distinct from inference evidence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceDisclosureRevision {
+    #[serde(default)]
+    pub origin: SourceDisclosureOrigin,
     pub revision_id: i64,
     pub asset_id: String,
     pub original_content_hash: String,
@@ -38,6 +49,16 @@ pub struct SourceDisclosureSummary {
     pub sources: Vec<SourceDisclosureRevision>,
 }
 impl SourceDisclosureSummary {
+    /// Portable source-level union, excluding paths, identities and private notes.
+    #[must_use]
+    pub fn portable_comment(&self) -> String {
+        echo_domain::encode_portable_disclosure(
+            self.sources
+                .iter()
+                .flat_map(|source| source.spans.iter().map(|span| span.kind)),
+        )
+    }
+
     #[must_use]
     pub fn has_generated_source(&self) -> bool {
         self.sources
@@ -61,7 +82,10 @@ pub fn source_disclosures(
     read_disclosures(tx, None)
 }
 
-pub(crate) fn asset_source_disclosure(
+/// Source labels for one immutable asset, including imported declarations.
+/// # Errors
+/// Returns a failure for unreadable or malformed stored history.
+pub fn asset_source_disclosure(
     tx: &Transaction<'_>,
     id: AssetId,
 ) -> Result<SourceDisclosureSummary, CatalogError> {
@@ -76,31 +100,82 @@ fn read_disclosures(
 ) -> Result<BTreeMap<String, SourceDisclosureRevision>, CatalogError> {
     let selection = if id.is_some() { " WHERE a.id=?1" } else { "" };
     let sql = format!(
-        "SELECT d.id,d.asset_id,d.original_content_hash,d.spans_json,d.created_at_millis FROM assets a JOIN asset_source_disclosures d ON d.id=(SELECT latest.id FROM asset_source_disclosures latest WHERE latest.asset_id=a.id ORDER BY latest.id DESC LIMIT 1){selection}"
+        "SELECT d.id,a.id,a.content_hash,d.spans_json,a.imported_at_millis,a.duration_millis,m.entries_json,d.created_at_millis FROM assets a LEFT JOIN asset_source_disclosures d ON d.id=(SELECT latest.id FROM asset_source_disclosures latest WHERE latest.asset_id=a.id ORDER BY latest.id DESC LIMIT 1) LEFT JOIN asset_source_metadata m ON m.asset_id=a.id AND d.id IS NULL AND m.entries_json LIKE '%Echo source disclosure: %'{selection}"
     );
     let mut query = tx.prepare(&sql)?;
     let ids: Vec<String> = id.into_iter().map(|value| value.to_string()).collect();
     let rows = query.query_map(rusqlite::params_from_iter(ids), |r| {
         Ok((
-            r.get::<_, i64>(0)?,
+            r.get::<_, Option<i64>>(0)?,
             r.get::<_, String>(1)?,
             r.get::<_, String>(2)?,
-            r.get::<_, String>(3)?,
+            r.get::<_, Option<String>>(3)?,
             r.get::<_, i64>(4)?,
+            r.get::<_, Option<i64>>(5)?,
+            r.get::<_, Option<String>>(6)?,
+            r.get::<_, Option<i64>>(7)?,
         ))
     })?;
     let mut result = BTreeMap::new();
     for row in rows {
-        let (revision_id, asset_id, original_content_hash, json, created_at_millis) = row?;
-        let spans = serde_json::from_str(&json).map_err(|e| error(e.to_string()))?;
+        let (
+            revision,
+            asset_id,
+            original_content_hash,
+            json,
+            imported_at,
+            duration,
+            metadata,
+            changed_at,
+        ) = row?;
+        let (spans, origin) = if let Some(json) = json {
+            (
+                serde_json::from_str(&json).map_err(|e| error(e.to_string()))?,
+                SourceDisclosureOrigin::UserDeclared,
+            )
+        } else {
+            let duration = u64::try_from(duration.unwrap_or(0)).unwrap_or(0);
+            let entries: Vec<crate::SourceMetadataEntry> = metadata
+                .as_deref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or_default();
+            let mut kinds = Vec::new();
+            for entry in entries {
+                if entry.key.eq_ignore_ascii_case("comment") {
+                    for kind in
+                        echo_domain::decode_portable_disclosure(&entry.value).unwrap_or_default()
+                    {
+                        if !kinds.contains(&kind) {
+                            kinds.push(kind);
+                        }
+                    }
+                }
+            }
+            if kinds.is_empty() || duration == 0 {
+                continue;
+            }
+            (
+                kinds
+                    .into_iter()
+                    .map(|kind| SourceDisclosureSpan {
+                        kind,
+                        start_millis: 0,
+                        end_millis: duration,
+                        note: String::new(),
+                    })
+                    .collect(),
+                SourceDisclosureOrigin::EmbeddedExport,
+            )
+        };
         result.insert(
             asset_id.clone(),
             SourceDisclosureRevision {
-                revision_id,
+                origin,
+                revision_id: revision.unwrap_or(0),
                 asset_id,
                 original_content_hash,
                 spans,
-                created_at_millis,
+                created_at_millis: changed_at.unwrap_or(imported_at),
             },
         );
     }
@@ -133,7 +208,11 @@ pub fn record_source_disclosure(
         return Err(error("source disclosure changed; reopen before saving"));
     }
     let json = serde_json::to_string(spans).map_err(|e| error(e.to_string()))?;
-    if previous.as_ref().is_some_and(|p| p.1 == json) || (previous.is_none() && spans.is_empty()) {
+    if previous.as_ref().is_some_and(|p| p.1 == json)
+        || (previous.is_none()
+            && spans.is_empty()
+            && asset_source_disclosure(tx, asset_id)?.sources.is_empty())
+    {
         return Ok(expected_revision);
     }
     tx.execute("INSERT INTO asset_source_disclosures(asset_id,original_content_hash,spans_json,created_at_millis) VALUES(?1,?2,?3,?4)",params![id,hash,json,now])?;

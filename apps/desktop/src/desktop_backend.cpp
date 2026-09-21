@@ -2527,10 +2527,12 @@ QString DesktopBackend::recordRenderExport(
     quint64 frameCount,
     quint64 sizeBytes,
     float integratedLufs,
-    float truePeakDbtp
+    float truePeakDbtp,
+    const QString& sourceDisclosureComment
 ) const {
     try {
         echo::desktop::RenderExportWire evidence;
+        evidence.source_disclosure_comment = sourceDisclosureComment.toStdString();
         evidence.output_path = outputPath.toStdString();
         evidence.format = format.toStdString();
         evidence.sample_rate = sampleRate;
@@ -2544,6 +2546,12 @@ QString DesktopBackend::recordRenderExport(
             ->session_record_render_export(assetId.toStdString(), adjustmentRevisionId, evidence);
         return {};
     } catch (const rust::Error& error) {
+        if (QString::fromUtf8(error.what()).contains(QStringLiteral("source labels changed"))) {
+            return tr(
+                "The file was written, but its source labels changed during export. Export again "
+                "to save a matching record."
+            );
+        }
         return QString::fromUtf8(error.what());
     }
 }
@@ -2559,10 +2567,12 @@ QString DesktopBackend::recordSoundAssemblyExport(
     quint64 sizeBytes,
     float integratedLufs,
     float truePeakDbtp,
-    bool preserveMemory
+    bool preserveMemory,
+    const QString& sourceDisclosureComment
 ) const {
     try {
         echo::desktop::RenderExportWire evidence;
+        evidence.source_disclosure_comment = sourceDisclosureComment.toStdString();
         evidence.output_path = outputPath.toStdString();
         evidence.format = std::string("wav_pcm24");
         evidence.sample_rate = sampleRate;
@@ -2581,6 +2591,12 @@ QString DesktopBackend::recordSoundAssemblyExport(
             session_->session_preserve_assembly_memory(assemblyId.toStdString(), exportId);
         return {};
     } catch (const rust::Error& error) {
+        if (QString::fromUtf8(error.what()).contains(QStringLiteral("source labels changed"))) {
+            return tr(
+                "The file was written, but its source labels changed during export. Export again "
+                "to save a matching record."
+            );
+        }
         return QString::fromUtf8(error.what());
     }
 }
@@ -2598,10 +2614,12 @@ QString DesktopBackend::recordRenderedSpectralWorkingCopyExport(
     quint64 frameCount,
     quint64 sizeBytes,
     float integratedLufs,
-    float truePeakDbtp
+    float truePeakDbtp,
+    const QString& sourceDisclosureComment
 ) const {
     try {
         echo::desktop::RenderExportWire evidence;
+        evidence.source_disclosure_comment = sourceDisclosureComment.toStdString();
         evidence.output_path = outputPath.toStdString();
         evidence.format = format.toStdString();
         evidence.sample_rate = sampleRate;
@@ -2620,6 +2638,12 @@ QString DesktopBackend::recordRenderedSpectralWorkingCopyExport(
         );
         return {};
     } catch (const rust::Error& error) {
+        if (QString::fromUtf8(error.what()).contains(QStringLiteral("source labels changed"))) {
+            return tr(
+                "The file was written, but its source labels changed during export. Export again "
+                "to save a matching record."
+            );
+        }
         return QString::fromUtf8(error.what());
     }
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 
 #include <string>
 
@@ -18,7 +19,8 @@ class OfflineWavRenderer {
         const PlaybackAdjustment& adjustment,
         RenderByteSink& sink,
         const OfflineRenderCallbacks& callbacks = {},
-        WavPcmDepth depth = WavPcmDepth::Pcm24
+        WavPcmDepth depth = WavPcmDepth::Pcm24,
+        std::string_view comment = {}
     );
 };
 

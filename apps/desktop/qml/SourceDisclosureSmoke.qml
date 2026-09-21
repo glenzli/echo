@@ -14,6 +14,8 @@ Item {
     property string reportJson: ""
     property var facts: ({})
     property string before: ""
+    property int batchIndex: 0
+    property var originalIds: []
     function require(value,message) { if(!value) throw new Error(message); }
     function tapeStep() {
         switch(stage) {
@@ -64,8 +66,18 @@ Item {
             require(backend.independentEditing,"not private editing"); shell.chooseSource(0); stage=1; break;
         case 1:
             if(!editor.hasAsset) return;
+            if(reopening) {
+                require(editor.asset.hasGeneratedSource,"portable source label missing");
+                editor.presentSourceDisclosure();require(editor.sourceDisclosureDialog.spans.length>0,"native source labels missing in reopened dialog");editor.sourceDisclosureDialog.close();
+                facts.reopenedDialogVerified=true;stage=5;return;
+            }
+            editor.adjustment.setGain(-300);
+            editor.adjustment.setChannelRepairEnabled(true);
+            editor.adjustment.setChannelRepairParameter("invertLeft",true);
+            editor.adjustment.addSpectralRepairRegion(100,500,500,1500);
+            require(shell.flushDrafts(),"combined adjustment failed to save");
             before=JSON.stringify(editor.adjustment.snapshot());
-            if(reopening) { require(editor.asset.hasGeneratedSource,"portable source label missing");stage=5;return; }
+            facts.combinedProcessing=["gain","channel polarity","spectral repair"];
             editor.debugExport('file://'+fixtureRoot+'/baseline.wav');stage=2;break;
         case 2:
             if(renderExporter.running) return;
@@ -89,6 +101,54 @@ Item {
             require(renderExporter.hasResult,renderExporter.errorText || "export failed");
             facts.jobs=backend.jobStats();require(facts.jobs.pending===0 && facts.jobs.running===0 && facts.jobs.done===0 && facts.jobs.failed===0,"private project started library analysis");
             facts.reopening=reopening;facts.outputPath=renderExporter.outputPath;
+            if(reopening) {reportJson=JSON.stringify({ok:true,facts:facts});return;}
+            stage=7;break;
+        case 7:
+            batchExporter.start([editor.asset],'file://'+fixtureRoot+'/batch',["wav_pcm24","flac24","wav_pcm16"][batchIndex]);stage=8;break;
+        case 8:
+            if(batchExporter.running) return;
+            require(batchExporter.hasResult && batchExporter.completedCount===1 && batchExporter.failedCount===0,batchExporter.errorText || "batch delivery failed");
+            batchExporter.dismiss();
+            if(++batchIndex<3) {stage=7;return;}
+            facts.batchFormats=["wav_pcm24","flac24","wav_pcm16"];
+            const mix=backend.createSoundAssembly("Disclosed mix",[editor.asset.id],"layered");
+            require(!mix.error,mix.error || "mix creation failed");
+            soundAssemblyController.exportAssembly(mix,'file://'+fixtureRoot+'/mix.wav');stage=9;break;
+        case 9:
+            if(soundAssemblyController.running) return;
+            require(soundAssemblyController.hasResult,soundAssemblyController.errorText || "mix export failed");
+            facts.mixExport=soundAssemblyController.outputPath;
+            renderedSpectralWorkingCopy.createFromSavedAsset(editor.asset);stage=10;break;
+        case 10:
+            if(renderedSpectralWorkingCopy.running) return;
+            require(renderedSpectralWorkingCopy.hasResult,renderedSpectralWorkingCopy.errorText || "working copy failed");
+            renderedSpectralWorkingCopy.eraseRegion(editor.asset.id,renderedSpectralWorkingCopy.workingCopyId,renderedSpectralWorkingCopy.cachePath,600,900,800,1600);stage=20;break;
+        case 20:
+            if(renderedSpectralWorkingCopy.running) return;
+            require(renderedSpectralWorkingCopy.hasResult && renderedSpectralWorkingCopy.operationCount===1,renderedSpectralWorkingCopy.errorText || "working-copy erase failed");
+            facts.workingCopyErased=true;
+            renderExporter.exportRenderedSpectralWorkingCopy(editor.asset.id,Number(editor.asset.adjustmentRevision||0),renderedSpectralWorkingCopy.workingCopyId,renderedSpectralWorkingCopy.cachePath,'file://'+fixtureRoot+'/working-copy.wav');stage=11;break;
+        case 11:
+            if(renderExporter.running) return;
+            require(renderExporter.hasResult,renderExporter.errorText || "working-copy delivery failed");
+            facts.workingCopyExport=renderExporter.outputPath;
+            originalIds=backend.listAssets().map(a=>a.id);
+            independentEditor.importAudio(['file://'+fixtureRoot+'/marked.wav','file://'+fixtureRoot+'/mix.wav','file://'+fixtureRoot+'/working-copy.wav']);stage=12;break;
+        case 12:
+            if(independentEditor.busy) return;
+            require(!independentEditor.errorText,independentEditor.errorText);
+            const imported=backend.listAssets().filter(a=>originalIds.indexOf(a.id)<0);
+            require(imported.length>0,"exported audio did not reimport");
+            for(const source of imported) {
+                require(source.hasGeneratedSource,"imported export lost source declaration");
+                require(source.sourceDisclosure.sources[0].origin==="embedded_export","imported label origin missing");
+                require(source.sourceDisclosure.sources[0].spans[0].endMillis===source.durationMillis,"imported label did not cover whole output");
+            }
+            editor.sourceDisclosureDialog.present(imported[0],0,0);
+            require(editor.sourceDisclosureDialog.importedLabels && editor.sourceDisclosureDialog.spans.length>0,"native imported labels missing in dialog");
+            editor.sourceDisclosureDialog.close();facts.importedDialogVerified=true;
+            facts.importedCount=imported.length;
+            facts.jobs=backend.jobStats();require(facts.jobs.pending===0 && facts.jobs.running===0 && facts.jobs.done===0 && facts.jobs.failed===0,"private round trip started library analysis");
             reportJson=JSON.stringify({ok:true,facts:facts});break;
         }
     }

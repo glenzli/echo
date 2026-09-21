@@ -37,3 +37,8 @@ revision. Catalog history remains append-only and tied to immutable content hash
 summaries distinguish AI processing from generation without certifying unmarked originals.
 Source summaries also follow audible references of the exact retained assembly revision.
 Independent projects keep the same declarations in their portable catalog without Library jobs.
+
+`session/source_disclosure.rs` also prepares compact export comments and verifies their source-kind
+union in the publication transaction. `RenderExportWire` carries the exact encoded comment;
+`render_exports.rs` and the assembly session reject missing or changed declarations. Imported
+file comments are projected by Catalog, while explicit user corrections remain append-only.

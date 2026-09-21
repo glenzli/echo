@@ -149,11 +149,41 @@ QVariantMap snapshot_asset(const QVariantMap& asset) {
         QStringLiteral("convolutionWetGainCentibels"),
         QStringLiteral("limiterEnabled"),
         QStringLiteral("limiterCeilingCentibels"),
-        QStringLiteral("limiterReleaseMillis")
+        QStringLiteral("limiterReleaseMillis"),
+        QStringLiteral("restorationEnabled"),
+        QStringLiteral("dePlosiveEnabled"),
+        QStringLiteral("dePlosiveFrequencyHertz"),
+        QStringLiteral("dePlosiveSensitivityPercent"),
+        QStringLiteral("dePlosiveReductionCentibels"),
+        QStringLiteral("dePlosiveReleaseMillis"),
+        QStringLiteral("deHumEnabled"),
+        QStringLiteral("deHumFundamentalHertz"),
+        QStringLiteral("deHumHarmonicCount"),
+        QStringLiteral("deHumQualityTenths"),
+        QStringLiteral("deHumDepthCentibels"),
+        QStringLiteral("deClickEnabled"),
+        QStringLiteral("deClickSensitivityPercent"),
+        QStringLiteral("deClickMaximumClickMicroseconds"),
+        QStringLiteral("deClickRepairPercent"),
+        QStringLiteral("channelRepairEnabled"),
+        QStringLiteral("channelRepairInvertLeft"),
+        QStringLiteral("channelRepairInvertRight"),
+        QStringLiteral("channelRepairSwapChannels"),
+        QStringLiteral("channelRepairMonoFoldDown"),
+        QStringLiteral("channelRepairBalancePercent"),
+        QStringLiteral("equalizerEnabled"),
+        QStringLiteral("effectChain"),
+        QStringLiteral("editSegments"),
+        QStringLiteral("effectMasks"),
+        QStringLiteral("creativeVfx"),
+        QStringLiteral("spectralRepair")
     };
+    // Keep every fromAssetMap input, including effect ordering and source-time edits.
     QVariantMap snapshot;
-    for (const QString& key : keys)
-        snapshot.insert(key, asset.value(key));
+    for (const QString& key : keys) {
+        if (asset.contains(key))
+            snapshot.insert(key, asset.value(key));
+    }
     return snapshot;
 }
 
@@ -181,7 +211,8 @@ echo::audio::OfflineRenderResult render_file(
     const QString& destinationPath,
     const QString& format,
     const echo::audio::PlaybackAdjustment& adjustment,
-    const echo::audio::OfflineRenderCallbacks& callbacks
+    const echo::audio::OfflineRenderCallbacks& callbacks,
+    const QString& sourceDisclosureComment
 ) {
     QFile::remove(temporaryPath);
     QFile output(temporaryPath);
@@ -196,7 +227,8 @@ echo::audio::OfflineRenderResult render_file(
                 source.toStdString(),
                 adjustment,
                 sink,
-                callbacks
+                callbacks,
+                sourceDisclosureComment.toStdString()
             );
         } else {
             const auto depth = format == QStringLiteral("wav_pcm16")
@@ -207,7 +239,8 @@ echo::audio::OfflineRenderResult render_file(
                 adjustment,
                 sink,
                 callbacks,
-                depth
+                depth,
+                sourceDisclosureComment.toStdString()
             );
         }
         if (!output.flush()) {
@@ -405,6 +438,12 @@ void BatchExportController::startWorker(QVariantMap manifest) {
                     reserved.insert(output_path);
                     temporary_path = output_path + QStringLiteral(".echo-partial-")
                                      + QUuid::createUuid().toString(QUuid::Id128);
+                    item.insert(
+                        QStringLiteral("sourceDisclosureComment"),
+                        backend_.exportSourceDisclosure(
+                            asset.value(QStringLiteral("id")).toString()
+                        )
+                    );
                     item.insert(QStringLiteral("state"), QStringLiteral("rendering"));
                     item.insert(QStringLiteral("outputPath"), output_path);
                     item.insert(QStringLiteral("temporaryPath"), temporary_path);
@@ -444,7 +483,8 @@ void BatchExportController::startWorker(QVariantMap manifest) {
                                         Qt::QueuedConnection
                                     );
                                 },
-                        }
+                        },
+                        item.value(QStringLiteral("sourceDisclosureComment")).toString()
                     );
                     if (stop.stop_requested()) {
                         QFile::remove(output_path);
@@ -490,7 +530,8 @@ void BatchExportController::startWorker(QVariantMap manifest) {
                     item.value(QStringLiteral("frameCount")).toULongLong(),
                     item.value(QStringLiteral("sizeBytes")).toULongLong(),
                     item.value(QStringLiteral("integratedLufs")).toFloat(),
-                    item.value(QStringLiteral("truePeakDbtp")).toFloat()
+                    item.value(QStringLiteral("truePeakDbtp")).toFloat(),
+                    item.value(QStringLiteral("sourceDisclosureComment")).toString()
                 );
                 if (!publication_error.isEmpty()) {
                     throw std::runtime_error(publication_error.toStdString());
@@ -502,7 +543,8 @@ void BatchExportController::startWorker(QVariantMap manifest) {
                 QFile::remove(item.value(QStringLiteral("temporaryPath")).toString());
                 QFile::remove(item.value(QStringLiteral("outputPath")).toString());
                 item.insert(QStringLiteral("state"), QStringLiteral("pending"));
-            } catch (const std::exception&) {
+            } catch (const std::exception& error) {
+                qWarning("batch export item failed: %s", error.what());
                 QFile::remove(item.value(QStringLiteral("temporaryPath")).toString());
                 QFile::remove(item.value(QStringLiteral("outputPath")).toString());
                 item.insert(QStringLiteral("state"), QStringLiteral("failed"));

@@ -19,3 +19,9 @@ QString DesktopBackend::setSourceDisclosure(
         return tr("Source labels could not be saved. They may have changed; reopen and try again.");
     }
 }
+
+QString DesktopBackend::exportSourceDisclosure(const QString& id, qint64 assemblyRevision) const {
+    const auto comment =
+        session_->session_export_source_disclosure(id.toStdString(), assemblyRevision);
+    return QString::fromUtf8(comment.data(), comment.size());
+}

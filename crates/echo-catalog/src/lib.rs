@@ -167,8 +167,9 @@ pub use sound_library::{
 };
 
 pub use source_disclosure::{
-    SourceDisclosureRevision, SourceDisclosureSummary, assembly_source_disclosure,
-    record_source_disclosure, source_disclosures,
+    SourceDisclosureOrigin, SourceDisclosureRevision, SourceDisclosureSummary,
+    assembly_source_disclosure, asset_source_disclosure, record_source_disclosure,
+    source_disclosures,
 };
 
 #[cfg(test)]

@@ -49,9 +49,72 @@ fn session_records_verified_original_render() {
             8,
             -18.0,
             -1.0,
+            &session
+                .export_source_disclosure(&asset.id.to_string(), 0)
+                .unwrap(),
         )
         .expect("render records");
     assert!(id > 0);
+    let captured = session
+        .export_source_disclosure(&asset.id.to_string(), 0)
+        .unwrap();
+    session
+        .set_source_disclosure(
+            &asset.id.to_string(),
+            0,
+            r#"[{"kind":"ai_generated","startMillis":0,"endMillis":1000,"note":"Private note"}]"#,
+        )
+        .unwrap();
+    assert!(
+        session
+            .record_render_export(
+                &asset.id.to_string(),
+                0,
+                output.to_str().unwrap(),
+                "wav_pcm24",
+                48000,
+                2,
+                24,
+                1,
+                8,
+                -18.0,
+                -1.0,
+                &captured
+            )
+            .is_err()
+    );
+    assert!(
+        session
+            .record_render_export(
+                &asset.id.to_string(),
+                0,
+                output.to_str().unwrap(),
+                "wav_pcm24",
+                48000,
+                2,
+                24,
+                1,
+                8,
+                -18.0,
+                -1.0,
+                ""
+            )
+            .is_err()
+    );
+    let count = session
+        .catalog()
+        .with_transaction(|tx| {
+            Ok::<_, echo_catalog::CatalogError>(tx.query_row(
+                "SELECT COUNT(*) FROM render_exports",
+                [],
+                |row| row.get::<_, i64>(0),
+            )?)
+        })
+        .unwrap();
+    assert_eq!(
+        count, 1,
+        "a changed declaration must not create a contradictory receipt"
+    );
     let working_source = root.join("working.wav");
     let repaired_output = root.join("repaired-output.wav");
     fs::write(&working_source, b"frozen-render").expect("working source writes");
@@ -78,6 +141,9 @@ fn session_records_verified_original_render() {
             17,
             -18.0,
             -1.0,
+            &session
+                .export_source_disclosure(&asset.id.to_string(), 0)
+                .unwrap(),
         )
         .expect("working-copy export records");
     let provenance_count: i64 = session

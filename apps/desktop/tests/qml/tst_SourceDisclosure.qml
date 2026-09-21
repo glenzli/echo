@@ -25,6 +25,13 @@ TestCase {
         openDialog();dialog.append(true);compare(asset.sourceDisclosure.sources[0].spans.length,1);dialog.close();compare(writes.length,0);
         openDialog();compare(dialog.spans.length,1);failure="Changed elsewhere";mouseClick(findChild(dialog,"disclosureSave"));compare(writes[0].revision,29);verify(dialog.opened);compare(dialog.errorText,failure);compare(dialog.spans.length,1);
     }
+    function test_imported_labels_are_explained_and_clearable() {
+        asset={id:"source",durationMillis:10000,sourceDisclosure:{sources:[{assetId:"source",revisionId:0,origin:"embedded_export",spans:[{kind:"ai_generated",startMillis:0,endMillis:10000,note:""}]}]}};
+        openDialog();verify(dialog.importedLabels);compare(dialog.expectedRevision,0);
+        tryVerify(()=>dialog.labelList.itemAtIndex(0)!==null);waitForRendering(dialog.contentItem);
+        mouseClick(findChild(dialog.labelList.itemAtIndex(0),"disclosureRemove0"));compare(dialog.spans.length,0);
+        mouseClick(findChild(dialog,"disclosureSave"));compare(writes[0].revision,0);compare(writes[0].spans.length,0);
+    }
     function test_label_budget_and_readonly_mix() {
         openDialog();for(let i=0;i<65;++i)dialog.append(false);compare(dialog.spans.length,64);verify(!findChild(dialog,"disclosureAddWhole").enabled);dialog.close();
         asset={id:"mix",assemblyId:"mix",durationMillis:10000,sourceDisclosure:{sources:[{assetId:"source",revisionId:1,spans:[{kind:"ai_generated",startMillis:0,endMillis:500,note:"rain"}]}]}};

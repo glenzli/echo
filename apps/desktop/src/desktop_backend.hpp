@@ -273,6 +273,8 @@ class DesktopBackend : public QObject {
     /// Worker-thread publication handoff after an atomic render commit.
     /// Returns an empty string on success or a localized-ready technical
     /// detail for the controller to present.
+    [[nodiscard]] QString
+    exportSourceDisclosure(const QString& id, qint64 assemblyRevision = 0) const;
     [[nodiscard]] QString recordRenderExport(
         const QString& assetId,
         qint64 adjustmentRevisionId,
@@ -284,7 +286,8 @@ class DesktopBackend : public QObject {
         quint64 frameCount,
         quint64 sizeBytes,
         float integratedLufs,
-        float truePeakDbtp
+        float truePeakDbtp,
+        const QString& sourceDisclosureComment
     ) const;
     [[nodiscard]] QString recordSoundAssemblyExport(
         const QString& assemblyId,
@@ -297,7 +300,8 @@ class DesktopBackend : public QObject {
         quint64 sizeBytes,
         float integratedLufs,
         float truePeakDbtp,
-        bool preserveMemory = false
+        bool preserveMemory,
+        const QString& sourceDisclosureComment
     ) const;
     /// Records a user delivery from a verified post-effect repair copy and
     /// persists an immutable snapshot of that copy's current provenance.
@@ -314,7 +318,8 @@ class DesktopBackend : public QObject {
         quint64 frameCount,
         quint64 sizeBytes,
         float integratedLufs,
-        float truePeakDbtp
+        float truePeakDbtp,
+        const QString& sourceDisclosureComment
     ) const;
     /// Worker-thread admission after a private full render completes. The
     /// returned map names only a verified content-addressed cache path.

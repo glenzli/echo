@@ -44,7 +44,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - 本地智能能力需要已配置且具备相应能力的 Infer Runtime。Runtime 不可用时，导入、浏览、波形、播放和既有 DSP 调整仍可使用。
 - 人物、地点、情绪和声音类型目前主要是可追溯的模型证据或提示，不代表完整的人物关系、地理关系或事实确认系统。
 - CLAP 原声音检索当前只覆盖有界的短录音切片；长录音的完整分段语义检索仍在建设中。
-- 神经降噪、源分离和生成式声音能力不是当前开发版已完成的产品功能；公共仓库也不分发模型文件。来源标记目前由用户声明，编排按整份来源保守披露；导出快照保存在 Echo Catalog 中，单独的 WAV／FLAC 尚不携带标记。
+- 神经降噪、源分离和生成式声音能力不是当前开发版已完成的产品功能；公共仓库也不分发模型文件。来源标记来自用户声明或音频文件携带的声明，编排按整份来源保守披露。WAV／FLAC 导出嵌入精简来源类别，重新导入会恢复标记；声明未经认证，外部转换可能移除元数据。私人说明和路径仍留在 Echo。
 - 已保存混音可从记忆库重新打开来源项目；当前不将一个混音项目嵌套为另一个项目的片段。项目内精细编辑使用原始频谱修复，渲染后工作副本仍属于单音处理入口。
 - 声音编排不是通用 DAW：当前不提供录音、输入监听、MIDI、速度网格、时间拉伸、插件宿主、发送总线、任意路由、轨道参数自动化或视频同步。
 
@@ -108,7 +108,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - Local intelligent features require a configured Infer Runtime with the relevant capabilities. Import, browsing, waveforms, playback, and existing DSP adjustments remain usable when the Runtime is unavailable.
 - People, place, emotion, and sound-type projections are currently traceable model evidence or hints, not a complete identity, relationship, or fact-confirmation system.
 - Raw-audio CLAP retrieval currently covers a bounded short-recording slice. Complete segment-level semantic retrieval for long recordings is still under development.
-- Neural denoise, source separation, and generative audio are not completed product features in the current build. The public repository does not distribute model files. Source labels are currently user declarations and propagate conservatively for whole referenced sources. Export snapshots stay in Echo Catalog; standalone WAV/FLAC files do not yet carry these labels.
+- Neural denoise, source separation, and generative audio are not completed product features in the current build. The public repository does not distribute model files. Source labels come from user declarations or imported file declarations and propagate conservatively for whole referenced sources. Exports embed a compact source-kind declaration in WAV/FLAC metadata, and Echo restores it on import. These are unauthenticated declarations; external conversion may strip them. Private notes and paths remain in Echo.
 - Saved mixes reopen their source project; nesting a mix project inside another project is not supported. Project clip editing supports original spectral repair; post-render working copies remain in the single-sound workspace.
 - Sound Assembly is not a general-purpose DAW. Recording, input monitoring, MIDI, tempo grids, time stretching, plug-in hosting, sends, arbitrary routing, track-parameter automation, and video sync are outside the current module.
 

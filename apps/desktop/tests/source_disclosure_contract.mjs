@@ -18,3 +18,11 @@ test('explicit backend flags remain conservative and cleared revision is editabl
  assert.equal(d.ownRevision({id:'x'}).revisionId,0);
  assert.equal(d.generated({sourceDisclosure:{sources:[{assetId:'a',revisionId:18,spans:[]}]}}),false);
 });
+
+test('native sequence-shaped source lists retain their revision and nested labels',()=>{
+ const imported={id:'q',sourceDisclosure:{sources:{length:1,0:{assetId:'q',revisionId:0,origin:'embedded_export',spans:{length:1,0:{kind:'ai_generated'}}}}}};
+ assert.equal(d.sources(imported).length,1);
+ assert.equal(d.ownRevision(imported).origin,'embedded_export');
+ assert.equal(d.generated(imported),true);
+ assert.equal(d.eligible(imported,'memories',false),false);
+});

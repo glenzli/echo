@@ -1192,6 +1192,10 @@
             <source>WAV · 24-bit PCM · Editing master</source>
             <translation>WAV · 24 位 PCM · 编辑母版</translation>
         </message>
+        <message>
+            <source>Source labels are embedded in the audio file. Private notes and local paths stay in Echo.</source>
+            <translation>来源标记会嵌入音频文件。私人说明和本地路径仍留在 Echo 中。</translation>
+        </message>
     </context>
     <context>
         <name>BeatRepeatVfxPanel</name>
@@ -1620,6 +1624,10 @@
         <message>
             <source>Source labels could not be saved. They may have changed; reopen and try again.</source>
             <translation>无法保存来源标记。标记可能已被修改，请重新打开后再试。</translation>
+        </message>
+        <message>
+            <source>The file was written, but its source labels changed during export. Export again to save a matching record.</source>
+            <translation>文件已写入，但来源标记在导出期间发生了变化。请重新导出，以保存一致的记录。</translation>
         </message>
     </context>
     <context>
@@ -5407,6 +5415,10 @@
             <source>Cancel</source>
             <translation>取消</translation>
         </message>
+        <message>
+            <source>Source labels are embedded in the audio file. Private notes and local paths stay in Echo.</source>
+            <translation>来源标记会嵌入音频文件。私人说明和本地路径仍留在 Echo 中。</translation>
+        </message>
     </context>
     <context>
         <name>SoundFocusView</name>
@@ -7548,8 +7560,8 @@
             <translation>此声音引用了已标记含 AI 生成内容的来源。标记针对来源，不代表混音中的精确区间。</translation>
         </message>
         <message>
-            <source>User-declared source information. An unmarked source is not a verified recording.</source>
-            <translation>用户声明的来源信息。未标记不代表已验证为实录。</translation>
+            <source>Source declarations may be entered here or carried by an imported file. An unmarked source is not a verified recording.</source>
+            <translation>来源声明可以由用户填写，也可以随导入文件携带。未标记的来源不代表已验证实录。</translation>
         </message>
     </context>
     <context>
@@ -7621,6 +7633,10 @@
         <message>
             <source>Save labels</source>
             <translation>保存标记</translation>
+        </message>
+        <message>
+            <source>These labels came from the audio file and apply to its whole duration. They are declarations, not authenticated evidence; you can correct them.</source>
+            <translation>这些标记来自音频文件，适用于整段声音。它们是来源声明，并非经过认证的证据；你可以纠正标记。</translation>
         </message>
     </context>
 </TS>

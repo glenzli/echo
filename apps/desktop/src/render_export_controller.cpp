@@ -221,6 +221,7 @@ void RenderExportController::exportAdjusted(
             if (!output.open(QIODevice::WriteOnly)) {
                 throw std::runtime_error(output.errorString().toStdString());
             }
+            const auto source_disclosure = backend_.exportSourceDisclosure(assetId);
             QtRenderByteSink sink(output);
             auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
             const auto result = echo::audio::OfflineWavRenderer::render(
@@ -248,7 +249,9 @@ void RenderExportController::exportAdjusted(
                                 Qt::QueuedConnection
                             );
                         },
-                }
+                },
+                echo::audio::WavPcmDepth::Pcm24,
+                source_disclosure.toStdString()
             );
             if (stop_token.stop_requested()) {
                 throw echo::audio::OfflineRenderCancelled();
@@ -267,7 +270,8 @@ void RenderExportController::exportAdjusted(
                 result.frame_count,
                 result.size_bytes,
                 result.integrated_lufs,
-                result.true_peak_dbtp
+                result.true_peak_dbtp,
+                source_disclosure
             );
             QMetaObject::invokeMethod(
                 this,
@@ -276,7 +280,7 @@ void RenderExportController::exportAdjusted(
                         return;
                     }
                     running_ = false;
-                    has_result_ = true;
+                    has_result_ = publication_error.isEmpty();
                     progress_ = 1.0;
                     output_path_ = output_path;
                     integrated_lufs_ = result.integrated_lufs;
@@ -368,6 +372,7 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
             if (!output.open(QIODevice::WriteOnly)) {
                 throw std::runtime_error(output.errorString().toStdString());
             }
+            const auto source_disclosure = backend_.exportSourceDisclosure(assetId);
             QtRenderByteSink sink(output);
             auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
             const echo::audio::PlaybackAdjustment no_downstream_adjustment;
@@ -396,7 +401,9 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
                                 Qt::QueuedConnection
                             );
                         },
-                }
+                },
+                echo::audio::WavPcmDepth::Pcm24,
+                source_disclosure.toStdString()
             );
             if (stop_token.stop_requested()) {
                 throw echo::audio::OfflineRenderCancelled();
@@ -417,7 +424,8 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
                 result.frame_count,
                 result.size_bytes,
                 result.integrated_lufs,
-                result.true_peak_dbtp
+                result.true_peak_dbtp,
+                source_disclosure
             );
             QMetaObject::invokeMethod(
                 this,
@@ -426,7 +434,7 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
                         return;
                     }
                     running_ = false;
-                    has_result_ = true;
+                    has_result_ = publication_error.isEmpty();
                     progress_ = 1.0;
                     output_path_ = output_path;
                     integrated_lufs_ = result.integrated_lufs;

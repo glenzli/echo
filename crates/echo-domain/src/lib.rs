@@ -15,6 +15,7 @@
 //!   never treated as fact);
 //! - `metadata_calibration` owns sparse user corrections over those model
 //!   projections without mutating the evidence itself;
+//! - `portable_disclosure` owns bounded source-kind declarations for audio exports;
 //! - `audio_asset` owns the aggregate root that composes them.
 //!
 //! Follow each entry module for its responsibility map; substantive behavior
@@ -30,6 +31,7 @@ mod granular_vfx;
 mod ids;
 mod metadata_calibration;
 mod original;
+mod portable_disclosure;
 mod processing_recipe;
 mod source_disclosure;
 mod source_edit;
@@ -95,6 +97,7 @@ pub use metadata_calibration::{
     MetadataCalibrationError, MetadataField, MetadataFields,
 };
 pub use original::{AssetPathStatus, ContentHash, ContentHashParseError, OriginalRef};
+pub use portable_disclosure::{decode_portable_disclosure, encode_portable_disclosure};
 pub use processing_recipe::{
     AdjustmentPatch, DEFAULT_PROCESSING_COMPONENTS, ProcessingComponent,
     ProcessingComponentValueError, ProcessingMergeMode, ProcessingRecipeError,

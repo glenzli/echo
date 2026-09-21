@@ -12,6 +12,7 @@ Popup {
     property var spans: []
     property real expectedRevision: 0
     property string errorText: ""
+    readonly property bool importedLabels: Disclosure.sources(asset).some(source => source.origin === "embedded_export")
     readonly property bool readOnly: !!(asset && asset.assemblyId)
     property alias kindIndex: kind.currentIndex
     property alias noteText: note.text
@@ -28,7 +29,7 @@ Popup {
     function present(source, start, end) {
         asset=source; rangeStart=Math.max(0,Math.floor(start)); rangeEnd=Math.min(Number(source.durationMillis),Math.ceil(end));
         const revision=Disclosure.ownRevision(source); expectedRevision=revision.revisionId;
-        spans=JSON.parse(JSON.stringify(readOnly ? Disclosure.sources(source).reduce((rows,s) => rows.concat(s.spans.map(p => Object.assign({},p,{sourceId:s.assetId}))),[]) : revision.spans));
+        spans=JSON.parse(JSON.stringify(readOnly ? Disclosure.sources(source).reduce((rows,s) => rows.concat(Disclosure.list(s.spans).map(p => Object.assign({},p,{sourceId:s.assetId}))),[]) : revision.spans));
         note.text=""; errorText=""; kind.currentIndex=0; open();
     }
     function append(whole) {
@@ -49,6 +50,11 @@ Popup {
         Text {
             Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.fontBody; color: Theme.textSecondary
             text: dialog.readOnly ? qsTr("Source declarations for this retained mix. Open a source to correct its labels.") : qsTr("Declare AI processing or generated additions in this source. This changes labels only; the original audio stays intact.")
+        }
+        Text {
+            Layout.fillWidth: true; visible: dialog.importedLabels; wrapMode: Text.WordWrap
+            font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
+            text: qsTr("These labels came from the audio file and apply to its whole duration. They are declarations, not authenticated evidence; you can correct them.")
         }
         Rectangle { Layout.fillWidth: true; implicitHeight: disclaimer.implicitHeight+16; radius: 7; color: Theme.warningSurface
             Text { id: disclaimer; anchors.fill: parent; anchors.margins: 8; wrapMode: Text.WordWrap; font.pixelSize: Theme.fontMeta; color: Theme.warningText

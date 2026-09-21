@@ -28,6 +28,7 @@ impl LibrarySession {
         size_bytes: u64,
         integrated_lufs: f32,
         true_peak_dbtp: f32,
+        source_disclosure_comment: &str,
     ) -> Result<i64, SessionError> {
         let record = self.verified_render_export_record(
             asset_id,
@@ -43,7 +44,15 @@ impl LibrarySession {
             true_peak_dbtp,
         )?;
         self.catalog()
-            .with_transaction(|transaction| record_render_export(transaction, &record))
+            .with_transaction(|transaction| {
+                Self::verify_export_disclosure(
+                    transaction,
+                    asset_id,
+                    0,
+                    source_disclosure_comment,
+                )?;
+                record_render_export(transaction, &record)
+            })
             .map(|publication| publication.id)
             .map_err(SessionError::from)
     }
@@ -64,6 +73,7 @@ impl LibrarySession {
         size_bytes: u64,
         integrated_lufs: f32,
         true_peak_dbtp: f32,
+        source_disclosure_comment: &str,
     ) -> Result<i64, SessionError> {
         let asset_id = asset_id.parse::<AssetId>().map_err(|error| SessionError {
             message: error.to_string(),
@@ -119,6 +129,12 @@ impl LibrarySession {
         )?;
         self.catalog()
             .with_transaction(|transaction| {
+                Self::verify_export_disclosure(
+                    transaction,
+                    &asset_id.to_string(),
+                    0,
+                    source_disclosure_comment,
+                )?;
                 record_rendered_spectral_working_copy_export(transaction, &record, working_copy_id)
             })
             .map(|publication| publication.id)

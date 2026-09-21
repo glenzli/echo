@@ -439,6 +439,9 @@ void SoundAssemblyController::start(
                 return;
             }
 
+            const auto source_disclosure =
+                preview ? QString{}
+                        : backend_.exportSourceDisclosure(job.assembly_id, job.revision_id);
             QSaveFile output(destination);
             output.setDirectWriteFallback(false);
             if (!output.open(QIODevice::WriteOnly)) {
@@ -471,7 +474,8 @@ void SoundAssemblyController::start(
                                 Qt::QueuedConnection
                             );
                         },
-                }
+                },
+                source_disclosure.toStdString()
             );
             if (stop_token.stop_requested()) {
                 throw echo::audio::OfflineRenderCancelled();
@@ -494,7 +498,8 @@ void SoundAssemblyController::start(
                     result.size_bytes,
                     result.integrated_lufs,
                     result.true_peak_dbtp,
-                    preserveMemory
+                    preserveMemory,
+                    source_disclosure
                 );
             }
             QMetaObject::invokeMethod(
