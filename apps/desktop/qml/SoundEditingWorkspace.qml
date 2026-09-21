@@ -852,6 +852,12 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/sparkles.svg"
+                toolTipText: qsTr("Add a narration")
+                enabled: !generatedNarration.running && !generatedNarration.accepting
+                onClicked: narrationDialog.present()
+            }
             SourceDisclosureBadge {
                 objectName: "editorSourceDisclosure"
                 asset: workspace.asset
@@ -1294,4 +1300,6 @@ Rectangle {
         interval: workspace.lastProcessingRecipeBatchId.length > 0 ? 6000 : 2600
         onTriggered: processingRecipeNoticePopup.close()
     }
+    GeneratedNarrationDialog { id: narrationDialog }
+
 }

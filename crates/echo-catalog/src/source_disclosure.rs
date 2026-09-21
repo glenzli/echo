@@ -28,6 +28,7 @@ pub enum SourceDisclosureOrigin {
     #[default]
     UserDeclared,
     EmbeddedExport,
+    RuntimeGenerated,
 }
 
 /// Source declaration revision, deliberately distinct from inference evidence.
@@ -36,6 +37,8 @@ pub enum SourceDisclosureOrigin {
 pub struct SourceDisclosureRevision {
     #[serde(default)]
     pub origin: SourceDisclosureOrigin,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generation: Option<serde_json::Value>,
     pub revision_id: i64,
     pub asset_id: String,
     pub original_content_hash: String,
@@ -100,7 +103,7 @@ fn read_disclosures(
 ) -> Result<BTreeMap<String, SourceDisclosureRevision>, CatalogError> {
     let selection = if id.is_some() { " WHERE a.id=?1" } else { "" };
     let sql = format!(
-        "SELECT d.id,a.id,a.content_hash,d.spans_json,a.imported_at_millis,a.duration_millis,m.entries_json,d.created_at_millis FROM assets a LEFT JOIN asset_source_disclosures d ON d.id=(SELECT latest.id FROM asset_source_disclosures latest WHERE latest.asset_id=a.id ORDER BY latest.id DESC LIMIT 1) LEFT JOIN asset_source_metadata m ON m.asset_id=a.id AND d.id IS NULL AND m.entries_json LIKE '%Echo source disclosure: %'{selection}"
+        "SELECT d.id,a.id,a.content_hash,d.spans_json,a.imported_at_millis,a.duration_millis,m.entries_json,d.created_at_millis,g.receipt_json FROM assets a LEFT JOIN asset_source_disclosures d ON d.id=(SELECT latest.id FROM asset_source_disclosures latest WHERE latest.asset_id=a.id ORDER BY latest.id DESC LIMIT 1) LEFT JOIN asset_source_metadata m ON m.asset_id=a.id AND d.id IS NULL AND m.entries_json LIKE '%Echo source disclosure: %' LEFT JOIN generated_audio_receipts g ON g.id=(SELECT latest.id FROM generated_audio_receipts latest WHERE latest.asset_id=a.id ORDER BY latest.id DESC LIMIT 1){selection}"
     );
     let mut query = tx.prepare(&sql)?;
     let ids: Vec<String> = id.into_iter().map(|value| value.to_string()).collect();
@@ -114,6 +117,7 @@ fn read_disclosures(
             r.get::<_, Option<i64>>(5)?,
             r.get::<_, Option<String>>(6)?,
             r.get::<_, Option<i64>>(7)?,
+            r.get::<_, Option<String>>(8)?,
         ))
     })?;
     let mut result = BTreeMap::new();
@@ -127,8 +131,24 @@ fn read_disclosures(
             duration,
             metadata,
             changed_at,
+            generation_json,
         ) = row?;
-        let (spans, origin) = if let Some(json) = json {
+        let generation = generation_json
+            .as_deref()
+            .map(serde_json::from_str::<serde_json::Value>)
+            .transpose()
+            .map_err(|e| error(e.to_string()))?;
+        let (spans, origin) = if generation.is_some() {
+            (
+                vec![SourceDisclosureSpan {
+                    kind: echo_domain::SourceDisclosureKind::AiGenerated,
+                    start_millis: 0,
+                    end_millis: u64::try_from(duration.unwrap_or(0)).unwrap_or(0),
+                    note: String::new(),
+                }],
+                SourceDisclosureOrigin::RuntimeGenerated,
+            )
+        } else if let Some(json) = json {
             (
                 serde_json::from_str(&json).map_err(|e| error(e.to_string()))?,
                 SourceDisclosureOrigin::UserDeclared,
@@ -171,6 +191,7 @@ fn read_disclosures(
             asset_id.clone(),
             SourceDisclosureRevision {
                 origin,
+                generation,
                 revision_id: revision.unwrap_or(0),
                 asset_id,
                 original_content_hash,
@@ -193,6 +214,14 @@ pub fn record_source_disclosure(
     now: i64,
 ) -> Result<i64, CatalogError> {
     let id = asset_id.to_string();
+    let generated: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM generated_audio_receipts WHERE asset_id=?1)",
+        [&id],
+        |r| r.get(0),
+    )?;
+    if generated {
+        return Err(error("runtime generation provenance cannot be cleared"));
+    }
     let (hash, duration): (String, Option<i64>) = tx.query_row(
         "SELECT content_hash,duration_millis FROM assets WHERE id=?1",
         [&id],

@@ -1,0 +1,45 @@
+import QtQuick
+import QtTest
+import EchoDesktop
+TestCase {
+    id: test; name: "GeneratedNarration"; width: 960; height: 720; visible: true; when: windowShown
+    property var accepted: []
+    QtObject { id: backend; property bool independentEditing: false; function refresh() {} }
+    QtObject { id: player; property bool playing: false; function togglePause() {} }
+    QtObject { id: materialPlayer; function stop() {} }
+    QtObject { id: inferencePrefs; property string runtimeEndpoint: "" }
+    QtObject {
+        id: generatedNarration
+        property bool running: false; property bool accepting: false
+        property string detailsJson: ""; property string errorText: ""; property url audioUrl: ""
+        signal accepted(string assetId)
+        function discard() { detailsJson=""; errorText=""; }
+        function request(text,endpoint) { running=true; }
+        function accept(assembly,global) { test.accepted.push([assembly,global]); accepted("new-source"); }
+    }
+    GeneratedNarrationDialog { id: dialog }
+    function init() { dialog.close(); tryCompare(dialog,"visible",false); generatedNarration.running=false; generatedNarration.accepting=false; generatedNarration.discard();backend.independentEditing=false;test.accepted=[]; }
+    function candidate() { generatedNarration.running=false; generatedNarration.detailsJson=JSON.stringify({duration_millis:1100,runtime:{job:{physical_model:"local-tts"}}}); }
+    function openDialog() { dialog.assemblyId=""; dialog.present();tryCompare(dialog,"opened",true); }
+    function test_preview_required_and_accept_has_captured_target() {
+        openDialog();findChild(dialog,"narrationText").text="An added memory.";
+        mouseClick(findChild(dialog,"narrationGenerate"));verify(generatedNarration.running);candidate();
+        verify(!findChild(dialog,"narrationAccept").enabled);dialog.reviewed=true;
+        dialog.assemblyId="different-project";
+        mouseClick(findChild(dialog,"narrationAccept"));compare(test.accepted.length,1);compare(test.accepted[0],["",true]);
+    }
+    function test_private_project_never_collects_into_library() {
+        backend.independentEditing=true;openDialog();candidate();dialog.reviewed=true;
+        mouseClick(findChild(dialog,"narrationAccept"));compare(test.accepted[0],["",false]);
+    }
+    function test_close_discards_candidate_and_text_is_locked_during_request() {
+        openDialog();findChild(dialog,"narrationText").text="Test";
+        mouseClick(findChild(dialog,"narrationGenerate"));verify(findChild(dialog,"narrationText").readOnly);
+        candidate();verify(findChild(dialog,"narrationText").readOnly);dialog.close();tryCompare(dialog,"visible",false);compare(generatedNarration.detailsJson,"");compare(test.accepted.length,0);
+    }
+    function test_model_label_does_not_expose_cache_path() {
+        openDialog(); generatedNarration.detailsJson=JSON.stringify({runtime:{job:{physical_model:"/private/cache/models--org--Qwen3-TTS/snapshots/fixed-build",model_profile:"tts"}}});
+        compare(dialog.modelName(),"Qwen3-TTS");
+    }
+
+}

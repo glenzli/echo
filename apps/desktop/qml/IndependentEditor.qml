@@ -36,9 +36,10 @@ ApplicationWindow {
     property bool allowClose: false
     property bool closeAfterSave: false
     property string notice: ""
+    GeneratedNarrationDialog { id: emptyNarrationDialog }
     SourceDisclosureSmoke { id: disclosureSmoke; shell: window; editor: editor; fixtureRoot: independentDisclosureValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
     ClickRepairSmoke { id: clickSmoke; shell: window; editor: editor; fixtureRoot: independentClickValidation && !independentDisclosureValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
-    readonly property bool processing: clickAnalysis.running || selectionTranscription.running || independentEditor.busy || renderExporter.running || renderedSpectralWorkingCopy.running || soundAssemblyController.running || noiseProfile.running
+    readonly property bool processing: generatedNarration.accepting || clickAnalysis.running || selectionTranscription.running || independentEditor.busy || renderExporter.running || renderedSpectralWorkingCopy.running || soundAssemblyController.running || noiseProfile.running
 
     function refreshSources(): void {
         const selectedId = selectedAsset ? selectedAsset.id : "";
@@ -179,6 +180,7 @@ ApplicationWindow {
                         EchoButton { text: qsTr("Open audio…"); onClicked: audioDialog.open() }
                         EchoButton { text: qsTr("Open project…"); ghost: true; onClicked: projectDialog.open() }
                     }
+                    EchoButton { Layout.alignment: Qt.AlignHCenter; text: qsTr("Add a narration"); ghost: true; enabled: !generatedNarration.running && !generatedNarration.accepting; onClicked: emptyNarrationDialog.present() }
                     Repeater {
                         model: independentEditor.recoverableSessions
                         EchoButton { required property var modelData; Layout.alignment: Qt.AlignHCenter; text: qsTr("Recover editing session · %1").arg(modelData.name); ghost: true; onClicked: independentEditor.resumeSession(modelData.path) }

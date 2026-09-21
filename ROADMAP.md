@@ -565,7 +565,8 @@ InferenceBackend
     Job snapshot，再以 `audio.align` 细化文字时间；Echo 持久化 Runtime job id、合同版本、
     provider/deployment、physical model/build、Attempt 和稳定错误码。25 MiB 上传上限在
     consumer admission 明确失败；长录音代理／切片属于后续独立 payload 切片，不允许静默
-    截断原始声音。Echo 不消费 speech/TTS/voice-clone Intent。
+    截断原始声音。自动分析不消费 speech/TTS/voice-clone Intent；2026-09-22 的显式旁白候选
+    独立接入 `speech.synthesize`，不与分析 admission 混用。
   - 长录音切片合同（2026-08-11）：当原始文件超过 Runtime 25 MiB 上限，或声音时长
     超过 10 分钟时，Echo 以原始内容身份和稳定规划版本生成 8 分钟叶子切片；该时长边界同时
     满足 `audio.detect_events` 的 600 秒直接输入上限。每次只流式
@@ -1090,3 +1091,20 @@ Catalog 能完整解释输出引用的每个 Original 与 adjustment revision。
 ### 声音集产品命名（2026-09-20）
 
 用户管理的音频集合统一称为“声音集”（Collection），AI 分组候选称为“建议声音集”。“磁带”继续表示当前声音集合的连续浏览与试听视图，多轨工程表示声音编排。此命名更新只改变产品文案；既有 album 标识、Catalog 数据及用户自定义名称保持兼容，历史里程碑中的旧称不表示新的集合类型。
+
+### 2026-09-22：显式生成旁白候选
+
+`generated_narration` 独立拥有用户编写的短旁白：最多 500 字，使用 Infer 的
+`speech.synthesize` 与版本化普通话合成音色，仅允许本地、零费用、无 fallback 执行。
+返回音频须为可解码 WAV、最多两分钟／32 MiB，并核对 Echo App、成功 Job、能力合同、
+部署、模型构建和实际模型。生成文本不是转写，也不记为现场事件 Analysis。
+
+候选保存在进程持有的临时目录，独立于工程的 media／cache；关闭面板丢弃候选并忽略迟到结果，
+不声称已取消服务端执行。用户必须先试听，再显式采纳为素材；不自动插入轨道、加入记忆库或
+发布聆听版本。素材面板可采纳到当前项目并选择是否全局收藏，独立编辑只存当前工程。
+
+采纳重新校验候选字节，写入 Catalog 旁的持久 `media/generated`，在同一事务发布来源、素材
+身份及不可清除的生成记录。记录完整请求、实际模型执行证据、时间与 BLAKE3 音频身份；不会
+注册自动分析任务。磁带过滤、编排来源传播、工程保存和 WAV／FLAC 来源声明沿用现有链路。
+此类 Runtime 生成标记不能通过清除手动标签移除；它证明生成来源，不证明旁白内容真实。
+环境声生成、缺口补全、延长与音色选择仍是后续切片，不由语音合成接口代替。

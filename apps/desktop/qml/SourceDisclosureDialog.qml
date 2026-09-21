@@ -13,7 +13,8 @@ Popup {
     property real expectedRevision: 0
     property string errorText: ""
     readonly property bool importedLabels: Disclosure.sources(asset).some(source => source.origin === "embedded_export")
-    readonly property bool readOnly: !!(asset && asset.assemblyId)
+    readonly property var generation: asset ? Disclosure.ownRevision(asset).generation || null : null
+    readonly property bool readOnly: !!(asset && asset.assemblyId) || !!generation
     property alias kindIndex: kind.currentIndex
     property alias noteText: note.text
     property alias labelList: list
@@ -49,12 +50,17 @@ Popup {
         Text { text: qsTr("Source labels"); font.pixelSize: 18; font.weight: Font.DemiBold; color: Theme.textPrimary }
         Text {
             Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.fontBody; color: Theme.textSecondary
-            text: dialog.readOnly ? qsTr("Source declarations for this retained mix. Open a source to correct its labels.") : qsTr("Declare AI processing or generated additions in this source. This changes labels only; the original audio stays intact.")
+            text: dialog.generation ? qsTr("This source was generated in Echo. Its generation record remains attached to the audio.") : dialog.readOnly ? qsTr("Source declarations for this retained mix. Open a source to correct its labels.") : qsTr("Declare AI processing or generated additions in this source. This changes labels only; the original audio stays intact.")
         }
         Text {
             Layout.fillWidth: true; visible: dialog.importedLabels; wrapMode: Text.WordWrap
             font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
             text: qsTr("These labels came from the audio file and apply to its whole duration. They are declarations, not authenticated evidence; you can correct them.")
+        }
+        Text {
+            Layout.fillWidth: true; visible: !!dialog.generation; wrapMode: Text.WordWrap
+            textFormat: Text.PlainText; maximumLineCount: 5; elide: Text.ElideRight; font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
+            text: dialog.generation ? qsTr("Model: %1\nBuild: %2\nNarration: %3").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text) : ""
         }
         Rectangle { Layout.fillWidth: true; implicitHeight: disclaimer.implicitHeight+16; radius: 7; color: Theme.warningSurface
             Text { id: disclaimer; anchors.fill: parent; anchors.margins: 8; wrapMode: Text.WordWrap; font.pixelSize: Theme.fontMeta; color: Theme.warningText

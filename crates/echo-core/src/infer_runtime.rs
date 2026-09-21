@@ -8,6 +8,7 @@ mod audio_embeddings;
 mod audio_events;
 mod embeddings;
 mod responses;
+pub(crate) mod speech;
 
 pub use audio_embeddings::{
     AUDIO_EMBEDDING_INTENT, AUDIO_TEXT_QUERY_EMBEDDING_INTENT, AudioEmbeddingPayload,

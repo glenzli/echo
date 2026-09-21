@@ -3,6 +3,7 @@
 //! This crate orchestrates the catalog, the cache, and (later) the C++ audio
 //! engine and AI workers. It knows nothing about Qt.
 //!
+//! [`generated_narration`] owns transient speech candidates and explicit durable admission.
 //! [`material_import`] owns durable global and project material intake.
 //! [`editor_transcription`] owns explicit original-range AI evidence without
 //! starting automatic Library jobs. Start with [`import`] for the idempotent import path. The background queue
@@ -16,6 +17,7 @@ mod audio_semantic_search;
 mod contextual;
 mod editor_transcription;
 mod error;
+mod generated_narration;
 mod import;
 mod infer_runtime;
 mod infer_runtime_credentials;
@@ -45,6 +47,7 @@ pub use editor_transcription::{
     transcribe_selection,
 };
 pub use error::{CoreError, CoreErrorKind};
+pub use generated_narration::{NarrationCandidate, accept_narration, generate_narration};
 pub use import::{ImportOutcome, hash_file, import_asset, import_asset_with_probe};
 pub use infer_runtime::{
     ALIGNMENT_INTENT, AUDIO_EMBEDDING_INTENT, AUDIO_EVENT_DETECTION_INTENT,

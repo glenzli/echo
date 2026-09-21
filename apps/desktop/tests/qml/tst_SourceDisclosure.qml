@@ -12,7 +12,7 @@ TestCase {
     SourceDisclosureDialog { id: dialog; catalogBackend: catalog }
     SourceDisclosureBadge { id: badge; asset: test.asset; editable: true; onActivated: dialog.present(test.asset,1200,2400) }
     function init() { dialog.close();tryCompare(dialog,"visible",false); failure=""; writes=[]; asset={id:"source",durationMillis:10000,sourceDisclosure:{sources:[]}}; }
-    function openDialog() { mouseClick(badge); tryCompare(dialog,"opened",true); }
+    function openDialog() { mouseClick(badge); tryCompare(dialog,"opened",true); waitForRendering(dialog.contentItem); }
     function test_selection_whole_source_remove_and_commit() {
         openDialog(); dialog.noteText="Recreated rain";
         mouseClick(findChild(dialog,"disclosureAddSelection")); compare(dialog.spans.length,1);compare(dialog.spans[0].startMillis,1200);compare(dialog.spans[0].endMillis,2400);
@@ -37,4 +37,10 @@ TestCase {
         asset={id:"mix",assemblyId:"mix",durationMillis:10000,sourceDisclosure:{sources:[{assetId:"source",revisionId:1,spans:[{kind:"ai_generated",startMillis:0,endMillis:500,note:"rain"}]}]}};
         openDialog();verify(dialog.readOnly);compare(dialog.spans.length,1);dialog.save();compare(writes.length,0);
     }
+    function test_runtime_generation_receipt_is_mandatory() {
+        asset={id:"source",durationMillis:10000,sourceDisclosure:{sources:[{assetId:"source",revisionId:0,origin:"runtime_generated",generation:{input_text:"Later narration",runtime:{job:{physical_model:"tts",model_build:"build"}}},spans:[{kind:"ai_generated",startMillis:0,endMillis:10000,note:""}]}]}};
+        openDialog(); verify(dialog.readOnly); compare(dialog.generation.input_text,"Later narration");
+        verify(!findChild(dialog,"disclosureSave").visible); dialog.save(); compare(writes.length,0);
+    }
+
 }

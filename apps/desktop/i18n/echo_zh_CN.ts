@@ -2439,6 +2439,10 @@
             <source>Discard changes</source>
             <translation>放弃修改</translation>
         </message>
+        <message>
+            <source>Add a narration</source>
+            <translation>补充旁白</translation>
+        </message>
     </context>
     <context>
         <name>IndependentEditorController</name>
@@ -5271,6 +5275,10 @@
             <source>Click repair</source>
             <translation>爆音修复</translation>
         </message>
+        <message>
+            <source>Add a narration</source>
+            <translation>补充旁白</translation>
+        </message>
     </context>
     <context>
         <name>SoundEditorTimeline</name>
@@ -6176,6 +6184,10 @@
             <location filename="../qml/SoundSourceBrowser.qml" line="338" />
             <source>Import queued. Sounds appear here when ready.</source>
             <translation>已加入导入队列，完成后会显示在这里。</translation>
+        </message>
+        <message>
+            <source>Add a narration</source>
+            <translation>补充旁白</translation>
         </message>
     </context>
     <context>
@@ -7637,6 +7649,112 @@
         <message>
             <source>These labels came from the audio file and apply to its whole duration. They are declarations, not authenticated evidence; you can correct them.</source>
             <translation>这些标记来自音频文件，适用于整段声音。它们是来源声明，并非经过认证的证据；你可以纠正标记。</translation>
+        </message>
+        <message>
+            <source>This source was generated in Echo. Its generation record remains attached to the audio.</source>
+            <translation>此来源由 Echo 生成，生成记录会始终随音频保留。</translation>
+        </message>
+        <message>
+            <source>Model: %1
+Build: %2
+Narration: %3</source>
+            <translation>模型：%1
+构建：%2
+旁白：%3</translation>
+        </message>
+    </context>
+    <context>
+        <name>GeneratedNarrationController</name>
+        <message>
+            <source>Enter between 1 and 500 characters for the narration.</source>
+            <translation>请输入 1 至 500 个字的旁白。</translation>
+        </message>
+        <message>
+            <source>Could not create a temporary audio file.</source>
+            <translation>无法创建临时音频文件。</translation>
+        </message>
+        <message>
+            <source>Narration is unavailable. Check Infer Runtime, its speech model and Echo's speech access.</source>
+            <translation>暂时无法生成旁白，请检查 Infer Runtime、语音模型及 Echo 的语音合成权限。</translation>
+        </message>
+        <message>
+            <source>Could not save this narration. The candidate is still available; try again.</source>
+            <translation>无法保存旁白，试听候选仍保留，可以重试。</translation>
+        </message>
+    </context>
+    <context>
+        <name>GeneratedNarrationDialog</name>
+        <message>
+            <source>This candidate could not be played. Generate it again.</source>
+            <translation>无法播放此候选，请重新生成。</translation>
+        </message>
+        <message>
+            <source>Add a narration</source>
+            <translation>补充旁白</translation>
+        </message>
+        <message>
+            <source>AI generated</source>
+            <translation>AI 生成</translation>
+        </message>
+        <message>
+            <source>Write a short narration to accompany your sound. Preview it before keeping it as a separate, clearly marked material.</source>
+            <translation>为声音写一段简短旁白，试听后再采纳为单独的素材，并保留明确的生成标记。</translation>
+        </message>
+        <message>
+            <source>What would you like to add?</source>
+            <translation>想补充些什么？</translation>
+        </message>
+        <message>
+            <source>%1 / 500 characters</source>
+            <translation>%1 / 500 字</translation>
+        </message>
+        <message>
+            <source>Local model · Mandarin voice</source>
+            <translation>本地模型 · 普通话音色</translation>
+        </message>
+        <message>
+            <source>This is an added narration, not recorded dialogue. Its generation label and model record stay with the accepted source.</source>
+            <translation>这是后来补充的旁白，并非现场录下的对白。采纳后，生成标记与模型记录会随素材保留。</translation>
+        </message>
+        <message>
+            <source>Preview narration</source>
+            <translation>试听旁白</translation>
+        </message>
+        <message>
+            <source>%1 seconds · Preview candidate</source>
+            <translation>%1 秒 · 试听候选</translation>
+        </message>
+        <message>
+            <source>Revise text</source>
+            <translation>修改文本</translation>
+        </message>
+        <message>
+            <source>Also collect in Materials</source>
+            <translation>同时收藏到素材库</translation>
+        </message>
+        <message>
+            <source>Saving material…</source>
+            <translation>正在保存素材…</translation>
+        </message>
+        <message>
+            <source>Generating locally…</source>
+            <translation>正在本地生成…</translation>
+        </message>
+        <message>
+            <source>Listen before keeping this candidate.</source>
+            <translation>先试听，再决定是否采纳。</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>关闭</translation>
+        </message>
+        <message>
+            <source>Generate preview</source>
+            <translation>生成试听</translation>
+        </message>
+        <message>
+            <source>Keep as material</source>
+            <translation>采纳为素材</translation>
         </message>
     </context>
 </TS>

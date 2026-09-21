@@ -113,6 +113,8 @@ qt_add_executable(
     src/desktop_selection_transcription.cpp
     src/selection_transcription_controller.cpp
     src/selection_transcription_controller.hpp
+    src/generated_narration_controller.cpp
+    src/generated_narration_controller.hpp
     src/desktop_sound_library.cpp
         src/desktop_source_disclosure.cpp
     src/desktop_backend.cpp
@@ -278,6 +280,7 @@ qt_add_qml_module(
         qml/SoundPlaybackSource.qml
         qml/SoundSourceSearch.js
         qml/SoundSourceBrowser.qml
+        qml/GeneratedNarrationDialog.qml
         qml/SoundAssemblyInspector.qml
         qml/SoundAssemblyWorkspace.qml
         qml/SpaceReverbPanel.qml
@@ -441,6 +444,13 @@ if(BUILD_TESTING)
     add_dependencies(echo-selection-transcription-controller-test echo-desktop-rust-build)
     echo_audio_enable_warnings(echo-selection-transcription-controller-test)
     add_test(NAME echo-selection-transcription-controller-test COMMAND echo-selection-transcription-controller-test)
+    add_executable(echo-generated-narration-controller-test tests/generated_narration_controller_test.cpp src/generated_narration_controller.cpp src/generated_narration_controller.hpp)
+    target_include_directories(echo-generated-narration-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
+    target_compile_features(echo-generated-narration-controller-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-generated-narration-controller-test PRIVATE Qt6::Core Qt6::Concurrent echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
+    add_dependencies(echo-generated-narration-controller-test echo-desktop-rust-build)
+    echo_audio_enable_warnings(echo-generated-narration-controller-test)
+    add_test(NAME echo-generated-narration-controller-test COMMAND echo-generated-narration-controller-test)
     add_executable(echo-prepared-assembly-source-cache-test tests/prepared_assembly_source_cache_test.cpp src/prepared_assembly_source_cache.cpp)
     target_include_directories(echo-prepared-assembly-source-cache-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_compile_features(echo-prepared-assembly-source-cache-test PRIVATE cxx_std_20)

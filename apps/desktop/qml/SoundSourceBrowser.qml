@@ -100,6 +100,9 @@ Rectangle {
     Connections { target: backend; function onAssetsChanged(): void { browser.refresh(); } }
     SoundPlaybackSource { id: savedSound; asset: browser.selectedAsset; transport: materialPlayer }
 
+    GeneratedNarrationDialog { id: narrationDialog; assemblyId: browser.assemblyId
+        onMaterialAccepted: assetId => { browser.refresh(); browser.query=""; browser.category=""; browser.eventFilter=""; browser.sourceTab=browser.assemblyId?0:2; browser.selectedAsset=browser.assets.find(a=>a.id===assetId)||null; }
+    }
     component SourceTab: TabButton {
         id: tabControl
         contentItem: Text {
@@ -127,6 +130,12 @@ Rectangle {
                 color: Theme.textPrimary
                 font.pixelSize: browser.editorMode ? 14 : 24
                 font.weight: Font.DemiBold
+            }
+            EchoIconButton {
+                source: "qrc:/EchoDesktop/icons/sparkles.svg"
+                toolTipText: qsTr("Add a narration")
+                enabled: !generatedNarration.running && !generatedNarration.accepting
+                onClicked: narrationDialog.present()
             }
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/plus.svg"

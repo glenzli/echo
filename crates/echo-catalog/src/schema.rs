@@ -163,9 +163,11 @@ pub(crate) const SELECTION_TRANSCRIPT_PREDECESSOR: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_920, 1);
 pub(crate) const SOURCE_DISCLOSURE_PREDECESSOR: CatalogSchemaRevision =
     CatalogSchemaRevision::new(20_260_920, 2);
-pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_922, 1);
+pub(crate) const GENERATED_AUDIO_PREDECESSOR: CatalogSchemaRevision =
+    CatalogSchemaRevision::new(20_260_922, 1);
+pub(crate) const SCHEMA_VERSION: CatalogSchemaRevision = CatalogSchemaRevision::new(20_260_922, 2);
 
-pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260922.1-source-disclosures";
+pub(crate) const SCHEMA_IDENTITY: &str = "echo-catalog-20260922.2-generated-audio";
 
 pub(crate) const SOUND_ASSEMBLY_MIGRATION_SQL: &str = r"
 CREATE TABLE IF NOT EXISTS sound_assemblies (

@@ -23,6 +23,7 @@ mod catalog;
 mod contextual_facets;
 mod derived_artifact;
 mod error;
+mod generated_audio;
 mod impulse_response;
 mod inference_run;
 mod job_queue;
@@ -166,6 +167,7 @@ pub use sound_library::{
     sound_memberships,
 };
 
+pub use generated_audio::record_generated_audio;
 pub use source_disclosure::{
     SourceDisclosureOrigin, SourceDisclosureRevision, SourceDisclosureSummary,
     assembly_source_disclosure, asset_source_disclosure, record_source_disclosure,

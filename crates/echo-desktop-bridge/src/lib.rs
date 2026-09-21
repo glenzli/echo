@@ -6,8 +6,10 @@
 
 mod editor_project;
 mod editor_session;
+mod generated_narration;
 mod render_exports;
 mod selection_transcription;
+use generated_narration::NarrationCandidate;
 mod session;
 
 use crate::session::LibrarySession;
@@ -598,6 +600,19 @@ mod ffi {
             value: &str,
         ) -> Result<()>;
         fn session_selection_transcripts(self: &LibrarySession, id: &str) -> Result<String>;
+        type NarrationCandidate;
+        fn generate_narration_candidate(
+            text: &str,
+            directory: &str,
+            endpoint: &str,
+        ) -> Result<Box<NarrationCandidate>>;
+        fn narration_candidate_details(candidate: &NarrationCandidate) -> Result<String>;
+        fn accept_narration_candidate(
+            catalog: &str,
+            candidate: &NarrationCandidate,
+            assembly: &str,
+            global: bool,
+        ) -> Result<String>;
         fn open_editor_session(root: &str) -> Result<Box<LibrarySession>>;
         fn editor_import_audio(root: &str, input: &str) -> Result<String>;
         fn editor_save_project(root: &str, destination: &str) -> Result<()>;
@@ -1707,6 +1722,25 @@ impl LibrarySession {
     fn session_selection_transcripts(&self, id: &str) -> Result<String, String> {
         self.selection_transcripts(id)
     }
+}
+
+fn generate_narration_candidate(
+    text: &str,
+    directory: &str,
+    endpoint: &str,
+) -> Result<Box<NarrationCandidate>, String> {
+    generated_narration::generate(text, directory, endpoint)
+}
+fn narration_candidate_details(candidate: &NarrationCandidate) -> Result<String, String> {
+    candidate.details_json().map_err(|e| e.to_string())
+}
+fn accept_narration_candidate(
+    catalog: &str,
+    candidate: &NarrationCandidate,
+    assembly: &str,
+    global: bool,
+) -> Result<String, String> {
+    generated_narration::accept(catalog, candidate, assembly, global)
 }
 
 #[cfg(test)]

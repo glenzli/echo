@@ -7,6 +7,7 @@
 #include "click_analysis_controller.hpp"
 #include "creative_vfx_presets.hpp"
 #include "desktop_backend.hpp"
+#include "generated_narration_controller.hpp"
 #include "impulse_response_controller.hpp"
 #include "independent_editor_controller.hpp"
 #include "inference_preferences.hpp"
@@ -117,6 +118,7 @@ int main(int argc, char* argv[]) {
             QString::fromStdString(catalog),
             QString::fromStdString(cache_root)
         );
+        GeneratedNarrationController generated_narration(QString::fromStdString(catalog));
         SemanticSearchController material_search(
             QString::fromStdString(catalog),
             inference_prefs.runtimeEndpoint()
@@ -146,6 +148,10 @@ int main(int argc, char* argv[]) {
         // executable module keeps its generated qmldir at qrc:/EchoDesktop.
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("generatedNarration"),
+            &generated_narration
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("selectionTranscription"),
             &selection_transcription
