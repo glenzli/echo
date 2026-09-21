@@ -2587,13 +2587,14 @@ QString DesktopBackend::recordSoundAssemblyExport(
     float integratedLufs,
     float truePeakDbtp,
     bool preserveMemory,
-    const QString& sourceDisclosureComment
+    const QString& sourceDisclosureComment,
+    const QString& format
 ) const {
     try {
         echo::desktop::RenderExportWire evidence;
         evidence.source_disclosure_comment = sourceDisclosureComment.toStdString();
         evidence.output_path = outputPath.toStdString();
-        evidence.format = std::string("wav_pcm24");
+        evidence.format = format.toStdString();
         evidence.sample_rate = sampleRate;
         evidence.channel_count = channelCount;
         evidence.bit_depth = bitDepth;
@@ -2802,4 +2803,10 @@ bool DesktopBackend::removeRenderedSpectralWorkingCopy(
         qWarning("rendered spectral working-copy removal failed: %s", error.what());
         return false;
     }
+}
+
+QString DesktopBackend::audioFileFilter() const {
+    const auto patterns = echo::desktop::audio_file_patterns();
+    return tr("Audio files (%1)")
+        .arg(QString::fromUtf8(patterns.data(), static_cast<qsizetype>(patterns.size())));
 }

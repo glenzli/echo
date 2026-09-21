@@ -5,6 +5,7 @@
 //!
 //! [`generated_narration`] owns transient speech candidates and explicit durable admission.
 //! [`material_import`] owns durable global and project material intake.
+//! [`audio_formats`] owns directory discovery, desktop picker patterns and upload MIME hints.
 //! [`editor_transcription`] owns explicit original-range AI evidence without
 //! starting automatic Library jobs. Start with [`import`] for the idempotent import path. The background queue
 //! performs rebuildable Level 0 work; model execution remains behind an
@@ -13,6 +14,7 @@
 mod analysis;
 mod analysis_queue;
 mod analysis_recovery;
+mod audio_formats;
 mod audio_semantic_search;
 mod contextual;
 mod editor_transcription;
@@ -33,6 +35,8 @@ mod spectrogram_artifact;
 mod util;
 mod waveform_artifact;
 mod worker;
+
+pub use audio_formats::{AUDIO_EXTENSIONS, audio_file_patterns};
 
 pub use analysis::{
     TranscriptPayload, TranscriptSegment, TranscriptWord, record_alignment,

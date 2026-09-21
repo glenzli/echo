@@ -1,4 +1,5 @@
 #include "render_export_controller.hpp"
+#include "audio_export_options.hpp"
 
 #include "desktop_backend.hpp"
 #include "playback_adjustment_projection.hpp"
@@ -15,14 +16,6 @@
 #include "echo/audio/offline_wav_renderer.hpp"
 
 namespace {
-
-QString normalized_destination(const QUrl& destination) {
-    QString path = destination.toLocalFile();
-    if (!path.endsWith(QStringLiteral(".wav"), Qt::CaseInsensitive)) {
-        path += QStringLiteral(".wav");
-    }
-    return QFileInfo(path).absoluteFilePath();
-}
 
 bool same_file(const QString& source, const QString& destination) {
     const QFileInfo source_info(source);
@@ -156,7 +149,15 @@ void RenderExportController::exportAdjusted(
         reject(QStringLiteral("render destination must be a local file"));
         return;
     }
-    const QString output_path = normalized_destination(destination);
+    echo::audio::AudioExportProfile profile;
+    QString output_path;
+    try {
+        profile = AudioExportOptions::profile(export_options_);
+        output_path = AudioExportOptions::destination(destination, profile);
+    } catch (const std::exception& error) {
+        reject(QString::fromUtf8(error.what()));
+        return;
+    }
     if (output_path.isEmpty() || same_file(sourcePath, output_path)) {
         reject(QStringLiteral("render destination cannot replace the immutable original"));
         return;
@@ -214,6 +215,7 @@ void RenderExportController::exportAdjusted(
                             adjustmentRevisionId,
                             source_path,
                             output_path,
+                            profile,
                             adjustment = *adjustment](std::stop_token stop_token) {
         QSaveFile output(output_path);
         output.setDirectWriteFallback(false);
@@ -224,10 +226,11 @@ void RenderExportController::exportAdjusted(
             const auto source_disclosure = backend_.exportSourceDisclosure(assetId);
             QtRenderByteSink sink(output);
             auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
-            const auto result = echo::audio::OfflineWavRenderer::render(
+            const auto result = echo::audio::AudioExporter::render(
                 source_path,
                 adjustment,
                 sink,
+                profile,
                 {
                     .cancelled = [&stop_token] { return stop_token.stop_requested(); },
                     .progress =
@@ -250,7 +253,6 @@ void RenderExportController::exportAdjusted(
                             );
                         },
                 },
-                echo::audio::WavPcmDepth::Pcm24,
                 source_disclosure.toStdString()
             );
             if (stop_token.stop_requested()) {
@@ -263,7 +265,7 @@ void RenderExportController::exportAdjusted(
                 assetId,
                 adjustmentRevisionId,
                 output_path,
-                QStringLiteral("wav_pcm24"),
+                QString::fromStdString(profile.format),
                 result.sample_rate,
                 result.channel_count,
                 result.bit_depth,
@@ -341,7 +343,15 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
         reject(QStringLiteral("render destination must be a local file"));
         return;
     }
-    const QString output_path = normalized_destination(destination);
+    echo::audio::AudioExportProfile profile;
+    QString output_path;
+    try {
+        profile = AudioExportOptions::profile(export_options_);
+        output_path = AudioExportOptions::destination(destination, profile);
+    } catch (const std::exception& error) {
+        reject(QString::fromUtf8(error.what()));
+        return;
+    }
     if (output_path.isEmpty() || same_file(renderedSourcePath, output_path)) {
         reject(QStringLiteral("render destination cannot replace the rendered working copy"));
         return;
@@ -365,7 +375,8 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
                             workingCopyId,
                             renderedSourcePath,
                             source_path,
-                            output_path](std::stop_token stop_token) {
+                            output_path,
+                            profile](std::stop_token stop_token) {
         QSaveFile output(output_path);
         output.setDirectWriteFallback(false);
         try {
@@ -376,10 +387,11 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
             QtRenderByteSink sink(output);
             auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
             const echo::audio::PlaybackAdjustment no_downstream_adjustment;
-            const auto result = echo::audio::OfflineWavRenderer::render(
+            const auto result = echo::audio::AudioExporter::render(
                 source_path,
                 no_downstream_adjustment,
                 sink,
+                profile,
                 {
                     .cancelled = [&stop_token] { return stop_token.stop_requested(); },
                     .progress =
@@ -402,7 +414,6 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
                             );
                         },
                 },
-                echo::audio::WavPcmDepth::Pcm24,
                 source_disclosure.toStdString()
             );
             if (stop_token.stop_requested()) {
@@ -417,7 +428,7 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
                 workingCopyId,
                 renderedSourcePath,
                 output_path,
-                QStringLiteral("wav_pcm24"),
+                QString::fromStdString(profile.format),
                 result.sample_rate,
                 result.channel_count,
                 result.bit_depth,

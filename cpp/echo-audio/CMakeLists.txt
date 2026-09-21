@@ -12,6 +12,7 @@ add_library(
     src/convolution/signalsmith_audiofft_adapter.cpp
     src/convolution_space_processor.cpp
     src/ffmpeg_input.cpp
+    src/ffmpeg_timing.cpp
     src/decode.cpp
     src/de_click_processor.cpp
     src/click_analysis.cpp
@@ -41,6 +42,8 @@ add_library(
     src/offline_assembly_wav_renderer.cpp
     src/offline_flac_renderer.cpp
     src/export_metadata.cpp
+    src/audio_streams.cpp
+    src/audio_export.cpp
     src/offline_render.cpp
     src/offline_wav_renderer.cpp
     src/output_guard.cpp
@@ -102,6 +105,10 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(echo-audio-export-test tests/audio_export_test.cpp)
+    target_link_libraries(echo-audio-export-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-audio-export-test)
+    add_test(NAME echo-audio-export-test COMMAND echo-audio-export-test)
     add_executable(echo-click-analysis-test tests/click_analysis_test.cpp)
     target_link_libraries(echo-click-analysis-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-click-analysis-test)

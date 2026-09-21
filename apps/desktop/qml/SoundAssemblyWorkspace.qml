@@ -1366,15 +1366,7 @@ Rectangle {
         }
     }
 
-    FileDialog {
-        id: exportDialog
-        property var revision: null
-        title: qsTr("Export assembly mixdown")
-        fileMode: FileDialog.SaveFile
-        nameFilters: [qsTr("WAV audio (*.wav)")]
-        defaultSuffix: "wav"
-        onAccepted: soundAssemblyController.exportAssembly(revision, selectedFile)
-    }
+    AssemblyExportDialog { id:exportDialog; exporter:soundAssemblyController }
 
     Popup {
         id: errorPopup

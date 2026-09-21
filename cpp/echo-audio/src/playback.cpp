@@ -108,11 +108,10 @@ class PlaybackSession::Impl {
         }
         stream_index_ = stream->index;
         const AVCodecParameters* codecpar = stream->codecpar;
-        duration_millis_ = static_cast<std::uint64_t>(
-            av_rescale_q(stream->duration, stream->time_base, AVRational{1, 1000})
-        );
+        duration_millis_ =
+            static_cast<std::uint64_t>(audio_duration(format_.get(), stream, AVRational{1, 1000}));
         source_duration_frames_ = static_cast<std::uint64_t>(
-            av_rescale_q(stream->duration, stream->time_base, AVRational{1, kCanonicalSampleRate})
+            audio_duration(format_.get(), stream, AVRational{1, kCanonicalSampleRate})
         );
         adjustment_ = std::make_unique<PreparedAdjustment>(
             adjustment,
@@ -580,7 +579,7 @@ class PlaybackSession::Impl {
         return nullptr;
     }
 
-    bool perform_seek(std::uint64_t millis) {
+    bool perform_seek(std::uint64_t millis, bool initial = false) {
         const std::uint64_t target_source_frame = millis * kCanonicalSampleRate / 1000U;
         std::uint64_t decode_start_frame = target_source_frame;
         if (freeze_node_active_ && initial_freeze_enabled_
@@ -592,19 +591,40 @@ class PlaybackSession::Impl {
             decode_start_frame = source_edit_plan_->start_frame();
         }
         const AVStream* stream = format_.get()->streams[stream_index_];
-        const std::int64_t timestamp =
-            av_rescale_q(
-                static_cast<std::int64_t>(decode_start_frame),
-                AVRational{1, kCanonicalSampleRate},
-                stream->time_base
-            )
-            + (stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time);
-        const int result =
-            av_seek_frame(format_.get(), stream_index_, timestamp, AVSEEK_FLAG_BACKWARD);
-        if (result < 0) {
-            return false;
+        const std::int64_t timestamp = av_rescale_q(
+                                           static_cast<std::int64_t>(decode_start_frame),
+                                           AVRational{1, kCanonicalSampleRate},
+                                           stream->time_base
+                                       )
+                                       + audio_start_time(format_.get(), stream);
+        // Keep the demuxer's initial priming packets. Seeking to zero before the
+        // first decode can discard a negative-PTS AAC packet but retain its skip
+        // count, losing the first audible frame.
+        // Millisecond container timestamps cannot identify an exact sample at
+        // a new trim boundary. Initial renders decode the prefix and discard it
+        // through the existing source-frame gate; interactive seeks stay indexed.
+        const bool coarse_clock = static_cast<int64_t>(stream->time_base.num) * codec_->sample_rate
+                                  > stream->time_base.den;
+        if (!initial || (millis != 0 && !coarse_clock)) {
+            const auto preroll =
+                (codec_->frame_size > 0 || av_get_bits_per_sample(codec_->codec_id) == 0)
+                    ? av_rescale_q(
+                          std::max(4096, codec_->frame_size * 4),
+                          AVRational{1, codec_->sample_rate},
+                          stream->time_base
+                      )
+                    : 0;
+            const int result = av_seek_frame(
+                format_.get(),
+                stream_index_,
+                timestamp - preroll,
+                AVSEEK_FLAG_BACKWARD
+            );
+            if (result < 0) {
+                return false;
+            }
+            avcodec_flush_buffers(codec_.get());
         }
-        avcodec_flush_buffers(codec_.get());
         swr_close(swr_.get());
         if (swr_init(swr_.get()) < 0) {
             fail("cannot reset resampler after seek");
@@ -1045,8 +1065,7 @@ class PlaybackSession::Impl {
                     && frame_->best_effort_timestamp != AV_NOPTS_VALUE) {
                     const AVStream* stream = format_.get()->streams[stream_index_];
                     const std::int64_t rescaled = av_rescale_q(
-                        frame_->best_effort_timestamp
-                            - (stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time),
+                        frame_->best_effort_timestamp - audio_start_time(format_.get(), stream),
                         stream->time_base,
                         AVRational{1, kCanonicalSampleRate}
                     );
@@ -1081,7 +1100,7 @@ class PlaybackSession::Impl {
                 channel_count_,
                 effect_mask_plan_.get()
             );
-            if (!perform_seek(adjustment_->trim_start_millis())) {
+            if (!perform_seek(adjustment_->trim_start_millis(), true)) {
                 stopped_.store(true, std::memory_order_release);
                 return;
             }

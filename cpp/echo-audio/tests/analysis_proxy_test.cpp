@@ -68,6 +68,11 @@ int main() {
     assert(result.frame_count >= 15900 && result.frame_count <= 16100);
     assert(result.size_bytes == std::filesystem::file_size(output));
     assert(result.size_bytes < 33000);
+    const auto full = echo::audio::build_analysis_proxy(source.string(), output.string(), 0, 2000);
+    assert(full.frame_count == 32000);
+    const auto tail =
+        echo::audio::build_analysis_proxy(source.string(), output.string(), 1500, 2000);
+    assert(tail.frame_count == 8000);
     std::filesystem::remove(source);
     std::filesystem::remove(output);
 }

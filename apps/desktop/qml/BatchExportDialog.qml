@@ -15,7 +15,7 @@ Popup {
     required property string collectionName
 
     property url destination
-    property string selectedFormat: "wav_pcm24"
+    readonly property string selectedFormat: deliverySettings.formatKey
 
     parent: Overlay.overlay
     x: Math.round((parent.width - width) / 2)
@@ -36,12 +36,6 @@ Popup {
     function folderName(path: string) : string {
         const normalized = path.replace(/\\/g, "/").replace(/\/$/, "")
         return normalized.substring(normalized.lastIndexOf("/") + 1)
-    }
-
-    function formatTitle(key: string) : string {
-        if (key === "wav_pcm16") return qsTr("WAV · 16-bit PCM")
-        if (key === "flac24") return qsTr("FLAC · 24-bit lossless")
-        return qsTr("WAV · 24-bit PCM")
     }
 
     background: Rectangle {
@@ -184,21 +178,11 @@ Popup {
                     font.letterSpacing: 0.8
                 }
 
-                ComboBox {
-                    id: formatBox
-                    Layout.fillWidth: true
-                    model: [
-                        { key: "wav_pcm24", label: qsTr("WAV · 24-bit PCM · Editing master") },
-                        { key: "flac24", label: qsTr("FLAC · 24-bit lossless · Smaller archive") },
-                        { key: "wav_pcm16", label: qsTr("WAV · 16-bit PCM · Broad compatibility") }
-                    ]
-                    textRole: "label"
-                    onActivated: dialog.selectedFormat = model[currentIndex].key
-                }
+                AudioExportSettings { id:deliverySettings;Layout.fillWidth:true }
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("48 kHz · Stereo · Current saved adjustments")
+                    text: qsTr("Uses each sound’s saved adjustments.")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.fontMeta
                 }
@@ -348,8 +332,8 @@ Popup {
                     text: qsTr("Export %1 sounds").arg(dialog.assets.length)
                     enabled: dialog.assets.length > 0
                         && dialog.destination.toString().length > 0
-                    onClicked: dialog.exporter.start(
-                        dialog.assets, dialog.destination, dialog.selectedFormat)
+                    onClicked: { dialog.exporter.exportOptions=deliverySettings.options; dialog.exporter.start(
+                        dialog.assets, dialog.destination, dialog.selectedFormat); }
                 }
             }
         }

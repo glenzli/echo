@@ -9,6 +9,7 @@ mod audio_events;
 mod embeddings;
 mod responses;
 pub(crate) mod speech;
+mod speech_input;
 
 pub use audio_embeddings::{
     AUDIO_EMBEDDING_INTENT, AUDIO_TEXT_QUERY_EMBEDDING_INTENT, AudioEmbeddingPayload,
@@ -27,6 +28,7 @@ pub use responses::{
     CONTEXTUAL_INTENT, ContextualIntent, ContextualResponse, MAX_CONTEXTUAL_INPUT_BYTES,
 };
 
+use crate::audio_formats::audio_content_type;
 use std::{
     collections::BTreeMap,
     fmt,
@@ -508,6 +510,8 @@ impl RuntimeTransport for SdkTransport {
         language: Option<&str>,
         metadata: &BTreeMap<String, String>,
     ) -> Result<(SdkTranscriptionResponse, SdkJobSnapshot), InferRuntimeError> {
+        let input = speech_input::SpeechInput::prepare(source)?;
+        let source = input.path();
         Self::run(async {
             let response = self
                 .client
@@ -532,6 +536,8 @@ impl RuntimeTransport for SdkTransport {
         language: Option<&str>,
         metadata: &BTreeMap<String, String>,
     ) -> Result<(SdkAlignmentResponse, SdkJobSnapshot), InferRuntimeError> {
+        let input = speech_input::SpeechInput::prepare(source)?;
+        let source = input.path();
         Self::run(async {
             let response = self
                 .client
@@ -649,22 +655,6 @@ fn validate_source(source: &Path) -> Result<(), InferRuntimeError> {
         ));
     }
     Ok(())
-}
-
-fn audio_content_type(path: &Path) -> &'static str {
-    match path
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .map(str::to_ascii_lowercase)
-        .as_deref()
-    {
-        Some("wav" | "wave") => "audio/wav",
-        Some("mp3") => "audio/mpeg",
-        Some("flac") => "audio/flac",
-        Some("m4a" | "mp4") => "audio/mp4",
-        Some("ogg" | "opus") => "audio/ogg",
-        _ => "application/octet-stream",
-    }
 }
 
 pub(crate) fn validate_succeeded_job(

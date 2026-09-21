@@ -46,6 +46,9 @@ ApplicationWindow {
         assets = backend.listAssets().filter(value => !value.assemblyId);
         selectedAsset = assets.find(value => value.id === selectedId) || assets[0] || null;
     }
+    function importAudioFiles(files): void {
+        if (window.flushDrafts()) streamImport.present(files);
+    }
     function flushDrafts(): bool {
         if (editor.dirty) editor.save();
         if (editor.dirty) return false;
@@ -233,13 +236,14 @@ ApplicationWindow {
         onDropped: drop => {
             if (!drop.hasUrls) return;
             if (!window.flushDrafts()) return;
-            independentEditor.importAudio(drop.urls); drop.acceptProposedAction();
+            window.importAudioFiles(drop.urls); drop.acceptProposedAction();
         }
     }
+    AudioStreamImportDialog { id:streamImport; onFilesReady:files=>independentEditor.importAudio(files) }
     FileDialog {
         id: audioDialog; title: qsTr("Open audio"); fileMode: FileDialog.OpenFiles
-        nameFilters: [qsTr("Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)"), qsTr("All files (*)")]
-        onAccepted: if (window.flushDrafts()) independentEditor.importAudio(selectedFiles)
+        nameFilters: [backend.audioFileFilter, qsTr("All files (*)")]
+        onAccepted: window.importAudioFiles(selectedFiles)
     }
     FileDialog {
         id: projectDialog; title: qsTr("Open project"); fileMode: FileDialog.OpenFile

@@ -25,7 +25,7 @@ fn previous_disclosure_catalog_upgrades_without_losing_its_ledger() {
                 [],
                 |r| r.get(0),
             )?;
-            assert_eq!(version, "20260922.2");
+            assert_eq!(version, "20260922.3");
             Ok(())
         })
         .unwrap();

@@ -426,3 +426,39 @@ fn debug_output_never_contains_credential_contents() {
     assert!(debug.contains("infer-runtime.token"));
     assert!(!debug.contains("Bearer"));
 }
+
+#[test]
+#[ignore = "requires ECHO_AUDIO_FORMAT_AI_FIXTURES and a healthy local Infer Runtime"]
+fn live_intake_formats_transcribe_through_managed_runtime() {
+    let root = std::path::PathBuf::from(
+        std::env::var("ECHO_AUDIO_FORMAT_AI_FIXTURES").expect("fixture directory"),
+    );
+    let client = InferRuntimeClient::new(InferRuntimeConfig {
+        base_url: String::new(),
+        credential_path: crate::infer_runtime_credential_path().expect("managed credential path"),
+    });
+    let mut rejected = Vec::new();
+    for name in [
+        "voice.wav",
+        "voice.caf",
+        "voice.mka",
+        "voice-alac.m4a",
+        "voice.opus",
+        "voice.aac",
+        "voice.wma",
+    ] {
+        let result = client.transcribe(&root.join(name), &TranscriptionIntent::default());
+        if let Err(error) = &result {
+            eprintln!("{name}: {error}");
+            rejected.push(name);
+            continue;
+        }
+        let transcript = result.unwrap();
+        assert!(
+            !transcript.text.trim().is_empty(),
+            "empty transcription for {name}"
+        );
+        println!("{name}: non-empty transcription with validated local runtime evidence");
+    }
+    assert!(rejected.is_empty(), "formats rejected: {rejected:?}");
+}

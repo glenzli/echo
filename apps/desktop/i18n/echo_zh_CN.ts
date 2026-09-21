@@ -1067,11 +1067,7 @@
             <source>%1 · %2 sounds</source>
             <translation>%1 · %2 段声音</translation>
         </message>
-        <message>
-            <location filename="../qml/BatchExportDialog.qml" line="195" />
-            <source>48 kHz · Stereo · Current saved adjustments</source>
-            <translation>48 kHz · 立体声 · 当前已保存调整</translation>
-        </message>
+
         <message>
             <location filename="../qml/BatchExportDialog.qml" line="139" />
             <source>An unfinished export can continue</source>
@@ -1152,16 +1148,8 @@
             <source>Export current results</source>
             <translation>导出当前结果</translation>
         </message>
-        <message>
-            <location filename="../qml/BatchExportDialog.qml" line="43" />
-            <source>FLAC · 24-bit lossless</source>
-            <translation>FLAC · 24 位无损</translation>
-        </message>
-        <message>
-            <location filename="../qml/BatchExportDialog.qml" line="186" />
-            <source>FLAC · 24-bit lossless · Smaller archive</source>
-            <translation>FLAC · 24 位无损 · 更小的归档文件</translation>
-        </message>
+
+
         <message>
             <location filename="../qml/BatchExportDialog.qml" line="174" />
             <source>FORMAT</source>
@@ -1172,29 +1160,17 @@
             <source>Preparing batch…</source>
             <translation>正在准备批量导出…</translation>
         </message>
-        <message>
-            <location filename="../qml/BatchExportDialog.qml" line="42" />
-            <source>WAV · 16-bit PCM</source>
-            <translation>WAV · 16 位 PCM</translation>
-        </message>
-        <message>
-            <location filename="../qml/BatchExportDialog.qml" line="187" />
-            <source>WAV · 16-bit PCM · Broad compatibility</source>
-            <translation>WAV · 16 位 PCM · 广泛兼容</translation>
-        </message>
-        <message>
-            <location filename="../qml/BatchExportDialog.qml" line="44" />
-            <source>WAV · 24-bit PCM</source>
-            <translation>WAV · 24 位 PCM</translation>
-        </message>
-        <message>
-            <location filename="../qml/BatchExportDialog.qml" line="185" />
-            <source>WAV · 24-bit PCM · Editing master</source>
-            <translation>WAV · 24 位 PCM · 编辑母版</translation>
-        </message>
+
+
+
+
         <message>
             <source>Source labels are embedded in the audio file. Private notes and local paths stay in Echo.</source>
             <translation>来源标记会嵌入音频文件。私人说明和本地路径仍留在 Echo 中。</translation>
+        </message>
+            <message>
+            <source>Uses each sound’s saved adjustments.</source>
+            <translation>使用每段声音已保存的处理版本。</translation>
         </message>
     </context>
     <context>
@@ -1636,6 +1612,10 @@
         <message>
             <source>This project version could not be opened.</source>
             <translation>未能打开此工程版本。</translation>
+        </message>
+            <message>
+            <source>Audio files (%1)</source>
+            <translation>音频文件 (%1)</translation>
         </message>
     </context>
     <context>
@@ -2406,11 +2386,7 @@
             <source>Open audio</source>
             <translation>打开音频</translation>
         </message>
-        <message>
-            <location filename="../qml/IndependentEditor.qml" line="225" />
-            <source>Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</source>
-            <translation>音频文件 (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</translation>
-        </message>
+
         <message>
             <location filename="../qml/IndependentEditor.qml" line="225" />
             <source>All files (*)</source>
@@ -4947,16 +4923,8 @@
             <source>Fit selection</source>
             <translation>适应所选范围</translation>
         </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1214" />
-            <source>Export assembly mixdown</source>
-            <translation>导出编排混音</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1216" />
-            <source>WAV audio (*.wav)</source>
-            <translation>WAV 音频 (*.wav)</translation>
-        </message>
+
+
         <message>
             <location filename="../qml/SoundAssemblyWorkspace.qml" line="456" />
             <source>Untitled project</source>
@@ -5370,17 +5338,8 @@
     </context>
     <context>
         <name>SoundExportDialog</name>
-        <message>
-            <location filename="../qml/SoundExportDialog.qml" line="66" />
-            <location filename="../qml/SoundExportDialog.qml" line="271" />
-            <source>Export WAV</source>
-            <translation>导出 WAV</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundExportDialog.qml" line="69" />
-            <source>WAV audio (*.wav)</source>
-            <translation>WAV 音频（*.wav）</translation>
-        </message>
+
+
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="100" />
             <source>Export adjusted sound</source>
@@ -5391,11 +5350,7 @@
             <source>Close</source>
             <translation>关闭</translation>
         </message>
-        <message>
-            <location filename="../qml/SoundExportDialog.qml" line="152" />
-            <source>WAV · 24-bit PCM · 48 kHz · Stereo</source>
-            <translation>WAV · 24 位 PCM · 48 kHz · 立体声</translation>
-        </message>
+
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="160" />
             <source>Choose where to save the rendered file</source>
@@ -5426,21 +5381,13 @@
             <source>Rendering in the background…</source>
             <translation>正在后台渲染…</translation>
         </message>
-        <message>
-            <location filename="../qml/SoundExportDialog.qml" line="239" />
-            <source>WAV created, but Echo could not save its source record.</source>
-            <translation>WAV 已生成，但 Echo 无法保存其来源记录。</translation>
-        </message>
+
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="248" />
             <source>Echo could not export this sound. Check the destination and try again.</source>
             <translation>Echo 无法导出这段声音。请检查保存位置后重试。</translation>
         </message>
-        <message>
-            <location filename="../qml/SoundExportDialog.qml" line="239" />
-            <source>WAV created · %1 LUFS · %2 dBTP</source>
-            <translation>WAV 已生成 · %1 LUFS · %2 dBTP</translation>
-        </message>
+
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="264" />
             <source>Cancel</source>
@@ -5449,6 +5396,22 @@
         <message>
             <source>Source labels are embedded in the audio file. Private notes and local paths stay in Echo.</source>
             <translation>来源标记会嵌入音频文件。私人说明和本地路径仍留在 Echo 中。</translation>
+        </message>
+            <message>
+            <source>Audio file (*.%1)</source>
+            <translation>音频文件 (*.%1)</translation>
+        </message>
+        <message>
+            <source>Export audio</source>
+            <translation>导出音频</translation>
+        </message>
+            <message>
+            <source>Audio created · %1 LUFS · %2 dBTP</source>
+            <translation>音频已生成 · %1 LUFS · %2 dBTP</translation>
+        </message>
+        <message>
+            <source>Audio created, but Echo could not save its source record.</source>
+            <translation>音频已生成，但 Echo 无法保存其来源记录。</translation>
         </message>
     </context>
     <context>
@@ -6183,11 +6146,7 @@
             <source>Uncategorized</source>
             <translation>未分类</translation>
         </message>
-        <message>
-            <location filename="../qml/SoundSourceBrowser.qml" line="330" />
-            <source>Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</source>
-            <translation>音频文件 (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)</translation>
-        </message>
+
         <message>
             <location filename="../qml/SoundSourceBrowser.qml" line="330" />
             <source>All files (*)</source>
@@ -7990,6 +7949,154 @@ Narration: %3</source>
         <message>
             <source>Version %1</source>
             <translation>版本 %1</translation>
+        </message>
+    </context>
+    <context>
+        <name>AssemblyExportDialog</name>
+        <message>
+            <source>Audio file (*.%1)</source>
+            <translation>音频文件 (*.%1)</translation>
+        </message>
+        <message>
+            <source>Cancel</source>
+            <translation>取消</translation>
+        </message>
+        <message>
+            <source>Choose a destination</source>
+            <translation>选择保存位置</translation>
+        </message>
+        <message>
+            <source>Choose…</source>
+            <translation>选择…</translation>
+        </message>
+        <message>
+            <source>Export</source>
+            <translation>导出</translation>
+        </message>
+        <message>
+            <source>Export assembly mixdown</source>
+            <translation>导出编排混音</translation>
+        </message>
+        <message>
+            <source>Source labels stay embedded in the delivered audio.</source>
+            <translation>导出的音频会保留嵌入的来源标记。</translation>
+        </message>
+    </context>
+    <context>
+        <name>AudioExportSettings</name>
+        <message>
+            <source>Bitrate (kbps)</source>
+            <translation>码率（kbps）</translation>
+        </message>
+        <message>
+            <source>Channels</source>
+            <translation>声道</translation>
+        </message>
+        <message>
+            <source>Compressed exports lose detail. Reported loudness is measured before compression.</source>
+            <translation>有损压缩会损失细节。显示的响度在压缩编码前测量。</translation>
+        </message>
+        <message>
+            <source>Effects are processed at 48 kHz, then converted for delivery. WAV automatically uses RF64 for large files.</source>
+            <translation>效果以 48 kHz 处理，再转换为交付规格。较大的 WAV 文件会自动使用 RF64。</translation>
+        </message>
+        <message>
+            <source>FLAC · 24-bit lossless</source>
+            <translation>FLAC · 24 位无损</translation>
+        </message>
+        <message>
+            <source>Format</source>
+            <translation>格式</translation>
+        </message>
+        <message>
+            <source>M4A · AAC compressed</source>
+            <translation>M4A · AAC 有损压缩</translation>
+        </message>
+        <message>
+            <source>MP3 · Compressed</source>
+            <translation>MP3 · 有损压缩</translation>
+        </message>
+        <message>
+            <source>Mono</source>
+            <translation>单声道</translation>
+        </message>
+        <message>
+            <source>Sample rate (kHz)</source>
+            <translation>采样率（kHz）</translation>
+        </message>
+        <message>
+            <source>Stereo</source>
+            <translation>立体声</translation>
+        </message>
+        <message>
+            <source>WAV · 16-bit PCM</source>
+            <translation>WAV · 16 位 PCM</translation>
+        </message>
+        <message>
+            <source>WAV · 24-bit PCM</source>
+            <translation>WAV · 24 位 PCM</translation>
+        </message>
+        <message>
+            <source>WAV · 32-bit float</source>
+            <translation>WAV · 32 位浮点</translation>
+        </message>
+    </context>
+    <context>
+        <name>AudioStreamImportController</name>
+        <message>
+            <source>Choose a local audio file.</source>
+            <translation>请选择本地音频文件。</translation>
+        </message>
+        <message>
+            <source>Choose between 1 and 256 local audio files.</source>
+            <translation>请选择 1 至 256 个本地音频文件。</translation>
+        </message>
+        <message>
+            <source>The selected audio track could not be imported: %1</source>
+            <translation>无法导入所选音轨：%1</translation>
+        </message>
+        <message>
+            <source>This file could not be inspected: %1</source>
+            <translation>无法检查此文件：%1</translation>
+        </message>
+        <message>
+            <source>This file has no audio track.</source>
+            <translation>此文件没有音轨。</translation>
+        </message>
+    </context>
+    <context>
+        <name>AudioStreamImportDialog</name>
+        <message>
+            <source>%1 channels · %2 Hz</source>
+            <translation>%1 声道 · %2 Hz</translation>
+        </message>
+        <message>
+            <source>Audio track %1</source>
+            <translation>音轨 %1</translation>
+        </message>
+        <message>
+            <source>Cancel</source>
+            <translation>取消</translation>
+        </message>
+        <message>
+            <source>Choose an audio track</source>
+            <translation>选择音轨</translation>
+        </message>
+        <message>
+            <source>Import selected track</source>
+            <translation>导入所选音轨</translation>
+        </message>
+        <message>
+            <source>Inspecting or preserving the audio source…</source>
+            <translation>正在检查或保留音频来源…</translation>
+        </message>
+        <message>
+            <source>Language unspecified</source>
+            <translation>未标注语言</translation>
+        </message>
+        <message>
+            <source>This container has multiple audio tracks. Import one without re-encoding; the complete original container and its source record are preserved.</source>
+            <translation>此文件包含多条音轨。选取一条直接导入，无需重新编码；完整原文件及来源记录会一同保留。</translation>
         </message>
     </context>
 </TS>

@@ -448,8 +448,8 @@ Rectangle {
         exportDialog.present();
     }
 
-    function debugExport(destination: url): void {
-        exportDialog.debugExport(destination);
+    function debugExport(destination: url, options): void {
+        exportDialog.debugExport(destination, options);
     }
 
     function synchronizeSource(): void {

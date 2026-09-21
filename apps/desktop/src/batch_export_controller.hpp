@@ -14,6 +14,7 @@ class DesktopBackend;
 
 class BatchExportController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QVariantMap exportOptions MEMBER export_options_)
     Q_PROPERTY(bool running READ running NOTIFY stateChanged)
     Q_PROPERTY(bool recoverable READ recoverable NOTIFY stateChanged)
     Q_PROPERTY(bool hasResult READ hasResult NOTIFY stateChanged)
@@ -53,6 +54,7 @@ class BatchExportController : public QObject {
     void progressChanged();
 
   private:
+    QVariantMap export_options_;
     void startWorker(QVariantMap manifest);
     void loadRecoveryManifest();
     void stopWorker(bool userCancelled);

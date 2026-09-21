@@ -1,4 +1,4 @@
-//! Focused WAV publication surface for the sound editor. File selection and
+//! Audio delivery publication surface for the sound editor. File selection and
 //! job presentation live here; rendering and provenance remain native owners.
 
 import QtQuick
@@ -39,6 +39,7 @@ Popup {
     }
 
     function startExport(): void {
+        exporter.exportOptions=deliverySettings.options;
         if (!asset || (!exportRenderedWorkingCopy && draft.dirty) || destination.toString().length === 0)
             return;
         if (exportRenderedWorkingCopy && renderedWorkingCopy) {
@@ -48,7 +49,8 @@ Popup {
         exporter.exportAdjusted(asset.id, Number(asset.adjustmentRevision || 0), asset.path, destination, draft.trimStartMillis, draft.trimEndMillis, draft.fadeInMillis, draft.fadeOutMillis, draft.fadeInCurve, draft.fadeOutCurve, draft.gainCentibels, draft.lowCutHertz, draft.restorationValue(), draft.deHumValue(), draft.deClickValue(), draft.channelRepairValue(), draft.equalizerEnabled, draft.equalizerBands, draft.compressorEnabled, draft.compressorThresholdCentibels, draft.compressorRatioTenths, draft.compressorAttackMillis, draft.compressorReleaseMillis, draft.compressorMakeupCentibels, draft.reverbValue(), draft.limiterEnabled, draft.limiterCeilingCentibels, draft.limiterReleaseMillis, draft.effectChain, draft.editSegments, draft.effectMasks, draft.creativeVfxValue(), draft.spectralRepairValue());
     }
 
-    function debugExport(destinationUrl: url): void {
+    function debugExport(destinationUrl: url, options): void {
+        if (options) deliverySettings.configure(options);
         destination = destinationUrl;
         startExport();
     }
@@ -63,10 +65,10 @@ Popup {
     FileDialog {
         id: destinationDialog
 
-        title: qsTr("Export WAV")
+        title: qsTr("Export audio")
         fileMode: FileDialog.SaveFile
-        defaultSuffix: "wav"
-        nameFilters: [qsTr("WAV audio (*.wav)")]
+        defaultSuffix: deliverySettings.extension
+        nameFilters: [qsTr("Audio file (*.%1)").arg(deliverySettings.extension)]
         onAccepted: dialog.destination = selectedFile
     }
 
@@ -137,6 +139,8 @@ Popup {
                 text: qsTr("Source labels are embedded in the audio file. Private notes and local paths stay in Echo.")
             }
 
+            AudioExportSettings { id:deliverySettings; Layout.fillWidth:true; enabled:!dialog.exporter.running }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 62
@@ -155,7 +159,7 @@ Popup {
                         spacing: 2
 
                         Text {
-                            text: qsTr("WAV · 24-bit PCM · 48 kHz · Stereo")
+                            text: deliverySettings.formatLabel
                             color: Theme.textPrimary
                             font.pixelSize: Theme.fontBody
                             font.weight: Font.DemiBold
@@ -242,7 +246,7 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 visible: dialog.exporter.hasResult
-                text: dialog.exporter.errorText.length > 0 ? qsTr("WAV created, but Echo could not save its source record.") : qsTr("WAV created · %1 LUFS · %2 dBTP").arg(dialog.exporter.integratedLufs.toFixed(1)).arg(dialog.exporter.truePeakDbtp.toFixed(1))
+                text: dialog.exporter.errorText.length > 0 ? qsTr("Audio created, but Echo could not save its source record.") : qsTr("Audio created · %1 LUFS · %2 dBTP").arg(dialog.exporter.integratedLufs.toFixed(1)).arg(dialog.exporter.truePeakDbtp.toFixed(1))
                 color: dialog.exporter.errorText.length > 0 ? Theme.warningText : Theme.accentSelectionText
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap
@@ -274,7 +278,7 @@ Popup {
 
                 EchoButton {
                     visible: !dialog.exporter.running
-                    text: qsTr("Export WAV")
+                    text: qsTr("Export audio")
                     enabled: (dialog.exportRenderedWorkingCopy || !dialog.draft.dirty) && dialog.destination.toString().length > 0 && dialog.asset && dialog.asset.pathStatus !== "missing"
                     onClicked: dialog.startExport()
                 }

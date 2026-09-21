@@ -3,6 +3,7 @@
 
 #include "application_paths.hpp"
 #include "assembly_waveform_controller.hpp"
+#include "audio_stream_import_controller.hpp"
 #include "batch_export_controller.hpp"
 #include "click_analysis_controller.hpp"
 #include "creative_vfx_presets.hpp"
@@ -28,6 +29,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -121,6 +123,9 @@ int main(int argc, char* argv[]) {
             QString::fromStdString(cache_root)
         );
         GeneratedNarrationController generated_narration(QString::fromStdString(catalog));
+        AudioStreamImportController audio_stream_import(
+            QFileInfo(QString::fromStdString(catalog)).absolutePath()
+        );
         SemanticSearchController material_search(
             QString::fromStdString(catalog),
             inference_prefs.runtimeEndpoint()
@@ -149,6 +154,10 @@ int main(int argc, char* argv[]) {
         // Qt 6.11's default import paths start at qrc:/qt/qml, while Echo's
         // executable module keeps its generated qmldir at qrc:/EchoDesktop.
         engine.addImportPath(QStringLiteral("qrc:/"));
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("audioStreamImport"),
+            &audio_stream_import
+        );
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
         engine.rootContext()->setContextProperty(
             QStringLiteral("assemblyHistoryController"),
@@ -268,12 +277,18 @@ int main(int argc, char* argv[]) {
             "EchoDesktop",
             independent_editor.independent() ? "IndependentEditor" : "Main"
         );
-        if (independent_editor.independent() && !independent_editor.initialFiles().isEmpty()) {
+        if (!engine.rootObjects().isEmpty() && independent_editor.independent()
+            && !independent_editor.initialFiles().isEmpty()) {
             QList<QUrl> inputs;
             for (const auto& path : independent_editor.initialFiles())
                 inputs.append(QUrl::fromLocalFile(path));
-            QTimer::singleShot(0, &independent_editor, [&independent_editor, inputs] {
-                independent_editor.importAudio(inputs);
+            auto* shell = engine.rootObjects().first();
+            QTimer::singleShot(0, shell, [shell, inputs] {
+                QMetaObject::invokeMethod(
+                    shell,
+                    "importAudioFiles",
+                    Q_ARG(QVariant, QVariant::fromValue(inputs))
+                );
             });
         }
         if (engine.rootObjects().isEmpty()) {

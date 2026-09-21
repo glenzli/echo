@@ -15,6 +15,9 @@ pub enum RenderExportFormat {
     WavPcm16,
     WavPcm24,
     Flac24,
+    WavFloat32,
+    Mp3,
+    AacM4a,
 }
 
 /// Complete evidence supplied after an atomic render publication.
@@ -328,27 +331,35 @@ fn validate_revision(
     ))
 }
 
-const fn format_text(format: RenderExportFormat) -> &'static str {
+pub(crate) const fn format_text(format: RenderExportFormat) -> &'static str {
     match format {
         RenderExportFormat::WavPcm16 => "wav_pcm16",
         RenderExportFormat::WavPcm24 => "wav_pcm24",
         RenderExportFormat::Flac24 => "flac24",
+        RenderExportFormat::WavFloat32 => "wav_float32",
+        RenderExportFormat::Mp3 => "mp3",
+        RenderExportFormat::AacM4a => "aac_m4a",
     }
 }
 
-fn parse_format(text: &str) -> Result<RenderExportFormat, CatalogError> {
+pub(crate) fn parse_format(text: &str) -> Result<RenderExportFormat, CatalogError> {
     match text {
         "wav_pcm16" => Ok(RenderExportFormat::WavPcm16),
         "wav_pcm24" => Ok(RenderExportFormat::WavPcm24),
         "flac24" => Ok(RenderExportFormat::Flac24),
+        "wav_float32" => Ok(RenderExportFormat::WavFloat32),
+        "mp3" => Ok(RenderExportFormat::Mp3),
+        "aac_m4a" => Ok(RenderExportFormat::AacM4a),
         _ => Err(malformed("format")),
     }
 }
 
-const fn format_matches_bit_depth(format: RenderExportFormat, bit_depth: u16) -> bool {
+pub(crate) const fn format_matches_bit_depth(format: RenderExportFormat, bit_depth: u16) -> bool {
     matches!(
         (format, bit_depth),
         (RenderExportFormat::WavPcm16, 16)
+            | (RenderExportFormat::WavFloat32, 32)
+            | (RenderExportFormat::Mp3 | RenderExportFormat::AacM4a, 0)
             | (
                 RenderExportFormat::WavPcm24 | RenderExportFormat::Flac24,
                 24

@@ -18,6 +18,7 @@ class PlaybackController;
 
 class SoundAssemblyController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QVariantMap exportOptions MEMBER export_options_)
     Q_PROPERTY(int reusedSourceCount READ reusedSourceCount NOTIFY stateChanged)
     Q_PROPERTY(bool running READ running NOTIFY stateChanged)
     Q_PROPERTY(bool hasPreview READ hasPreview NOTIFY stateChanged)
@@ -63,6 +64,7 @@ class SoundAssemblyController : public QObject {
     void memorySaved(const QString& assemblyId);
 
   private:
+    QVariantMap export_options_;
     void start(
         const QVariantMap& revision,
         const QString& destination,

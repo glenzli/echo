@@ -10,6 +10,7 @@
 //! revisions, [`processing_recipe`] for reusable processing definitions and
 //! explicit batch receipts, [`user_albums`] for durable user-authored
 //! collections, [`sound_library`] for memory/material membership and accepted mixes, and [`scan_root`] for the directories Echo watches.
+//! [`delivery_formats`] owns the transactional export-format schema expansion, preserving export IDs and references.
 
 mod adjustment_graph;
 mod analysis;
@@ -21,6 +22,7 @@ mod audio_semantic_index;
 mod audio_space;
 mod catalog;
 mod contextual_facets;
+mod delivery_formats;
 mod derived_artifact;
 mod error;
 mod generated_audio;

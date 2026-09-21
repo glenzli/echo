@@ -38,19 +38,8 @@ pub struct SoundAssemblySummary {
     pub updated_at_millis: i64,
 }
 
-/// Supported durable assembly publication format.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SoundAssemblyExportFormat {
-    WavPcm24,
-}
-
-impl SoundAssemblyExportFormat {
-    const fn stored_name(self) -> &'static str {
-        match self {
-            Self::WavPcm24 => "wav_pcm24",
-        }
-    }
-}
+/// Delivery formats shared by single-source and assembly exports.
+pub type SoundAssemblyExportFormat = crate::RenderExportFormat;
 
 /// Engine-verified facts for one completed assembly publication.
 #[derive(Debug, Clone)]
@@ -353,12 +342,12 @@ pub fn record_sound_assembly_export(
          (assembly_id, assembly_revision_id, output_path, format, sample_rate, channel_count, \
           bit_depth, frame_count, content_hash, size_bytes, integrated_lufs, true_peak_dbtp, \
           provenance_json, created_at_millis) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 24, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?14, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![
             input.assembly_id.to_string(),
             input.assembly_revision_id,
             input.output_path.to_string_lossy(),
-            input.format.stored_name(),
+            crate::render_export::format_text(input.format),
             i64::from(input.sample_rate),
             i64::from(input.channel_count),
             sqlite_u64(input.frame_count, "assembly export frame count")?,
@@ -368,6 +357,7 @@ pub fn record_sound_assembly_export(
             input.true_peak_dbtp,
             provenance_json,
             input.created_at_millis,
+            i64::from(export_bit_depth(input.format)),
         ],
     )?;
     Ok(SoundAssemblyExportRecord {
@@ -547,6 +537,15 @@ fn sqlite_overflow(error: std::num::TryFromIntError) -> CatalogError {
 
 fn assembly_error(message: impl Into<String>) -> CatalogError {
     CatalogError::new(CatalogErrorKind::Other, message)
+}
+
+fn export_bit_depth(format: SoundAssemblyExportFormat) -> u16 {
+    match format {
+        SoundAssemblyExportFormat::WavPcm16 => 16,
+        SoundAssemblyExportFormat::WavFloat32 => 32,
+        SoundAssemblyExportFormat::Mp3 | SoundAssemblyExportFormat::AacM4a => 0,
+        _ => 24,
+    }
 }
 
 #[cfg(test)]

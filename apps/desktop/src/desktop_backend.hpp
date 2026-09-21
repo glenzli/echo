@@ -14,12 +14,14 @@
 
 class DesktopBackend : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QString audioFileFilter READ audioFileFilter CONSTANT)
     Q_PROPERTY(bool independentEditing READ independentEditing CONSTANT)
     Q_PROPERTY(quint64 assetCount READ assetCount NOTIFY assetsChanged)
     Q_PROPERTY(QString catalogPath READ catalogPath NOTIFY assetsChanged)
     Q_PROPERTY(QString cacheRoot READ cacheRoot NOTIFY assetsChanged)
 
   public:
+    QString audioFileFilter() const;
     explicit DesktopBackend(
         rust::Box<echo::desktop::LibrarySession> session,
         QObject* parent = nullptr
@@ -305,7 +307,8 @@ class DesktopBackend : public QObject {
         float integratedLufs,
         float truePeakDbtp,
         bool preserveMemory,
-        const QString& sourceDisclosureComment
+        const QString& sourceDisclosureComment,
+        const QString& format = QStringLiteral("wav_pcm24")
     ) const;
     /// Records a user delivery from a verified post-effect repair copy and
     /// persists an immutable snapshot of that copy's current provenance.

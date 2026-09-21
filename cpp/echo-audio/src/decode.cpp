@@ -106,13 +106,9 @@ AudioProbe probe(const std::string& path) {
             format.get()->iformat != nullptr ? format.get()->iformat->name : "unknown";
         probe_result.sample_rate = static_cast<uint32_t>(codecpar->sample_rate);
         probe_result.channel_count = static_cast<uint32_t>(codecpar->ch_layout.nb_channels);
-        if (stream->duration != AV_NOPTS_VALUE) {
-            const int64_t duration =
-                av_rescale_q(stream->duration, stream->time_base, AVRational{1, 1000});
-            if (duration > 0) {
-                probe_result.duration_millis = static_cast<uint64_t>(duration);
-            }
-        }
+        probe_result.duration_millis = static_cast<uint64_t>(
+            std::max<int64_t>(0, audio_duration(format.get(), stream, AVRational{1, 1000}))
+        );
         probe_result.recorded_at_millis =
             recorded_at_millis(format.get()->metadata, stream->metadata);
         append_metadata(probe_result.metadata, format.get()->metadata, "");

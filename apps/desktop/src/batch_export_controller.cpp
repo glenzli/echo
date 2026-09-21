@@ -1,4 +1,5 @@
 #include "batch_export_controller.hpp"
+#include "audio_export_options.hpp"
 
 #include "desktop_backend.hpp"
 #include "playback_adjustment_projection.hpp"
@@ -66,12 +67,16 @@ QVariantMap load_manifest() {
 }
 
 QString extension_for(const QString& format) {
-    return format == QStringLiteral("flac24") ? QStringLiteral("flac") : QStringLiteral("wav");
+    return format == QStringLiteral("mp3")       ? QStringLiteral("mp3")
+           : format == QStringLiteral("aac_m4a") ? QStringLiteral("m4a")
+           : format == QStringLiteral("flac24")  ? QStringLiteral("flac")
+                                                 : QStringLiteral("wav");
 }
 
 bool supported_format(const QString& format) {
     return format == QStringLiteral("wav_pcm16") || format == QStringLiteral("wav_pcm24")
-           || format == QStringLiteral("flac24");
+           || format == QStringLiteral("flac24") || format == QStringLiteral("wav_float32")
+           || format == QStringLiteral("mp3") || format == QStringLiteral("aac_m4a");
 }
 
 QString display_name(const QVariantMap& asset) {
@@ -209,7 +214,7 @@ echo::audio::OfflineRenderResult render_file(
     const QString& source,
     const QString& temporaryPath,
     const QString& destinationPath,
-    const QString& format,
+    const echo::audio::AudioExportProfile& profile,
     const echo::audio::PlaybackAdjustment& adjustment,
     const echo::audio::OfflineRenderCallbacks& callbacks,
     const QString& sourceDisclosureComment
@@ -221,28 +226,14 @@ echo::audio::OfflineRenderResult render_file(
     }
     try {
         QtRenderByteSink sink(output);
-        echo::audio::OfflineRenderResult result;
-        if (format == QStringLiteral("flac24")) {
-            result = echo::audio::OfflineFlacRenderer::render(
-                source.toStdString(),
-                adjustment,
-                sink,
-                callbacks,
-                sourceDisclosureComment.toStdString()
-            );
-        } else {
-            const auto depth = format == QStringLiteral("wav_pcm16")
-                                   ? echo::audio::WavPcmDepth::Pcm16
-                                   : echo::audio::WavPcmDepth::Pcm24;
-            result = echo::audio::OfflineWavRenderer::render(
-                source.toStdString(),
-                adjustment,
-                sink,
-                callbacks,
-                depth,
-                sourceDisclosureComment.toStdString()
-            );
-        }
+        const auto result = echo::audio::AudioExporter::render(
+            source.toStdString(),
+            adjustment,
+            sink,
+            profile,
+            callbacks,
+            sourceDisclosureComment.toStdString()
+        );
         if (!output.flush()) {
             throw std::runtime_error(output.errorString().toStdString());
         }
@@ -284,6 +275,14 @@ void BatchExportController::start(
         reject(QStringLiteral("batch export destination must be a local directory"));
         return;
     }
+    QVariantMap options = export_options_;
+    options.insert(QStringLiteral("format"), format);
+    try {
+        AudioExportOptions::profile(options);
+    } catch (const std::exception& error) {
+        reject(QString::fromUtf8(error.what()));
+        return;
+    }
     const QFileInfo directory(destinationDirectory.toLocalFile());
     if (!directory.exists() || !directory.isDir() || !directory.isWritable()) {
         reject(QStringLiteral("batch export destination is not writable"));
@@ -312,6 +311,7 @@ void BatchExportController::start(
         {QStringLiteral("version"), kManifestVersion},
         {QStringLiteral("state"), QStringLiteral("active")},
         {QStringLiteral("format"), format},
+        {QStringLiteral("exportOptions"), options},
         {QStringLiteral("directory"), directory.absoluteFilePath()},
         {QStringLiteral("items"), items},
     };
@@ -356,6 +356,15 @@ void BatchExportController::dismiss() {
 void BatchExportController::startWorker(QVariantMap manifest) {
     stopWorker(false);
     const QString format = manifest.value(QStringLiteral("format")).toString();
+    auto options = manifest.value(QStringLiteral("exportOptions")).toMap();
+    options.insert(QStringLiteral("format"), format);
+    echo::audio::AudioExportProfile profile;
+    try {
+        profile = AudioExportOptions::profile(options);
+    } catch (const std::exception& error) {
+        reject(QString::fromUtf8(error.what()));
+        return;
+    }
     const QString directory = manifest.value(QStringLiteral("directory")).toString();
     QVariantList items = manifest.value(QStringLiteral("items")).toList();
     const std::uint64_t generation = generation_.fetch_add(1) + 1;
@@ -374,7 +383,7 @@ void BatchExportController::startWorker(QVariantMap manifest) {
     emit stateChanged();
     emit progressChanged();
 
-    worker_ = std::jthread([this, generation, manifest, items, directory, format](
+    worker_ = std::jthread([this, generation, manifest, items, directory, format, profile](
                                std::stop_token stop
                            ) mutable {
         int completed = 0;
@@ -456,7 +465,7 @@ void BatchExportController::startWorker(QVariantMap manifest) {
                         asset.value(QStringLiteral("path")).toString(),
                         temporary_path,
                         output_path,
-                        format,
+                        profile,
                         *adjustment,
                         {
                             .cancelled = [&stop] { return stop.stop_requested(); },

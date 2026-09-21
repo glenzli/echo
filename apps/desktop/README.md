@@ -11,6 +11,33 @@ startup Memory Library / catalog session
   → recordings and accepted mix editions projected as bounded summaries
 ```
 
+`AudioExportSettings.qml` owns the shared format/rate/channel/bitrate presentation for
+single-source, assembly and batch delivery. `AssemblyExportDialog.qml` adds destination
+selection; native controllers snapshot options before background work and preserve atomic
+publication and source disclosure. `echo::audio::AudioExporter` owns streaming conversion
+and WAV/FLAC/MP3/AAC encoding; the existing processing graph remains at 48 kHz stereo.
+WAV delivery includes PCM16/24 and float32, with FFmpeg's automatic RF64 large-file mode.
+Lossy export measurements describe the PCM before compression.
+
+`AudioStreamImportController` owns asynchronous manual intake inspection and explicit
+multi-audio-track selection, presented by `AudioStreamImportDialog.qml`. It preserves the
+complete container under content-addressed `media/container-audio`, then copies selected
+codec packets into MKA with original SHA-256, filename and stream-index metadata. Portable
+projects retain both files. Single-track intake keeps its original path. File dialogs, drop
+and independent command-line intake share this route; automatic directory discovery still
+uses the first audio stream. The shared extension registry in `echo-core::audio_formats`
+is a probe candidate list, not a guarantee that arbitrary files with those suffixes decode.
+`ffmpeg_input` shares safe stream/tag/container duration fallback with probing and playback.
+`ffmpeg_timing` resolves ADTS/ASF/Opus decoder timing with a bounded-memory first inspection;
+a 32-entry scalar cache keyed by local file identity avoids repeating that scan during editing.
+Initial decoding preserves codec priming, and compressed seeks decode preceding packets before
+publishing the requested range. No timing inspection produces or retains additional audio.
+`scripts/prepare_audio_format_fixtures.py` creates deterministic local format/selection/error
+fixtures for the native contract tests without downloading media.
+`infer_runtime::speech_input` adapts additional speech-model containers through bounded,
+short-lived analysis WAV proxies, verifies original identity and removes proxies on success
+or failure. Transcription/alignment evidence retains original source time; no new asset is admitted.
+
 Selecting a recording plays it through `PlaybackController` (Qt 6.11 callback
 API over the C++ engine's SPSC ring) and renders its cached waveform pyramid
 (`WaveformView`). One `QAudioSink` is reused for the controller lifetime —

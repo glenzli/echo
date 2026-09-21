@@ -349,9 +349,16 @@ impl LibrarySession {
         evidence: &RenderExportWire,
     ) -> Result<i64, SessionError> {
         let assembly_id = parse_assembly_id(assembly_id)?;
-        if evidence.format != "wav_pcm24"
-            || evidence.bit_depth != 24
-            || evidence.sample_rate == 0
+        let format = match (evidence.format.as_str(), evidence.bit_depth) {
+            ("wav_pcm16", 16) => SoundAssemblyExportFormat::WavPcm16,
+            ("wav_pcm24", 24) => SoundAssemblyExportFormat::WavPcm24,
+            ("wav_float32", 32) => SoundAssemblyExportFormat::WavFloat32,
+            ("flac24", 24) => SoundAssemblyExportFormat::Flac24,
+            ("mp3", 0) => SoundAssemblyExportFormat::Mp3,
+            ("aac_m4a", 0) => SoundAssemblyExportFormat::AacM4a,
+            _ => return Err(session_error("assembly render format is invalid")),
+        };
+        if evidence.sample_rate == 0
             || evidence.channel_count == 0
             || evidence.frame_count == 0
             || evidence.size_bytes == 0
@@ -419,7 +426,7 @@ impl LibrarySession {
                     assembly_id,
                     assembly_revision_id,
                     output_path,
-                    format: SoundAssemblyExportFormat::WavPcm24,
+                    format,
                     sample_rate: evidence.sample_rate,
                     channel_count: u16::try_from(evidence.channel_count).map_err(|_| {
                         echo_catalog::CatalogError::new(

@@ -15,6 +15,10 @@ Item {
     property var facts: ({})
     property string before: ""
     property int batchIndex: 0
+    property int singleIndex: 0
+    readonly property var deliveryFormats: ["wav_pcm24","flac24","wav_pcm16","wav_float32","mp3","aac_m4a"]
+    function deliveryProfile(format) { return {format:format,sampleRate:44100,channels:1,bitrateKbps:192}; }
+    function deliveryExtension(format) { return format==="flac24"?"flac":format==="mp3"?"mp3":format==="aac_m4a"?"m4a":"wav"; }
     property var originalIds: []
     function require(value,message) { if(!value) throw new Error(message); }
     function tapeStep() {
@@ -102,18 +106,28 @@ Item {
             facts.jobs=backend.jobStats();require(facts.jobs.pending===0 && facts.jobs.running===0 && facts.jobs.done===0 && facts.jobs.failed===0,"private project started library analysis");
             facts.reopening=reopening;facts.outputPath=renderExporter.outputPath;
             if(reopening) {reportJson=JSON.stringify({ok:true,facts:facts});return;}
+            stage=30;break;
+        case 30:
+            editor.debugExport('file://'+fixtureRoot+'/single-'+deliveryFormats[singleIndex]+'.'+deliveryExtension(deliveryFormats[singleIndex]),deliveryProfile(deliveryFormats[singleIndex]));stage=31;break;
+        case 31:
+            if(renderExporter.running)return;
+            require(renderExporter.hasResult,renderExporter.errorText || "single format delivery failed");
+            if(++singleIndex<deliveryFormats.length){stage=30;return;}
+            facts.singleFormats=deliveryFormats;
             stage=7;break;
         case 7:
-            batchExporter.start([editor.asset],'file://'+fixtureRoot+'/batch',["wav_pcm24","flac24","wav_pcm16"][batchIndex]);stage=8;break;
+            batchExporter.exportOptions=deliveryProfile(deliveryFormats[batchIndex]);
+            batchExporter.start([editor.asset],'file://'+fixtureRoot+'/batch',deliveryFormats[batchIndex]);stage=8;break;
         case 8:
             if(batchExporter.running) return;
             require(batchExporter.hasResult && batchExporter.completedCount===1 && batchExporter.failedCount===0,batchExporter.errorText || "batch delivery failed");
             batchExporter.dismiss();
-            if(++batchIndex<3) {stage=7;return;}
-            facts.batchFormats=["wav_pcm24","flac24","wav_pcm16"];
+            if(++batchIndex<deliveryFormats.length) {stage=7;return;}
+            facts.batchFormats=deliveryFormats;
             const mix=backend.createSoundAssembly("Disclosed mix",[editor.asset.id],"layered");
             require(!mix.error,mix.error || "mix creation failed");
-            soundAssemblyController.exportAssembly(mix,'file://'+fixtureRoot+'/mix.wav');stage=9;break;
+            soundAssemblyController.exportOptions=deliveryProfile("aac_m4a");
+            soundAssemblyController.exportAssembly(mix,'file://'+fixtureRoot+'/mix.m4a');stage=9;break;
         case 9:
             if(soundAssemblyController.running) return;
             require(soundAssemblyController.hasResult,soundAssemblyController.errorText || "mix export failed");
@@ -127,13 +141,14 @@ Item {
             if(renderedSpectralWorkingCopy.running) return;
             require(renderedSpectralWorkingCopy.hasResult && renderedSpectralWorkingCopy.operationCount===1,renderedSpectralWorkingCopy.errorText || "working-copy erase failed");
             facts.workingCopyErased=true;
+            renderExporter.exportOptions={format:"wav_pcm24",sampleRate:48000,channels:2};
             renderExporter.exportRenderedSpectralWorkingCopy(editor.asset.id,Number(editor.asset.adjustmentRevision||0),renderedSpectralWorkingCopy.workingCopyId,renderedSpectralWorkingCopy.cachePath,'file://'+fixtureRoot+'/working-copy.wav');stage=11;break;
         case 11:
             if(renderExporter.running) return;
             require(renderExporter.hasResult,renderExporter.errorText || "working-copy delivery failed");
             facts.workingCopyExport=renderExporter.outputPath;
             originalIds=backend.listAssets().map(a=>a.id);
-            independentEditor.importAudio(['file://'+fixtureRoot+'/marked.wav','file://'+fixtureRoot+'/mix.wav','file://'+fixtureRoot+'/working-copy.wav']);stage=12;break;
+            independentEditor.importAudio(['file://'+fixtureRoot+'/marked.wav','file://'+facts.mixExport,'file://'+fixtureRoot+'/working-copy.wav']);stage=12;break;
         case 12:
             if(independentEditor.busy) return;
             require(!independentEditor.errorText,independentEditor.errorText);

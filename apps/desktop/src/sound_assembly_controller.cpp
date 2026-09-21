@@ -1,4 +1,5 @@
 #include "sound_assembly_controller.hpp"
+#include "audio_export_options.hpp"
 
 #include "desktop_backend.hpp"
 #include "playback_adjustment_projection.hpp"
@@ -68,14 +69,6 @@ bool mix_integer(const QVariant& value, int low, int high, std::int16_t& result)
         return false;
     result = static_cast<std::int16_t>(number);
     return true;
-}
-
-QString normalized_destination(const QUrl& destination) {
-    QString path = destination.toLocalFile();
-    if (!path.endsWith(QStringLiteral(".wav"), Qt::CaseInsensitive)) {
-        path += QStringLiteral(".wav");
-    }
-    return QFileInfo(path).absoluteFilePath();
 }
 
 bool same_file(const QString& source, const QString& destination) {
@@ -268,7 +261,18 @@ void SoundAssemblyController::exportAssembly(const QVariantMap& revision, const 
         reject(tr("The assembly destination must be a local file."));
         return;
     }
-    start(revision, normalized_destination(destination), false);
+    try {
+        start(
+            revision,
+            AudioExportOptions::destination(
+                destination,
+                AudioExportOptions::profile(export_options_)
+            ),
+            false
+        );
+    } catch (const std::exception& error) {
+        reject(QString::fromUtf8(error.what()));
+    }
 }
 
 void SoundAssemblyController::saveToMemory(const QVariantMap& revision) {
@@ -289,6 +293,15 @@ void SoundAssemblyController::start(
     qint64 startMillis,
     qint64 endMillis
 ) {
+    echo::audio::AudioExportProfile profile;
+    try {
+        profile = AudioExportOptions::profile(
+            preview || preserveMemory ? QVariantMap{} : export_options_
+        );
+    } catch (const std::exception& error) {
+        reject(QString::fromUtf8(error.what()));
+        return;
+    }
     if (destination.isEmpty()) {
         reject(tr("The assembly destination is invalid."));
         return;
@@ -353,6 +366,7 @@ void SoundAssemblyController::start(
                             destination,
                             preview,
                             preserveMemory,
+                            profile,
                             preparation_root,
                             pinned_sources,
                             job = std::move(*projected)](std::stop_token stop_token) mutable {
@@ -448,9 +462,10 @@ void SoundAssemblyController::start(
                 throw std::runtime_error(output.errorString().toStdString());
             }
             QtRenderByteSink sink(output);
-            const auto result = echo::audio::OfflineAssemblyWavRenderer::render(
+            const auto result = echo::audio::AudioExporter::render_assembly(
                 job.plan,
                 sink,
+                profile,
                 {
                     .cancelled = [&stop_token] { return stop_token.stop_requested(); },
                     .progress =
@@ -499,7 +514,8 @@ void SoundAssemblyController::start(
                     result.integrated_lufs,
                     result.true_peak_dbtp,
                     preserveMemory,
-                    source_disclosure
+                    source_disclosure,
+                    QString::fromStdString(profile.format)
                 );
             }
             QMetaObject::invokeMethod(

@@ -9,6 +9,7 @@ TestCase {
     QtObject {
         id: backend
         property bool independentEditing: false
+        property string audioFileFilter:"Audio files (*.wav)"
         signal assetsChanged()
         function listAssets() { return test.sources; }
         function projectMaterials(id) { return ["a", "b"]; }
@@ -34,6 +35,7 @@ TestCase {
         signal accepted(string assetId)
         function discard() {}
     }
+    QtObject { id:audioStreamImport; property bool busy:false; property bool choosing:false; property var streams:[]; property string sourceName:""; property string errorText:""; signal filesReady(var files); signal stateChanged(); function cancel(){} }
     SoundSourceBrowser { id: browser; anchors.fill: parent }
     function source(id, generated) {
         return {id:id,path:"/test/"+id+".wav",pathStatus:"present",durationMillis:1000,inMaterials:true,inMemory:false,

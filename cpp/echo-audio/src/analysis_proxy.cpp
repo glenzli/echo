@@ -10,6 +10,7 @@
 #include <fstream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -222,15 +223,32 @@ AnalysisProxyResult build_analysis_proxy(
     }
     std::unique_ptr<SwrContext, SwrDeleter> resampler(raw_resampler);
 
-    const std::int64_t seek_timestamp = av_rescale_q(
-        static_cast<std::int64_t>(start_millis),
-        AVRational{1, 1000},
-        stream->time_base
-    );
-    if (av_seek_frame(format.get(), stream->index, seek_timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
-        fail("cannot seek analysis proxy source");
+    const auto source_start = audio_start_time(format.get(), stream);
+    const std::int64_t seek_timestamp = source_start
+                                        + av_rescale_q(
+                                            static_cast<std::int64_t>(start_millis),
+                                            AVRational{1, 1000},
+                                            stream->time_base
+                                        );
+    if (start_millis != 0) {
+        const auto preroll = (codec->frame_size > 0 || av_get_bits_per_sample(codec->codec_id) == 0)
+                                 ? av_rescale_q(
+                                       std::max(4096, codec->frame_size * 4),
+                                       AVRational{1, codec->sample_rate},
+                                       stream->time_base
+                                   )
+                                 : 0;
+        if (av_seek_frame(
+                format.get(),
+                stream->index,
+                seek_timestamp - preroll,
+                AVSEEK_FLAG_BACKWARD
+            )
+            < 0) {
+            fail("cannot seek analysis proxy source");
+        }
+        avcodec_flush_buffers(codec.get());
     }
-    avcodec_flush_buffers(codec.get());
 
     PcmWavWriter writer(output_path);
     std::unique_ptr<AVPacket, PacketDeleter> packet(av_packet_alloc());
@@ -239,27 +257,29 @@ AnalysisProxyResult build_analysis_proxy(
         fail("cannot allocate analysis proxy decode buffers");
     }
     bool reached_end = false;
-    std::int64_t fallback_millis = static_cast<std::int64_t>(start_millis);
+    std::optional<std::int64_t> output_position;
+    const auto first_frame = av_rescale(static_cast<int64_t>(start_millis), kProxySampleRate, 1000);
+    const auto last_frame = av_rescale(static_cast<int64_t>(end_millis), kProxySampleRate, 1000);
+    const auto append_output = [&](const std::vector<std::int16_t>& output, int count) {
+        if (!output_position)
+            return;
+        const auto first = std::clamp<int64_t>(first_frame - *output_position, 0, count);
+        const auto last = std::clamp<int64_t>(last_frame - *output_position, first, count);
+        if (last > first)
+            writer.append(output.data() + first, static_cast<std::size_t>(last - first));
+        *output_position += count;
+        reached_end = *output_position >= last_frame;
+    };
     const auto receive = [&]() {
         while (!reached_end && avcodec_receive_frame(codec.get(), frame.get()) == 0) {
             const std::int64_t timestamp = frame->best_effort_timestamp;
-            const std::int64_t frame_start =
-                timestamp == AV_NOPTS_VALUE
-                    ? fallback_millis
-                    : av_rescale_q(timestamp, stream->time_base, AVRational{1, 1000});
-            const std::int64_t frame_duration = std::max<std::int64_t>(
-                1,
-                av_rescale_q(
-                    frame->nb_samples,
-                    AVRational{1, codec->sample_rate},
-                    AVRational{1, 1000}
-                )
-            );
-            fallback_millis = frame_start + frame_duration;
-            if (frame_start >= static_cast<std::int64_t>(end_millis)) {
-                reached_end = true;
-                av_frame_unref(frame.get());
-                break;
+            if (!output_position) {
+                output_position = timestamp == AV_NOPTS_VALUE ? first_frame
+                                                              : av_rescale_q(
+                                                                    timestamp - source_start,
+                                                                    stream->time_base,
+                                                                    AVRational{1, kProxySampleRate}
+                                                                );
             }
 
             const int capacity = swr_get_out_samples(resampler.get(), frame->nb_samples);
@@ -277,30 +297,7 @@ AnalysisProxyResult build_analysis_proxy(
             if (converted < 0) {
                 fail("cannot resample analysis proxy: " + av_error_text(converted));
             }
-            const std::int64_t first = std::clamp<std::int64_t>(
-                av_rescale(
-                    std::max<std::int64_t>(
-                        0,
-                        static_cast<std::int64_t>(start_millis) - frame_start
-                    ),
-                    kProxySampleRate,
-                    1000
-                ),
-                0,
-                converted
-            );
-            const std::int64_t last = std::clamp<std::int64_t>(
-                av_rescale(
-                    std::max<std::int64_t>(0, static_cast<std::int64_t>(end_millis) - frame_start),
-                    kProxySampleRate,
-                    1000
-                ),
-                first,
-                converted
-            );
-            if (last > first) {
-                writer.append(output.data() + first, static_cast<std::size_t>(last - first));
-            }
+            append_output(output, converted);
             av_frame_unref(frame.get());
         }
     };
@@ -314,6 +311,17 @@ AnalysisProxyResult build_analysis_proxy(
     }
     if (!reached_end && avcodec_send_packet(codec.get(), nullptr) >= 0) {
         receive();
+    }
+    while (!reached_end && output_position) {
+        const int capacity = std::max(1, swr_get_out_samples(resampler.get(), 0));
+        std::vector<std::int16_t> output(static_cast<std::size_t>(capacity));
+        std::uint8_t* plane = reinterpret_cast<std::uint8_t*>(output.data());
+        const int count = swr_convert(resampler.get(), &plane, capacity, nullptr, 0);
+        if (count < 0)
+            fail("cannot flush analysis proxy resampler");
+        if (count == 0)
+            break;
+        append_output(output, count);
     }
     return writer.finish();
 }

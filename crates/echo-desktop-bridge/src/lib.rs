@@ -619,6 +619,7 @@ mod ffi {
         fn editor_open_project(project: &str, root: &str) -> Result<()>;
         fn session_is_independent(self: &LibrarySession) -> bool;
         /// Opens (creating if needed) the catalog and cache at the given roots.
+        fn audio_file_patterns() -> String;
         fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>>;
         /// Lists registered assets, newest import first.
         fn session_save_project_clip_adjustment(
@@ -998,6 +999,10 @@ fn semantic_search_catalog(
 /// # Errors
 ///
 /// Returns the session error message when the catalog cannot be opened.
+pub fn audio_file_patterns() -> String {
+    echo_core::audio_file_patterns()
+}
+
 pub fn open_session(path: &str, cache_root: &str) -> Result<Box<LibrarySession>, String> {
     session::open_session(path, cache_root)
         .map(Box::new)

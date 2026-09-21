@@ -121,3 +121,37 @@ fn source_identity_mismatch_never_replaces_a_valid_project() {
     drop(session);
     fs::remove_dir_all(base).unwrap();
 }
+
+#[test]
+#[ignore = "requires ECHO_CONTAINER_PROJECT_FIXTURE from a manually selected audio stream"]
+fn selected_stream_project_round_trips_complete_container() {
+    let source = std::path::PathBuf::from(std::env::var("ECHO_CONTAINER_PROJECT_FIXTURE").unwrap());
+    let base = fixture();
+    let project = base.join("selected.echo");
+    save(&source, &project).unwrap();
+    let db = readonly(&project).unwrap();
+    let paths:Vec<String>=db.prepare("SELECT path FROM editor_project_files WHERE path LIKE 'media/container-audio/%' ORDER BY path").unwrap().query_map([],|r|r.get(0)).unwrap().collect::<Result<_,_>>().unwrap();
+    assert!(paths.iter().any(|p| p.ends_with("/original")));
+    assert!(paths.iter().any(|p| p.ends_with("/track-1.mka")));
+    drop(db);
+    let moved = base.join("moved.echo");
+    fs::rename(project, &moved).unwrap();
+    let reopened = base.join("reopened");
+    open(&moved, &reopened).unwrap();
+    for path in &paths {
+        assert_eq!(
+            echo_core::hash_file(&source.join(path)).unwrap(),
+            echo_core::hash_file(&reopened.join(path)).unwrap()
+        );
+    }
+    let db = readonly(&reopened.join("catalog.sqlite")).unwrap();
+    let count: i64 = db
+        .query_row("SELECT count(*) FROM jobs", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(count, 0);
+    drop(db);
+    println!(
+        "Selected track and full container preserved through save, move and reopen; no library jobs"
+    );
+    fs::remove_dir_all(base).unwrap();
+}

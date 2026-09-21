@@ -206,6 +206,9 @@ impl LibrarySession {
             "wav_pcm16" => RenderExportFormat::WavPcm16,
             "wav_pcm24" => RenderExportFormat::WavPcm24,
             "flac24" => RenderExportFormat::Flac24,
+            "wav_float32" => RenderExportFormat::WavFloat32,
+            "mp3" => RenderExportFormat::Mp3,
+            "aac_m4a" => RenderExportFormat::AacM4a,
             _ => {
                 return Err(SessionError {
                     message: "render format is unsupported".to_owned(),

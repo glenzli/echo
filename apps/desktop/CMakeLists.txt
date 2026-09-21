@@ -113,6 +113,8 @@ qt_add_executable(
     src/desktop_selection_transcription.cpp
     src/selection_transcription_controller.cpp
     src/selection_transcription_controller.hpp
+    src/audio_stream_import_controller.cpp
+    src/audio_stream_import_controller.hpp
     src/generated_narration_controller.cpp
     src/generated_narration_controller.hpp
     src/desktop_sound_library.cpp
@@ -306,6 +308,9 @@ qt_add_qml_module(
         qml/SoundTranscriptPanel.qml
         qml/EchoCheckBox.qml
         qml/SoundEditingWorkspace.qml
+        qml/AudioStreamImportDialog.qml
+        qml/AudioExportSettings.qml
+        qml/AssemblyExportDialog.qml
         qml/SoundExportDialog.qml
         qml/SoundCard.qml
         qml/SoundFilmstripItem.qml
@@ -447,6 +452,11 @@ if(BUILD_TESTING)
     add_dependencies(echo-selection-transcription-controller-test echo-desktop-rust-build)
     echo_audio_enable_warnings(echo-selection-transcription-controller-test)
     add_test(NAME echo-selection-transcription-controller-test COMMAND echo-selection-transcription-controller-test)
+    add_executable(echo-audio-stream-import-controller-test tests/audio_stream_import_controller_test.cpp src/audio_stream_import_controller.cpp src/audio_stream_import_controller.hpp)
+    target_include_directories(echo-audio-stream-import-controller-test PRIVATE src)
+    target_link_libraries(echo-audio-stream-import-controller-test PRIVATE Qt6::Core Qt6::Concurrent Echo::Audio)
+    add_test(NAME echo-audio-stream-import-controller-test COMMAND echo-audio-stream-import-controller-test)
+
     add_executable(echo-generated-narration-controller-test tests/generated_narration_controller_test.cpp src/generated_narration_controller.cpp src/generated_narration_controller.hpp)
     target_include_directories(echo-generated-narration-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
     target_compile_features(echo-generated-narration-controller-test PRIVATE cxx_std_20)

@@ -15,6 +15,7 @@ class DesktopBackend;
 
 class RenderExportController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QVariantMap exportOptions MEMBER export_options_)
     Q_PROPERTY(bool running READ running NOTIFY stateChanged)
     Q_PROPERTY(bool hasResult READ hasResult NOTIFY stateChanged)
     Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged)
@@ -121,6 +122,7 @@ class RenderExportController : public QObject {
     void progressChanged();
 
   private:
+    QVariantMap export_options_;
     void stopWorker();
     void reject(const QString& message);
 

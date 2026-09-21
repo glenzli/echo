@@ -99,6 +99,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         Some(ref version)
             if version
                 .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|revision| revision == crate::schema::AUDIO_FORMATS_PREDECESSOR) =>
+        {
+            crate::delivery_formats::migrate(connection)?;
+        }
+        Some(ref version)
+            if version
+                .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| {
                     revision == crate::schema::GENERATED_AUDIO_PREDECESSOR
                         || revision == crate::schema::SELECTION_TRANSCRIPT_PREDECESSOR
@@ -401,6 +408,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             ));
         }
     }
+    crate::delivery_formats::migrate(connection)?;
     let library_tables: i64 = connection.query_row(
         "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN \
          ('sound_items', 'project_materials', 'assembly_memory_editions', 'project_adjustment_revisions', 'memory_waveform_artifacts', \

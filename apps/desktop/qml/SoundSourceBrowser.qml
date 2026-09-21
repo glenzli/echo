@@ -370,15 +370,28 @@ Rectangle {
         id: importDialog
         title: qsTr("Import audio materials")
         fileMode: FileDialog.OpenFiles
-        nameFilters: [qsTr("Audio files (*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.aiff *.aif *.caf)"), qsTr("All files (*)")]
+        nameFilters: [backend.audioFileFilter, qsTr("All files (*)")]
         onAccepted: {
-            if (browser.independentMode) { independentEditor.importAudio(selectedFiles); return; }
+            streamImport.targetAssembly=browser.assemblyId;
+            streamImport.globalMaterial=!browser.editorMode || !browser.assemblyId || collectGlobally.checked;
+            streamImport.targetCategory=browser.category;
+            streamImport.present(selectedFiles);
+        }
+    }
+    AudioStreamImportDialog {
+        id:streamImport
+        property string targetAssembly:""
+        property bool globalMaterial:false
+        property string targetCategory:""
+        onFilesReady: files => {
+            if (browser.independentMode) { independentEditor.importAudio(files); return; }
             const failures = [];
-            for (const file of selectedFiles) {
-                const message = backend.importMaterial(file,browser.assemblyId,!browser.editorMode || !browser.assemblyId || collectGlobally.checked,browser.category);
+            for (const file of files) {
+                const message = backend.importMaterial(file,streamImport.targetAssembly,streamImport.globalMaterial,streamImport.targetCategory);
                 if (message) failures.push(message);
             }
             browser.notice = failures.length ? failures.join("\n") : qsTr("Import queued. Sounds appear here when ready.");
         }
     }
+
 }

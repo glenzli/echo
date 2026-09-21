@@ -18,11 +18,7 @@ use echo_catalog::{
 
 use crate::error::{CoreError, CoreErrorKind};
 
-/// Audio extensions Echo scans by default.
-const AUDIO_EXTENSIONS: &[&str] = &[
-    "mp3", "m4a", "aac", "flac", "wav", "aiff", "aif", "ogg", "opus", "wma", "m4b", "mov", "m4v",
-    "mp4",
-];
+use crate::audio_formats::AUDIO_EXTENSIONS;
 
 /// The directory scanner.
 #[derive(Debug, Clone)]
