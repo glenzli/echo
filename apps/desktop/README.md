@@ -340,8 +340,19 @@ The interaction follows the explicit sample/preview/residue workflow documented 
 ## Explicit editor AI
 
 `SelectionTranscriptionController` owns one background original-range request.
-`SoundTranscriptPanel.qml` shows sentence evidence, source-time selection and
-reversible hide/keep actions, with optional boundary padding. The core
+`SoundTranscriptPanel.qml` owns literal phrase search, checked sentences/aligned
+units and review of speech-gap candidates. `EchoCheckBox.qml` keeps compact checked
+selection and keyboard focus consistent with the editor's surface colors. Original audition includes 250 ms of
+context for gaps; that context is excluded from edits. `SoundTranscriptEditing.js`
+maps phrase hits to complete timed units and derives bounded gaps from speech
+coverage, retaining edge padding and excluding uncertain zero-duration boundaries.
+Gaps may contain ambience and require explicit acceptance; they are not silence detection.
+Changing search, evidence, granularity, parameters or draft identity clears checks.
+`SourceEditRanges.js` owns atomic source-range transforms used by
+`SoundAdjustmentDraft.editSourceRanges`: merge overlaps, preserve existing
+gain/fades/gaps, reject empty output or more than 128 segments, then publish once
+to undo history. Keep selected hides the complement without restoring prior edits.
+The core
 `editor_transcription` owner creates a bounded proxy (up to five minutes), verifies
 source content before and after inference, and retains the accepted Runtime model
 and Job identity. Optional forced alignment supplies finer units only when its

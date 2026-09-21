@@ -6186,92 +6186,134 @@
     <context>
         <name>SoundTranscriptPanel</name>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="31" />
             <source>Selection %1–%2 s</source>
             <translation>选区 %1–%2 秒</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="32" />
             <source>Whole recording</source>
             <translation>完整录音</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="64" />
+            <source>This edit would exceed 128 source segments. Select fewer ranges.</source>
+            <translation>此次编辑会超过 128 个源片段，请减少选择的区间。</translation>
+        </message>
+        <message>
+            <source>Keep some audio or an inserted gap. No changes were made.</source>
+            <translation>请保留一些声音或插入的间隔。本次未做修改。</translation>
+        </message>
+        <message>
+            <source>These ranges are no longer available. Select them again.</source>
+            <translation>这些区间已不可用，请重新选择。</translation>
+        </message>
+        <message>
             <source>Transcript editing</source>
             <translation>文字选段</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="65" />
             <source>Original-time evidence</source>
             <translation>原录音时间</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="66" />
+            <source>Text</source>
+            <translation>文字</translation>
+        </message>
+        <message>
+            <source>Speech gaps</source>
+            <translation>语音间隔</translation>
+        </message>
+        <message>
+            <source>Find words or phrases…</source>
+            <translation>查找文字或短语…</translation>
+        </message>
+        <message>
             <source>Aligned units</source>
             <translation>对齐词段</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="67" />
+            <source>Minimum gap (ms)</source>
+            <translation>最短间隔（毫秒）</translation>
+        </message>
+        <message>
             <source>Boundary margin (ms)</source>
             <translation>边界余量（ms）</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="71" />
+            <source>Gaps between aligned speech may contain ambience. Audition includes 250 ms of context; only the marked interval is edited.</source>
+            <translation>对齐语音之间可能仍有环境声。试听包含前后各 250 毫秒的上下文，编辑只作用于标记区间。</translation>
+        </message>
+        <message>
+            <source>Search and check sentences or aligned units. Audition plays the original; batch edits are reversible and keep the transcript intact.</source>
+            <translation>搜索并勾选句段或对齐单元。试听播放原声；批量编辑可以撤销，文字证据保持完整。</translation>
+        </message>
+        <message>
+            <source>Select %1</source>
+            <translation>选择 %1</translation>
+        </message>
+        <message>
+            <source>Locate</source>
+            <translation>定位</translation>
+        </message>
+        <message>
+            <source>Audition source</source>
+            <translation>试听原声</translation>
+        </message>
+        <message>
+            <source>No speech gaps meet these settings.</source>
+            <translation>没有符合当前设置的语音间隔。</translation>
+        </message>
+        <message>
+            <source>Speech gaps need aligned timing. Transcribe a selection to obtain it.</source>
+            <translation>语音间隔需要对齐时间。请转写一个选区以获取对齐结果。</translation>
+        </message>
+        <message>
+            <source>No matching text in this range.</source>
+            <translation>当前范围内没有匹配的文字。</translation>
+        </message>
+        <message>
+            <source>No usable timing is available. Units without a reliable duration cannot be edited.</source>
+            <translation>没有可用的时间信息。缺少可靠时长的单元不能用于编辑。</translation>
+        </message>
+        <message>
+            <source>Select results</source>
+            <translation>全选结果</translation>
+        </message>
+        <message>
+            <source>Clear</source>
+            <translation>清除选择</translation>
+        </message>
+        <message>
+            <source>%1 selected · %2 s</source>
+            <translation>已选 %1 项 · %2 秒</translation>
+        </message>
+        <message>
+            <source>Keep selected</source>
+            <translation>仅保留所选</translation>
+        </message>
+        <message>
+            <source>Hide selected</source>
+            <translation>隐藏所选</translation>
+        </message>
+        <message>
             <source>Discard result</source>
             <translation>放弃结果</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="71" />
             <source>Transcribe selection</source>
             <translation>转写选区</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="78" />
+            <source>Retain at each edge (ms)</source>
+            <translation>两端各保留（毫秒）</translation>
+        </message>
+        <message>
             <source>The result will be discarded. Infer Runtime may still be processing the request.</source>
             <translation>将丢弃此结果。Infer Runtime 可能仍在处理请求。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="78" />
             <source>Transcribing the selected original audio…</source>
             <translation>正在转写所选原始音频…</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="79" />
-            <source>Select a sentence to locate or audition it. Hiding or keeping audio creates a reversible edit; it does not change the transcript.</source>
-            <translation>选择句段以定位或试听。隐藏或保留音频均可撤销，不会修改转写文字。</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="84" />
-            <source>Units without a reliable duration are omitted from editing.</source>
-            <translation>没有可靠时长的词段不会作为编辑目标。</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="103" />
-            <source>Select</source>
-            <translation>选中</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="104" />
-            <source>Audition</source>
-            <translation>试听</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="105" />
-            <source>Hide audio</source>
-            <translation>隐藏音频</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="106" />
-            <source>Keep only</source>
-            <translation>仅保留</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="109" />
-            <source>No usable sentence timing is available for this range.</source>
-            <translation>此范围内没有可用的句段时间。</translation>
-        </message>
-        <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="109" />
             <source>No transcript yet. Select a range of up to five minutes and transcribe it.</source>
             <translation>暂无转写。请选择不超过五分钟的音频区间进行转写。</translation>
         </message>

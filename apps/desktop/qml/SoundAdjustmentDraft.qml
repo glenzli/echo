@@ -4,6 +4,7 @@
 
 import "SpectralEditing.js" as SpectralEditing
 import "NoiseProfileEditing.js" as NoiseEditing
+import "SourceEditRanges.js" as SourceEditRanges
 import QtQuick
 
 QtObject {
@@ -1133,6 +1134,15 @@ QtObject {
             return;
         editSegments = next;
         pushCurrent();
+    }
+
+    function editSourceRanges(ranges: var, kind: string): var {
+        const result = SourceEditRanges.apply(editSegments, ranges, trimStartMillis, trimEndMillis, kind);
+        if (result.ok && result.changed) {
+            editSegments = result.segments;
+            pushCurrent();
+        }
+        return result;
     }
 
     function insertGap(millis: int, durationMillis: int): void {

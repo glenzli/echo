@@ -26,3 +26,21 @@ test('aligned units retain repeated text and do not invent duration for a zero-l
     assert.deepEqual(plain(transcript.bounds(units[1],80,0,5000)),{start:2920,end:4080});
     assert.equal(transcript.bounds(units[2],80,0,5000),null);
 });
+
+test('phrase search spans complete aligned units in Chinese and English, retaining repeated matches',()=>{
+    const entries=transcript.entries([{text:'Soft'},{text:'rain'},{text:'then'},{text:'soft'},{text:'rain'}]);
+    assert.deepEqual(plain(transcript.filtered(entries,'soft rain',true)).map(s=>s.key),['text:0','text:1','text:3','text:4']);
+    assert.deepEqual(plain(transcript.filtered(transcript.entries([{text:'慢'},{text:'慢'},{text:'走'}]),'慢慢',true)).map(s=>s.key),['text:0','text:1']);
+    assert.equal(transcript.filtered(entries,'[',true).length,0); // literal, not regex
+    assert.equal(transcript.filtered(transcript.entries([{text:'Soft rain falls.'}]),'RAIN',false).length,1);
+});
+test('speech gaps union overlapping evidence and retain source offset and edge padding',()=>{
+    const words=[{text:'one',start:20,end:21},{text:'nested',start:20.5,end:20.8},{text:'two',start:22,end:23},{text:'three',start:23.2,end:24}];
+    const gaps=plain(transcript.gaps(words,600,120));
+    assert.equal(gaps.length,1);assert.equal(gaps[0].start,21.12);assert.equal(gaps[0].end,21.88);
+    assert.deepEqual(plain(transcript.bounds(gaps[0],0,21500,23000)),{start:21500,end:21880});
+    assert.equal(transcript.gaps(words,600,500).length,0);
+});
+test('uncertain timing blocks gap suggestions; no fabricated leading/trailing silence',()=>{
+    for(const words of [[],[{text:'a',start:1,end:2}],[{text:'a',start:1,end:2},{text:'?',start:2.5,end:2.5},{text:'b',start:3,end:4}],[{text:'a',start:3,end:4},{text:'b',start:1,end:2}],[{text:'a',start:1,end:NaN}]]) assert.equal(transcript.gaps(words,200,0).length,0);
+});

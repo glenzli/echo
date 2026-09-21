@@ -286,7 +286,9 @@ qt_add_qml_module(
         qml/SourceRegionInspector.qml
         qml/EffectMaskEditor.qml
         qml/SoundTranscriptEditing.js
+        qml/SourceEditRanges.js
         qml/SoundTranscriptPanel.qml
+        qml/EchoCheckBox.qml
         qml/SoundEditingWorkspace.qml
         qml/SoundExportDialog.qml
         qml/SoundCard.qml

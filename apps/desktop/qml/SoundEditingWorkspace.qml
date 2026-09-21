@@ -690,7 +690,7 @@ Rectangle {
                 return;
             const resumeAt = player.position;
             Qt.callLater(function () {
-                workspace.playFrom(resumeAt);
+                if (player.active) workspace.playFrom(resumeAt);
             });
         }
         function onEffectMasksChanged(): void {
@@ -1037,19 +1037,19 @@ Rectangle {
                 visible: workspace.transcriptFocus
                 SplitView.fillWidth: true; SplitView.fillHeight: true; SplitView.minimumHeight: 330
                 asset: workspace.asset
-                revisionKey: workspace.adjustmentKey()
+                revisionKey: JSON.stringify(adjustmentDraft.snapshot())
                 rangeStart: editorTimeline.hasTimeSelection ? editorTimeline.selectionStartMillis : adjustmentDraft.trimStartMillis
                 rangeEnd: editorTimeline.hasTimeSelection ? editorTimeline.selectionEndMillis : adjustmentDraft.trimEndMillis
                 trimStart: adjustmentDraft.trimStartMillis; trimEnd: adjustmentDraft.trimEndMillis
                 onRangeRequested: (start,end,play) => {
                     editorTimeline.selectionStartMillis=start; editorTimeline.selectionEndMillis=end; editorTimeline.hasTimeSelection=true;
                     editorTimeline.fitSelection();
-                    if (play) { editorTimeline.loopSelection=true; workspace.playFrom(start); }
+                    if (play) { workspace.auditionOriginal=true; editorTimeline.loopSelection=true; workspace.playFrom(start); }
                 }
-                onEditRequested: (kind,start,end) => {
-                    player.stop();
-                    if (kind === "hide") adjustmentDraft.setSelectionState(start,end,2);
-                    else adjustmentDraft.setTrimRange(start,end);
+                onEditsRequested: (kind,ranges) => {
+                    const result = adjustmentDraft.editSourceRanges(ranges,kind);
+                    if (result.ok && result.changed) player.stop();
+                    transcriptPanel.finishEdit(result);
                 }
             }
             SoundAdjustmentEditor {
