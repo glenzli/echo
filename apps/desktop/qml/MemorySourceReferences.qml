@@ -15,6 +15,7 @@ ColumnLayout {
     signal openProjectRequested(string assemblyId)
     spacing: 8
     visible: asset !== null && asset !== undefined && !!asset.assemblyId
+    onAssetChanged: { if (visible) sources = backend.listAssets(); }
     onVisibleChanged: { if (visible) sources = backend.listAssets(); }
     Component.onCompleted: { if (visible) sources = backend.listAssets(); }
     EchoSectionLabel { Layout.fillWidth: true; text: qsTr("Sources in this memory") }
@@ -38,9 +39,10 @@ ColumnLayout {
                 ToolTip.visible: sourceHover.hovered
                 ToolTip.text: modelData.originalContentHash || ""
             }
+            SourceDisclosureBadge { asset: source || null }
             Text {
                 Layout.fillWidth: true
-                text: (modelData.sourceRole === "material" ? qsTr("Material") : qsTr("Memory")) + " · " + (modelData.adjustmentRevisionId ? qsTr("Source version %1").arg(modelData.adjustmentRevisionId) : qsTr("Original recording")) + " · " + (modelData.sourceStartMillis/1000).toFixed(1) + "–" + (modelData.sourceEndMillis/1000).toFixed(1) + qsTr(" s")
+                text: (modelData.sourceRole === "material" ? qsTr("Material") : qsTr("Memory")) + " · " + (modelData.adjustmentRevisionId ? qsTr("Source version %1").arg(modelData.adjustmentRevisionId) : qsTr("Original source")) + " · " + (modelData.sourceStartMillis/1000).toFixed(1) + "–" + (modelData.sourceEndMillis/1000).toFixed(1) + qsTr(" s")
                 color: Theme.textMuted; font.pixelSize: Theme.fontMeta; wrapMode: Text.WordWrap
             }
         }

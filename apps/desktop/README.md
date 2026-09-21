@@ -387,3 +387,28 @@ including original/adjusted playback, atomic undo/redo, portable save and export
 Focused tests: `echo-click-analysis-test`, `echo-click-analysis-controller-test`,
 `echo-effect-processing-chain-test`, `tests/click_repair_contract.mjs`, and
 `tests/qml/tst_ClickRepair.qml`.
+
+### Source disclosures
+
+`SourceDisclosureDialog.qml` owns explicit source-range declarations; `SourceDisclosureBadge.qml`
+shows them on cards, Tape, retained source references, the editor and arrangement clips/inspector. `SourceDisclosure.js`
+owns the Tape eligibility rule. Memory/material membership stays independent. Unmarked sources
+are unknown, not certified recordings. Generated additions and reconstructed speech are excluded
+from Tape by default; users can include them except in Original Tape. Filtering removes whole
+items and never changes a retained mix. AI processing alone does not exclude a sound.
+
+`desktop_source_disclosure.cpp` forwards bounded declarations over CXX; the Rust domain validates
+Original coordinates, the Catalog appends compare-and-swap revisions bound to the source hash,
+and the session projects source summaries. Labels are independent of DSP undo. Portable projects
+carry their history. Mix labels follow audible references in the retained assembly revision,
+conservatively including any disclosed interval in a referenced source. This is not an exact
+mapping of generated samples after cropping or effects. Exports freeze declarations in Catalog
+provenance; standalone WAV/FLAC files do not yet embed or accompany these labels.
+
+This batch admits user declarations on imported audio, not generation execution or automatic
+origin detection. `ECHO_DEBUG_SOURCE_DISCLOSURE` with the independent-editor fixture/report
+variables runs `SourceDisclosureSmoke.qml` through labeling, portable save/reopen and export.
+With a Library fixture and `ECHO_DEBUG_MEMORY_REPORT`, the same owner verifies Tape scope
+filters and stopping playback when the active generated source is excluded.
+Focused contracts live in domain/catalog/session `source_disclosure/tests.rs`,
+`tests/source_disclosure_contract.mjs` and `tests/qml/tst_SourceDisclosure.qml`.

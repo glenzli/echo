@@ -30,6 +30,8 @@ class DesktopBackend : public QObject {
         return session_->session_is_independent();
     }
     Q_INVOKABLE void refresh();
+    Q_INVOKABLE QString
+    setSourceDisclosure(const QString& id, qlonglong expectedRevision, const QVariantList& spans);
     Q_INVOKABLE QVariantList listAssets(bool originals = false) const;
     Q_INVOKABLE QString
     setSoundMembership(const QString& id, bool memory, bool materials, const QString& category);

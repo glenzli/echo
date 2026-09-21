@@ -20,7 +20,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - **Original 保持不变**：调整以版本保存，缓存可以重建，导出记录所使用的来源与处理版本。
 - **Analysis 不是事实**：文字、事件、情绪、地点和语义近邻都保留模型与执行来源；用户校准独立于模型证据。
 - **本地智能**：后台理解通过本地 Infer Runtime 执行，不进入实时音频回调，也不阻断资料库浏览和播放。
-- **创作边界明确**：Creative VFX 只处理用户显式选择的既有录音，默认可旁路且不覆盖 Original；语音生成、换声、改词和从零生成声音不属于当前 Echo。
+- **创作边界明确**：Creative VFX 只处理用户显式选择的既有录音，默认可旁路且不覆盖 Original；生成补充采用显式采纳、来源披露和重温筛选的方向，当前先提供来源标记，尚无生成执行入口。
 - **编排保持可追溯**：每个片段标明记忆或素材用途，并固定 Original 与处理版本；项目内精细编辑只更新该片段。收进记忆库时固定一个已完成的混音版本，后续项目编辑不会自动替换它。
 
 ### 当前可体验
@@ -28,6 +28,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - **独立编辑**：直接打开音频，使用单音处理或多轨编排，保存包含素材的 `.echo` 工程或导出音频；此入口使用隔离会话，不启动记忆库维护和自动分析。`./scripts/run_debug.sh --edit` 可启动。
 
 - **记忆库与重温**：导入本地文件夹，通过声音墙、声音带、单音详情、搜索、复合筛选、Like、评分和声音集整理录音；磁带可切换记忆、素材或原录音，将当前结果虚拟首尾相接以连续试听，不生成新的拼接文件；继续聆听、往年今日、最近聆听和新内容由可追溯的本地状态生成。
+- **来源标记**：可给原始时间选区或整份来源声明 AI 处理、生成补充或对白重建，并保留修改历史。标记随工程和可听的编排引用传递；磁带默认排除已标记的生成来源，也可显式包含。未标记不代表已验证实录。
 - **素材**：编辑器内提供本项目、记忆库和素材入口，可搜索、独立试听并加入轨道。导入文件保存为 Catalog 旁的持久副本，可只归项目或保留为全局素材；独立素材页提供类别与已有 AI 声音事件筛选。
 - **声音理解**：导入后在后台渐进提取文字、时间对齐、声音事件与情境信息，并允许用户校准展示结果；精确文字检索、基于证据的自然语言检索，以及面向短、无文字录音的有限 CLAP 检索彼此保留独立证据空间。
 - **非破坏性调整**：独立的声音调整工作区提供裁剪、淡入淡出、增益、EQ、Dynamics、响度测量、录制缺陷修复、空间处理、效果顺序与局部作用范围，并支持 Original／Adjusted A/B、撤销重做和显式保存版本。
@@ -43,7 +44,7 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - 本地智能能力需要已配置且具备相应能力的 Infer Runtime。Runtime 不可用时，导入、浏览、波形、播放和既有 DSP 调整仍可使用。
 - 人物、地点、情绪和声音类型目前主要是可追溯的模型证据或提示，不代表完整的人物关系、地理关系或事实确认系统。
 - CLAP 原声音检索当前只覆盖有界的短录音切片；长录音的完整分段语义检索仍在建设中。
-- 神经降噪、源分离和生成式声音能力不是当前开发版已完成的产品功能；公共仓库也不分发模型文件。
+- 神经降噪、源分离和生成式声音能力不是当前开发版已完成的产品功能；公共仓库也不分发模型文件。来源标记目前由用户声明，编排按整份来源保守披露；导出快照保存在 Echo Catalog 中，单独的 WAV／FLAC 尚不携带标记。
 - 已保存混音可从记忆库重新打开来源项目；当前不将一个混音项目嵌套为另一个项目的片段。项目内精细编辑使用原始频谱修复，渲染后工作副本仍属于单音处理入口。
 - 声音编排不是通用 DAW：当前不提供录音、输入监听、MIDI、速度网格、时间拉伸、插件宿主、发送总线、任意路由、轨道参数自动化或视频同步。
 
@@ -83,7 +84,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - **Keep the Original unchanged**: adjustments are saved as revisions, caches are rebuildable, and exports record the source and processing revision they used.
 - **Analysis is not fact**: text, events, emotion, location, and semantic neighbors retain model and execution provenance. User calibration remains separate from model evidence.
 - **Local intelligence**: background understanding runs through the local Infer Runtime, stays outside the real-time audio callback, and never blocks Library browsing or playback.
-- **Explicit creative boundary**: Creative VFX process only recordings the user selected, remain bypassable, and never overwrite the Original. Speech generation, voice conversion, rewriting words, and sound generation from scratch are outside the current Echo product.
+- **Explicit creative boundary**: Creative VFX process only recordings the user selected, remain bypassable, and never overwrite the Original. Generated additions require explicit acceptance, source disclosure, and revisit controls. The current build provides source labels; generation execution is not yet available.
 - **Traceable assembly**: each clip identifies its memory or material role and pins an Original and processing revision. Precision editing inside a project changes only that clip. Keeping a mix in memory pins a completed listening edition; subsequent project edits do not replace it.
 
 ### Available in the current build
@@ -91,6 +92,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - **Independent editing**: open audio directly, use the shared single-source and multitrack editors, save a portable `.echo` project with its sources, or export audio. This session starts no library maintenance or automatic analysis. Launch with `./scripts/run_debug.sh --edit`.
 
 - **Memory library and Revisit**: import local folders and organize recordings through the Sound Wall, Sound Tape, single-sound detail, search, compound filters, Likes, ratings, and sound collections. Sound Tape switches between memories, materials, and originals and virtually joins the results for continuous listening without creating a concatenated file. Continue Listening, On This Day, Recently Played, and new additions are derived from traceable local state.
+- **Source labels**: Declare AI processing, generated additions, or reconstructed speech for Original-time intervals or entire sources, with correction history. Labels travel with projects and audible arrangement references. Tape excludes declared generated sources by default and offers explicit inclusion. Unmarked sources are not verified recordings.
 - **Materials**: the editor contains Project, Memories, and Materials bins with search, independent audition, and track placement. Imported files are durable copies beside the Catalog and can stay project-only or enter global materials. A separate material page filters by user category and existing AI sound events.
 - **Sound understanding**: progressively extract text, alignment, sound events, and contextual information in the background, with user calibration over the displayed result. Exact text retrieval, evidence-based natural-language retrieval, and limited CLAP retrieval for short recordings without text remain separate evidence spaces.
 - **Non-destructive adjustment**: a dedicated workspace provides trim, fades, gain, EQ, dynamics, loudness measurement, recording repair, space processing, effect ordering, and bounded effect regions, with Original/Adjusted A/B, undo/redo, and explicit version saving.
@@ -106,7 +108,7 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - Local intelligent features require a configured Infer Runtime with the relevant capabilities. Import, browsing, waveforms, playback, and existing DSP adjustments remain usable when the Runtime is unavailable.
 - People, place, emotion, and sound-type projections are currently traceable model evidence or hints, not a complete identity, relationship, or fact-confirmation system.
 - Raw-audio CLAP retrieval currently covers a bounded short-recording slice. Complete segment-level semantic retrieval for long recordings is still under development.
-- Neural denoise, source separation, and generative audio are not completed product features in the current build. The public repository does not distribute model files.
+- Neural denoise, source separation, and generative audio are not completed product features in the current build. The public repository does not distribute model files. Source labels are currently user declarations and propagate conservatively for whole referenced sources. Export snapshots stay in Echo Catalog; standalone WAV/FLAC files do not yet carry these labels.
 - Saved mixes reopen their source project; nesting a mix project inside another project is not supported. Project clip editing supports original spectral repair; post-render working copies remain in the single-sound workspace.
 - Sound Assembly is not a general-purpose DAW. Recording, input monitoring, MIDI, tempo grids, time stretching, plug-in hosting, sends, arbitrary routing, track-parameter automation, and video sync are outside the current module.
 

@@ -166,6 +166,9 @@ pub fn record_render_export(
             "render export evidence is outside the supported range",
         ));
     }
+    let summary =
+        crate::source_disclosure::asset_source_disclosure(transaction, evidence.asset_id)?;
+    let disclosure_json = serde_json::to_string(&summary).map_err(|e| invalid(&e.to_string()))?;
     let revision =
         (evidence.adjustment_revision_id != 0).then_some(evidence.adjustment_revision_id);
     let existing = transaction
@@ -173,7 +176,7 @@ pub fn record_render_export(
             "SELECT id FROM render_exports WHERE asset_id = ?1 \
              AND adjustment_revision_id IS ?2 AND output_path = ?3 AND format = ?4 \
              AND sample_rate = ?5 AND channel_count = ?6 AND bit_depth = ?7 \
-             AND frame_count = ?8 AND content_hash = ?9 AND size_bytes = ?10 LIMIT 1",
+             AND frame_count = ?8 AND content_hash = ?9 AND size_bytes = ?10 ORDER BY id DESC LIMIT 1",
             rusqlite::params![
                 evidence.asset_id.to_string(),
                 revision,
@@ -191,10 +194,19 @@ pub fn record_render_export(
         )
         .optional()?;
     if let Some(id) = existing {
-        return Ok(RenderExportRecord {
-            id,
-            evidence: evidence.clone(),
-        });
+        let previous: Option<String> = transaction
+            .query_row(
+                "SELECT disclosure_json FROM render_export_disclosures WHERE render_export_id=?1",
+                [id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if previous.as_deref() == Some(disclosure_json.as_str()) {
+            return Ok(RenderExportRecord {
+                id,
+                evidence: evidence.clone(),
+            });
+        }
     }
     transaction.execute(
         "INSERT INTO render_exports (asset_id, adjustment_revision_id, output_path, format, \
@@ -217,8 +229,13 @@ pub fn record_render_export(
             evidence.created_at_millis,
         ],
     )?;
+    let id = transaction.last_insert_rowid();
+    transaction.execute(
+        "INSERT INTO render_export_disclosures(render_export_id,disclosure_json) VALUES(?1,?2)",
+        rusqlite::params![id, disclosure_json],
+    )?;
     Ok(RenderExportRecord {
-        id: transaction.last_insert_rowid(),
+        id,
         evidence: evidence.clone(),
     })
 }

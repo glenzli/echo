@@ -98,6 +98,7 @@ Rectangle {
             delegate: SoundAssemblyClip {
                 required property var modelData
                 clipData: modelData
+                sourceAsset: trackRow.assetFor(modelData)
                 automationEditing: trackRow.automationEditing
                 title: {
                     const source = trackRow.assetFor(modelData);

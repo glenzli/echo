@@ -1617,6 +1617,10 @@
             <source>The transcript could not be saved for this source.</source>
             <translation>无法为此来源保存转写结果。</translation>
         </message>
+        <message>
+            <source>Source labels could not be saved. They may have changed; reopen and try again.</source>
+            <translation>无法保存来源标记。标记可能已被修改，请重新打开后再试。</translation>
+        </message>
     </context>
     <context>
         <name>DigitalDegradeVfxPanel</name>
@@ -2751,8 +2755,8 @@
         </message>
         <message>
             <location filename="../qml/MemorySourceReferences.qml" line="43" />
-            <source>Original recording</source>
-            <translation>原始录音</translation>
+            <source>Original source</source>
+            <translation>原始来源</translation>
         </message>
         <message>
             <location filename="../qml/MemorySourceReferences.qml" line="43" />
@@ -6199,6 +6203,18 @@
             <source>Stop sound tape</source>
             <translation>停止声音带</translation>
         </message>
+        <message>
+            <source>Include AI-generated sources</source>
+            <translation>包含 AI 生成来源</translation>
+        </message>
+        <message>
+            <source>Original tape excludes declared generated sources</source>
+            <translation>原始磁带排除已标记的生成来源</translation>
+        </message>
+        <message>
+            <source>%1 sounds excluded by source labels</source>
+            <translation>已按来源标记排除 %1 条声音</translation>
+        </message>
     </context>
     <context>
         <name>SoundTranscriptPanel</name>
@@ -7511,6 +7527,100 @@
         <message>
             <source>Repair selected</source>
             <translation>修复所选</translation>
+        </message>
+    </context>
+    <context>
+        <name>SourceDisclosureBadge</name>
+        <message>
+            <source>AI-generated source</source>
+            <translation>AI 生成来源</translation>
+        </message>
+        <message>
+            <source>AI-processed source</source>
+            <translation>AI 处理来源</translation>
+        </message>
+        <message>
+            <source>Source labels</source>
+            <translation>来源标记</translation>
+        </message>
+        <message>
+            <source>This sound references a source with declared AI-generated content. Labels apply to the source, not an exact mixed interval.</source>
+            <translation>此声音引用了已标记含 AI 生成内容的来源。标记针对来源，不代表混音中的精确区间。</translation>
+        </message>
+        <message>
+            <source>User-declared source information. An unmarked source is not a verified recording.</source>
+            <translation>用户声明的来源信息。未标记不代表已验证为实录。</translation>
+        </message>
+    </context>
+    <context>
+        <name>SourceDisclosureDialog</name>
+        <message>
+            <source>Generated addition</source>
+            <translation>生成补充</translation>
+        </message>
+        <message>
+            <source>Reconstructed speech</source>
+            <translation>对白重建</translation>
+        </message>
+        <message>
+            <source>AI processing</source>
+            <translation>AI 处理</translation>
+        </message>
+        <message>
+            <source>Source labels</source>
+            <translation>来源标记</translation>
+        </message>
+        <message>
+            <source>Source declarations for this retained mix. Open a source to correct its labels.</source>
+            <translation>此保留混音引用的来源声明。打开对应来源可修正标记。</translation>
+        </message>
+        <message>
+            <source>Declare AI processing or generated additions in this source. This changes labels only; the original audio stays intact.</source>
+            <translation>标记此来源中的 AI 处理或生成补充。这里只修改标记，原始音频保持不变。</translation>
+        </message>
+        <message>
+            <source>Unmarked does not mean verified. Reconstructed speech must not be treated as recorded dialogue. Corrections retain their history.</source>
+            <translation>未标记不代表已验证。重建对白不能视作录下的原话。修正标记时会保留历史。</translation>
+        </message>
+        <message>
+            <source>What was added or processed?</source>
+            <translation>补充或处理了什么？</translation>
+        </message>
+        <message>
+            <source>Label selection</source>
+            <translation>标记选区</translation>
+        </message>
+        <message>
+            <source>Label whole source</source>
+            <translation>标记整个来源</translation>
+        </message>
+        <message>
+            <source>%1 / 64 labels</source>
+            <translation>%1 / 64 条标记</translation>
+        </message>
+        <message>
+            <source>No source labels yet</source>
+            <translation>尚无来源标记</translation>
+        </message>
+        <message>
+            <source>Remove label</source>
+            <translation>移除标记</translation>
+        </message>
+        <message>
+            <source>Times refer to the original source.</source>
+            <translation>时间以原始来源为准。</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>关闭</translation>
+        </message>
+        <message>
+            <source>Cancel</source>
+            <translation>取消</translation>
+        </message>
+        <message>
+            <source>Save labels</source>
+            <translation>保存标记</translation>
         </message>
     </context>
 </TS>

@@ -41,6 +41,7 @@ mod semantic_search;
 mod smart_albums;
 mod sound_assembly;
 mod sound_library;
+mod source_disclosure;
 mod source_metadata;
 mod user_albums;
 
@@ -159,11 +160,16 @@ pub use user_albums::{
     list_user_albums, rename_user_album, set_user_album_membership,
 };
 
-#[cfg(test)]
-mod tests;
-
 pub use sound_library::{
     AssemblyMemory, SoundMembership, assembly_memories, assembly_memory_path,
     attach_project_material, preserve_assembly_memory, project_material_ids, set_sound_membership,
     sound_memberships,
 };
+
+pub use source_disclosure::{
+    SourceDisclosureRevision, SourceDisclosureSummary, assembly_source_disclosure,
+    record_source_disclosure, source_disclosures,
+};
+
+#[cfg(test)]
+mod tests;

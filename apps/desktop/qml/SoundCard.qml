@@ -324,6 +324,12 @@ Rectangle {
         }
     }
 
+    SourceDisclosureBadge {
+        asset: card.entry
+        anchors.left: parent.left; anchors.top: parent.top
+        anchors.margins: 9; z: 12
+    }
+
     ColumnLayout {
         anchors.left: parent.left
         anchors.right: parent.right

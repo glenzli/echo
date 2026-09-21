@@ -53,6 +53,12 @@ Rectangle {
 
     color: Theme.window
 
+    property alias sourceDisclosureDialog: sourceDisclosure
+    SourceDisclosureDialog { id: sourceDisclosure; catalogBackend: backend }
+    function presentSourceDisclosure(): void {
+        if (hasAsset) sourceDisclosure.present(asset, editorTimeline.hasTimeSelection ? editorTimeline.selectionStartMillis : 0, editorTimeline.hasTimeSelection ? editorTimeline.selectionEndMillis : 0);
+    }
+
     function fileName(path: string): string {
         const normalized = path.replace(/\\/g, "/");
         return normalized.substring(normalized.lastIndexOf("/") + 1);
@@ -815,7 +821,7 @@ Rectangle {
             }
 
             Text {
-                Layout.maximumWidth: Math.min(440, implicitWidth)
+                Layout.maximumWidth: Math.min(260, implicitWidth)
                 text: workspace.hasAsset ? workspace.fileName(workspace.asset.path) : ""
                 color: Theme.textPrimary
                 font.pixelSize: 16
@@ -844,6 +850,13 @@ Rectangle {
 
             Item {
                 Layout.fillWidth: true
+            }
+
+            SourceDisclosureBadge {
+                objectName: "editorSourceDisclosure"
+                asset: workspace.asset
+                editable: workspace.hasAsset
+                onActivated: workspace.presentSourceDisclosure()
             }
 
             EchoIconButton {

@@ -31,6 +31,7 @@ mod ids;
 mod metadata_calibration;
 mod original;
 mod processing_recipe;
+mod source_disclosure;
 mod source_edit;
 mod space;
 mod spectral_repair;
@@ -110,6 +111,10 @@ pub use space::{
 };
 pub use spectral_repair::{
     NoiseProfileSettings, SpectralAttenuationRegion, SpectralRepairError, SpectralRepairSettings,
+};
+
+pub use source_disclosure::{
+    SourceDisclosureKind, SourceDisclosureSpan, validate_source_disclosures,
 };
 
 #[cfg(test)]

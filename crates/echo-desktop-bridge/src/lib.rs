@@ -87,6 +87,9 @@ mod ffi {
         assembly_id: String,
         assembly_revision_id: i64,
         provenance_json: String,
+        source_disclosure_json: String,
+        has_generated_source: bool,
+        has_ai_processed_source: bool,
         path: String,
         codec: String,
         duration_millis: u64,
@@ -611,6 +614,12 @@ mod ffi {
         ) -> Result<SoundAssemblyRevisionWire>;
         fn session_list_originals(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
         fn session_list_assets(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
+        fn session_set_source_disclosure(
+            self: &LibrarySession,
+            id: &str,
+            expected_revision: i64,
+            spans_json: &str,
+        ) -> Result<()>;
         fn session_set_sound_membership(
             self: &LibrarySession,
             id: &str,
@@ -1013,6 +1022,15 @@ impl LibrarySession {
         adjustment: &ffi::AssetAdjustmentWire,
     ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
         self.save_project_clip_adjustment(document_json, clip_id, asset_id, adjustment)
+            .map_err(|e| e.to_string())
+    }
+    fn session_set_source_disclosure(
+        &self,
+        id: &str,
+        expected_revision: i64,
+        spans_json: &str,
+    ) -> Result<(), String> {
+        self.set_source_disclosure(id, expected_revision, spans_json)
             .map_err(|e| e.to_string())
     }
     fn session_set_sound_membership(

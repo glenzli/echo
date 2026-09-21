@@ -101,11 +101,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
                 .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| {
                     revision == crate::schema::SELECTION_TRANSCRIPT_PREDECESSOR
+                        || revision == crate::schema::SOURCE_DISCLOSURE_PREDECESSOR
                 }) =>
         {
-            // Only the analysis-kind vocabulary changes; old binaries must not
+            // Add disclosure history and the current analysis vocabulary; old binaries must not
             // try to read a kind they cannot distinguish from whole-source ASR.
             let transaction = connection.unchecked_transaction()?;
+            transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             transaction.execute(
                 "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
                 [SCHEMA_VERSION.to_string()],
@@ -123,6 +125,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         {
             let transaction = connection.unchecked_transaction()?;
             crate::sound_library::migrate(&transaction)?;
+            transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             transaction.execute(
                 "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
                 [SCHEMA_VERSION.to_string()],
@@ -139,6 +142,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
             let transaction = connection.unchecked_transaction()?;
             crate::sound_library::migrate(&transaction)?;
+            transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             transaction.commit()?;
             connection.execute(
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_version', ?1)",
@@ -175,6 +179,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             connection.execute_batch(SCHEMA_SQL)?;
             connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
             connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
+            connection.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version)
@@ -236,6 +241,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             connection.execute_batch(SCHEMA_SQL)?;
             connection.execute_batch(AUDIO_SEMANTIC_MIGRATION_SQL)?;
             connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
+            connection.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version)
@@ -712,6 +718,7 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
     apply_rendered_spectral_working_copy_export_migration(transaction)?;
     apply_sound_assembly_migration(transaction)?;
     crate::sound_library::migrate(transaction)?;
+    transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

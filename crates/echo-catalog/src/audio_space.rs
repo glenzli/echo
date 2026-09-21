@@ -16,6 +16,7 @@ pub struct AudioSpaceAsset {
     pub assembly_id: String,
     pub assembly_revision_id: i64,
     pub provenance_json: String,
+    pub source_disclosure: crate::SourceDisclosureSummary,
     pub path: std::path::PathBuf,
     pub codec: Option<String>,
     pub duration_millis: Option<u64>,
@@ -129,7 +130,9 @@ pub fn list_audio_space(
         assets.push(row?);
     }
     let memberships = crate::sound_memberships(transaction)?;
+    let disclosures = crate::source_disclosures(transaction)?;
     for asset in &mut assets {
+        asset.source_disclosure.sources = disclosures.get(&asset.id).cloned().into_iter().collect();
         if let Some(membership) = memberships.get(&asset.id) {
             asset.in_memory = membership.in_memory;
             asset.in_materials = membership.in_materials;
@@ -142,7 +145,19 @@ pub fn list_audio_space(
         let Some(membership) = memberships.get(&memory.id) else {
             continue;
         };
-        assets.push(assembly_memory_summary(memory, membership));
+        let id = memory
+            .id
+            .parse()
+            .map_err(|_| crate::source_disclosure::error("invalid assembly identity"))?;
+        let revision =
+            crate::sound_assembly_at_revision(transaction, id, memory.assembly_revision_id)?
+                .ok_or_else(|| {
+                    crate::source_disclosure::error("retained assembly revision is unavailable")
+                })?;
+        let mut summary = assembly_memory_summary(memory, membership);
+        summary.source_disclosure =
+            crate::assembly_source_disclosure(&revision.assembly, &disclosures);
+        assets.push(summary);
     }
     assets.sort_by(|left, right| {
         right
@@ -165,6 +180,7 @@ fn assembly_memory_summary(
         assembly_id: memory.id,
         assembly_revision_id: memory.assembly_revision_id,
         provenance_json: memory.provenance_json,
+        source_disclosure: crate::SourceDisclosureSummary::default(),
         path_status: if memory.path.is_file() {
             "present"
         } else {
@@ -271,6 +287,7 @@ fn audio_space_asset_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Audio
         assembly_id: String::new(),
         assembly_revision_id: 0,
         provenance_json: String::new(),
+        source_disclosure: crate::SourceDisclosureSummary::default(),
         path: row.get::<_, String>(1)?.into(),
         codec: row.get(2)?,
         duration_millis,

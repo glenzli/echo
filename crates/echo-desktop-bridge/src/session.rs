@@ -5,6 +5,7 @@ mod processing_recipe;
 mod rendered_spectral_working_copy;
 mod sound_assembly;
 mod sound_library;
+mod source_disclosure;
 
 use std::{
     collections::HashMap,
@@ -1007,6 +1008,10 @@ fn asset_summary_wire(
         assembly_id: asset.assembly_id,
         assembly_revision_id: asset.assembly_revision_id,
         provenance_json: asset.provenance_json,
+        source_disclosure_json: serde_json::to_string(&asset.source_disclosure)
+            .expect("source disclosure serializes"),
+        has_generated_source: asset.source_disclosure.has_generated_source(),
+        has_ai_processed_source: asset.source_disclosure.has_ai_processed_source(),
         id: asset.id,
         path: asset.path.to_string_lossy().into_owned(),
         codec: asset.codec.unwrap_or_else(|| "unknown".to_owned()),

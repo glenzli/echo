@@ -454,6 +454,7 @@ fn assembly_provenance(
         "assemblyRevisionId": revision.revision_id,
         "assemblyRevisionNumber": revision.revision_number,
         "document": revision.assembly,
+        "sourceDisclosure": crate::assembly_source_disclosure(&revision.assembly, &crate::source_disclosures(transaction)?),
         "sources": sources,
     }))
     .map_err(|error| assembly_error(format!("assembly provenance cannot be encoded: {error}")))

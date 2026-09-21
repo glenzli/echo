@@ -6,6 +6,7 @@ import "SoundAssemblyEditing.js" as Editing
 Rectangle {
     id: clipItem
     required property var clipData
+    property var sourceAsset: null
     required property string title
     required property var sourceSpans
     required property real originalDuration
@@ -98,12 +99,17 @@ Rectangle {
     Text {
         x: clipItem.visibleStart + 12
         y: 6
-        width: Math.max(0, clipItem.visibleWidth - 30)
+        width: Math.max(0, clipItem.visibleWidth - 30 - (disclosure.visible ? disclosure.width+6 : 0))
         text: clipItem.title
         color: Theme.textPrimary
         font.pixelSize: 11
         font.weight: Font.DemiBold
         elide: Text.ElideRight
+    }
+    SourceDisclosureBadge {
+        id: disclosure; asset: clipItem.sourceAsset
+        x: clipItem.visibleEnd-width-8; y: 3
+        visible: (generated || processed) && clipItem.visibleWidth>width+52
     }
     Repeater {
         model: clipItem.spans

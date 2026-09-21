@@ -31,3 +31,9 @@ a clip processing revision and its parent project revision commit atomically,
 without advancing the original recording's listening adjustment. Summary wires
 identify recordings and mix memories explicitly; originals remain assets, while
 accepted mix waveforms are indexed by export identity.
+
+`session/source_disclosure.rs` accepts bounded user-declared source intervals with an expected
+revision. Catalog history remains append-only and tied to immutable content hashes; wire
+summaries distinguish AI processing from generation without certifying unmarked originals.
+Source summaries also follow audible references of the exact retained assembly revision.
+Independent projects keep the same declarations in their portable catalog without Library jobs.

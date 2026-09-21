@@ -244,6 +244,10 @@ int main(int argc, char* argv[]) {
             QStringLiteral("independentClickValidation"),
             qEnvironmentVariableIsSet("ECHO_DEBUG_CLICK_REPAIR")
         );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("independentDisclosureValidation"),
+            qEnvironmentVariableIsSet("ECHO_DEBUG_SOURCE_DISCLOSURE")
+        );
         engine.loadFromModule(
             "EchoDesktop",
             independent_editor.independent() ? "IndependentEditor" : "Main"

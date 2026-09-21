@@ -13,6 +13,7 @@ Rectangle {
     readonly property var master: workspace.hasDocument ? workspace.document.master : ({})
     readonly property color trackColor: Theme.assemblyTrackColors[Math.max(0,workspace.selectedTrackIndex) % 8]
     property alias ducking: duckingPanel
+    SourceDisclosureDialog { id: disclosure; catalogBackend: typeof backend !== "undefined" ? backend : null }
     color: Theme.panelRaised
     implicitWidth: 280
     enabled: workspace.hasDocument && !renderController.running
@@ -99,6 +100,11 @@ Rectangle {
                     Layout.fillWidth: true
                     text: inspector.clipData ? (workspace.independentMode ? qsTr("Project source") : inspector.clipData.sourceRole === "material" ? qsTr("Material reference") : qsTr("Memory reference")) + " · " + (inspector.clipData.adjustmentRevisionId > 0 ? qsTr("Source version %1").arg(inspector.clipData.adjustmentRevisionId) : qsTr("Original source")) : ""
                     font.pixelSize: Theme.fontMeta; color: Theme.textMuted; wrapMode: Text.WordWrap
+                }
+                SourceDisclosureBadge {
+                    asset: inspector.clipData && workspace.libraryAssets ? workspace.libraryAssets.find(source=>source.id===inspector.clipData.assetId) || null : null
+                    editable: asset !== null
+                    onActivated: disclosure.present(asset,0,0)
                 }
                 Text {
                     visible: workspace.selectionCount > 1

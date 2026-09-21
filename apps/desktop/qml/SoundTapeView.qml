@@ -15,6 +15,10 @@ Rectangle {
     required property var jobStats
     required property bool active
 
+    property string tapeScope: "memories"
+    property bool includeGeneratedSources: false
+    property int excludedGeneratedCount: 0
+    signal includeGeneratedRequested(bool include)
     property var entries: []
     property real totalDurationMillis: 0
     property real cueGlobalMillis: 0
@@ -37,6 +41,7 @@ Rectangle {
     signal assetOpened(var asset)
     signal assemblyRequested(var assetIds, string layout)
 
+    SourceDisclosureDialog { id: disclosure; catalogBackend: backend }
     color: Theme.window
 
     function trimStart(asset: var): real {
@@ -278,6 +283,21 @@ Rectangle {
                     }
                 }
 
+                ColumnLayout {
+                    spacing: 2
+                    EchoCheckBox {
+                        objectName: "tapeIncludeGenerated"
+                        text: qsTr("Include AI-generated sources")
+                        checked: tape.tapeScope !== "originals" && tape.includeGeneratedSources
+                        enabled: tape.tapeScope !== "originals"
+                        onToggled: tape.includeGeneratedRequested(checked)
+                    }
+                    Text {
+                        text: tape.tapeScope === "originals" ? qsTr("Original tape excludes declared generated sources") : qsTr("%1 sounds excluded by source labels").arg(tape.excludedGeneratedCount)
+                        color: Theme.textMuted; font.pixelSize: Theme.fontMeta
+                    }
+                }
+                SourceDisclosureBadge { asset: tape.currentEntry ? tape.currentEntry.asset : null; editable: asset !== null; onActivated: disclosure.present(asset,0,0) }
                 EchoButton {
                     text: qsTr("Add current to assembly")
                     ghost: true

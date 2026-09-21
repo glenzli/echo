@@ -16,7 +16,7 @@ Rectangle {
     signal activated
     signal opened
 
-    width: Math.max(112, Math.min(330, 92 + Number(entry.durationMillis) / 1000 * 2.2))
+    width: Math.max(disclosure.visible ? disclosure.implicitWidth+16 : 112, Math.min(330, 92 + Number(entry.durationMillis) / 1000 * 2.2))
     height: 84
     radius: 5
     color: selected ? Theme.surfaceSelected : Theme.panelRaised
@@ -95,6 +95,8 @@ Rectangle {
             color: segment.selected ? Theme.accent : Theme.separatorStrong
         }
     }
+
+    SourceDisclosureBadge { id: disclosure; asset: segment.entry.asset; anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 6 }
 
     Text {
         id: titleText

@@ -33,8 +33,12 @@ ApplicationWindow {
     palette.dark: Theme.borderStrong
     palette.light: Theme.surfaceSubtle
 
-    readonly property alias memorySmokeReport: memorySmoke.reportJson
-    readonly property alias memorySmokeStage: memorySmoke.stage
+    readonly property string memorySmokeReport: independentDisclosureValidation ? disclosureSmoke.reportJson : memorySmoke.reportJson
+    SourceDisclosureSmoke {
+        id: disclosureSmoke; shell: window; editor: soundEditor; library: audioSpace
+        fixtureRoot: independentDisclosureValidation ? independentSmokeRoot : ""; reopening: false
+    }
+    readonly property int memorySmokeStage: independentDisclosureValidation ? disclosureSmoke.stage : memorySmoke.stage
     MemoryWorkflowSmoke {
         id: memorySmoke
         shell: window
@@ -42,7 +46,7 @@ ApplicationWindow {
         editor: soundEditor
         library: audioSpace
         materials: materialsLibrary
-        materialPath: memorySmokeMaterial
+        materialPath: independentDisclosureValidation ? "" : memorySmokeMaterial
     }
 
     readonly property alias multitrackSmokeReport: multitrackSmoke.reportJson

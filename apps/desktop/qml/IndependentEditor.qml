@@ -22,10 +22,10 @@ ApplicationWindow {
     palette.buttonText: Theme.textPrimary
     palette.highlight: Theme.accent
     palette.highlightedText: Theme.accentText
-    readonly property string independentSmokeReport: independentClickValidation ? clickSmoke.reportJson : independentAiValidation ? aiSmoke.reportJson : smoke.reportJson
-    readonly property int independentSmokeStage: independentClickValidation ? clickSmoke.stage : independentAiValidation ? aiSmoke.stage : smoke.stage
-    IndependentEditorSmoke { id: smoke; shell: window; editor: editor; assembly: assembly; fixtureRoot: independentAiValidation || independentClickValidation ? "" : independentSmokeRoot; reopening: independentSmokeReopen }
-    IndependentAiSmoke { id: aiSmoke; shell: window; editor: editor; fixtureRoot: independentAiValidation && !independentClickValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
+    readonly property string independentSmokeReport: independentDisclosureValidation ? disclosureSmoke.reportJson : independentClickValidation ? clickSmoke.reportJson : independentAiValidation ? aiSmoke.reportJson : smoke.reportJson
+    readonly property int independentSmokeStage: independentDisclosureValidation ? disclosureSmoke.stage : independentClickValidation ? clickSmoke.stage : independentAiValidation ? aiSmoke.stage : smoke.stage
+    IndependentEditorSmoke { id: smoke; shell: window; editor: editor; assembly: assembly; fixtureRoot: independentDisclosureValidation || independentAiValidation || independentClickValidation ? "" : independentSmokeRoot; reopening: independentSmokeReopen }
+    IndependentAiSmoke { id: aiSmoke; shell: window; editor: editor; fixtureRoot: independentAiValidation && !independentClickValidation && !independentDisclosureValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
     property var assets: []
     property var selectedAsset: null
     property var clipAsset: null
@@ -36,7 +36,8 @@ ApplicationWindow {
     property bool allowClose: false
     property bool closeAfterSave: false
     property string notice: ""
-    ClickRepairSmoke { id: clickSmoke; shell: window; editor: editor; fixtureRoot: independentClickValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
+    SourceDisclosureSmoke { id: disclosureSmoke; shell: window; editor: editor; fixtureRoot: independentDisclosureValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
+    ClickRepairSmoke { id: clickSmoke; shell: window; editor: editor; fixtureRoot: independentClickValidation && !independentDisclosureValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
     readonly property bool processing: clickAnalysis.running || selectionTranscription.running || independentEditor.busy || renderExporter.running || renderedSpectralWorkingCopy.running || soundAssemblyController.running || noiseProfile.running
 
     function refreshSources(): void {

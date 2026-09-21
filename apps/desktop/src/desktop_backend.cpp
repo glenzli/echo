@@ -655,6 +655,16 @@ QVariantList DesktopBackend::listAssets(bool originals) const {
         QVariantMap entry;
         entry.insert(QStringLiteral("id"), QString::fromUtf8(asset.id.data(), asset.id.size()));
         entry.insert(QStringLiteral("inMemory"), asset.in_memory);
+        entry.insert(
+            QStringLiteral("sourceDisclosure"),
+            QJsonDocument::fromJson(QByteArray(
+                                        asset.source_disclosure_json.data(),
+                                        static_cast<qsizetype>(asset.source_disclosure_json.size())
+                                    ))
+                .toVariant()
+        );
+        entry.insert(QStringLiteral("hasGeneratedSource"), asset.has_generated_source);
+        entry.insert(QStringLiteral("hasAiProcessedSource"), asset.has_ai_processed_source);
         entry.insert(QStringLiteral("inMaterials"), asset.in_materials);
         entry.insert(
             QStringLiteral("materialCategory"),

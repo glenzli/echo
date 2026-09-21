@@ -5,13 +5,13 @@ use crate::{CatalogError, CatalogErrorKind, open_catalog};
 
 #[test]
 fn revision_round_trips_in_date_dot_sequence_form() {
-    assert_eq!(SCHEMA_VERSION.to_string(), "20260920.2");
+    assert_eq!(SCHEMA_VERSION.to_string(), "20260922.1");
     assert_eq!(
         CatalogSchemaRevision::from_str("20260815.5"),
         Ok(SOUND_ASSEMBLY_PREDECESSOR_SCHEMA_VERSION)
     );
-    assert_eq!(SCHEMA_VERSION.date(), 20_260_920);
-    assert_eq!(SCHEMA_VERSION.daily_sequence(), 2);
+    assert_eq!(SCHEMA_VERSION.date(), 20_260_922);
+    assert_eq!(SCHEMA_VERSION.daily_sequence(), 1);
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn catalog_persists_only_the_canonical_revision_text() {
                 .map_err(CatalogError::from)
         })
         .expect("revision reads");
-    assert_eq!(stored, "20260920.2");
+    assert_eq!(stored, "20260922.1");
 
     catalog
         .with_transaction(|transaction| -> Result<(), CatalogError> {
@@ -142,7 +142,7 @@ fn selection_transcript_vocabulary_upgrade_preserves_existing_records() {
                 |r| r.get(0),
             )?;
             assert_eq!(kept, "sentinel");
-            assert_eq!(version, "20260920.2");
+            assert_eq!(version, "20260922.1");
             Ok(())
         })
         .expect("preserved");

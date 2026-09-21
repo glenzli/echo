@@ -4,6 +4,7 @@
 //! independent.
 
 import QtQuick
+import "SourceDisclosure.js" as Disclosure
 import QtQuick.Controls
 import QtQuick.Layouts
 import EchoDesktop
@@ -17,6 +18,8 @@ Item {
     property string sortMode: "date"
     property string viewMode: "grid"
     property string tapeScope: "memories"
+    property bool includeGeneratedSources: false
+    property int excludedGeneratedCount: 0
     property int preferredCardWidth: 224
     property bool likedOnly: false
     property int minimumRating: 0
@@ -88,11 +91,14 @@ Item {
 
     onTapeScopeChanged: { selectedFilter = "all"; refreshAssets(); }
     onViewModeChanged: refreshAssets()
+    onIncludeGeneratedSourcesChanged: refreshAssets()
 
     function refreshAssets(): void {
         const selectedId = selectedAsset !== null ? selectedAsset.id : "";
         const inTape = viewMode === "tape";
-        const assets = backend.listAssets(inTape && tapeScope === "originals").filter(asset => inTape && tapeScope === "materials" ? asset.inMaterials : asset.inMemory);
+        const scoped = backend.listAssets(inTape && tapeScope === "originals").filter(asset => inTape && tapeScope === "materials" ? asset.inMaterials : asset.inMemory);
+        const assets = inTape ? scoped.filter(asset => Disclosure.eligible(asset,tapeScope,includeGeneratedSources)) : scoped;
+        excludedGeneratedCount = scoped.length-assets.length;
         allAssets = assets;
         albumState.refresh();
         revisitState.refresh();
@@ -733,6 +739,10 @@ Item {
 
                     SoundTapeView {
                         id: soundTape
+                        tapeScope: workspace.tapeScope
+                        includeGeneratedSources: workspace.includeGeneratedSources
+                        excludedGeneratedCount: workspace.excludedGeneratedCount
+                        onIncludeGeneratedRequested: include => workspace.includeGeneratedSources=include
 
                         Layout.fillHeight: true
                         Layout.fillWidth: true
