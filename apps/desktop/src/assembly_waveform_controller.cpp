@@ -31,12 +31,36 @@ QVariantList sourceWaveform(const QString& catalog, const QString& cache, const 
             mins.append(minimum);
             maxs.append(maximum);
         }
-        return {QVariantMap{
-            {QStringLiteral("mins"), mins},
-            {QStringLiteral("maxs"), maxs},
-            {QStringLiteral("samplesPerBucket"),
-             static_cast<int>(level.samples_per_bucket * stride)}
-        }};
+        if (mins.isEmpty())
+            return {};
+        // Keep a bounded presentation pyramid so a narrow clip does not trace
+        // every overview bucket on the GUI thread. Pairwise extrema preserve
+        // transients, including an unpaired final bucket.
+        QVariantList levels;
+        auto samplesPerBucket = static_cast<qulonglong>(level.samples_per_bucket) * stride;
+        while (true) {
+            levels.append(
+                QVariantMap{
+                    {QStringLiteral("mins"), mins},
+                    {QStringLiteral("maxs"), maxs},
+                    {QStringLiteral("samplesPerBucket"), samplesPerBucket}
+                }
+            );
+            if (mins.size() <= 32)
+                break;
+            QVariantList nextMins, nextMaxs;
+            nextMins.reserve((mins.size() + 1) / 2);
+            nextMaxs.reserve((maxs.size() + 1) / 2);
+            for (qsizetype i = 0; i < mins.size(); i += 2) {
+                const auto other = std::min(i + 1, mins.size() - 1);
+                nextMins.append(std::min(mins[i].toDouble(), mins[other].toDouble()));
+                nextMaxs.append(std::max(maxs[i].toDouble(), maxs[other].toDouble()));
+            }
+            mins = std::move(nextMins);
+            maxs = std::move(nextMaxs);
+            samplesPerBucket *= 2;
+        }
+        return levels;
     } catch (const rust::Error&) {
         return {};
     }
@@ -57,17 +81,23 @@ AssemblyWaveformController::~AssemblyWaveformController() {
 }
 
 void AssemblyWaveformController::setSources(const QStringList& assetIds) {
-    wanted_.clear();
+    QSet<QString> wanted;
     for (const auto& id : assetIds.mid(0, 256))
         if (!id.isEmpty())
-            wanted_.insert(id);
+            wanted.insert(id);
+    if (wanted == wanted_)
+        return;
+    wanted_ = std::move(wanted);
+    bool removed = false;
     for (auto it = waveforms_.begin(); it != waveforms_.end();) {
-        if (!wanted_.contains(it.key()))
+        if (!wanted_.contains(it.key())) {
             it = waveforms_.erase(it);
-        else
+            removed = true;
+        } else
             ++it;
     }
-    emit waveformsChanged();
+    if (removed)
+        emit waveformsChanged();
     requestNext();
 }
 

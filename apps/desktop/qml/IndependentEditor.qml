@@ -61,9 +61,9 @@ ApplicationWindow {
         if (!assembly.hasDocument && assets.length) {
             assembly.loadRevision(backend.createSoundAssembly(qsTr("Untitled project"), assets.map(value => value.id), assets.length <= 8 ? "layered" : "sequence"));
             projectDirty = true;
+            assembly.sourcesVisible = true;
         }
         multitrack = true;
-        assembly.sourcesVisible = true;
     }
     function saveProject(saveAs: bool): void {
         if (processing || !flushDrafts()) return;

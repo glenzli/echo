@@ -15,7 +15,54 @@ Item {
     property int auditionCycle: 0
     property int auditionWaitTicks: 0
     property real auditionVolume: 0.8
+    property int waveformPublications: 0
+    Connections {
+        target: assemblyWaveforms
+        function onWaveformsChanged() { ++smoke.waveformPublications; }
+    }
     function require(value, message) { if (!value) throw new Error(message); }
+    function checkUnchangedEdits() {
+        const document = assembly.document;
+        const undo = assembly.undoStack.length, redo = assembly.redoStack.length;
+        const dirty = assembly.dirty, active = player.active, publications = waveformPublications;
+        assembly.setTrackValue(0, "gainCentibels", assembly.tracks[0].gainCentibels);
+        assembly.setClipValue("timelineStartMillis", assembly.selectedClip.timelineStartMillis);
+        assembly.setMasterValue("gainCentibels", assembly.document.master.gainCentibels);
+        require(assembly.document === document, "unchanged edit rebuilt the document");
+        require(assembly.undoStack.length === undo && assembly.redoStack.length === redo, "unchanged edit altered history");
+        require(assembly.dirty === dirty && player.active === active, "unchanged edit dirtied the project or stopped playback");
+        require(waveformPublications === publications, "unchanged edit republished source waveforms");
+    }
+    function checkEditingContext() {
+        assembly.sourcesVisible = false;
+        const selected = assembly.selectedClipId, playhead = assembly.playheadMillis;
+        shell.chooseSource(0); shell.showMultitrack();
+        require(!assembly.sourcesVisible, "mode switching reopened the source sidebar");
+        require(assembly.selectedClipId === selected && assembly.playheadMillis === playhead, "mode switching lost editing context");
+        checkUnchangedEdits();
+        facts.editingContext = {sidebar: true, selection: true, playhead: true, unchangedEdits: true};
+    }
+    function checkWaveforms() {
+        const counts = [];
+        for (const levels of Object.values(assemblyWaveforms.waveforms)) {
+            require(levels.length > 1 && levels[0].mins.length <= 8192, "source waveform pyramid missing or unbounded");
+            counts.push(levels.map(level => level.mins.length));
+            for (let l = 1; l < levels.length; ++l) {
+                const fine = levels[l - 1], coarse = levels[l];
+                require(coarse.mins.length === Math.ceil(fine.mins.length / 2), "waveform pyramid dropped the tail");
+                for (let i = 0; i < coarse.mins.length; ++i) {
+                    const tail = Math.min(i * 2 + 1, fine.mins.length - 1);
+                    require(coarse.mins[i] === Math.min(fine.mins[i * 2], fine.mins[tail]) && coarse.maxs[i] === Math.max(fine.maxs[i * 2], fine.maxs[tail]), "waveform pyramid lost a transient");
+                }
+            }
+        }
+        const publications = waveformPublications;
+        assembly.setTrackValue(0, "gainCentibels", assembly.tracks[0].gainCentibels - 10);
+        assembly.undo();
+        require(waveformPublications === publications, "mix-only edits republished unchanged waveforms");
+        facts.waveformBuckets = counts;
+        facts.waveformReuse = true;
+    }
     function checkBatchEditing() {
         const before = JSON.stringify(assembly.document);
         const a = assembly.tracks[0].clips[0], b = assembly.tracks[1].clips[0];
@@ -81,11 +128,13 @@ Item {
             facts.singleExport=renderExporter.outputPath;
             shell.showMultitrack();require(assembly.hasDocument,"assembly creation failed");
             checkBatchEditing();
+            checkEditingContext();
             assembly.mutate(next=>{next.name='Independent arrangement';next.tracks[0].clips[0].fadeInMillis=120;next.tracks[1].clips[0].timelineStartMillis=500;});
             assembly.selectClip(1, assembly.tracks[1].clips[0].id);
             stage=20;break;
         case 20:
             if(Object.values(assemblyWaveforms.waveforms).filter(levels=>levels.length>0).length!==2) return;
+            checkWaveforms();
             assembly.ducking.generate();stage=21;break;
         case 21:
             if(assembly.ducking.running) return;
@@ -107,6 +156,8 @@ Item {
             require(soundAssemblyController.hasPreview,soundAssemblyController.errorText || "preview failed");
             facts.previewDuration=player.duration;
             require(Math.abs(player.duration-(assembly.previewRangeEnd-assembly.previewRangeStart))<2,"range preview duration mismatch");
+            checkUnchangedEdits();
+            facts.unchangedEditsPreservePlayback = true;
             assembly.stopPlayback();
             auditionVolume=player.volume;player.volume=0;
             stage=30;break;

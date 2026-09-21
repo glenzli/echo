@@ -76,7 +76,9 @@ selections, including shared movement limits and source-preserving ripple cuts.
 Command/Control- or Shift-click toggles selection; dragging a selected clip moves
 the selection, while Alt-drag slips only the active source inside fixed boundaries.
 `AssemblyWaveformController` serializes asynchronous source waveform reads and
-retains bounded overview buckets for the active project's sources. The overview
+retains a bounded min/max pyramid for the active project's sources (at most 8192
+buckets in the finest presentation level). Mix-only edits reuse that projection
+without republishing it; the view chooses its level to match the visible width. The overview
 follows pinned source segments and gaps; it does not claim to show rendered DSP.
 Library selection creates a sequence or layered document. Every clip pins an
 exact asset adjustment revision. `SoundAssemblyController` first renders each

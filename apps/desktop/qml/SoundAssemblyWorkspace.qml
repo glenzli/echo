@@ -160,10 +160,12 @@ Rectangle {
     function mutate(callback: var): void {
         if (!hasDocument || soundAssemblyController.running)
             return;
-        stopPlayback();
-        pushUndo();
         const next = clone(document);
         callback(next);
+        if (authoredJson(next) === authoredJson(document))
+            return;
+        stopPlayback();
+        pushUndo();
         document = next;
         dirty = authoredJson(next) !== savedDocumentJson;
         reconcileSelection();
