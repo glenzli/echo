@@ -14,6 +14,7 @@ add_library(
     src/ffmpeg_input.cpp
     src/decode.cpp
     src/de_click_processor.cpp
+    src/click_analysis.cpp
     src/de_esser.cpp
     src/de_hum_filter.cpp
     src/de_plosive_processor.cpp
@@ -100,6 +101,11 @@ endfunction()
 echo_audio_enable_warnings(echo-audio)
 
 if(BUILD_TESTING)
+    add_executable(echo-click-analysis-test tests/click_analysis_test.cpp)
+    target_link_libraries(echo-click-analysis-test PRIVATE Echo::Audio)
+    echo_audio_enable_warnings(echo-click-analysis-test)
+    add_test(NAME echo-click-analysis-test COMMAND echo-click-analysis-test)
+    set_tests_properties(echo-click-analysis-test PROPERTIES TIMEOUT 30)
     add_executable(echo-assembly-playback-test tests/assembly_playback_test.cpp)
     target_link_libraries(echo-assembly-playback-test PRIVATE Echo::Audio)
     echo_audio_enable_warnings(echo-assembly-playback-test)

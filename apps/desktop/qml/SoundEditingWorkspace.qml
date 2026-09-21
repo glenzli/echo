@@ -32,6 +32,7 @@ Rectangle {
     property var renderedSpectralWorkingCopies: []
     property bool renderedSpectralEraseMode: false
     property bool transcriptFocus: false
+    property bool clickRepairFocus: false
     property bool spectralFocus: false
     property string diagnosticMode: ""
     readonly property bool listeningToSourceBand: diagnosticMode==="source-band"
@@ -46,6 +47,7 @@ Rectangle {
     readonly property bool canRedo: adjustmentDraft.canRedo
     readonly property alias spectralEditor: spectralView
     readonly property alias transcriptPanel: transcriptPanel
+    readonly property alias clickRepairPanel: clickRepairPanel
     readonly property alias timeline: editorTimeline
     readonly property alias adjustment: adjustmentDraft
 
@@ -129,8 +131,9 @@ Rectangle {
         }
     }
 
-    onSpectralFocusChanged: { if (spectralFocus) transcriptFocus=false; refreshSpectrogramPreview(); }
-    onTranscriptFocusChanged: { if (transcriptFocus) spectralFocus=false; }
+    onSpectralFocusChanged: { if (spectralFocus) { transcriptFocus=false; clickRepairFocus=false; } refreshSpectrogramPreview(); }
+    onTranscriptFocusChanged: { if (transcriptFocus) { spectralFocus=false; clickRepairFocus=false; } }
+    onClickRepairFocusChanged: { if (clickRepairFocus) { spectralFocus=false; transcriptFocus=false; } }
     onVisibleChanged: {
         if(!visible) {spectrogramPreview.clear(); spectralPreviewTimer.stop(); noiseProfile.cancel(); noiseCaptureIdentity=""; if(diagnosticMode.length) player.stop();}
         else refreshSpectrogramPreview();
@@ -682,7 +685,7 @@ Rectangle {
                 return;
             const resumeAt = player.position;
             Qt.callLater(function () {
-                workspace.playFrom(resumeAt);
+                if (player.active) workspace.playFrom(resumeAt);
             });
         }
         function onEditSegmentsChanged(): void {
@@ -698,7 +701,7 @@ Rectangle {
                 return;
             const resumeAt = player.position;
             Qt.callLater(function () {
-                workspace.playFrom(resumeAt);
+                if (player.active) workspace.playFrom(resumeAt);
             });
         }
     }
@@ -806,9 +809,9 @@ Rectangle {
             Layout.preferredHeight: 36
             spacing: 10
             EchoSegmentedControl {
-                model: [qsTr("Effects"),qsTr("Spectral repair"),qsTr("Transcript")]
-                currentIndex: workspace.transcriptFocus ? 2 : workspace.spectralFocus ? 1 : 0
-                onActivated: index => { workspace.spectralFocus=index===1; workspace.transcriptFocus=index===2; }
+                model: [qsTr("Effects"),qsTr("Spectral repair"),qsTr("Transcript"),qsTr("Click repair")]
+                currentIndex: workspace.clickRepairFocus ? 3 : workspace.transcriptFocus ? 2 : workspace.spectralFocus ? 1 : 0
+                onActivated: index => { workspace.spectralFocus=index===1; workspace.transcriptFocus=index===2; workspace.clickRepairFocus=index===3; }
             }
 
             Text {
@@ -1052,9 +1055,27 @@ Rectangle {
                     transcriptPanel.finishEdit(result);
                 }
             }
+            SoundClickRepairPanel {
+                id: clickRepairPanel
+                visible: workspace.clickRepairFocus
+                SplitView.fillWidth: true; SplitView.fillHeight: true; SplitView.minimumHeight: 330
+                asset: workspace.asset; draft: adjustmentDraft; controller: clickAnalysis
+                rangeStart: editorTimeline.hasTimeSelection ? editorTimeline.selectionStartMillis : adjustmentDraft.trimStartMillis
+                rangeEnd: editorTimeline.hasTimeSelection ? editorTimeline.selectionEndMillis : adjustmentDraft.trimEndMillis
+                onRangeRequested: (start,end,play,original) => {
+                    editorTimeline.selectionStartMillis=start; editorTimeline.selectionEndMillis=end; editorTimeline.hasTimeSelection=true;
+                    editorTimeline.fitSelection();
+                    if (play) { workspace.auditionOriginal=original; editorTimeline.loopSelection=true; workspace.playFrom(start); }
+                }
+                onRepairRequested: candidates => {
+                    const result = adjustmentDraft.applyClickRepairs(candidates);
+                    if (result.ok && result.changed) player.stop();
+                    clickRepairPanel.finishEdit(result);
+                }
+            }
             SoundAdjustmentEditor {
                 id: adjustmentEditor
-                visible: !workspace.spectralFocus && !workspace.transcriptFocus
+                visible: !workspace.spectralFocus && !workspace.transcriptFocus && !workspace.clickRepairFocus
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 SplitView.minimumHeight: 330

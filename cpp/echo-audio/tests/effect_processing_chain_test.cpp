@@ -764,5 +764,59 @@ int main() {
         }
     }
 
+    {
+        // Local DeClick dry/wet mixing must preserve every unselected sample,
+        // source offset, short tail, and reset, independently of block size.
+        auto adjustment = bypassed_de_click();
+        adjustment.de_click.enabled = true;
+        adjustment.de_click.sensitivity_percent = 85;
+        adjustment.effect_masks = {
+            {.start_millis = 190,
+             .end_millis = 220,
+             .feather_millis = 5,
+             .nodes = {echo::audio::EffectNodeKind::DeClick}}
+        };
+        auto input = fixture(12000);
+        input[5000 * kChannels] += 1.0F;
+        input[9000 * kChannels] += 1.0F;
+        const echo::audio::PreparedAdjustment prepared(adjustment, 1000, kSampleRate);
+        const echo::audio::EffectMaskPlan plan(adjustment, prepared, kSampleRate);
+        std::vector<float> reference;
+        for (const std::size_t chunk : {1, 137, 4096}) {
+            echo::audio::EffectProcessingChain chain(prepared, kSampleRate, kChannels, &plan);
+            const auto output = process_source_aware_in_chunks(chain, input, chunk, 4800);
+            assert(output.size() == input.size());
+            for (std::size_t frame = 0; frame < input.size() / kChannels; ++frame) {
+                if (frame < 4320 || frame >= 5760)
+                    for (std::size_t channel = 0; channel < kChannels; ++channel)
+                        assert(
+                            output[frame * kChannels + channel]
+                            == input[frame * kChannels + channel]
+                        );
+            }
+            assert(std::abs(output[5000 * kChannels] - input[5000 * kChannels]) > 0.7F);
+            if (reference.empty())
+                reference = output;
+            else
+                assert_near(output, reference);
+            chain.reset();
+            assert_near(process_source_aware_in_chunks(chain, input, chunk, 4800), reference);
+        }
+        adjustment.de_click.enabled = false;
+        const echo::audio::PreparedAdjustment bypassed(adjustment, 1000, kSampleRate);
+        echo::audio::EffectProcessingChain chain(bypassed, kSampleRate, kChannels, &plan);
+        assert_near(process_source_aware_in_chunks(chain, input, 137, 4800), input);
+        chain.reset();
+        assert_near(process_source_aware_in_chunks(chain, fixture(31), 1, 4800), fixture(31));
+        chain.reset();
+        std::array<float, 512> block{};
+        std::array<std::uint64_t, 256> anchors{};
+        allocation_count.store(0);
+        track_allocations.store(true);
+        chain.process_interleaved(block.data(), anchors.data(), 256, kChannels);
+        track_allocations.store(false);
+        assert(allocation_count.load() == 0);
+    }
+
     return 0;
 }

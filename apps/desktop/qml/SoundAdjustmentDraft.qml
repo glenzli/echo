@@ -5,6 +5,7 @@
 import "SpectralEditing.js" as SpectralEditing
 import "NoiseProfileEditing.js" as NoiseEditing
 import "SourceEditRanges.js" as SourceEditRanges
+import "ClickRepairEditing.js" as ClickRepairEditing
 import QtQuick
 
 QtObject {
@@ -189,13 +190,13 @@ QtObject {
     }
 
     function copyEffectChain(values: var): var {
-        if (!values || values.length < 1 || values.length > 20)
+        if (!values || values.length < 1 || values.length > 22)
             return defaultEffectChain();
         const result = [];
-        const seen = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+        const seen = [];
         for (let index = 0; index < values.length; ++index) {
             const node = Math.round(Number(values[index]));
-            if (node < 0 || node > 19 || seen[node])
+            if (node < 0 || node > 21 || seen[node])
                 return defaultEffectChain();
             seen[node] = true;
             result.push(node);
@@ -501,7 +502,7 @@ QtObject {
     function effectNodeSupportsMask(kind: int): bool {
         const node = Number(kind);
         return node >= 0 && node <= 21
-            && [4, 6, 11, 13, 14, 15, 16, 18, 21].indexOf(node) < 0;
+            && [4, 11, 13, 14, 15, 16, 18, 21].indexOf(node) < 0;
     }
 
     function copyEffectMasks(values: var, chain: var, rangeStart: int, rangeEnd: int): var {
@@ -1622,6 +1623,15 @@ QtObject {
         deHumQualityTenths = 300;
         deHumDepthCentibels = 2400;
         pushCurrent();
+    }
+
+    function applyClickRepairs(candidates: var): var {
+        const proposal = ClickRepairEditing.propose(snapshot(), candidates);
+        if (proposal.ok && proposal.changed) {
+            applySnapshot(proposal.snapshot);
+            pushCurrent();
+        }
+        return proposal;
     }
 
     function setDeClickEnabled(enabled: bool): void {

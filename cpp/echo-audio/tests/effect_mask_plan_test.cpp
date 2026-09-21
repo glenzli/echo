@@ -35,6 +35,7 @@ echo::audio::PlaybackAdjustment masked() {
 
 int main() {
     for (const auto node : {
+             echo::audio::EffectNodeKind::DeClick,
              echo::audio::EffectNodeKind::SceneVfx,
              echo::audio::EffectNodeKind::DelayVfx,
              echo::audio::EffectNodeKind::ModulationVfx,
@@ -47,7 +48,6 @@ int main() {
     }
     for (const auto node : {
              echo::audio::EffectNodeKind::Master,
-             echo::audio::EffectNodeKind::DeClick,
              echo::audio::EffectNodeKind::TransformVfx,
              echo::audio::EffectNodeKind::DriveVfx,
              echo::audio::EffectNodeKind::RotaryVfx,
@@ -94,7 +94,6 @@ int main() {
     {
         auto invalid = masked();
         for (const auto node : {
-                 echo::audio::EffectNodeKind::DeClick,
                  echo::audio::EffectNodeKind::TransformVfx,
                  echo::audio::EffectNodeKind::DriveVfx,
                  echo::audio::EffectNodeKind::RotaryVfx,

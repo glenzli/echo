@@ -145,6 +145,8 @@ qt_add_executable(
     src/prepared_assembly_source_cache.hpp
     src/sound_assembly_controller.cpp
     src/sound_assembly_controller.hpp
+    src/click_analysis_controller.cpp
+    src/click_analysis_controller.hpp
     src/noise_profile_controller.cpp
     src/noise_profile_controller.hpp
     src/noise_profile_projection.cpp
@@ -287,6 +289,9 @@ qt_add_qml_module(
         qml/EffectMaskEditor.qml
         qml/SoundTranscriptEditing.js
         qml/SourceEditRanges.js
+        qml/SoundClickRepairPanel.qml
+        qml/ClickRepairEditing.js
+        qml/ClickRepairSmoke.qml
         qml/SoundTranscriptPanel.qml
         qml/EchoCheckBox.qml
         qml/SoundEditingWorkspace.qml
@@ -418,6 +423,12 @@ if(BUILD_TESTING)
     echo_audio_enable_warnings(echo-playback-session-handoff-test)
     add_test(NAME echo-playback-session-handoff-test COMMAND echo-playback-session-handoff-test)
     set_tests_properties(echo-playback-session-handoff-test PROPERTIES TIMEOUT 30)
+    add_executable(echo-click-analysis-controller-test tests/click_analysis_controller_test.cpp src/click_analysis_controller.cpp src/click_analysis_controller.hpp)
+    target_include_directories(echo-click-analysis-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_compile_features(echo-click-analysis-controller-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-click-analysis-controller-test PRIVATE Qt6::Core Qt6::Concurrent Echo::Audio)
+    echo_audio_enable_warnings(echo-click-analysis-controller-test)
+    add_test(NAME echo-click-analysis-controller-test COMMAND echo-click-analysis-controller-test)
     add_executable(echo-selection-transcription-controller-test tests/selection_transcription_controller_test.cpp src/selection_transcription_controller.cpp src/selection_transcription_controller.hpp)
     target_include_directories(echo-selection-transcription-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
     target_compile_features(echo-selection-transcription-controller-test PRIVATE cxx_std_20)

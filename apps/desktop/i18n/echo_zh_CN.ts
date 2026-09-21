@@ -2097,6 +2097,10 @@
             <source>Digital Degrade</source>
             <translation>数字降质</translation>
         </message>
+        <message>
+            <source>De-click</source>
+            <translation>去爆音</translation>
+        </message>
     </context>
     <context>
         <name>FreezeVfxPanel</name>
@@ -4935,9 +4939,18 @@
             <source>Untitled project</source>
             <translation>未命名工程</translation>
         </message>
-        <message><source>Range %1</source><translation>区间 %1</translation></message>
-        <message><source>Marker %1</source><translation>标记 %1</translation></message>
-        <message><source>Markers &amp; ranges</source><translation>标记与区间</translation></message>
+        <message>
+            <source>Range %1</source>
+            <translation>区间 %1</translation>
+        </message>
+        <message>
+            <source>Marker %1</source>
+            <translation>标记 %1</translation>
+        </message>
+        <message>
+            <source>Markers &amp; ranges</source>
+            <translation>标记与区间</translation>
+        </message>
     </context>
     <context>
         <name>SoundCard</name>
@@ -5241,6 +5254,10 @@
             <location filename="../qml/SoundEditingWorkspace.qml" line="798" />
             <source>Editing this clip. The project source stays unchanged.</source>
             <translation>正在编辑此片段，工程来源保持不变。</translation>
+        </message>
+        <message>
+            <source>Click repair</source>
+            <translation>爆音修复</translation>
         </message>
     </context>
     <context>
@@ -7275,30 +7292,225 @@
     </context>
     <context>
         <name>EchoStereoMeter</name>
-        <message><source>Track level</source><translation>轨道电平</translation></message>
-        <message><source>Silent</source><translation>静音</translation></message>
-        <message><source>Stereo peak after track gain, before master processing. Preview buffering may lead audible output.</source><translation>轨道增益之后、主处理之前的立体声峰值。受试听缓冲影响，读数可能先于实际播放。</translation></message>
+        <message>
+            <source>Track level</source>
+            <translation>轨道电平</translation>
+        </message>
+        <message>
+            <source>Silent</source>
+            <translation>静音</translation>
+        </message>
+        <message>
+            <source>Stereo peak after track gain, before master processing. Preview buffering may lead audible output.</source>
+            <translation>轨道增益之后、主处理之前的立体声峰值。受试听缓冲影响，读数可能先于实际播放。</translation>
+        </message>
     </context>
     <context>
         <name>SoundAssemblyMarkers</name>
-        <message><source>Markers &amp; ranges</source><translation>标记与区间</translation></message>
-        <message><source>At playhead</source><translation>当前位置</translation></message>
-        <message><source>Add marker (M)</source><translation>添加标记（M）</translation></message>
-        <message><source>From selection</source><translation>所选范围</translation></message>
-        <message><source>Name selection range (Shift+M)</source><translation>命名所选区间（Shift+M）</translation></message>
-        <message><source>Mark moments to revisit, or name a range for repeated listening.</source><translation>标记值得重温的时刻，或为反复试听的区间命名。</translation></message>
-        <message><source>Outside current audio</source><translation>超出当前音频</translation></message>
-        <message><source>Marker name</source><translation>标记名称</translation></message>
-        <message><source>Start</source><translation>起点</translation></message>
-        <message><source>Marker start (seconds)</source><translation>标记起点（秒）</translation></message>
-        <message><source>End</source><translation>终点</translation></message>
-        <message><source>Marker end (seconds)</source><translation>标记终点（秒）</translation></message>
-        <message><source>Preview range</source><translation>试听区间</translation></message>
-        <message><source>Delete</source><translation>删除</translation></message>
-        <message><source>Markers stay at their timeline positions when clips move. Alt+← / → jumps between markers.</source><translation>移动片段时，标记保持在时间线上的原位置。Alt+← / → 可跳转到前后标记。</translation></message>
+        <message>
+            <source>Markers &amp; ranges</source>
+            <translation>标记与区间</translation>
+        </message>
+        <message>
+            <source>At playhead</source>
+            <translation>当前位置</translation>
+        </message>
+        <message>
+            <source>Add marker (M)</source>
+            <translation>添加标记（M）</translation>
+        </message>
+        <message>
+            <source>From selection</source>
+            <translation>所选范围</translation>
+        </message>
+        <message>
+            <source>Name selection range (Shift+M)</source>
+            <translation>命名所选区间（Shift+M）</translation>
+        </message>
+        <message>
+            <source>Mark moments to revisit, or name a range for repeated listening.</source>
+            <translation>标记值得重温的时刻，或为反复试听的区间命名。</translation>
+        </message>
+        <message>
+            <source>Outside current audio</source>
+            <translation>超出当前音频</translation>
+        </message>
+        <message>
+            <source>Marker name</source>
+            <translation>标记名称</translation>
+        </message>
+        <message>
+            <source>Start</source>
+            <translation>起点</translation>
+        </message>
+        <message>
+            <source>Marker start (seconds)</source>
+            <translation>标记起点（秒）</translation>
+        </message>
+        <message>
+            <source>End</source>
+            <translation>终点</translation>
+        </message>
+        <message>
+            <source>Marker end (seconds)</source>
+            <translation>标记终点（秒）</translation>
+        </message>
+        <message>
+            <source>Preview range</source>
+            <translation>试听区间</translation>
+        </message>
+        <message>
+            <source>Delete</source>
+            <translation>删除</translation>
+        </message>
+        <message>
+            <source>Markers stay at their timeline positions when clips move. Alt+← / → jumps between markers.</source>
+            <translation>移动片段时，标记保持在时间线上的原位置。Alt+← / → 可跳转到前后标记。</translation>
+        </message>
     </context>
     <context>
         <name>SoundAssemblyMarkerLane</name>
-        <message><source>MARKERS</source><translation>标记</translation></message>
+        <message>
+            <source>MARKERS</source>
+            <translation>标记</translation>
+        </message>
+    </context>
+    <context>
+        <name>ClickAnalysisController</name>
+        <message>
+            <source>Select up to five minutes of original audio to check for clicks.</source>
+            <translation>请选择不超过五分钟的原始声音来检查爆音。</translation>
+        </message>
+        <message>
+            <source>Click analysis could not finish. Check that the original file is available and unchanged.</source>
+            <translation>爆音检查未能完成，请确认原始文件可用且未被修改。</translation>
+        </message>
+    </context>
+    <context>
+        <name>SoundClickRepairPanel</name>
+        <message>
+            <source>Local repairs added to the draft. Audition adjusted audio or undo to compare.</source>
+            <translation>局部修复已加入草稿。可试听调整后的声音，或撤销后对比。</translation>
+        </message>
+        <message>
+            <source>These ranges already have local click repair.</source>
+            <translation>这些区间已设置局部去爆音。</translation>
+        </message>
+        <message>
+            <source>Click repair already covers the whole recording. Review its settings in Effects.</source>
+            <translation>去爆音已作用于整段录音，请在“效果”中检查设置。</translation>
+        </message>
+        <message>
+            <source>Existing local click repairs are bypassed. Enable or review them in Effects first.</source>
+            <translation>已有的局部去爆音已旁路，请先在“效果”中启用或检查。</translation>
+        </message>
+        <message>
+            <source>Repair amount is zero. Increase it before adding local repairs.</source>
+            <translation>修复量为零，请先提高修复量再添加局部修复。</translation>
+        </message>
+        <message>
+            <source>This edit would exceed 64 effect ranges. Select fewer findings.</source>
+            <translation>此次编辑将超过 64 个效果区间，请减少勾选项。</translation>
+        </message>
+        <message>
+            <source>The effect chain is full. Remove an effect before adding click repair.</source>
+            <translation>效果链已满，请先移除一个效果再添加去爆音。</translation>
+        </message>
+        <message>
+            <source>These findings are no longer available. Scan the original again.</source>
+            <translation>这些检查结果已失效，请重新扫描原始声音。</translation>
+        </message>
+        <message>
+            <source>Short click repair</source>
+            <translation>短爆音修复</translation>
+        </message>
+        <message>
+            <source>Original audio · deterministic detection</source>
+            <translation>原始声音 · 确定性检测</translation>
+        </message>
+        <message>
+            <source>Cancelling…</source>
+            <translation>正在取消…</translation>
+        </message>
+        <message>
+            <source>Cancel scan</source>
+            <translation>取消扫描</translation>
+        </message>
+        <message>
+            <source>Scan selection</source>
+            <translation>扫描选区</translation>
+        </message>
+        <message>
+            <source>Sensitivity (%)</source>
+            <translation>灵敏度（%）</translation>
+        </message>
+        <message>
+            <source>Maximum width (µs)</source>
+            <translation>最大宽度（µs）</translation>
+        </message>
+        <message>
+            <source>Repair (%)</source>
+            <translation>修复量（%）</translation>
+        </message>
+        <message>
+            <source>Checking the original audio for short discontinuities…</source>
+            <translation>正在检查原始声音中的短暂突变…</translation>
+        </message>
+        <message>
+            <source>Percussion can resemble clicks. Audition each finding with surrounding sound before repairing; the original stays intact.</source>
+            <translation>打击乐也可能被识别为爆音。请先结合前后声音试听，再采纳修复；原始声音保持完整。</translation>
+        </message>
+        <message>
+            <source>Checked %1–%2 s · %3 findings</source>
+            <translation>已检查 %1–%2 秒 · %3 处疑似爆音</translation>
+        </message>
+        <message>
+            <source> · showing the first %1; scan a smaller range for the rest</source>
+            <translation> · 仅显示前 %1 处，其余请缩小选区后扫描</translation>
+        </message>
+        <message>
+            <source>Select finding at %1 s</source>
+            <translation>选择 %1 秒处的疑似爆音</translation>
+        </message>
+        <message>
+            <source>Channels %1 · %2 ms</source>
+            <translation>声道 %1 · %2 毫秒</translation>
+        </message>
+        <message>
+            <source>Locate</source>
+            <translation>定位</translation>
+        </message>
+        <message>
+            <source>Audition source</source>
+            <translation>试听原声</translation>
+        </message>
+        <message>
+            <source>No short clicks found with these settings.</source>
+            <translation>当前设置下未发现短爆音。</translation>
+        </message>
+        <message>
+            <source>Select up to five minutes on the timeline, then scan the original audio.</source>
+            <translation>在时间线上选择不超过五分钟的区间，然后扫描原始声音。</translation>
+        </message>
+        <message>
+            <source>Select findings</source>
+            <translation>全选结果</translation>
+        </message>
+        <message>
+            <source>Clear</source>
+            <translation>清空</translation>
+        </message>
+        <message>
+            <source>%1 selected</source>
+            <translation>已选 %1 项</translation>
+        </message>
+        <message>
+            <source>Audition adjusted</source>
+            <translation>试听调整后</translation>
+        </message>
+        <message>
+            <source>Repair selected</source>
+            <translation>修复所选</translation>
+        </message>
     </context>
 </TS>

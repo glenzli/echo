@@ -367,3 +367,23 @@ matches, using a separate search presentation controller. Collection, project an
 category filters remain authoritative. Similarity is labeled as a candidate, and
 an unavailable Runtime leaves literal results usable. This reuses existing text and
 CLAP indexes; it does not extend CLAP coverage to unindexed long recordings.
+
+### Short click review
+
+`ClickAnalysisController` serializes cancellable, latest-request Original scans (at most
+five minutes) using `echo::audio::ClickCandidateAnalyzer`. Fixed blocks and the existing
+DeClick processor's short history produce at most 256 displayed findings; candidate
+counting excludes decode context. Detection is deterministic and may include percussion.
+`SoundClickRepairPanel.qml` owns review, selection and contextual source/adjusted audition;
+`ClickRepairEditing.js` preflights scope union and the 64-mask budget before
+`SoundAdjustmentDraft` accepts one undoable edit. Global enabled and bypassed local
+DeClick settings require review in Effects. Parameters and existing masks are preserved.
+
+DeClick masks use a preallocated dry-delay ring in `EffectProcessingChain`; dry, wet
+and Original anchors share the same latency through playback, seek/reset and export.
+Project persistence uses the existing effect-mask graph. Opt-in `ECHO_DEBUG_CLICK_REPAIR`
+with the independent-editor fixture/report variables runs `ClickRepairSmoke.qml`,
+including original/adjusted playback, atomic undo/redo, portable save and export/reopen.
+Focused tests: `echo-click-analysis-test`, `echo-click-analysis-controller-test`,
+`echo-effect-processing-chain-test`, `tests/click_repair_contract.mjs`, and
+`tests/qml/tst_ClickRepair.qml`.

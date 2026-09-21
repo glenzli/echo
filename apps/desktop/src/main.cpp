@@ -4,6 +4,7 @@
 #include "application_paths.hpp"
 #include "assembly_waveform_controller.hpp"
 #include "batch_export_controller.hpp"
+#include "click_analysis_controller.hpp"
 #include "creative_vfx_presets.hpp"
 #include "desktop_backend.hpp"
 #include "impulse_response_controller.hpp"
@@ -128,6 +129,7 @@ int main(int argc, char* argv[]) {
         );
         SpectrogramPreviewController spectrogram_preview;
         NoiseProfileController noise_profile;
+        ClickAnalysisController click_analysis;
         QObject::connect(
             &inference_prefs,
             &InferencePreferences::runtimeEndpointChanged,
@@ -162,6 +164,7 @@ int main(int argc, char* argv[]) {
         );
         engine.rootContext()->setContextProperty(QStringLiteral("player"), &player);
         engine.rootContext()->setContextProperty(QStringLiteral("noiseProfile"), &noise_profile);
+        engine.rootContext()->setContextProperty(QStringLiteral("clickAnalysis"), &click_analysis);
         engine.rootContext()->setContextProperty(
             QStringLiteral("materialPlayer"),
             &material_player
@@ -236,6 +239,10 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(
             QStringLiteral("independentAiValidation"),
             qEnvironmentVariableIsSet("ECHO_DEBUG_EDITOR_AI")
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("independentClickValidation"),
+            qEnvironmentVariableIsSet("ECHO_DEBUG_CLICK_REPAIR")
         );
         engine.loadFromModule(
             "EchoDesktop",

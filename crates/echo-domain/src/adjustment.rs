@@ -132,14 +132,13 @@ impl EffectNodeKind {
     }
 
     /// Whether this insert can be mixed by an Original-time effect mask.
-    /// Terminal and history/latency-dependent processors require full-source
-    /// context and therefore cannot be scoped to a local selection.
+    /// DeClick aligns dry/wet latency before mixing. Other latency-dependent
+    /// or capture processors, and the terminal Master, remain unmaskable.
     #[must_use]
     pub const fn supports_effect_mask(self) -> bool {
         !matches!(
             self,
             Self::Master
-                | Self::DeClick
                 | Self::TransformVfx
                 | Self::DriveVfx
                 | Self::RotaryVfx

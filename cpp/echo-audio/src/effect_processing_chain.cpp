@@ -96,7 +96,8 @@ class EffectProcessingChain::Impl {
             adjustment.creative_vfx().freeze.capture_source_millis * sample_rate / 1000U
         ),
         restoration_enabled_(adjustment.restoration().enabled), mask_plan_(mask_plan),
-        dry_samples_(kMaximumProcessingFrames * channel_count, 0.0F) {
+        dry_samples_(kMaximumProcessingFrames * channel_count, 0.0F),
+        de_click_dry_delay_(de_click_.latency_frames() * channel_count, 0.0F) {
         if (sample_rate_ == 0 || channel_count_ == 0) {
             throw std::invalid_argument("effect chain requires a valid audio layout");
         }
@@ -408,6 +409,20 @@ class EffectProcessingChain::Impl {
                 de_hum_.process_interleaved(samples, frame_count, channel_count_);
                 break;
             case EffectNodeKind::DeClick:
+                if (local) {
+                    // The mask's dry input and Original anchors must travel the
+                    // same fixed delay as DeClick's wet output, including bypass.
+                    for (std::size_t frame = 0; frame < frame_count; ++frame) {
+                        for (std::size_t channel = 0; channel < channel_count_; ++channel) {
+                            std::swap(
+                                dry_samples_[frame * channel_count_ + channel],
+                                de_click_dry_delay_[de_click_dry_cursor_ * channel_count_ + channel]
+                            );
+                        }
+                        de_click_dry_cursor_ =
+                            (de_click_dry_cursor_ + 1) % de_click_.latency_frames();
+                    }
+                }
                 de_click_.process_interleaved(samples, frame_count, channel_count_);
                 delay_source_anchors(node, source_frames, frame_count);
                 break;
@@ -593,6 +608,8 @@ class EffectProcessingChain::Impl {
             std::fill(delay.begin(), delay.end(), kNoSourceFrame);
         }
         source_delay_cursors_.fill(0);
+        std::fill(de_click_dry_delay_.begin(), de_click_dry_delay_.end(), 0.0F);
+        de_click_dry_cursor_ = 0;
     }
 
     std::uint32_t sample_rate_ = 0;
@@ -632,6 +649,8 @@ class EffectProcessingChain::Impl {
     const EffectMaskPlan* mask_plan_ = nullptr;
     bool has_local_masks_ = false;
     std::vector<float> dry_samples_;
+    std::vector<float> de_click_dry_delay_;
+    std::size_t de_click_dry_cursor_ = 0;
     std::array<std::vector<std::uint64_t>, kEffectNodeCount> source_delays_;
     std::array<std::size_t, kEffectNodeCount> source_delay_cursors_{};
     std::size_t latency_frames_ = 0;

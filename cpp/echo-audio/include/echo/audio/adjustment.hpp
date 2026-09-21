@@ -54,7 +54,6 @@ enum class EffectNodeKind : std::uint8_t {
 [[nodiscard]] inline constexpr bool effect_node_supports_mask(EffectNodeKind node) {
     switch (node) {
     case EffectNodeKind::Master:
-    case EffectNodeKind::DeClick:
     case EffectNodeKind::TransformVfx:
     case EffectNodeKind::DriveVfx:
     case EffectNodeKind::RotaryVfx:

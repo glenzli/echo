@@ -768,3 +768,27 @@ fn legacy_graph_json_restores_one_audible_identity_segment() {
         EditSegmentState::Audible
     );
 }
+
+#[test]
+fn local_de_click_mask_survives_graph_roundtrip() {
+    let mask =
+        EffectMask::new(100, 900, 5, vec![EffectNodeKind::DeClick]).expect("aligned DeClick mask");
+    let graph = AdjustmentGraph::new(
+        1_000,
+        0,
+        1_000,
+        0,
+        0,
+        AdjustmentEffects::default()
+            .with_effect_chain(
+                EffectChain::new([EffectNodeKind::DeClick, EffectNodeKind::Master])
+                    .expect("repair chain"),
+            )
+            .with_effect_masks(vec![mask.clone()]),
+    )
+    .expect("local repair graph");
+    let decoded: AdjustmentGraph =
+        serde_json::from_str(&serde_json::to_string(&graph).expect("encode")).expect("decode");
+    assert_eq!(decoded.effect_masks(), &[mask]);
+    assert_eq!(decoded, graph);
+}

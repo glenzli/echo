@@ -152,7 +152,7 @@ fn effect_mask_wire_and_structural_bounds_are_stable() {
         Err(EffectMaskError::UnsupportedEffectNode)
     );
     assert_eq!(
-        EffectMask::new(2_000, 3_000, 10, vec![EffectNodeKind::DeClick]),
+        EffectMask::new(2_000, 3_000, 10, vec![EffectNodeKind::TransformVfx]),
         Err(EffectMaskError::UnsupportedEffectNode)
     );
     assert_eq!(
@@ -176,6 +176,7 @@ fn effect_mask_wire_and_structural_bounds_are_stable() {
         Err(EffectMaskError::UnsupportedEffectNode)
     );
     for node in [
+        EffectNodeKind::DeClick,
         EffectNodeKind::SceneVfx,
         EffectNodeKind::DelayVfx,
         EffectNodeKind::ModulationVfx,
@@ -189,7 +190,6 @@ fn effect_mask_wire_and_structural_bounds_are_stable() {
     }
     for node in [
         EffectNodeKind::Master,
-        EffectNodeKind::DeClick,
         EffectNodeKind::TransformVfx,
         EffectNodeKind::DriveVfx,
         EffectNodeKind::RotaryVfx,
