@@ -122,6 +122,87 @@ void parity(const AssemblyMixPlan& plan) {
             );
     assert(stream.position_millis() == stream.duration_millis());
 }
+void live_mixing(const AssemblyClipSource& clip, const std::filesystem::path& root) {
+    AssemblyMixPlan plan;
+    plan.limiter_enabled = false;
+    plan.tracks = {AssemblyTrackMix{.clips = {clip}}};
+    AssemblyMixer mixer(plan);
+    auto controls = assembly_mix_controls(plan);
+    assert(std::abs(mixer.next()[0] - 0.3F) < 0.001F);
+    controls.tracks[0].gain_centibels = -600;
+    controls.tracks[0].pan_percent = 100;
+    assert(mixer.update_mix(controls));
+    auto block = mixer.next();
+    assert(block[0] > 0.29F && block[0] < 0.3F); // 10 ms ramp, no abrupt jump.
+    assert(std::abs(block[958]) < 0.00001F);
+    assert(std::abs(block.back() - 0.3F * std::pow(10.0F, -0.3F)) < 0.001F);
+    const auto peaks = mixer.track_peaks();
+    assert(peaks[0].left_dbfs > -11 && peaks[0].right_dbfs > -11); // Ramp still included.
+    (void)mixer.next();
+    assert(mixer.track_peaks()[0].left_dbfs <= -69);
+    assert(std::abs(mixer.track_peaks()[0].right_dbfs - (-16.458F)) < 0.05F);
+    auto invalid = controls;
+    invalid.track_count = 9;
+    assert(!mixer.update_mix(invalid));
+    invalid = controls;
+    invalid.tracks[0].pan_percent = 101;
+    assert(!mixer.update_mix(invalid));
+
+    auto changing = constant_wav(0.1F);
+    const auto late = constant_wav(0.3F);
+    changing.replace(44 + 24000 * 4, 24000 * 4, late.substr(44 + 24000 * 4));
+    const auto path = root / "changing.wav";
+    {
+        std::ofstream file(path, std::ios::binary);
+        file << changing;
+    }
+    plan.tracks[0].clips[0].path = path.string();
+    AssemblyMixer resumed(plan);
+    controls = assembly_mix_controls(plan);
+    (void)resumed.next();
+    (void)resumed.next();
+    controls.tracks[0].muted = true;
+    assert(resumed.update_mix(controls));
+    for (int i = 0; i < 4; ++i)
+        (void)resumed.next();
+    controls.tracks[0].muted = false;
+    assert(resumed.update_mix(controls));
+    block = resumed.next();
+    assert(std::abs(block.back() - 0.3F) < 0.001F); // Source advanced during silence.
+
+    plan.tracks.push_back(AssemblyTrackMix{.clips = {clip}});
+    AssemblyMixer solo(plan);
+    controls = assembly_mix_controls(plan);
+    controls.tracks[1].solo = true;
+    controls.master_gain_centibels = -600;
+    assert(solo.update_mix(controls));
+    (void)solo.next();
+    block = solo.next();
+    assert(std::abs(block.back() - 0.3F * std::pow(10.0F, -0.3F)) < 0.001F);
+    assert(solo.track_peaks()[0].left_dbfs <= -69);
+    assert(std::abs(solo.track_peaks()[1].left_dbfs - (-10.458F)) < 0.05F);
+
+    AssemblyPlaybackSession stream(plan, false);
+    until([&] { return stream.buffered_frames() == AssemblyPlaybackSession::capacity_frames; });
+    stream.pause();
+    for (int i = 0; i < 100; ++i) {
+        controls.tracks[1].pan_percent = static_cast<std::int16_t>(i);
+        assert(stream.update_mix(controls));
+    }
+    controls.tracks[1].muted = true;
+    assert(stream.update_mix(controls));
+    stream.seek(500);
+    until([&] { return stream.position_millis() == 500; });
+    stream.resume();
+    until([&] { return stream.buffered_frames() >= 4096; });
+    std::array<float, 2048> output{};
+    assert(stream.read(output.data(), 1024) == 1024);
+    for (float sample : output)
+        assert(sample == 0);
+    assert(stream.track_count() == 2 && stream.track_peaks()[1].left_dbfs <= -69);
+    stream.stop();
+    assert(!stream.update_mix(controls));
+}
 int main() {
     const auto root =
         std::filesystem::temp_directory_path()
@@ -133,6 +214,7 @@ int main() {
         file << constant_wav(0.3F);
     }
     AssemblyClipSource clip{.path = source.string(), .source_end_millis = 1000};
+    live_mixing(clip, root);
     AssemblyMixPlan plan;
     plan.tracks = {
         AssemblyTrackMix{.clips = {clip}},

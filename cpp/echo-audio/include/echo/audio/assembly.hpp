@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -49,5 +51,25 @@ struct AssemblyMixPlan {
     std::int16_t limiter_ceiling_centibels = -100;
     std::uint16_t limiter_release_millis = 100;
 };
+
+// Bounded control-only snapshot; no source, timeline or DSP topology changes.
+struct AssemblyTrackControls {
+    std::int16_t gain_centibels = 0;
+    std::int16_t pan_percent = 0;
+    bool muted = false;
+    bool solo = false;
+};
+struct AssemblyMixControls {
+    std::size_t track_count = 0;
+    std::array<AssemblyTrackControls, 8> tracks{};
+    std::int16_t master_gain_centibels = 0;
+};
+struct AssemblyTrackPeak {
+    float left_dbfs = -70;
+    float right_dbfs = -70;
+};
+using AssemblyTrackPeaks = std::array<AssemblyTrackPeak, 8>;
+AssemblyMixControls assembly_mix_controls(const AssemblyMixPlan& plan);
+bool valid_assembly_mix_controls(const AssemblyMixControls& controls, std::size_t track_count);
 
 } // namespace echo::audio

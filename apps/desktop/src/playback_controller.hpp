@@ -32,6 +32,7 @@ class PlaybackController : public QObject {
     Q_PROPERTY(qreal outputPeakDb READ outputPeakDb NOTIFY meterChanged)
     Q_PROPERTY(qreal gainReductionDb READ gainReductionDb NOTIFY meterChanged)
     Q_PROPERTY(qreal limiterReductionDb READ limiterReductionDb NOTIFY meterChanged)
+    Q_PROPERTY(QVariantList assemblyTrackPeaks READ assemblyTrackPeaks NOTIFY meterChanged)
 
   public:
     explicit PlaybackController(QObject* parent = nullptr);
@@ -39,6 +40,10 @@ class PlaybackController : public QObject {
 
     Q_INVOKABLE void play(const QString& path);
     bool playAssembly(const echo::audio::AssemblyMixPlan& plan);
+    bool updateAssemblyMix(const echo::audio::AssemblyMixControls& controls);
+    QVariantList assemblyTrackPeaks() const {
+        return assembly_track_peaks_;
+    }
     QString errorText() const {
         return error_text_;
     }
@@ -178,4 +183,5 @@ class PlaybackController : public QObject {
     qreal gain_reduction_db_ = 0.0;
     qreal limiter_reduction_db_ = 0.0;
     bool ended_ = false;
+    QVariantList assembly_track_peaks_;
 };

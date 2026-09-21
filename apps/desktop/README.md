@@ -68,6 +68,14 @@ reusing track colors and typography; it dispatches edits to the workspace
 without owning another undo stack. `EchoValueSpinBox.qml` owns themed numeric
 input, and `EchoTimeSpinBox.qml` adds the seconds-to-milliseconds projection.
 `SoundAssemblyTrack.qml` owns a lane and its fixed mix controls.
+Track gain, pan, mute, solo and master gain can change during audition, including
+undo/redo and paused playback. Drag samples remain temporary; release records
+one history step. `SoundAssemblyController` admits only controls over the same
+pinned source/topology snapshot. The producer coalesces bounded control updates
+and ramps for 10 ms; buffered audio remains intact (up to 16,384 frames ahead).
+`EchoStereoMeter.qml` displays stereo peaks after each track fader and before
+master processing. These are producer-side readings, ahead of audible output by
+the current preview buffer. Clip/source/limiter changes still invalidate preview.
 `SoundAssemblyClip.qml` owns the complete
 move, trim and fade gesture lifecycle; `SoundAssemblyEditing.js` owns bounded
 geometry, magnetic snapping, split/crossfade transforms and source-time mapping.

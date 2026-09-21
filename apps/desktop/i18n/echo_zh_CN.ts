@@ -4663,11 +4663,6 @@
             <translation>独听轨道</translation>
         </message>
         <message>
-            <location filename="../qml/SoundAssemblyTrack.qml" line="267" />
-            <source>%1 clips</source>
-            <translation>%1 个片段</translation>
-        </message>
-        <message>
             <location filename="../qml/SoundAssemblyTrack.qml" line="295" />
             <source>Track gain</source>
             <translation>轨道增益</translation>
@@ -7232,5 +7227,11 @@
             <source>Creates an exaggerated character. It does not clone a person or preserve a natural speaking identity.</source>
             <translation>塑造夸张的声音角色，不会克隆人物，也不以保留自然说话身份为目标。</translation>
         </message>
+    </context>
+    <context>
+        <name>EchoStereoMeter</name>
+        <message><source>Track level</source><translation>轨道电平</translation></message>
+        <message><source>Silent</source><translation>静音</translation></message>
+        <message><source>Stereo peak after track gain, before master processing. Preview buffering may lead audible output.</source><translation>轨道增益之后、主处理之前的立体声峰值。受试听缓冲影响，读数可能先于实际播放。</translation></message>
     </context>
 </TS>

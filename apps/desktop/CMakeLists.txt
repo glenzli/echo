@@ -218,6 +218,7 @@ qt_add_qml_module(
         qml/EchoIcon.qml
         qml/EchoIconButton.qml
         qml/EchoParameterSlider.qml
+        qml/EchoStereoMeter.qml
         qml/EchoSegmentedControl.qml
         qml/EchoSectionLabel.qml
         qml/EchoSettingsDialog.qml

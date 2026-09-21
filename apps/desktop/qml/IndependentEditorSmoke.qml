@@ -42,6 +42,41 @@ Item {
         checkUnchangedEdits();
         facts.editingContext = {sidebar: true, selection: true, playhead: true, unchangedEdits: true};
     }
+    function checkLiveMix() {
+        const original = assembly.authoredJson(assembly.document);
+        const undoCount = assembly.undoStack.length, position = player.position;
+        for (let i = 0; i < 100; ++i) assembly.previewTrackValue(0, "panPercent", i);
+        require(assembly.undoStack.length === undoCount && assembly.authoredJson(assembly.document) === original,
+                "transient mix audition changed the authored draft");
+        assembly.setTrackValue(0, "gainCentibels", -500);
+        require(player.playing && assembly.previewCurrent && assembly.undoStack.length === undoCount + 1,
+                "live gain interrupted playback or broke history");
+        assembly.undo(); assembly.redo();
+        require(player.playing && assembly.previewCurrent, "mix undo/redo interrupted playback");
+        assembly.setTrackValue(0, "panPercent", -80);
+        assembly.setTrackValue(1, "muted", true);
+        assembly.setTrackValue(0, "solo", true);
+        assembly.setMasterValue("gainCentibels", -300);
+        player.togglePause();
+        assembly.setTrackValue(0, "panPercent", 75);
+        require(player.paused && assembly.previewCurrent, "paused mix edit changed transport state");
+        player.togglePause();
+        require(assembly.saveRevision() && player.playing && assembly.previewCurrent, "mix save invalidated audition");
+        require(player.position >= position, "live controls rewound playback");
+        while (assembly.undoStack.length > undoCount) assembly.undo();
+        require(assembly.authoredJson(assembly.document) === original && assembly.previewCurrent, "mix undo failed to restore draft");
+        require(assembly.saveRevision(), "restored mix failed to save");
+        for (const kind of ["source", "clip", "limiter", "invalid"]) {
+            const next = assembly.clone(assembly.document);
+            if (kind === "source") next.clipSources[0].path += ".wrong";
+            if (kind === "clip") next.tracks[0].clips[0].timelineStartMillis += 50;
+            if (kind === "limiter") next.master.limiterEnabled = !next.master.limiterEnabled;
+            if (kind === "invalid") next.tracks[0].gainCentibels = 65536;
+            require(!soundAssemblyController.updatePreviewMix(next, true), "unsafe mix update admitted: " + kind);
+        }
+        require(player.playing && assembly.previewCurrent, "rejected control update disturbed audition");
+        facts.liveMix = {trackControls:true, masterGain:true, transientDrag:true, undoRedo:true, pause:true, save:true, topologyRejection:true};
+    }
     function checkWaveforms() {
         const counts = [];
         for (const levels of Object.values(assemblyWaveforms.waveforms)) {
@@ -158,6 +193,7 @@ Item {
             require(Math.abs(player.duration-(assembly.previewRangeEnd-assembly.previewRangeStart))<2,"range preview duration mismatch");
             checkUnchangedEdits();
             facts.unchangedEditsPreservePlayback = true;
+            checkLiveMix();
             assembly.stopPlayback();
             auditionVolume=player.volume;player.volume=0;
             stage=30;break;

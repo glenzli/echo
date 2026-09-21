@@ -427,7 +427,14 @@ bool PlaybackController::playAssembly(const echo::audio::AssemblyMixPlan& plan) 
     }
 }
 
+bool PlaybackController::updateAssemblyMix(const echo::audio::AssemblyMixControls& controls) {
+    const auto assembly =
+        std::dynamic_pointer_cast<echo::audio::AssemblyPlaybackSession>(current_session_);
+    return assembly && assembly->update_mix(controls);
+}
+
 bool PlaybackController::startStream(std::shared_ptr<echo::audio::PlaybackStream> session) {
+    assembly_track_peaks_.clear();
     error_text_.clear();
     // Stop its producer before publication. The handoff preserves an old
     // session only while an in-flight callback might still read from it.
@@ -511,6 +518,7 @@ void PlaybackController::togglePause() {
 }
 
 void PlaybackController::stop() {
+    assembly_track_peaks_.clear();
     position_timer_.stop();
     if (sink_ != nullptr) {
         sink_->suspend();
@@ -600,13 +608,27 @@ void PlaybackController::pumpPosition() {
         return;
     }
     if (session != nullptr) {
+        QVariantList track_peaks;
+        if (const auto assembly =
+                std::dynamic_pointer_cast<echo::audio::AssemblyPlaybackSession>(session)) {
+            const auto peaks = assembly->track_peaks();
+            for (std::size_t i = 0; i < assembly->track_count(); ++i)
+                track_peaks.push_back(
+                    QVariantMap{
+                        {QStringLiteral("left"), peaks[i].left_dbfs},
+                        {QStringLiteral("right"), peaks[i].right_dbfs}
+                    }
+                );
+        }
         const echo::audio::PlaybackMeterSnapshot snapshot = session->meter_snapshot();
         const bool changed =
             std::abs(momentary_lufs_ - snapshot.momentary_lufs) > 0.05
             || std::abs(output_peak_db_ - snapshot.output_peak_dbfs) > 0.05
             || std::abs(gain_reduction_db_ - snapshot.gain_reduction_decibels) > 0.05
-            || std::abs(limiter_reduction_db_ - snapshot.limiter_reduction_decibels) > 0.05;
+            || std::abs(limiter_reduction_db_ - snapshot.limiter_reduction_decibels) > 0.05
+            || track_peaks != assembly_track_peaks_;
         if (changed) {
+            assembly_track_peaks_ = std::move(track_peaks);
             momentary_lufs_ = snapshot.momentary_lufs;
             output_peak_db_ = snapshot.output_peak_dbfs;
             gain_reduction_db_ = snapshot.gain_reduction_decibels;

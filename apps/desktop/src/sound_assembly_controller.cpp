@@ -14,6 +14,7 @@
 #include <QSaveFile>
 
 #include <chrono>
+#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -38,6 +39,36 @@ struct AssemblyJob {
     std::vector<PreparedSourceJob> sources;
     echo::audio::AssemblyMixPlan plan;
 };
+
+// Only mix controls and display names can change under a prepared source plan.
+QVariantMap mix_topology(const QVariantMap& revision) {
+    QVariantList tracks;
+    for (const auto& item : revision.value(QStringLiteral("tracks")).toList()) {
+        auto track = item.toMap();
+        for (const auto* key : {"gainCentibels", "panPercent", "muted", "solo", "name"})
+            track.remove(QLatin1String(key));
+        tracks.push_back(track);
+    }
+    auto master = revision.value(QStringLiteral("master")).toMap();
+    master.remove(QStringLiteral("gainCentibels"));
+    return {
+        {QStringLiteral("id"), revision.value(QStringLiteral("id"))},
+        {QStringLiteral("assemblyId"), revision.value(QStringLiteral("assemblyId"))},
+        {QStringLiteral("tracks"), tracks},
+        {QStringLiteral("master"), master},
+        {QStringLiteral("sources"), revision.value(QStringLiteral("clipSources"))}
+    };
+}
+
+bool mix_integer(const QVariant& value, int low, int high, std::int16_t& result) {
+    bool ok = false;
+    const double number = value.toDouble(&ok);
+    if (!ok || !std::isfinite(number) || number < low || number > high
+        || std::trunc(number) != number)
+        return false;
+    result = static_cast<std::int16_t>(number);
+    return true;
+}
 
 QString normalized_destination(const QUrl& destination) {
     QString path = destination.toLocalFile();
@@ -265,6 +296,7 @@ void SoundAssemblyController::start(
     if (preview) {
         player_.stop();
         preview_plan_.reset();
+        preview_revision_.clear();
         has_preview_ = false;
     }
     const QVariantList source_values = revision.value(QStringLiteral("clipSources")).toList();
@@ -316,6 +348,7 @@ void SoundAssemblyController::start(
             for (const auto& clip : track.clips)
                 pinned_sources.insert(QString::fromStdString(clip.path));
     worker_ = std::jthread([this,
+                            revision,
                             generation,
                             destination,
                             preview,
@@ -384,10 +417,15 @@ void SoundAssemblyController::start(
                 QDir(preparation_root).removeRecursively();
                 QMetaObject::invokeMethod(
                     this,
-                    [this, generation, plan = std::move(job.plan), reused_sources]() mutable {
+                    [this,
+                     generation,
+                     revision,
+                     plan = std::move(job.plan),
+                     reused_sources]() mutable {
                         if (generation_.load() != generation)
                             return;
                         preview_plan_ = std::move(plan);
+                        preview_revision_ = revision;
                         has_preview_ = true;
                         running_ = false;
                         reused_source_count_ = reused_sources;
@@ -552,6 +590,54 @@ bool SoundAssemblyController::playPreview(qint64 startMillis) {
     }
     if (startMillis > 0)
         player_.seek(startMillis);
+    return true;
+}
+bool SoundAssemblyController::updatePreviewMix(const QVariantMap& revision, bool updatePlayback) {
+    if (running_ || !has_preview_ || !preview_plan_
+        || mix_topology(revision) != mix_topology(preview_revision_))
+        return false;
+    auto controls = echo::audio::assembly_mix_controls(*preview_plan_);
+    const auto tracks = revision.value(QStringLiteral("tracks")).toList();
+    if (static_cast<std::size_t>(tracks.size()) != controls.track_count)
+        return false;
+    for (qsizetype i = 0; i < tracks.size(); ++i) {
+        const auto track = tracks[i].toMap();
+        auto& control = controls.tracks[static_cast<std::size_t>(i)];
+        if (!mix_integer(
+                track.value(QStringLiteral("gainCentibels")),
+                -2400,
+                1200,
+                control.gain_centibels
+            )
+            || !mix_integer(
+                track.value(QStringLiteral("panPercent")),
+                -100,
+                100,
+                control.pan_percent
+            ))
+            return false;
+        control.muted = track.value(QStringLiteral("muted")).toBool();
+        control.solo = track.value(QStringLiteral("solo")).toBool();
+    }
+    if (!mix_integer(
+            revision.value(QStringLiteral("master")).toMap().value(QStringLiteral("gainCentibels")),
+            -2400,
+            1200,
+            controls.master_gain_centibels
+        ))
+        return false;
+    if (updatePlayback && !player_.updateAssemblyMix(controls))
+        return false;
+    for (std::size_t i = 0; i < controls.track_count; ++i) {
+        auto& track = preview_plan_->tracks[i];
+        const auto& control = controls.tracks[i];
+        track.gain_centibels = control.gain_centibels;
+        track.pan_percent = control.pan_percent;
+        track.muted = control.muted;
+        track.solo = control.solo;
+    }
+    preview_plan_->master_gain_centibels = controls.master_gain_centibels;
+    preview_revision_ = revision;
     return true;
 }
 QString SoundAssemblyController::outputPath() const {

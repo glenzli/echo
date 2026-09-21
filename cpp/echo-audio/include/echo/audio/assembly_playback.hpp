@@ -17,6 +17,10 @@ class AssemblyPlaybackSession final : public PlaybackStream {
     void resume() override;
     void stop() override;
     void seek(std::uint64_t millis) override;
+    // Control thread only; coalesces pending snapshots. Never called by read().
+    bool update_mix(const AssemblyMixControls& controls);
+    AssemblyTrackPeaks track_peaks() const;
+    std::size_t track_count() const;
     bool is_paused() const override;
     bool is_stopped() const override;
     bool is_ended() const override;

@@ -54,7 +54,8 @@ Rectangle {
     readonly property real previewRangeStart: previewSelection && selectionBounds ? selectionBounds.start : 0
     readonly property real previewRangeEnd: previewSelection && selectionBounds ? selectionBounds.end : durationMillis
     readonly property string previewKey: authoredJson(document) + "|" + previewRangeStart + ":" + previewRangeEnd
-    onPreviewKeyChanged: { if (playbackOwned) stopPlayback(); }
+    property bool publishingLiveMix: false
+    onPreviewKeyChanged: { if (playbackOwned && !publishingLiveMix) stopPlayback(); }
     property real previewStartMillis: 0
     readonly property bool previewCurrent: soundAssemblyController.hasPreview && previewDocumentJson === previewKey
     readonly property real scrollPosition: timelineFlick.contentX
@@ -162,26 +163,43 @@ Rectangle {
             return;
         const next = clone(document);
         callback(next);
-        if (authoredJson(next) === authoredJson(document))
+        if (authoredJson(next) === authoredJson(document)) {
+            // A drag can return to its starting value after transient audition.
+            if (previewCurrent) soundAssemblyController.updatePreviewMix(document, playbackOwned && player.active);
             return;
-        stopPlayback();
+        }
         pushUndo();
-        document = next;
+        publishDocument(next);
         dirty = authoredJson(next) !== savedDocumentJson;
         reconcileSelection();
+    }
+
+    function publishDocument(next: var): void {
+        const live = previewCurrent && soundAssemblyController.updatePreviewMix(next, playbackOwned && player.active);
+        if (!live) stopPlayback();
+        publishingLiveMix = live;
+        document = next;
+        if (live) previewDocumentJson = previewKey;
+        publishingLiveMix = false;
+    }
+
+    function previewTrackValue(trackIndex: int, key: string, value: var): void {
+        if (!previewCurrent || !playbackOwned || !player.active) return;
+        const next = clone(document);
+        next.tracks[trackIndex][key] = value;
+        soundAssemblyController.updatePreviewMix(next, true);
     }
 
     function undo(): void {
         if (!canUndo)
             return;
-        stopPlayback();
         const previous = undoStack.slice();
         const target = previous.pop();
         const future = redoStack.slice();
         future.push(historySnapshot());
         undoStack = previous;
         redoStack = future;
-        document = target.document;
+        publishDocument(target.document);
         selectedClipIds = target.ids;
         selectedClipId = target.primary;
         dirty = authoredJson(document) !== savedDocumentJson;
@@ -191,14 +209,13 @@ Rectangle {
     function redo(): void {
         if (!canRedo)
             return;
-        stopPlayback();
         const future = redoStack.slice();
         const target = future.pop();
         const previous = undoStack.slice();
         previous.push(historySnapshot());
         undoStack = previous;
         redoStack = future;
-        document = target.document;
+        publishDocument(target.document);
         selectedClipIds = target.ids;
         selectedClipId = target.primary;
         dirty = authoredJson(document) !== savedDocumentJson;
@@ -213,7 +230,7 @@ Rectangle {
             presentError(saved && saved.error ? saved.error : qsTr("The assembly version could not be saved."));
             return null;
         }
-        document = clone(saved);
+        publishDocument(clone(saved));
         savedDocumentJson = authoredJson(document);
         dirty = false;
         refreshAssemblies();
@@ -1032,6 +1049,8 @@ Rectangle {
                                             workspace.openClipEditor();
                                         }
                                         onTrackValueRequested: workspace.setTrackValue(trackIndex, key, value)
+                                        onTrackPreviewRequested: workspace.previewTrackValue(trackIndex, key, value)
+                                        meterPeaks: workspace.playbackOwned && player.playing ? player.assemblyTrackPeaks[index] || ({}) : ({})
                                         onTrackMixResetRequested: trackIndex => workspace.mutate(next => {
                                                 next.tracks[trackIndex].gainCentibels = 0;
                                                 next.tracks[trackIndex].panPercent = 0;

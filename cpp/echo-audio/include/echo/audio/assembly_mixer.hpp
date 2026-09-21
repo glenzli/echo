@@ -17,6 +17,9 @@ class AssemblyMixer {
     std::span<const float> next(const OfflineRenderCallbacks& callbacks = {});
     // Milliseconds relative to the prepared preview window. Seeking resets DSP history.
     void seek(std::uint64_t millis);
+    // Producer thread only. Ramps controls over 10 ms without resetting readers.
+    bool update_mix(const AssemblyMixControls& controls);
+    AssemblyTrackPeaks track_peaks() const;
     std::uint64_t frame_count() const;
     std::uint64_t position_frames() const;
     float limiter_reduction_decibels() const;

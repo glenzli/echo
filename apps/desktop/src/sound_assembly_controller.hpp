@@ -43,6 +43,7 @@ class SoundAssemblyController : public QObject {
     Q_INVOKABLE void saveToMemory(const QVariantMap& revision);
     Q_INVOKABLE void cancel();
     Q_INVOKABLE bool playPreview(qint64 startMillis = 0);
+    Q_INVOKABLE bool updatePreviewMix(const QVariantMap& revision, bool updatePlayback);
 
     int reusedSourceCount() const {
         return reused_source_count_;
@@ -84,6 +85,7 @@ class SoundAssemblyController : public QObject {
     bool has_result_ = false;
     qreal progress_ = 0.0;
     std::optional<echo::audio::AssemblyMixPlan> preview_plan_;
+    QVariantMap preview_revision_;
     QString output_path_;
     qreal integrated_lufs_ = -70.0;
     qreal true_peak_dbtp_ = -70.0;

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <utility>
 
@@ -20,8 +21,8 @@ constexpr std::uint64_t kReaders = ~kClosed;
 class AssemblyPlaybackSession::Impl {
   public:
     Impl(AssemblyMixPlan plan, bool guard) :
-        mixer_(std::move(plan)), frames_(mixer_.frame_count()), ring_(capacity_frames, 2),
-        guard_(48000), meter_(48000, 2), use_guard_(guard) {
+        track_count_(plan.tracks.size()), mixer_(std::move(plan)), frames_(mixer_.frame_count()),
+        ring_(capacity_frames, 2), guard_(48000), meter_(48000, 2), use_guard_(guard) {
         thread_ = std::jthread([this] { produce(); });
     }
     ~Impl() {
@@ -66,6 +67,25 @@ class AssemblyPlaybackSession::Impl {
         requested_.fetch_add(1);
         wake_.notify_one();
     }
+    bool update_mix(const AssemblyMixControls& controls) {
+        if (!valid_assembly_mix_controls(controls, track_count_))
+            return false;
+        std::lock_guard lock(control_);
+        if (stopped_.load() || failed_.load())
+            return false;
+        pending_mix_ = controls;
+        wake_.notify_one();
+        return true;
+    }
+    void apply_mix() {
+        std::optional<AssemblyMixControls> next;
+        {
+            std::lock_guard lock(control_);
+            next = std::exchange(pending_mix_, std::nullopt);
+        }
+        if (next)
+            mixer_.update_mix(*next);
+    }
     bool reposition() {
         std::uint64_t target = 0, generation = 0;
         {
@@ -101,19 +121,21 @@ class AssemblyPlaybackSession::Impl {
             std::array<float, AssemblyMixer::block_frames * 2> output{};
             std::array<std::uint64_t, AssemblyMixer::block_frames> positions{};
             while (!stopped_.load()) {
+                apply_mix();
                 if (reposition())
                     continue;
                 if (paused_.load() || ended_.load()) {
                     std::unique_lock lock(control_);
                     wake_.wait(lock, [this] {
-                        return stopped_.load() || has_seek_ || (!paused_.load() && !ended_.load());
+                        return stopped_.load() || has_seek_ || pending_mix_.has_value()
+                               || (!paused_.load() && !ended_.load());
                     });
                     continue;
                 }
                 if (ring_.writable() < AssemblyMixer::block_frames) {
                     std::unique_lock lock(control_);
                     wake_.wait_for(lock, std::chrono::milliseconds(2), [this] {
-                        return stopped_.load() || has_seek_;
+                        return stopped_.load() || has_seek_ || pending_mix_.has_value();
                     });
                     continue;
                 }
@@ -142,6 +164,11 @@ class AssemblyPlaybackSession::Impl {
                 momentary_.store(meter.momentary_lufs);
                 peak_.store(meter.sample_peak_dbfs);
                 reduction_.store(mixer_.limiter_reduction_decibels());
+                const auto peaks = mixer_.track_peaks();
+                for (std::size_t i = 0; i < track_count_; ++i) {
+                    track_peaks_[i].left.store(peaks[i].left_dbfs);
+                    track_peaks_[i].right.store(peaks[i].right_dbfs);
+                }
                 for (std::size_t i = 0; i < count; ++i)
                     positions[i] = first + i;
                 // A concurrent seek closes reads immediately. Its producer-side
@@ -155,6 +182,7 @@ class AssemblyPlaybackSession::Impl {
             ended_.store(true);
         }
     }
+    const std::size_t track_count_;
     AssemblyMixer mixer_;
     const std::uint64_t frames_;
     PlaybackFrameRing ring_;
@@ -168,6 +196,11 @@ class AssemblyPlaybackSession::Impl {
     std::condition_variable wake_;
     bool has_seek_ = false;
     std::uint64_t pending_seek_ = 0;
+    std::optional<AssemblyMixControls> pending_mix_;
+    struct AtomicPeak {
+        std::atomic<float> left{-70}, right{-70};
+    };
+    std::array<AtomicPeak, 8> track_peaks_;
     std::string error_;
     std::jthread thread_;
 };
@@ -191,6 +224,18 @@ void AssemblyPlaybackSession::stop() {
 }
 void AssemblyPlaybackSession::seek(std::uint64_t millis) {
     impl_->seek(millis);
+}
+bool AssemblyPlaybackSession::update_mix(const AssemblyMixControls& controls) {
+    return impl_->update_mix(controls);
+}
+AssemblyTrackPeaks AssemblyPlaybackSession::track_peaks() const {
+    AssemblyTrackPeaks result;
+    for (std::size_t i = 0; i < impl_->track_count_; ++i)
+        result[i] = {impl_->track_peaks_[i].left.load(), impl_->track_peaks_[i].right.load()};
+    return result;
+}
+std::size_t AssemblyPlaybackSession::track_count() const {
+    return impl_->track_count_;
 }
 bool AssemblyPlaybackSession::is_paused() const {
     return impl_->paused_.load();

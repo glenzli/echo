@@ -58,14 +58,13 @@ bool cancelled(const OfflineRenderCallbacks& callbacks) {
 
 struct ClipState {
     const AssemblyClipSource* clip = nullptr;
-    const AssemblyTrackMix* track = nullptr;
+    std::size_t track_index = 0;
     std::uint64_t timeline_start_frame = 0;
     std::uint64_t timeline_end_frame = 0;
     std::uint64_t source_start_frame = 0;
     std::uint64_t fade_in_frames = 0;
     std::uint64_t fade_out_frames = 0;
     float gain = 1.0F;
-    bool active_track = true;
     std::unique_ptr<PreparedPcmReader> prepared;
     std::unique_ptr<PlaybackSession> session;
 };
@@ -74,7 +73,6 @@ std::vector<ClipState> prepare_clip_states(const AssemblyMixPlan& plan) {
     if (plan.tracks.empty() || plan.tracks.size() > kMaximumTracks) {
         throw std::invalid_argument("assembly requires between one and eight tracks");
     }
-    const bool has_solo = std::ranges::any_of(plan.tracks, &AssemblyTrackMix::solo);
     std::vector<ClipState> states;
     for (const auto& track : plan.tracks) {
         if (track.gain_centibels < -2'400 || track.gain_centibels > 1'200
@@ -105,14 +103,13 @@ std::vector<ClipState> prepare_clip_states(const AssemblyMixPlan& plan) {
             }
             ClipState state;
             state.clip = &clip;
-            state.track = &track;
+            state.track_index = static_cast<std::size_t>(&track - plan.tracks.data());
             state.timeline_start_frame = frames_from_millis(clip.timeline_start_millis);
             state.timeline_end_frame = state.timeline_start_frame + frames_from_millis(duration);
             state.source_start_frame = frames_from_millis(clip.source_start_millis);
             state.fade_in_frames = frames_from_millis(clip.fade_in_millis);
             state.fade_out_frames = frames_from_millis(clip.fade_out_millis);
-            state.gain = gain_amplitude(clip.gain_centibels) * gain_amplitude(track.gain_centibels);
-            state.active_track = !track.muted && (!has_solo || track.solo) && !clip.muted;
+            state.gain = gain_amplitude(clip.gain_centibels);
             states.push_back(std::move(state));
         }
     }
@@ -157,7 +154,7 @@ void mix_clip(
 ) {
     if (cancelled(callbacks))
         throw OfflineRenderCancelled();
-    if (!state.active_track || cursor_frame >= state.timeline_end_frame
+    if (state.clip->muted || cursor_frame >= state.timeline_end_frame
         || cursor_frame + frame_count <= state.timeline_start_frame) {
         return;
     }
@@ -234,7 +231,6 @@ void mix_clip(
         float left = scratch[frame * kChannels] * state.gain * fade;
         float right = scratch[frame * kChannels + 1] * state.gain * fade;
         apply_pan(left, right, state.clip->pan_percent);
-        apply_pan(left, right, state.track->pan_percent);
         mix[(mix_offset + frame) * kChannels] += left;
         mix[(mix_offset + frame) * kChannels + 1] += right;
     }
@@ -244,7 +240,51 @@ void mix_clip(
     }
 }
 
+struct MixRamp {
+    float current = 1, target = 1;
+    std::size_t remaining = 0;
+    void set(float value) {
+        if (target == value)
+            return;
+        target = value;
+        remaining = 480;
+    }
+    float next() {
+        if (remaining) {
+            current += (target - current) / static_cast<float>(remaining--);
+        }
+        return current;
+    }
+    void reset() {
+        current = target;
+        remaining = 0;
+    }
+};
+
 } // namespace
+AssemblyMixControls assembly_mix_controls(const AssemblyMixPlan& plan) {
+    AssemblyMixControls controls;
+    controls.track_count = plan.tracks.size();
+    controls.master_gain_centibels = plan.master_gain_centibels;
+    for (std::size_t i = 0; i < std::min(plan.tracks.size(), controls.tracks.size()); ++i) {
+        const auto& track = plan.tracks[i];
+        controls.tracks[i] = {track.gain_centibels, track.pan_percent, track.muted, track.solo};
+    }
+    return controls;
+}
+bool valid_assembly_mix_controls(const AssemblyMixControls& controls, std::size_t track_count) {
+    if (track_count == 0 || track_count > controls.tracks.size()
+        || controls.track_count != track_count || controls.master_gain_centibels < -2400
+        || controls.master_gain_centibels > 1200)
+        return false;
+    for (std::size_t i = 0; i < track_count; ++i) {
+        const auto& track = controls.tracks[i];
+        if (track.gain_centibels < -2400 || track.gain_centibels > 1200 || track.pan_percent < -100
+            || track.pan_percent > 100)
+            return false;
+    }
+    return true;
+}
 class AssemblyMixer::Impl {
   public:
     explicit Impl(AssemblyMixPlan value) :
@@ -276,6 +316,34 @@ class AssemblyMixer::Impl {
 
         mix_.reserve(AssemblyMixer::block_frames * kChannels);
         scratch_.reserve(AssemblyMixer::block_frames * kChannels);
+        track_mix_.reserve(AssemblyMixer::block_frames * kChannels);
+        update_mix(assembly_mix_controls(plan_));
+        reset_ramps();
+    }
+    bool update_mix(const AssemblyMixControls& controls) {
+        if (!valid_assembly_mix_controls(controls, plan_.tracks.size()))
+            return false;
+        bool solo = false;
+        for (std::size_t i = 0; i < controls.track_count; ++i)
+            solo = solo || controls.tracks[i].solo;
+        for (std::size_t i = 0; i < controls.track_count; ++i) {
+            const auto& track = controls.tracks[i];
+            float left =
+                !track.muted && (!solo || track.solo) ? gain_amplitude(track.gain_centibels) : 0;
+            float right = left;
+            apply_pan(left, right, track.pan_percent);
+            left_[i].set(left);
+            right_[i].set(right);
+        }
+        master_.set(gain_amplitude(controls.master_gain_centibels));
+        return true;
+    }
+    void reset_ramps() {
+        for (auto& ramp : left_)
+            ramp.reset();
+        for (auto& ramp : right_)
+            ramp.reset();
+        master_.reset();
     }
     std::span<const float> next(const OfflineRenderCallbacks& callbacks) {
         if (cancelled(callbacks))
@@ -286,11 +354,41 @@ class AssemblyMixer::Impl {
             std::min<std::uint64_t>(AssemblyMixer::block_frames, end_ - cursor_)
         );
         mix_.assign(frames * kChannels, 0.0F);
-        for (auto& state : states_)
-            mix_clip(state, cursor_, frames, mix_, scratch_, callbacks);
-        const float gain = gain_amplitude(plan_.master_gain_centibels);
-        for (auto& sample : mix_)
-            sample *= gain;
+        peaks_ = {};
+        for (std::size_t track = 0; track < plan_.tracks.size(); ++track) {
+            const bool silent = left_[track].current == 0 && left_[track].target == 0
+                                && right_[track].current == 0 && right_[track].target == 0;
+            track_mix_.assign(frames * kChannels, 0.0F);
+            for (auto& state : states_) {
+                if (state.track_index != track)
+                    continue;
+                if (silent) {
+                    // Reopening at the current source offset prevents stale audio on unmute.
+                    state.prepared.reset();
+                    state.session.reset();
+                } else {
+                    mix_clip(state, cursor_, frames, track_mix_, scratch_, callbacks);
+                }
+            }
+            float left_peak = 0, right_peak = 0;
+            for (std::size_t frame = 0; frame < frames; ++frame) {
+                const float left = track_mix_[frame * 2] * left_[track].next();
+                const float right = track_mix_[frame * 2 + 1] * right_[track].next();
+                mix_[frame * 2] += left;
+                mix_[frame * 2 + 1] += right;
+                left_peak = std::max(left_peak, std::abs(left));
+                right_peak = std::max(right_peak, std::abs(right));
+            }
+            peaks_[track] = {
+                20 * std::log10(std::max(left_peak, 0.00031622777F)),
+                20 * std::log10(std::max(right_peak, 0.00031622777F))
+            };
+        }
+        for (std::size_t frame = 0; frame < frames; ++frame) {
+            const float gain = master_.next();
+            mix_[frame * 2] *= gain;
+            mix_[frame * 2 + 1] *= gain;
+        }
         limiter_.process_interleaved(mix_.data(), frames, kChannels);
         cursor_ += frames;
         return mix_;
@@ -303,12 +401,17 @@ class AssemblyMixer::Impl {
             state.prepared.reset();
         }
         limiter_.reset();
+        reset_ramps();
+        peaks_ = {};
     }
     AssemblyMixPlan plan_;
     std::vector<ClipState> states_;
     OutputLimiter limiter_;
     std::uint64_t start_ = 0, end_ = 0, cursor_ = 0;
-    std::vector<float> mix_, scratch_;
+    std::vector<float> mix_, scratch_, track_mix_;
+    std::array<MixRamp, 8> left_, right_;
+    MixRamp master_;
+    AssemblyTrackPeaks peaks_;
 };
 AssemblyMixer::AssemblyMixer(AssemblyMixPlan plan) :
     impl_(std::make_unique<Impl>(std::move(plan))) {}
@@ -318,6 +421,12 @@ std::span<const float> AssemblyMixer::next(const OfflineRenderCallbacks& callbac
 }
 void AssemblyMixer::seek(std::uint64_t millis) {
     impl_->seek(millis);
+}
+bool AssemblyMixer::update_mix(const AssemblyMixControls& controls) {
+    return impl_->update_mix(controls);
+}
+AssemblyTrackPeaks AssemblyMixer::track_peaks() const {
+    return impl_->peaks_;
 }
 std::uint64_t AssemblyMixer::frame_count() const {
     return impl_->end_ - impl_->start_;

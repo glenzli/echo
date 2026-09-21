@@ -26,6 +26,7 @@ Rectangle {
     property var snapPosition
     property bool anySolo: false
     property bool automationEditing: false
+    property var meterPeaks: ({})
     readonly property color trackColor: Theme.assemblyTrackColors[trackIndex % 8]
     readonly property var crossfades: {
         const pairs = [];
@@ -48,6 +49,7 @@ Rectangle {
     signal sourceDropped(var asset, int trackIndex, real positionMillis)
     signal clipEditRequested(int trackIndex, string clipId)
     signal trackValueRequested(int trackIndex, string key, var value)
+    signal trackPreviewRequested(int trackIndex, string key, var value)
     signal trackMixResetRequested(int trackIndex)
     signal trackDeleteRequested(int trackIndex)
     signal clipSelected(int trackIndex, string clipId, int modifiers, bool preserve)
@@ -260,16 +262,14 @@ Rectangle {
                         Accessible.name: modelData.hint
                     }
                 }
-                Item {
+                EchoStereoMeter {
                     Layout.fillWidth: true
-                }
-                Text {
-                    text: qsTr("%1 clips").arg(trackRow.track.clips.length)
-                    font.pixelSize: 9
-                    color: Theme.textMuted
+                    leftDb: trackRow.meterPeaks.left ?? -70
+                    rightDb: trackRow.meterPeaks.right ?? -70
                 }
             }
             EchoParameterSlider {
+                objectName: "trackGain"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 22
                 label: qsTr("Gain")
@@ -289,12 +289,15 @@ Rectangle {
                     trackRow.trackValueRequested(trackRow.trackIndex, "gainCentibels", Math.round(value));
                 }
                 onEdited: value => {
-                    if (!dragging)
+                    if (dragging)
+                        trackRow.trackPreviewRequested(trackRow.trackIndex, "gainCentibels", Math.round(value));
+                    else
                         trackRow.trackValueRequested(trackRow.trackIndex, "gainCentibels", Math.round(value));
                 }
                 accessibleName: qsTr("Track gain")
             }
             EchoParameterSlider {
+                objectName: "trackPan"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 22
                 label: qsTr("Pan")
@@ -314,7 +317,9 @@ Rectangle {
                     trackRow.trackValueRequested(trackRow.trackIndex, "panPercent", Math.round(value));
                 }
                 onEdited: value => {
-                    if (!dragging)
+                    if (dragging)
+                        trackRow.trackPreviewRequested(trackRow.trackIndex, "panPercent", Math.round(value));
+                    else
                         trackRow.trackValueRequested(trackRow.trackIndex, "panPercent", Math.round(value));
                 }
                 accessibleName: qsTr("Track pan")

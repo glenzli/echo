@@ -136,8 +136,13 @@ Item {
             require(assembly.previewCurrent && player.playing, "preview did not bind to current document");
             require(player.position >= 6900 && player.position < 9000, "preview ignored the playhead position");
             assembly.setTrackValue(2, "gainCentibels", 1200);
-            require(!player.active, "editing did not stop stale playback");
-            require(assembly.saveRevision() !== null && !assembly.previewCurrent, "saving made stale preview valid");
+            require(player.playing && assembly.previewCurrent, "live mix edit interrupted playback");
+            require(assembly.saveRevision() !== null && assembly.previewCurrent, "mix save invalidated live preview");
+            facts.liveMix = true;
+            const gain = assembly.selectedClip.gainCentibels;
+            assembly.setClipValue("gainCentibels", gain - 50);
+            require(!player.active && !assembly.previewCurrent, "clip edit retained a stale plan");
+            assembly.undo();
             assembly.togglePlayback();
             stage = 4;
             break;
