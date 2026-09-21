@@ -1629,6 +1629,14 @@
             <source>The file was written, but its source labels changed during export. Export again to save a matching record.</source>
             <translation>文件已写入，但来源标记在导出期间发生了变化。请重新导出，以保存一致的记录。</translation>
         </message>
+        <message>
+            <source>Project history could not be loaded.</source>
+            <translation>未能加载工程历史。</translation>
+        </message>
+        <message>
+            <source>This project version could not be opened.</source>
+            <translation>未能打开此工程版本。</translation>
+        </message>
     </context>
     <context>
         <name>DigitalDegradeVfxPanel</name>
@@ -4966,6 +4974,10 @@
             <source>Markers &amp; ranges</source>
             <translation>标记与区间</translation>
         </message>
+        <message>
+            <source>Compare project versions</source>
+            <translation>工程版本对比</translation>
+        </message>
     </context>
     <context>
         <name>SoundCard</name>
@@ -7706,6 +7718,10 @@ Narration: %3</source>
             <source>Could not save this narration. The candidate is still available; try again.</source>
             <translation>无法保存旁白，试听候选仍保留，可以重试。</translation>
         </message>
+        <message>
+            <source>Keep up to three candidates. Remove one before generating another.</source>
+            <translation>最多保留三个候选。请先移除一个，再生成新的候选。</translation>
+        </message>
     </context>
     <context>
         <name>GeneratedNarrationDialog</name>
@@ -7750,10 +7766,6 @@ Narration: %3</source>
             <translation>%1 秒 · 试听候选</translation>
         </message>
         <message>
-            <source>Revise text</source>
-            <translation>修改文本</translation>
-        </message>
-        <message>
             <source>Also collect in Materials</source>
             <translation>同时收藏到素材库</translation>
         </message>
@@ -7793,6 +7805,26 @@ Narration: %3</source>
             <source>Kept with this project. Add it to a track when you are ready.</source>
             <translation>随当前项目保留，需要时再加入轨道。</translation>
         </message>
+        <message>
+            <source>%1 / 3</source>
+            <translation>%1 / 3</translation>
+        </message>
+        <message>
+            <source>Candidate %1</source>
+            <translation>候选 %1</translation>
+        </message>
+        <message>
+            <source>Generate another</source>
+            <translation>再生成一个</translation>
+        </message>
+        <message>
+            <source>Remove candidate</source>
+            <translation>移除此候选</translation>
+        </message>
+        <message>
+            <source>Text changes apply to the next candidate. Keeping uses the selected audio.</source>
+            <translation>修改文字仅用于下一次生成；保留操作采纳当前选中的音频。</translation>
+        </message>
     </context>
     <context>
         <name>UnsavedEditDialog</name>
@@ -7819,6 +7851,145 @@ Narration: %3</source>
         <message>
             <source>Save and continue</source>
             <translation>保存并继续</translation>
+        </message>
+    </context>
+    <context>
+        <name>AssemblyHistoryDialog</name>
+        <message>
+            <source>%1 tracks · %2 clips</source>
+            <translation>%1 条轨道 · %2 个片段</translation>
+        </message>
+        <message>
+            <source>A · Current draft</source>
+            <translation>A · 当前草稿</translation>
+        </message>
+        <message>
+            <source>B · Saved version</source>
+            <translation>B · 已存版本</translation>
+        </message>
+        <message>
+            <source>Added</source>
+            <translation>新增</translation>
+        </message>
+        <message>
+            <source>Removed</source>
+            <translation>移除</translation>
+        </message>
+        <message>
+            <source>Changed</source>
+            <translation>更改</translation>
+        </message>
+        <message>
+            <source>Choose a saved version</source>
+            <translation>选择一个已存版本</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>关闭</translation>
+        </message>
+        <message>
+            <source>Compare a saved version with your current draft. Listening here leaves both the draft and the retained listening version unchanged.</source>
+            <translation>将已存版本与当前草稿对比。这里的试听不会改变草稿或已保留的聆听版本。</translation>
+        </message>
+        <message>
+            <source>Compare project versions</source>
+            <translation>工程版本对比</translation>
+        </message>
+        <message>
+            <source>Current draft compared with version %1</source>
+            <translation>当前草稿相对于版本 %1 的变化</translation>
+        </message>
+        <message>
+            <source>Fades</source>
+            <translation>淡化</translation>
+        </message>
+        <message>
+            <source>Gain envelope</source>
+            <translation>音量包络</translation>
+        </message>
+        <message>
+            <source>Load earlier versions</source>
+            <translation>加载更早版本</translation>
+        </message>
+        <message>
+            <source>Marker</source>
+            <translation>标记</translation>
+        </message>
+        <message>
+            <source>Master output</source>
+            <translation>总输出</translation>
+        </message>
+        <message>
+            <source>Mix</source>
+            <translation>混音</translation>
+        </message>
+        <message>
+            <source>No authored differences</source>
+            <translation>编辑内容没有差异</translation>
+        </message>
+        <message>
+            <source>Position</source>
+            <translation>位置</translation>
+        </message>
+        <message>
+            <source>Preparing comparison…</source>
+            <translation>正在准备对比试听…</translation>
+        </message>
+        <message>
+            <source>Processing version</source>
+            <translation>处理版本</translation>
+        </message>
+        <message>
+            <source>Project name</source>
+            <translation>工程名称</translation>
+        </message>
+        <message>
+            <source>Restore as draft</source>
+            <translation>恢复为草稿</translation>
+        </message>
+        <message>
+            <source>Restoring creates an undoable draft. Keep it in memories separately when ready.</source>
+            <translation>恢复操作可以撤销。需要保留为聆听版本时，再单独收进记忆库。</translation>
+        </message>
+        <message>
+            <source>Retained</source>
+            <translation>已保留聆听</translation>
+        </message>
+        <message>
+            <source>Saved versions</source>
+            <translation>已存版本</translation>
+        </message>
+        <message>
+            <source>Source</source>
+            <translation>来源</translation>
+        </message>
+        <message>
+            <source>Source range</source>
+            <translation>来源范围</translation>
+        </message>
+        <message>
+            <source>Stop comparison</source>
+            <translation>停止对比试听</translation>
+        </message>
+        <message>
+            <source>Switching A/B continues at the same time position.</source>
+            <translation>切换 A/B 时，从相同时间位置继续试听。</translation>
+        </message>
+        <message>
+            <source>This version ends before the current position. Stop to compare from the start.</source>
+            <translation>此版本的结尾早于当前试听位置，请停止后从头对比。</translation>
+        </message>
+        <message>
+            <source>Track</source>
+            <translation>轨道</translation>
+        </message>
+        <message>
+            <source>Unavailable source</source>
+            <translation>来源不可用</translation>
+        </message>
+        <message>
+            <source>Version %1</source>
+            <translation>版本 %1</translation>
         </message>
     </context>
 </TS>

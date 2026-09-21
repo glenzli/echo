@@ -11,6 +11,42 @@ use crate::{
 };
 
 #[test]
+fn history_pages_are_scoped_stable_and_read_only() {
+    let root = fixture_root("history-pages");
+    let catalog = open_catalog(&root.join("catalog.sqlite")).unwrap();
+    catalog
+        .with_transaction(|tx| {
+            let asset = register(tx, 0x73, "/sounds/history.wav", 4000);
+            let id = SoundAssemblyId::new();
+            for number in 1..=57 {
+                record_sound_assembly(
+                    tx,
+                    &document(id, asset, 0, 2000, &format!("Version {number}")),
+                    number,
+                )?;
+            }
+            let other = record_sound_assembly(
+                tx,
+                &document(SoundAssemblyId::new(), asset, 0, 2000, "Other"),
+                99,
+            )?;
+            let first = sound_assembly_history(tx, id, 0)?;
+            assert_eq!(first.len(), 50);
+            assert_eq!(first[0].revision_number, 57);
+            assert_eq!(first[49].revision_number, 8);
+            let second = sound_assembly_history(tx, id, first[49].revision_number)?;
+            assert_eq!(second.len(), 7);
+            assert_eq!(second[6].revision_number, 1);
+            assert!(sound_assembly_history(tx, id, 1)?.is_empty());
+            assert!(sound_assembly_at_revision(tx, id, other.revision_id)?.is_none());
+            assert_eq!(latest_sound_assembly(tx, id)?.unwrap().revision_number, 57);
+            Ok::<_, CatalogError>(())
+        })
+        .unwrap();
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn exact_asset_revision_and_source_bounds_are_durable() {
     let root = fixture_root("exact-source");
     let catalog = open_catalog(&root.join("catalog.sqlite")).expect("catalog opens");

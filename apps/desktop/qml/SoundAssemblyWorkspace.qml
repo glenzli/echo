@@ -54,6 +54,13 @@ Rectangle {
     property bool playbackOwned: false
     property bool previewSelection: false
     property bool loopPreview: false
+    property alias historyDialog: versionHistory
+    AssemblyHistoryDialog {
+        id: versionHistory
+        workspace: workspace; catalogBackend: backend
+        renderer: assemblyHistoryController; transport: assemblyHistoryPlayer
+        onRestoreRequested: revision => workspace.restoreHistoryRevision(revision)
+    }
     readonly property var previewBounds: previewBoundsFor(document)
     readonly property real previewRangeStart: previewBounds.start
     readonly property real previewRangeEnd: previewBounds.end
@@ -308,6 +315,20 @@ Rectangle {
 
     function save(): void {
         saveRevision();
+    }
+
+    function restoreHistoryRevision(revision: var): void {
+        if (!hasDocument || !revision || revision.id!==document.id || soundAssemblyController.running)
+            return;
+        if (authoredJson(revision)===authoredJson(document)) return;
+        pushUndo();
+        const next=clone(revision);
+        next.revisionId=document.revisionId;
+        next.revisionNumber=document.revisionNumber;
+        next.createdAtMillis=document.createdAtMillis;
+        publishDocument(next);
+        dirty=authoredJson(document)!==savedDocumentJson;
+        reconcileSelection();
     }
 
     function preview(): void {
@@ -720,6 +741,7 @@ Rectangle {
     onVisibleChanged: {
         if (visible && fitPending) Qt.callLater(fitProject);
         if (!visible) {
+            versionHistory.close();
             if (pendingPreviewJson) {
                 pendingPreviewJson = "";
                 soundAssemblyController.cancel();
@@ -962,6 +984,14 @@ Rectangle {
                         text: qsTr("Keep in memories")
                         enabled: workspace.hasDocument && !soundAssemblyController.running
                         onClicked: workspace.keepMemory()
+                    }
+
+                    EchoIconButton {
+                        objectName: "assemblyHistoryButton"
+                        source: "qrc:/EchoDesktop/icons/history.svg"
+                        toolTipText: qsTr("Compare project versions")
+                        enabled: workspace.hasDocument && !soundAssemblyController.running
+                        onClicked: versionHistory.present()
                     }
 
                     EchoIconButton {

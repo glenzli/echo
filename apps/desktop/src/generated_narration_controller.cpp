@@ -3,7 +3,9 @@
 #include <QFileInfo>
 #include <QFutureWatcher>
 #include <QTemporaryDir>
+#include <QUuid>
 #include <QtConcurrent/QtConcurrentRun>
+#include <algorithm>
 #include <utility>
 
 namespace {
@@ -49,25 +51,67 @@ GeneratedNarrationController::GeneratedNarrationController(
             ));
         };
 }
+const GeneratedNarrationController::Candidate* GeneratedNarrationController::selected() const {
+    const auto found =
+        std::find_if(candidates_.begin(), candidates_.end(), [this](const auto& value) {
+            return value.id == selected_id_;
+        });
+    return found == candidates_.end() ? nullptr : &*found;
+}
+QString GeneratedNarrationController::detailsJson() const {
+    const auto* value = selected();
+    return value ? value->details : QString{};
+}
 QUrl GeneratedNarrationController::audioUrl() const {
-    return candidate_ && directory_
-               ? QUrl::fromLocalFile(directory_->filePath(QStringLiteral("narration.wav")))
-               : QUrl{};
+    const auto* value = selected();
+    return value ? QUrl::fromLocalFile(value->directory->filePath(QStringLiteral("narration.wav")))
+                 : QUrl{};
+}
+QVariantList GeneratedNarrationController::candidates() const {
+    QVariantList values;
+    for (const auto& value : candidates_)
+        values.append(
+            QVariantMap{{QStringLiteral("id"), value.id}, {QStringLiteral("text"), value.text}}
+        );
+    return values;
+}
+void GeneratedNarrationController::selectCandidate(const QString& id) {
+    if (accepting_ || id == selected_id_)
+        return;
+    if (std::none_of(candidates_.begin(), candidates_.end(), [&](const auto& value) {
+            return value.id == id;
+        }))
+        return;
+    selected_id_ = id;
+    error_.clear();
+    emit stateChanged();
+}
+void GeneratedNarrationController::removeSelected() {
+    if (running_ || accepting_)
+        return;
+    std::erase_if(candidates_, [this](const auto& value) { return value.id == selected_id_; });
+    selected_id_ = candidates_.empty() ? QString{} : candidates_.back().id;
+    error_.clear();
+    emit stateChanged();
 }
 void GeneratedNarrationController::discard() {
     if (accepting_)
         return;
     ++generation_;
-    candidate_.reset();
-    directory_.reset();
-    details_.clear();
+    candidates_.clear();
+    selected_id_.clear();
     error_.clear();
     emit stateChanged();
 }
 void GeneratedNarrationController::request(const QString& text, const QString& endpoint) {
     if (running_ || accepting_)
         return;
-    discard();
+    error_.clear();
+    if (candidates_.size() >= 3) {
+        error_ = tr("Keep up to three candidates. Remove one before generating another.");
+        emit stateChanged();
+        return;
+    }
     const auto input = text.trimmed();
     if (input.isEmpty() || input.toUcs4().size() > 500 || input.contains(QChar::Null)) {
         error_ = tr("Enter between 1 and 500 characters for the narration.");
@@ -88,15 +132,20 @@ void GeneratedNarrationController::request(const QString& text, const QString& e
         watcher,
         &QFutureWatcher<Outcome>::finished,
         this,
-        [this, watcher, generation, directory] {
+        [this, watcher, generation, directory, input] {
             auto outcome = watcher->result();
             watcher->deleteLater();
             running_ = false;
             if (generation == generation_) {
-                candidate_ = std::move(outcome.candidate);
-                if (candidate_) {
-                    directory_ = directory;
-                    details_ = outcome.details;
+                if (outcome.candidate) {
+                    selected_id_ = QUuid::createUuid().toString(QUuid::WithoutBraces);
+                    candidates_.push_back(
+                        {selected_id_,
+                         outcome.details,
+                         input,
+                         std::move(outcome.candidate),
+                         directory}
+                    );
                 } else
                     error_ =
                         tr("Narration is unavailable. Check Infer Runtime, its speech model and "
@@ -117,7 +166,8 @@ void GeneratedNarrationController::request(const QString& text, const QString& e
     }));
 }
 void GeneratedNarrationController::accept(const QString& assembly, bool global) {
-    if (running_ || accepting_ || !candidate_)
+    const auto* value = selected();
+    if (running_ || accepting_ || !value)
         return;
     accepting_ = true;
     error_.clear();
@@ -137,14 +187,16 @@ void GeneratedNarrationController::accept(const QString& assembly, bool global) 
         emit stateChanged();
     });
     watcher->setFuture(
-        QtConcurrent::run(
-            [catalog = catalog_, candidate = candidate_, directory = directory_, assembly, global] {
-                try {
-                    return candidate->accept(catalog, assembly, global);
-                } catch (const std::exception&) {
-                    return QString{};
-                }
+        QtConcurrent::run([catalog = catalog_,
+                           candidate = value->result,
+                           directory = value->directory,
+                           assembly,
+                           global] {
+            try {
+                return candidate->accept(catalog, assembly, global);
+            } catch (const std::exception&) {
+                return QString{};
             }
-        )
+        })
     );
 }

@@ -365,6 +365,22 @@ QVariantMap adjustmentForQml(
     return value;
 }
 
+QVariantMap soundAssemblySummaryForQml(const echo::desktop::SoundAssemblySummaryWire& wire) {
+    QVariantMap value;
+    value.insert(
+        QStringLiteral("assemblyId"),
+        QString::fromUtf8(wire.assembly_id.data(), wire.assembly_id.size())
+    );
+    value.insert(QStringLiteral("name"), QString::fromUtf8(wire.name.data(), wire.name.size()));
+    value.insert(QStringLiteral("revisionId"), static_cast<qlonglong>(wire.revision_id));
+    value.insert(QStringLiteral("revisionNumber"), static_cast<quint32>(wire.revision_number));
+    value.insert(QStringLiteral("durationMillis"), static_cast<qlonglong>(wire.duration_millis));
+    value.insert(QStringLiteral("trackCount"), static_cast<quint32>(wire.track_count));
+    value.insert(QStringLiteral("clipCount"), static_cast<quint32>(wire.clip_count));
+    value.insert(QStringLiteral("updatedAtMillis"), static_cast<qlonglong>(wire.updated_at_millis));
+    return value;
+}
+
 QVariantMap soundAssemblyRevisionForQml(const echo::desktop::SoundAssemblyRevisionWire& wire) {
     const QJsonDocument encoded = QJsonDocument::fromJson(
         QByteArray(wire.document_json.data(), static_cast<qsizetype>(wire.document_json.size()))
@@ -1060,31 +1076,7 @@ QVariantList DesktopBackend::listSoundAssemblies() const {
     QVariantList result;
     try {
         for (const auto& wire : session_->session_sound_assemblies()) {
-            QVariantMap value;
-            value.insert(
-                QStringLiteral("assemblyId"),
-                QString::fromUtf8(wire.assembly_id.data(), wire.assembly_id.size())
-            );
-            value.insert(
-                QStringLiteral("name"),
-                QString::fromUtf8(wire.name.data(), wire.name.size())
-            );
-            value.insert(QStringLiteral("revisionId"), static_cast<qlonglong>(wire.revision_id));
-            value.insert(
-                QStringLiteral("revisionNumber"),
-                static_cast<quint32>(wire.revision_number)
-            );
-            value.insert(
-                QStringLiteral("durationMillis"),
-                static_cast<qlonglong>(wire.duration_millis)
-            );
-            value.insert(QStringLiteral("trackCount"), static_cast<quint32>(wire.track_count));
-            value.insert(QStringLiteral("clipCount"), static_cast<quint32>(wire.clip_count));
-            value.insert(
-                QStringLiteral("updatedAtMillis"),
-                static_cast<qlonglong>(wire.updated_at_millis)
-            );
-            result.append(value);
+            result.append(soundAssemblySummaryForQml(wire));
         }
     } catch (const rust::Error& error) {
         qWarning("cannot list sound assemblies: %s", error.what());
@@ -1123,6 +1115,33 @@ QVariantMap DesktopBackend::soundAssembly(const QString& assemblyId) const {
         );
     } catch (const rust::Error& error) {
         return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
+    }
+}
+
+QVariantMap DesktopBackend::soundAssemblyHistory(
+    const QString& assemblyId,
+    quint32 beforeRevisionNumber
+) const {
+    try {
+        QVariantList revisions;
+        for (const auto& wire : session_->session_sound_assembly_history(
+                 assemblyId.toStdString(),
+                 beforeRevisionNumber
+             ))
+            revisions.append(soundAssemblySummaryForQml(wire));
+        return {{QStringLiteral("revisions"), revisions}};
+    } catch (const rust::Error&) {
+        return {{QStringLiteral("error"), tr("Project history could not be loaded.")}};
+    }
+}
+QVariantMap
+DesktopBackend::soundAssemblyAtRevision(const QString& assemblyId, qlonglong revisionId) const {
+    try {
+        return soundAssemblyRevisionForQml(
+            session_->session_sound_assembly_at_revision(assemblyId.toStdString(), revisionId)
+        );
+    } catch (const rust::Error&) {
+        return {{QStringLiteral("error"), tr("This project version could not be opened.")}};
     }
 }
 

@@ -6,6 +6,54 @@ use echo_domain::{AssetId, ContentHash, FadeCurve, SoundAssembly};
 use crate::{ffi::RenderExportWire, session::open_session};
 
 #[test]
+fn historical_projection_keeps_exact_sources_and_does_not_publish() {
+    let root = fixture_root("history-projection");
+    let session = open_session(
+        root.join("catalog.sqlite").to_str().unwrap(),
+        root.join("cache").to_str().unwrap(),
+    )
+    .unwrap();
+    let asset = register(&session.catalog, 0x76, "/sounds/history.wav", 2000);
+    let first = session
+        .create_sound_assembly("Before", &[asset.to_string()], 0)
+        .unwrap();
+    let mut changed: serde_json::Value = serde_json::from_str(&first.document_json).unwrap();
+    changed["name"] = "After".into();
+    changed["tracks"][0]["clips"][0]["gainCentibels"] = (-300).into();
+    let latest = session.save_sound_assembly(&changed.to_string()).unwrap();
+    let history = session
+        .sound_assembly_history(&first.assembly_id, 0)
+        .unwrap();
+    assert_eq!(history.len(), 2);
+    assert_eq!(history[0].revision_id, latest.revision_id);
+    let old = session
+        .sound_assembly_at_revision(&first.assembly_id, first.revision_id)
+        .unwrap();
+    assert_eq!(old.document_json, first.document_json);
+    assert_eq!(old.clip_sources[0].path, first.clip_sources[0].path);
+    assert_eq!(
+        old.clip_sources[0].adjustment_revision_id,
+        first.clip_sources[0].adjustment_revision_id
+    );
+    assert_eq!(
+        session
+            .sound_assembly(&first.assembly_id)
+            .unwrap()
+            .revision_id,
+        latest.revision_id
+    );
+    let other = session
+        .create_sound_assembly("Other", &[asset.to_string()], 0)
+        .unwrap();
+    assert!(
+        session
+            .sound_assembly_at_revision(&other.assembly_id, first.revision_id)
+            .is_err()
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn library_selection_creates_and_reopens_a_revision_pinned_sequence() {
     let root = fixture_root("create");
     let session = open_session(

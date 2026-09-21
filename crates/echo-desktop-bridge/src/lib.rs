@@ -680,6 +680,18 @@ mod ffi {
             self: &LibrarySession,
             assembly_id: &str,
         ) -> Result<SoundAssemblyRevisionWire>;
+        /// Pages compact saved project history without resolving or rendering sources.
+        fn session_sound_assembly_history(
+            self: &LibrarySession,
+            assembly_id: &str,
+            before_revision_number: u32,
+        ) -> Result<Vec<SoundAssemblySummaryWire>>;
+        /// Resolves an exact saved version, scoped to the requested project.
+        fn session_sound_assembly_at_revision(
+            self: &LibrarySession,
+            assembly_id: &str,
+            revision_id: i64,
+        ) -> Result<SoundAssemblyRevisionWire>;
         /// Validates and appends one complete authored document snapshot.
         fn session_save_sound_assembly(
             self: &LibrarySession,
@@ -1125,6 +1137,23 @@ impl LibrarySession {
         assembly_id: &str,
     ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
         self.sound_assembly(assembly_id)
+            .map_err(|error| error.message)
+    }
+
+    fn session_sound_assembly_history(
+        &self,
+        assembly_id: &str,
+        before_revision_number: u32,
+    ) -> Result<Vec<ffi::SoundAssemblySummaryWire>, String> {
+        self.sound_assembly_history(assembly_id, before_revision_number)
+            .map_err(|error| error.message)
+    }
+    fn session_sound_assembly_at_revision(
+        &self,
+        assembly_id: &str,
+        revision_id: i64,
+    ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
+        self.sound_assembly_at_revision(assembly_id, revision_id)
             .map_err(|error| error.message)
     }
 

@@ -63,7 +63,11 @@ and the callback never allocates, releases shared ownership, or destroys a sessi
 
 Sound Assembly is a third peer workspace. `SoundAssemblyWorkspace.qml` owns
 the versioned document, bounded undo/redo history, timeline commands, preview,
-and mixdown presentation. `SoundAssemblyInspector.qml` owns compact clip/master parameter presentation,
+and mixdown presentation. `AssemblyHistoryDialog.qml` owns paginated revision selection
+and isolated A/B audition; `AssemblyVersionComparison.js` compares authored changes.
+Comparing does not save or publish. Restoring routes through workspace undo/redo,
+and saving the restored draft appends a revision without replacing a retained listening version.
+`SoundAssemblyInspector.qml` owns compact clip/master parameter presentation,
 reusing track colors and typography; it dispatches edits to the workspace
 without owning another undo stack. `EchoValueSpinBox.qml` owns themed numeric
 input, and `EchoTimeSpinBox.qml` adds the seconds-to-milliseconds projection.
@@ -405,13 +409,22 @@ conservatively including any disclosed interval in a referenced source. This is 
 mapping of generated samples after cropping or effects. Exports freeze declarations in Catalog
 provenance and embed a compact source-kind declaration in standalone WAV/FLAC files.
 
-This batch admits user declarations on imported audio, not generation execution or automatic
-origin detection. `ECHO_DEBUG_SOURCE_DISCLOSURE` with the independent-editor fixture/report
+The disclosure editor records user declarations on imported audio; it does not infer their
+origin automatically. `ECHO_DEBUG_SOURCE_DISCLOSURE` with the independent-editor fixture/report
 variables runs `SourceDisclosureSmoke.qml` through labeling, portable save/reopen and export.
 With a Library fixture and `ECHO_DEBUG_MEMORY_REPORT`, the same owner verifies Tape scope
 filters and stopping playback when the active generated source is excluded.
 Focused contracts live in domain/catalog/session `source_disclosure/tests.rs`,
 `tests/source_disclosure_contract.mjs` and `tests/qml/tst_SourceDisclosure.qml`.
+
+`GeneratedNarrationController` owns at most three temporary narration candidates,
+including exact result selection, asynchronous generation/admission and file lifetime.
+`GeneratedNarrationDialog.qml` tracks audition per candidate and requires it before keeping.
+Changing the input applies to the next generation; accepting keeps the selected audio and
+its generation record. Unselected candidates stay outside the catalog and are discarded on close.
+`generated_narration_controller_test.cpp` covers lifecycle failures and exact acceptance;
+`ECHO_NARRATION_LIVE_ROOT` opts into local Infer generation and muted device playback using
+a fresh caller-owned catalog directory. This integration mode needs the normal GUI event loop.
 
 Audio exports carry the source-kind union in a bounded `echo.source-disclosure.v1` container
 comment (WAV LIST/INFO/ICMT or FLAC comment). `echo-domain::portable_disclosure` owns that

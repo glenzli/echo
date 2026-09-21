@@ -153,6 +153,51 @@ pub fn latest_sound_assembly(
     )
 }
 
+/// Lists at most 50 compact revisions, newest first, with an exclusive revision-number cursor.
+/// A zero cursor starts at the newest revision. Reading history never changes the active document.
+///
+/// # Errors
+/// Returns a Catalog error when stored summary values cannot be queried or decoded.
+pub fn sound_assembly_history(
+    transaction: &Transaction<'_>,
+    assembly_id: SoundAssemblyId,
+    before_revision_number: u32,
+) -> Result<Vec<SoundAssemblySummary>, CatalogError> {
+    let mut statement = transaction.prepare(
+        "SELECT id, revision_number, name, duration_millis, track_count, clip_count, created_at_millis \
+         FROM sound_assembly_revisions WHERE assembly_id = ?1 \
+         AND (?2 = 0 OR revision_number < ?2) ORDER BY revision_number DESC LIMIT 50",
+    )?;
+    let rows = statement.query_map(
+        params![assembly_id.to_string(), before_revision_number],
+        |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(4)?,
+                row.get::<_, i64>(5)?,
+                row.get::<_, i64>(6)?,
+            ))
+        },
+    )?;
+    rows.map(|row| {
+        let (revision_id, number, name, duration, tracks, clips, created) = row?;
+        Ok(SoundAssemblySummary {
+            assembly_id,
+            name,
+            revision_id,
+            revision_number: stored_u32(number, "assembly revision number")?,
+            duration_millis: stored_u64(duration, "assembly duration")?,
+            track_count: stored_usize(tracks, "assembly track count")?,
+            clip_count: stored_usize(clips, "assembly clip count")?,
+            updated_at_millis: created,
+        })
+    })
+    .collect()
+}
+
 /// Reads one exact immutable assembly revision scoped by its assembly.
 ///
 /// # Errors

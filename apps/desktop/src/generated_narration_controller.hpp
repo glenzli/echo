@@ -3,8 +3,10 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <QVariantList>
 #include <functional>
 #include <memory>
+#include <vector>
 class QTemporaryDir;
 
 class NarrationResult {
@@ -21,6 +23,8 @@ class GeneratedNarrationController : public QObject {
     Q_PROPERTY(QString detailsJson READ detailsJson NOTIFY stateChanged)
     Q_PROPERTY(QUrl audioUrl READ audioUrl NOTIFY stateChanged)
     Q_PROPERTY(QString errorText READ errorText NOTIFY stateChanged)
+    Q_PROPERTY(QVariantList candidates READ candidates NOTIFY stateChanged)
+    Q_PROPERTY(QString selectedCandidateId READ selectedCandidateId NOTIFY stateChanged)
   public:
     using Generate = std::function<
         std::shared_ptr<NarrationResult>(const QString&, const QString&, const QString&)>;
@@ -32,15 +36,19 @@ class GeneratedNarrationController : public QObject {
     Q_INVOKABLE void request(const QString& text, const QString& endpoint);
     Q_INVOKABLE void discard();
     Q_INVOKABLE void accept(const QString& assembly, bool global);
+    Q_INVOKABLE void selectCandidate(const QString& id);
+    Q_INVOKABLE void removeSelected();
+    QVariantList candidates() const;
+    QString selectedCandidateId() const {
+        return selected_id_;
+    }
     bool running() const {
         return running_;
     }
     bool accepting() const {
         return accepting_;
     }
-    QString detailsJson() const {
-        return details_;
-    }
+    QString detailsJson() const;
     QUrl audioUrl() const;
     QString errorText() const {
         return error_;
@@ -51,9 +59,14 @@ class GeneratedNarrationController : public QObject {
 
   private:
     Generate generate_;
-    QString catalog_, details_, error_;
-    std::shared_ptr<NarrationResult> candidate_;
-    std::shared_ptr<QTemporaryDir> directory_;
+    struct Candidate {
+        QString id, details, text;
+        std::shared_ptr<NarrationResult> result;
+        std::shared_ptr<QTemporaryDir> directory;
+    };
+    const Candidate* selected() const;
+    QString catalog_, error_, selected_id_;
+    std::vector<Candidate> candidates_;
     quint64 generation_ = 0;
     bool running_ = false, accepting_ = false;
 };

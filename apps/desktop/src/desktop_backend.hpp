@@ -47,6 +47,10 @@ class DesktopBackend : public QObject {
     Q_INVOKABLE QVariantMap
     createSoundAssembly(const QString& name, const QVariantList& assetIds, const QString& layout);
     Q_INVOKABLE QVariantMap soundAssembly(const QString& assemblyId) const;
+    Q_INVOKABLE QVariantMap
+    soundAssemblyHistory(const QString& assemblyId, quint32 beforeRevisionNumber = 0) const;
+    Q_INVOKABLE QVariantMap
+    soundAssemblyAtRevision(const QString& assemblyId, qlonglong revisionId) const;
     Q_INVOKABLE QVariantMap saveSoundAssembly(const QVariantMap& document);
     Q_INVOKABLE bool archiveSoundAssembly(const QString& assemblyId);
     Q_INVOKABLE QString newAssemblyObjectId() const;

@@ -12,14 +12,23 @@ TestCase {
         id: generatedNarration
         property bool running: false; property bool accepting: false
         property string detailsJson: ""; property string errorText: ""; property url audioUrl: ""
+        property var candidates: []; property string selectedCandidateId: ""; property var receipts: ({})
         signal accepted(string assetId)
-        function discard() { detailsJson=""; errorText=""; }
+        function discard() { detailsJson=""; errorText=""; candidates=[]; selectedCandidateId=""; receipts=({}); }
+        function selectCandidate(id) { detailsJson=JSON.stringify(receipts[id]); selectedCandidateId=id; }
+        function removeSelected() { candidates=candidates.filter(c=>c.id!==selectedCandidateId); if(candidates.length) selectCandidate(candidates[0].id); else { detailsJson=""; selectedCandidateId=""; } }
         function request(text,endpoint) { running=true; }
         function accept(assembly,global) { test.accepted.push([assembly,global]); accepted("new-source"); }
     }
     GeneratedNarrationDialog { id: dialog }
     function init() { dialog.close(); tryCompare(dialog,"visible",false); generatedNarration.running=false; generatedNarration.accepting=false; generatedNarration.discard();backend.independentEditing=false;test.accepted=[]; }
-    function candidate() { generatedNarration.running=false; generatedNarration.detailsJson=JSON.stringify({duration_millis:1100,runtime:{job:{physical_model:"local-tts"}}}); }
+    function candidate() {
+        generatedNarration.running=false;
+        const id="candidate-"+generatedNarration.candidates.length;
+        generatedNarration.receipts[id]={duration_millis:1100,input_text:findChild(dialog,"narrationText").text,runtime:{job:{physical_model:"local-tts"}}};
+        generatedNarration.candidates=generatedNarration.candidates.concat([{id:id,text:generatedNarration.receipts[id].input_text}]);
+        generatedNarration.selectCandidate(id);
+    }
     function openDialog() { dialog.assemblyId=""; dialog.present();tryCompare(dialog,"opened",true); }
     function test_preview_required_and_accept_has_captured_target() {
         openDialog();findChild(dialog,"narrationText").text="An added memory.";
@@ -35,7 +44,17 @@ TestCase {
     function test_close_discards_candidate_and_text_is_locked_during_request() {
         openDialog();findChild(dialog,"narrationText").text="Test";
         mouseClick(findChild(dialog,"narrationGenerate"));verify(findChild(dialog,"narrationText").readOnly);
-        candidate();verify(findChild(dialog,"narrationText").readOnly);dialog.close();tryCompare(dialog,"visible",false);compare(generatedNarration.detailsJson,"");compare(test.accepted.length,0);
+        candidate();verify(!findChild(dialog,"narrationText").readOnly);dialog.close();tryCompare(dialog,"visible",false);compare(generatedNarration.detailsJson,"");compare(test.accepted.length,0);
+    }
+    function test_each_candidate_needs_its_own_audition_and_capacity_is_visible() {
+        openDialog(); candidate();
+        const first=generatedNarration.selectedCandidateId;
+        dialog.heardCandidates[first]=true; dialog.reviewed=true;
+        candidate(); verify(!dialog.reviewed); verify(!findChild(dialog,"narrationAccept").enabled);
+        generatedNarration.selectCandidate(first); verify(dialog.reviewed);
+        candidate(); verify(!findChild(dialog,"narrationGenerate").enabled);
+        mouseClick(findChild(dialog,"narrationRemove")); compare(generatedNarration.candidates.length,2);
+        verify(findChild(dialog,"narrationGenerate").enabled);
     }
     function test_model_label_does_not_expose_cache_path() {
         openDialog(); generatedNarration.detailsJson=JSON.stringify({runtime:{job:{physical_model:"/private/cache/models--org--Qwen3-TTS/snapshots/fixed-build",model_profile:"tts"}}});

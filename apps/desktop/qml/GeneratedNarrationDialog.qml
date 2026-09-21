@@ -8,6 +8,8 @@ Popup {
     property string assemblyId: ""
     property string targetAssembly: ""
     property bool reviewed: false
+    property var heardCandidates: ({})
+    readonly property string selectedCandidateId: generatedNarration.selectedCandidateId
     property string playbackError: ""
     // QML string iteration counts UTF-16 units; the backend counts Unicode scalars.
     readonly property int characterCount: input.text.trim().replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g,"_").length
@@ -17,13 +19,13 @@ Popup {
     signal materialAccepted(string assetId)
     parent: Overlay.overlay
     x: Math.round((parent.width-width)/2); y: Math.round((parent.height-height)/2)
-    width: Math.min(600,parent.width-32); height: Math.min(580,parent.height-32)
+    width: Math.min(720,parent.width-32); height: Math.min(660,parent.height-32)
     padding: 24; modal: true; dim: true; focus: true
     closePolicy: generatedNarration.accepting ? Popup.NoAutoClose : Popup.CloseOnEscape
     background: Rectangle { radius: 12; color: Theme.panelRaised; border.color: Theme.border }
     function present() {
         if (busy) return;
-        generatedNarration.discard(); reviewed=false; playbackError="";
+        generatedNarration.discard(); heardCandidates=({}); reviewed=false; playbackError="";
         targetAssembly=assemblyId; collect.checked=false;
         open(); input.forceActiveFocus();
     }
@@ -34,11 +36,21 @@ Popup {
         return hub ? hub[1] : (job.model_profile || job.physical_model || "").split("/").pop();
     }
     function stopPreview() { preview.stop(); preview.source=""; }
+    onSelectedCandidateIdChanged: {
+        stopPreview(); reviewed=heardCandidates[selectedCandidateId]===true; playbackError="";
+        const id=selectedCandidateId;
+        Qt.callLater(() => { if (id && id===dialog.selectedCandidateId && dialog.receipt) input.text=dialog.receipt.input_text || input.text; });
+    }
     onClosed: { stopPreview(); generatedNarration.discard(); }
     MediaPlayer {
         id: preview
         audioOutput: AudioOutput { volume: 0.75 }
-        onPositionChanged: position => { if (position > 0) dialog.reviewed=true; }
+        onPositionChanged: position => {
+            if (position>0 && dialog.selectedCandidateId && preview.source.toString()===generatedNarration.audioUrl.toString()) {
+                dialog.heardCandidates[dialog.selectedCandidateId]=true;
+                dialog.reviewed=true;
+            }
+        }
         onErrorOccurred: dialog.playbackError=qsTr("This candidate could not be played. Generate it again.")
     }
     Connections {
@@ -49,7 +61,7 @@ Popup {
         }
     }
     contentItem: ColumnLayout {
-        spacing: 14
+        spacing: 12
         RowLayout {
             Layout.fillWidth: true
             Text { Layout.fillWidth: true; text: qsTr("Add a narration"); color: Theme.textPrimary; font.pixelSize: 20; font.weight: Font.DemiBold }
@@ -57,11 +69,11 @@ Popup {
         }
         Text { Layout.fillWidth: true; text: qsTr("Write a short narration to accompany your sound. Preview it before keeping it as a separate, clearly marked material."); color: Theme.textSecondary; font.pixelSize: Theme.fontBody; wrapMode: Text.WordWrap }
         ScrollView {
-            Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight: 110
+            Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumHeight: 100
             clip: true
             TextArea {
                 id: input; objectName: "narrationText"
-                readOnly: dialog.busy || !!dialog.receipt
+                readOnly: dialog.busy
                 placeholderText: qsTr("What would you like to add?")
                 color: Theme.textPrimary; placeholderTextColor: Theme.textMuted; selectionColor: Theme.accent
                 font.pixelSize: Theme.fontBody; wrapMode: TextEdit.Wrap
@@ -74,9 +86,32 @@ Popup {
             Text { Layout.fillWidth: true; text: qsTr("%1 / 500 characters").arg(dialog.characterCount); color: dialog.characterCount>500 ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
             Text { text: qsTr("Local model · Mandarin voice"); color: Theme.textMuted; font.pixelSize: Theme.fontMeta }
         }
+        Text {
+            Layout.fillWidth: true; visible: !!dialog.receipt && input.text.trim()!==dialog.receipt.input_text
+            text: qsTr("Text changes apply to the next candidate. Keeping uses the selected audio.")
+            wrapMode: Text.WordWrap; color: Theme.textSecondary; font.pixelSize: Theme.fontMeta
+        }
         Rectangle {
             Layout.fillWidth: true; implicitHeight: reminder.implicitHeight+20; radius: 8; color: Theme.warningSurface
             Text { id: reminder; anchors.fill: parent; anchors.margins: 10; text: qsTr("This is an added narration, not recorded dialogue. Its generation label and model record stay with the accepted source."); color: Theme.warningText; font.pixelSize: Theme.fontMeta; wrapMode: Text.WordWrap }
+        }
+        RowLayout {
+            visible: generatedNarration.candidates.length>0; Layout.fillWidth: true; spacing: 8
+            Repeater {
+                model: generatedNarration.candidates
+                EchoButton {
+                    required property var modelData
+                    required property int index
+                    objectName: "narrationCandidate"+index
+                    Layout.fillWidth: true; ghost: true
+                    selected: modelData.id===dialog.selectedCandidateId
+                    text: qsTr("Candidate %1").arg(index+1)
+                    enabled: !dialog.busy
+                    onClicked: generatedNarration.selectCandidate(modelData.id)
+                    ToolTip.visible: hovered; ToolTip.text: modelData.text; ToolTip.delay: 500
+                }
+            }
+            Text { text: qsTr("%1 / 3").arg(generatedNarration.candidates.length); color: Theme.textMuted; font.pixelSize: Theme.fontMeta }
         }
         RowLayout {
             visible: !!dialog.receipt; Layout.fillWidth: true
@@ -96,7 +131,7 @@ Popup {
                 Text { text: dialog.receipt ? qsTr("%1 seconds · Preview candidate").arg((dialog.receipt.duration_millis/1000).toFixed(1)) : ""; color: Theme.textPrimary; font.pixelSize: Theme.fontBody }
                 Text { Layout.fillWidth: true; text: dialog.modelName(); elide: Text.ElideMiddle; color: Theme.textMuted; font.pixelSize: Theme.fontMeta }
             }
-            EchoButton { text: qsTr("Revise text"); ghost: true; enabled: !dialog.busy; onClicked: { dialog.stopPreview(); generatedNarration.discard(); dialog.reviewed=false; dialog.playbackError=""; input.forceActiveFocus(); } }
+            EchoButton { objectName: "narrationRemove"; text: qsTr("Remove candidate"); ghost: true; enabled: !dialog.busy; onClicked: { dialog.stopPreview(); generatedNarration.removeSelected(); input.forceActiveFocus(); } }
         }
         Text {
             Layout.fillWidth: true; wrapMode: Text.WordWrap
@@ -112,9 +147,10 @@ Popup {
             EchoButton { text: qsTr("Close"); ghost: true; enabled: !generatedNarration.accepting; onClicked: dialog.close() }
             EchoButton {
                 objectName: "narrationGenerate"
-                visible: !dialog.receipt; text: qsTr("Generate preview")
-                enabled: !dialog.busy && dialog.characterCount>0 && dialog.characterCount<=500
-                onClicked: { dialog.reviewed=false; dialog.playbackError=""; generatedNarration.request(input.text,inferencePrefs.runtimeEndpoint); }
+                text: generatedNarration.candidates.length ? qsTr("Generate another") : qsTr("Generate preview")
+                enabled: !dialog.busy && dialog.characterCount>0 && dialog.characterCount<=500 && generatedNarration.candidates.length<3
+                ghost: !!dialog.receipt
+                onClicked: { dialog.stopPreview(); dialog.playbackError=""; generatedNarration.request(input.text,inferencePrefs.runtimeEndpoint); }
             }
             EchoButton {
                 objectName: "narrationAccept"

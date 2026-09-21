@@ -30,21 +30,7 @@ impl LibrarySession {
         self.catalog
             .with_transaction(list_sound_assemblies)
             .map_err(SessionError::from)
-            .map(|values| {
-                values
-                    .into_iter()
-                    .map(|value| SoundAssemblySummaryWire {
-                        assembly_id: value.assembly_id.to_string(),
-                        name: value.name,
-                        revision_id: value.revision_id,
-                        revision_number: value.revision_number,
-                        duration_millis: value.duration_millis,
-                        track_count: u32::try_from(value.track_count).unwrap_or(u32::MAX),
-                        clip_count: u32::try_from(value.clip_count).unwrap_or(u32::MAX),
-                        updated_at_millis: value.updated_at_millis,
-                    })
-                    .collect()
-            })
+            .map(|values| values.into_iter().map(assembly_summary_wire).collect())
     }
 
     #[allow(clippy::too_many_lines)] // Resolve source versions and lay out the complete initial document together.
@@ -185,6 +171,35 @@ impl LibrarySession {
             .catalog
             .with_transaction(|transaction| latest_sound_assembly(transaction, assembly_id))?
             .ok_or_else(|| session_error("sound assembly does not exist"))?;
+        self.resolve_sound_assembly_revision(&revision)
+    }
+
+    pub(crate) fn sound_assembly_history(
+        &self,
+        assembly_id: &str,
+        before_revision_number: u32,
+    ) -> Result<Vec<SoundAssemblySummaryWire>, SessionError> {
+        let id = parse_assembly_id(assembly_id)?;
+        self.catalog
+            .with_transaction(|tx| {
+                echo_catalog::sound_assembly_history(tx, id, before_revision_number)
+            })
+            .map(|values| values.into_iter().map(assembly_summary_wire).collect())
+            .map_err(SessionError::from)
+    }
+
+    pub(crate) fn sound_assembly_at_revision(
+        &self,
+        assembly_id: &str,
+        revision_id: i64,
+    ) -> Result<SoundAssemblyRevisionWire, SessionError> {
+        let id = parse_assembly_id(assembly_id)?;
+        let revision = self
+            .catalog
+            .with_transaction(|tx| echo_catalog::sound_assembly_at_revision(tx, id, revision_id))?
+            .ok_or_else(|| {
+                session_error("sound assembly revision does not exist in this project")
+            })?;
         self.resolve_sound_assembly_revision(&revision)
     }
 
@@ -491,6 +506,19 @@ impl LibrarySession {
             clip_sources,
             created_at_millis: revision.created_at_millis,
         })
+    }
+}
+
+fn assembly_summary_wire(value: echo_catalog::SoundAssemblySummary) -> SoundAssemblySummaryWire {
+    SoundAssemblySummaryWire {
+        assembly_id: value.assembly_id.to_string(),
+        name: value.name,
+        revision_id: value.revision_id,
+        revision_number: value.revision_number,
+        duration_millis: value.duration_millis,
+        track_count: u32::try_from(value.track_count).unwrap_or(u32::MAX),
+        clip_count: u32::try_from(value.clip_count).unwrap_or(u32::MAX),
+        updated_at_millis: value.updated_at_millis,
     }
 }
 

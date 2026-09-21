@@ -79,6 +79,7 @@ ApplicationWindow {
         if (multitrack) assembly.exportMix(); else editor.openExport();
     }
     function finishClose(): void {
+        assembly.historyDialog.close();
         independentEditor.finishSession(); allowClose = true; window.close();
     }
     Component.onCompleted: {

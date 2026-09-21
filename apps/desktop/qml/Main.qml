@@ -98,6 +98,7 @@ ApplicationWindow {
     function showMaterials(): void { navigate(() => { workspaceIndex=4; }); }
     onClosing: event => {
         if (allowClose) return;
+        soundAssembly.historyDialog.close();
         event.accepted=false;
         editNavigation.request(() => {
             if (soundAssembly.dirty && !soundAssembly.saveRevision()) return;

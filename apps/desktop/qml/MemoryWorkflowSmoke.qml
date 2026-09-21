@@ -18,6 +18,8 @@ Item {
     property string clipId: ""
     property int pinnedRevision: 0
     property var facts: ({})
+    property string historyBefore: ""
+    property string historyRestored: ""
 
     function require(condition: bool, message: string): void {
         if (!condition) throw new Error(message);
@@ -119,6 +121,37 @@ Item {
             stage = 7;
             break;
         case 7:
+            shell.showSoundAssembly();
+            historyBefore=assembly.authoredJson(assembly.document);
+            assembly.historyDialog.present();
+            require(assembly.historyDialog.saved && assembly.historyDialog.differences.length>0, "history comparison did not find authored changes");
+            historyRestored=assembly.authoredJson(assembly.historyDialog.saved);
+            assembly.historyDialog.listen("current"); stage=8; break;
+        case 8:
+            if (assemblyHistoryController.running) return;
+            require(assemblyHistoryPlayer.active && assembly.historyDialog.listeningSide==="current", "current draft comparison did not play");
+            assemblyHistoryPlayer.seek(500);
+            stage=81; break;
+        case 81:
+            // Engine seeks are asynchronous. Compare only once A has reached the target.
+            if (assemblyHistoryPlayer.position<500) return;
+            facts.comparisonStart=assemblyHistoryPlayer.position;
+            assembly.historyDialog.listen("saved"); stage=9; break;
+        case 9:
+            if (assemblyHistoryController.running) return;
+            require(assemblyHistoryPlayer.active && assembly.historyDialog.listeningSide==="saved", "historical comparison did not play");
+            require(assemblyHistoryPlayer.position>=facts.comparisonStart, "comparison switch lost its time position");
+            require(assembly.authoredJson(assembly.document)===historyBefore, "comparison changed the draft");
+            assembly.historyDialog.restore();
+            require(assembly.dirty && assembly.authoredJson(assembly.document)===historyRestored, "restore did not create a historical draft");
+            assembly.undo(); require(assembly.authoredJson(assembly.document)===historyBefore, "history restore could not be undone");
+            assembly.redo(); require(assembly.authoredJson(assembly.document)===historyRestored, "history restore could not be redone");
+            require(assembly.saveRevision(), "restored draft could not be saved");
+            const retainedAfter=backend.listAssets().find(asset=>asset.id===memory.id);
+            require(retainedAfter.path===memory.path && retainedAfter.assemblyRevisionId===memory.assemblyRevisionId, "restoring a draft replaced the retained listening version");
+            facts.versionComparison={readOnly:true, auditionAB:true, position:true, undoRedo:true, retainedUnchanged:true};
+            stage=10; break;
+        case 10:
             reportJson = JSON.stringify({ok: true, facts: facts});
             break;
         }

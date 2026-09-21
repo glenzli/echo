@@ -29,6 +29,7 @@ TestCase {
     }
     QtObject { id: generatedNarration
         property bool running: false; property bool accepting: false
+        property var candidates: []; property string selectedCandidateId: ""
         property string detailsJson: ""; property string errorText: ""; property url audioUrl: ""
         signal accepted(string assetId)
         function discard() {}

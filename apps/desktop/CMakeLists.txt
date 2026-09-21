@@ -239,6 +239,8 @@ qt_add_qml_module(
         qml/ListeningProgressTracker.qml
         qml/MainTitleBar.qml
         qml/UnsavedEditDialog.qml
+        qml/AssemblyHistoryDialog.qml
+        qml/AssemblyVersionComparison.js
         qml/EchoWindowChrome.qml
         qml/EchoWorkspaceTab.qml
         qml/IndependentTitleBar.qml
@@ -448,7 +450,7 @@ if(BUILD_TESTING)
     add_executable(echo-generated-narration-controller-test tests/generated_narration_controller_test.cpp src/generated_narration_controller.cpp src/generated_narration_controller.hpp)
     target_include_directories(echo-generated-narration-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
     target_compile_features(echo-generated-narration-controller-test PRIVATE cxx_std_20)
-    target_link_libraries(echo-generated-narration-controller-test PRIVATE Qt6::Core Qt6::Concurrent echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
+    target_link_libraries(echo-generated-narration-controller-test PRIVATE Qt6::Core Qt6::Concurrent Qt6::Multimedia echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
     add_dependencies(echo-generated-narration-controller-test echo-desktop-rust-build)
     echo_audio_enable_warnings(echo-generated-narration-controller-test)
     add_test(NAME echo-generated-narration-controller-test COMMAND echo-generated-narration-controller-test)

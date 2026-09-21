@@ -99,6 +99,8 @@ int main(int argc, char* argv[]) {
         PlaybackController player;
         PlaybackController material_player;
         SoundAssemblyController sound_assembly(backend, player);
+        PlaybackController assembly_history_player;
+        SoundAssemblyController assembly_history(backend, assembly_history_player);
         AssemblyWaveformController assembly_waveforms(
             QString::fromStdString(catalog),
             QString::fromStdString(cache_root)
@@ -148,6 +150,14 @@ int main(int argc, char* argv[]) {
         // executable module keeps its generated qmldir at qrc:/EchoDesktop.
         engine.addImportPath(QStringLiteral("qrc:/"));
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("assemblyHistoryController"),
+            &assembly_history
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("assemblyHistoryPlayer"),
+            &assembly_history_player
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("generatedNarration"),
             &generated_narration

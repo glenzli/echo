@@ -150,7 +150,7 @@ pub use sound_assembly::{
     RecordSoundAssemblyExport, SoundAssemblyExportFormat, SoundAssemblyExportRecord,
     SoundAssemblyRevision, SoundAssemblySummary, archive_sound_assembly, latest_sound_assembly,
     list_sound_assemblies, record_sound_assembly, record_sound_assembly_export,
-    sound_assembly_at_revision,
+    sound_assembly_at_revision, sound_assembly_history,
 };
 pub use source_metadata::{
     SourceMetadata, SourceMetadataEntry, list_assets_missing_source_metadata,
