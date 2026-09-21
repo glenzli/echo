@@ -32,3 +32,20 @@ fn foreign_future_duplicate_and_oversized_comments_are_ignored() {
         assert_eq!(decode_portable_disclosure(&invalid), None, "{invalid}");
     }
 }
+
+#[test]
+fn memory_comments_preserve_bounded_first_line_disclosure() {
+    let text = encode_portable_disclosure([SourceDisclosureKind::AiGenerated]);
+    let annotated = format!(
+        "{text}\nNotes: {}\nPlace: 外婆家\nTime: Summer",
+        "私人备注".repeat(500)
+    );
+    assert_eq!(
+        decode_portable_disclosure(&annotated),
+        Some(vec![SourceDisclosureKind::AiGenerated])
+    );
+    assert_eq!(
+        decode_portable_disclosure(&format!("Notes: user text\n{text}")),
+        None
+    );
+}

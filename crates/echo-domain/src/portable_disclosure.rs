@@ -53,6 +53,10 @@ pub fn encode_portable_disclosure(kinds: impl IntoIterator<Item = SourceDisclosu
 /// malformed/future declarations cannot upgrade a source to a known category.
 #[must_use]
 pub fn decode_portable_disclosure(comment: &str) -> Option<Vec<SourceDisclosureKind>> {
+    if comment.len() > 32768 {
+        return None;
+    }
+    let comment = comment.lines().next()?;
     if comment.len() > MAX_BYTES {
         return None;
     }

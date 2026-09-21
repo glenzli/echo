@@ -32,6 +32,14 @@ class DesktopBackend : public QObject {
         return session_->session_is_independent();
     }
     Q_INVOKABLE void refresh();
+    Q_INVOKABLE QVariantMap memoryInfo(const QString& id, bool assembly) const;
+    Q_INVOKABLE QString setMemoryInfo(
+        const QString& id,
+        bool assembly,
+        qlonglong expectedRevision,
+        const QVariantMap& info
+    );
+    QVariantMap exportMemoryInfo(const QString& id, bool assembly) const;
     Q_INVOKABLE QString
     setSourceDisclosure(const QString& id, qlonglong expectedRevision, const QVariantList& spans);
     Q_INVOKABLE QVariantList listAssets(bool originals = false) const;

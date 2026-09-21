@@ -55,6 +55,8 @@ Rectangle {
 
     color: Theme.window
 
+    property alias memoryInfoDialog: memoryInfo
+    MemoryInfoDialog { id: memoryInfo; catalogBackend: backend }
     property alias sourceDisclosureDialog: sourceDisclosure
     SourceDisclosureDialog { id: sourceDisclosure; catalogBackend: backend }
     function presentSourceDisclosure(): void {
@@ -877,6 +879,16 @@ Rectangle {
                 toolTipText: qsTr("Add a narration")
                 enabled: !generatedNarration.running && !generatedNarration.accepting
                 onClicked: narrationDialog.present()
+            }
+            EchoIconButton {
+                objectName: "editorMemoryInfo"
+                source: "qrc:/EchoDesktop/icons/memory-info.svg"
+                toolTipText: qsTr("Memory information")
+                accessibleName: toolTipText
+                enabled: workspace.hasAsset
+                onClicked: memoryInfo.present(workspace.asset.id, false,
+                    editorTimeline.hasTimeSelection ? editorTimeline.selectionStartMillis : Math.min(Math.max(0, workspace.ownsActivePlayback() ? player.position : adjustmentDraft.trimStartMillis), Math.max(0, workspace.asset.durationMillis - 1)),
+                    editorTimeline.hasTimeSelection ? editorTimeline.selectionEndMillis : -1)
             }
             SourceDisclosureBadge {
                 objectName: "editorSourceDisclosure"

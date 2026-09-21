@@ -99,6 +99,23 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
         Some(ref version)
             if version
                 .parse::<CatalogSchemaRevision>()
+                .is_ok_and(|v| v == crate::schema::MEMORY_INFO_PREDECESSOR) =>
+        {
+            let tx = connection.unchecked_transaction()?;
+            tx.execute_batch(crate::memory_info::SCHEMA_SQL)?;
+            tx.execute(
+                "UPDATE catalog_meta SET value=?1 WHERE key='schema_version'",
+                [SCHEMA_VERSION.to_string()],
+            )?;
+            tx.execute(
+                "UPDATE catalog_meta SET value=?1 WHERE key='schema_identity'",
+                [SCHEMA_IDENTITY],
+            )?;
+            tx.commit()?;
+        }
+        Some(ref version)
+            if version
+                .parse::<CatalogSchemaRevision>()
                 .is_ok_and(|revision| revision == crate::schema::AUDIO_FORMATS_PREDECESSOR) =>
         {
             crate::delivery_formats::migrate(connection)?;
@@ -117,6 +134,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             let transaction = connection.unchecked_transaction()?;
             transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             transaction.execute_batch(crate::generated_audio::SCHEMA_SQL)?;
+            transaction.execute_batch(crate::memory_info::SCHEMA_SQL)?;
             transaction.execute(
                 "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
                 [SCHEMA_VERSION.to_string()],
@@ -136,6 +154,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             crate::sound_library::migrate(&transaction)?;
             transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             transaction.execute_batch(crate::generated_audio::SCHEMA_SQL)?;
+            transaction.execute_batch(crate::memory_info::SCHEMA_SQL)?;
             transaction.execute(
                 "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
                 [SCHEMA_VERSION.to_string()],
@@ -154,6 +173,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             crate::sound_library::migrate(&transaction)?;
             transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             transaction.execute_batch(crate::generated_audio::SCHEMA_SQL)?;
+            transaction.execute_batch(crate::memory_info::SCHEMA_SQL)?;
             transaction.commit()?;
             connection.execute(
                 "INSERT INTO catalog_meta (key, value) VALUES ('schema_version', ?1)",
@@ -192,6 +212,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
             connection.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             connection.execute_batch(crate::generated_audio::SCHEMA_SQL)?;
+            connection.execute_batch(crate::memory_info::SCHEMA_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version)
@@ -255,6 +276,7 @@ fn initialize_schema(connection: &Connection) -> Result<(), CatalogError> {
             connection.execute_batch(SOUND_ASSEMBLY_MIGRATION_SQL)?;
             connection.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
             connection.execute_batch(crate::generated_audio::SCHEMA_SQL)?;
+            connection.execute_batch(crate::memory_info::SCHEMA_SQL)?;
             // Identity is descriptive; the canonical revision is authoritative.
         }
         Some(version)
@@ -734,6 +756,7 @@ fn finish_migration(transaction: &rusqlite::Transaction<'_>) -> Result<(), Catal
     crate::sound_library::migrate(transaction)?;
     transaction.execute_batch(crate::source_disclosure::SCHEMA_SQL)?;
     transaction.execute_batch(crate::generated_audio::SCHEMA_SQL)?;
+    transaction.execute_batch(crate::memory_info::SCHEMA_SQL)?;
     transaction.execute(
         "UPDATE catalog_meta SET value = ?1 WHERE key = 'schema_version'",
         [SCHEMA_VERSION.to_string()],

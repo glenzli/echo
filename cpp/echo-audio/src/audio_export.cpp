@@ -131,9 +131,27 @@ OfflineRenderResult encode(
     format->url = av_strdup(("audio." + profile.extension()).c_str());
     format->pb = avio.get();
     format->flags |= AVFMT_FLAG_CUSTOM_IO;
-    if (!comment.empty())
+    std::string delivery_comment(comment);
+    const auto append_memory = [&](std::string_view label, const std::string& value) {
+        if (value.empty())
+            return;
+        if (value.size() > 8000 || value.find('\0') != std::string::npos)
+            throw std::invalid_argument("invalid memory export text");
+        delivery_comment += "\n";
+        delivery_comment += label;
+        delivery_comment += value;
+    };
+    append_memory("Notes: ", profile.memory_notes);
+    append_memory("Place: ", profile.memory_place);
+    append_memory("Time: ", profile.memory_time);
+    if (flac && !profile.memory_place.empty())
         require_ffmpeg(
-            av_dict_set(&format->metadata, "comment", std::string(comment).c_str(), 0),
+            av_dict_set(&format->metadata, "location", profile.memory_place.c_str(), 0),
+            "write memory place"
+        );
+    if (!delivery_comment.empty())
+        require_ffmpeg(
+            av_dict_set(&format->metadata, "comment", delivery_comment.c_str(), 0),
             "write source disclosure"
         );
     AVDictionary* options = nullptr;

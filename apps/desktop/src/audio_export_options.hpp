@@ -26,6 +26,12 @@ inline echo::audio::AudioExportProfile profile(const QVariantMap& options) {
     value.validate();
     return value;
 }
+inline void attachMemory(echo::audio::AudioExportProfile& profile, const QVariantMap& revision) {
+    const auto info = revision.value(QStringLiteral("info")).toMap();
+    profile.memory_notes = info.value(QStringLiteral("notes")).toString().toStdString();
+    profile.memory_place = info.value(QStringLiteral("place")).toString().toStdString();
+    profile.memory_time = info.value(QStringLiteral("timeDescription")).toString().toStdString();
+}
 inline QString destination(const QUrl& url, const echo::audio::AudioExportProfile& profile) {
     if (!url.isLocalFile())
         throw std::invalid_argument("delivery requires a local destination");

@@ -13,6 +13,7 @@
 //! - `analysis` owns progressive analysis levels and evidence contracts
 //!   (`value + model + model_version + confidence + timestamp` — analysis is
 //!   never treated as fact);
+//! - `memory_info` owns personal notes, named places, approximate times and original-time moments;
 //! - `metadata_calibration` owns sparse user corrections over those model
 //!   projections without mutating the evidence itself;
 //! - `portable_disclosure` owns bounded source-kind declarations for audio exports;
@@ -29,7 +30,9 @@ mod creative_vfx;
 mod freeze_vfx;
 mod granular_vfx;
 mod ids;
+mod memory_info;
 mod metadata_calibration;
+pub use memory_info::{MemoryInfo, MemoryMoment};
 mod original;
 mod portable_disclosure;
 mod processing_recipe;

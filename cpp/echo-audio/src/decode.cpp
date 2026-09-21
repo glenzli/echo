@@ -42,7 +42,7 @@ class FormatContext {
 };
 
 constexpr std::size_t kMaximumMetadataEntries = 128;
-constexpr std::size_t kMaximumMetadataValueBytes = 4096;
+constexpr std::size_t kMaximumMetadataValueBytes = 16384;
 
 void append_metadata(
     std::vector<AudioMetadataEntry>& destination,

@@ -298,6 +298,12 @@ void SoundAssemblyController::start(
         profile = AudioExportOptions::profile(
             preview || preserveMemory ? QVariantMap{} : export_options_
         );
+        if (!preview && !preserveMemory
+            && export_options_.value(QStringLiteral("includeMemoryInfo")).toBool())
+            AudioExportOptions::attachMemory(
+                profile,
+                backend_.exportMemoryInfo(revision.value(QStringLiteral("id")).toString(), true)
+            );
     } catch (const std::exception& error) {
         reject(QString::fromUtf8(error.what()));
         return;

@@ -159,6 +159,11 @@ int main(int argc, char** argv) {
                 .sample_rate = rate,
                 .channels = rate == 48000 ? 2U : 1U
             };
+            if (rate == 48000) {
+                profile.memory_notes = "第一次叫爸爸\nA quiet memory";
+                profile.memory_place = "外婆家阳台";
+                profile.memory_time = "大约 2020 年夏天";
+            }
             MemorySink sink;
             const auto result =
                 echo::audio::AudioExporter::render(source.string(), {}, sink, profile, {}, comment);
@@ -180,8 +185,16 @@ int main(int argc, char** argv) {
             assert(probe.has_audio);
             bool metadata = false;
             for (const auto& entry : probe.metadata)
-                if (entry.value == comment)
+                if (entry.key == "comment") {
+                    assert(entry.value.starts_with(comment));
+                    if (rate == 48000) {
+                        assert(entry.value.find(profile.memory_notes) != std::string::npos);
+                        assert(entry.value.find(profile.memory_place) != std::string::npos);
+                        assert(entry.value.find(profile.memory_time) != std::string::npos);
+                    } else
+                        assert(entry.value == comment);
                     metadata = true;
+                }
             assert(metadata);
             const auto decoded = decode_frames(destination.string());
             assert(std::abs(static_cast<double>(decoded) - 48000.0) < 2400);

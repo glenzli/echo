@@ -10,6 +10,7 @@
 //! revisions, [`processing_recipe`] for reusable processing definitions and
 //! explicit batch receipts, [`user_albums`] for durable user-authored
 //! collections, [`sound_library`] for memory/material membership and accepted mixes, and [`scan_root`] for the directories Echo watches.
+//! [`memory_info`] owns append-only personal context for originals and assemblies.
 //! [`delivery_formats`] owns the transactional export-format schema expansion, preserving export IDs and references.
 
 mod adjustment_graph;
@@ -31,7 +32,9 @@ mod inference_run;
 mod job_queue;
 mod listening_state;
 mod long_audio;
+mod memory_info;
 mod metadata_calibration;
+pub use memory_info::{MemoryInfoRevision, memory_info, record_memory_info};
 mod processing_recipe;
 mod render_export;
 mod rendered_spectral_working_copy;

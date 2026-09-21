@@ -1067,7 +1067,6 @@
             <source>%1 · %2 sounds</source>
             <translation>%1 · %2 段声音</translation>
         </message>
-
         <message>
             <location filename="../qml/BatchExportDialog.qml" line="139" />
             <source>An unfinished export can continue</source>
@@ -1148,8 +1147,6 @@
             <source>Export current results</source>
             <translation>导出当前结果</translation>
         </message>
-
-
         <message>
             <location filename="../qml/BatchExportDialog.qml" line="174" />
             <source>FORMAT</source>
@@ -1160,15 +1157,11 @@
             <source>Preparing batch…</source>
             <translation>正在准备批量导出…</translation>
         </message>
-
-
-
-
         <message>
             <source>Source labels are embedded in the audio file. Private notes and local paths stay in Echo.</source>
             <translation>来源标记会嵌入音频文件。私人说明和本地路径仍留在 Echo 中。</translation>
         </message>
-            <message>
+        <message>
             <source>Uses each sound’s saved adjustments.</source>
             <translation>使用每段声音已保存的处理版本。</translation>
         </message>
@@ -1613,9 +1606,19 @@
             <source>This project version could not be opened.</source>
             <translation>未能打开此工程版本。</translation>
         </message>
-            <message>
+        <message>
             <source>Audio files (%1)</source>
             <translation>音频文件 (%1)</translation>
+        </message>
+        <message>
+            <location filename="../src/desktop_memory_info.cpp" line="15" />
+            <source>Memory information could not be loaded.</source>
+            <translation>无法读取记忆信息。</translation>
+        </message>
+        <message>
+            <location filename="../src/desktop_memory_info.cpp" line="36" />
+            <source>Memory information could not be saved. Check the text and time ranges; if another window changed it, reopen before saving.</source>
+            <translation>无法保存记忆信息。请检查文字和时间范围；若其他窗口已修改，请重新打开后再保存。</translation>
         </message>
     </context>
     <context>
@@ -2386,7 +2389,6 @@
             <source>Open audio</source>
             <translation>打开音频</translation>
         </message>
-
         <message>
             <location filename="../qml/IndependentEditor.qml" line="225" />
             <source>All files (*)</source>
@@ -4923,8 +4925,6 @@
             <source>Fit selection</source>
             <translation>适应所选范围</translation>
         </message>
-
-
         <message>
             <location filename="../qml/SoundAssemblyWorkspace.qml" line="456" />
             <source>Untitled project</source>
@@ -4945,6 +4945,11 @@
         <message>
             <source>Compare project versions</source>
             <translation>工程版本对比</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundAssemblyWorkspace.qml" line="994" />
+            <source>Memory information</source>
+            <translation>记忆信息</translation>
         </message>
     </context>
     <context>
@@ -5270,6 +5275,11 @@
             <source>Show material</source>
             <translation>查看素材</translation>
         </message>
+        <message>
+            <location filename="../qml/SoundEditingWorkspace.qml" line="886" />
+            <source>Memory information</source>
+            <translation>记忆信息</translation>
+        </message>
     </context>
     <context>
         <name>SoundEditorTimeline</name>
@@ -5338,8 +5348,6 @@
     </context>
     <context>
         <name>SoundExportDialog</name>
-
-
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="100" />
             <source>Export adjusted sound</source>
@@ -5350,7 +5358,6 @@
             <source>Close</source>
             <translation>关闭</translation>
         </message>
-
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="160" />
             <source>Choose where to save the rendered file</source>
@@ -5381,23 +5388,17 @@
             <source>Rendering in the background…</source>
             <translation>正在后台渲染…</translation>
         </message>
-
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="248" />
             <source>Echo could not export this sound. Check the destination and try again.</source>
             <translation>Echo 无法导出这段声音。请检查保存位置后重试。</translation>
         </message>
-
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="264" />
             <source>Cancel</source>
             <translation>取消</translation>
         </message>
         <message>
-            <source>Source labels are embedded in the audio file. Private notes and local paths stay in Echo.</source>
-            <translation>来源标记会嵌入音频文件。私人说明和本地路径仍留在 Echo 中。</translation>
-        </message>
-            <message>
             <source>Audio file (*.%1)</source>
             <translation>音频文件 (*.%1)</translation>
         </message>
@@ -5405,13 +5406,18 @@
             <source>Export audio</source>
             <translation>导出音频</translation>
         </message>
-            <message>
+        <message>
             <source>Audio created · %1 LUFS · %2 dBTP</source>
             <translation>音频已生成 · %1 LUFS · %2 dBTP</translation>
         </message>
         <message>
             <source>Audio created, but Echo could not save its source record.</source>
             <translation>音频已生成，但 Echo 无法保存其来源记录。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundExportDialog.qml" line="139" />
+            <source>Source labels are always embedded. Memory information is included only when selected; local paths stay in Echo.</source>
+            <translation>来源标记始终随文件保存。记忆信息仅在勾选后写入，本地路径保留在 Echo 中。</translation>
         </message>
     </context>
     <context>
@@ -6146,7 +6152,6 @@
             <source>Uncategorized</source>
             <translation>未分类</translation>
         </message>
-
         <message>
             <location filename="../qml/SoundSourceBrowser.qml" line="330" />
             <source>All files (*)</source>
@@ -8040,6 +8045,21 @@ Narration: %3</source>
             <source>WAV · 32-bit float</source>
             <translation>WAV · 32 位浮点</translation>
         </message>
+        <message>
+            <location filename="../qml/AudioExportSettings.qml" line="58" />
+            <source>Include memory information</source>
+            <translation>包含记忆信息</translation>
+        </message>
+        <message>
+            <location filename="../qml/AudioExportSettings.qml" line="65" />
+            <source>Writes notes, place and time into comments, plus a FLAC location tag. Moment notes stay in Echo.</source>
+            <translation>将备注、地点和时间写入评论，并写入 FLAC 地点标签。片段注记仍保留在 Echo 中。</translation>
+        </message>
+        <message>
+            <location filename="../qml/AudioExportSettings.qml" line="66" />
+            <source>Writes notes, place and time into the file’s comment tag. Moment notes stay in Echo.</source>
+            <translation>将备注、地点和时间写入文件的评论标签。片段注记仍保留在 Echo 中。</translation>
+        </message>
     </context>
     <context>
         <name>AudioStreamImportController</name>
@@ -8097,6 +8117,125 @@ Narration: %3</source>
         <message>
             <source>This container has multiple audio tracks. Import one without re-encoding; the complete original container and its source record are preserved.</source>
             <translation>此文件包含多条音轨。选取一条直接导入，无需重新编码；完整原文件及来源记录会一同保留。</translation>
+        </message>
+    </context>
+    <context>
+        <name>MemoryInfoDialog</name>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="46" />
+            <source>Use at most 2,000 characters for notes, 200 for place and 120 for time.</source>
+            <translation>备注最多 2000 字，地点最多 200 字，时间最多 120 字。</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="49" />
+            <source>Each moment needs a note of 1–500 characters.</source>
+            <translation>每个片段需要填写 1–500 字的注记。</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="72" />
+            <source>Memory information</source>
+            <translation>记忆信息</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="75" />
+            <source>Your notes stay in Echo or this project. Original files and AI descriptions are unchanged.</source>
+            <translation>你的记录保存在 Echo 或当前工程中。原始文件和 AI 描述不会改变。</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="82" />
+            <location filename="../qml/MemoryInfoDialog.qml" line="83" />
+            <source>Notes</source>
+            <translation>备注</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="83" />
+            <source>What happened, and why you kept this sound…</source>
+            <translation>当时发生了什么，为什么想保留这段声音……</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="84" />
+            <location filename="../qml/MemoryInfoDialog.qml" line="85" />
+            <source>Place</source>
+            <translation>地点</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="85" />
+            <source>For example, Grandma’s balcony</source>
+            <translation>例如，外婆家的阳台</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="86" />
+            <location filename="../qml/MemoryInfoDialog.qml" line="87" />
+            <source>Time</source>
+            <translation>时间</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="87" />
+            <source>An exact date or roughly when it happened</source>
+            <translation>具体日期，或大致发生的时间</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="90" />
+            <source>Moment notes refer to the original recording. Add one from the editor’s playhead or selected range.</source>
+            <translation>片段注记对应原始录音。在编辑器中定位播放位置或选择范围，即可添加。</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="93" />
+            <source>Add note at %1</source>
+            <translation>在 %1 添加注记</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="103" />
+            <source>Remove</source>
+            <translation>移除</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="108" />
+            <source>Moment note</source>
+            <translation>片段注记</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="119" />
+            <source>Cancel</source>
+            <translation>取消</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoDialog.qml" line="120" />
+            <source>Save</source>
+            <translation>保存</translation>
+        </message>
+    </context>
+    <context>
+        <name>MemoryInfoSection</name>
+        <message>
+            <location filename="../qml/MemoryInfoSection.qml" line="13" />
+            <source>MEMORY INFORMATION</source>
+            <translation>记忆信息</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoSection.qml" line="26" />
+            <source>Add your own context to this sound.</source>
+            <translation>为这段声音补充你的回忆。</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoSection.qml" line="29" />
+            <source>Place: %1</source>
+            <translation>地点：%1</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoSection.qml" line="30" />
+            <source>Time: %1</source>
+            <translation>时间：%1</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoSection.qml" line="31" />
+            <source>%1 moment notes</source>
+            <translation>%1 条片段注记</translation>
+        </message>
+        <message>
+            <location filename="../qml/MemoryInfoSection.qml" line="32" />
+            <source>Edit memory information</source>
+            <translation>编辑记忆信息</translation>
         </message>
     </context>
 </TS>

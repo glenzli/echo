@@ -17,7 +17,7 @@ Item {
     property int batchIndex: 0
     property int singleIndex: 0
     readonly property var deliveryFormats: ["wav_pcm24","flac24","wav_pcm16","wav_float32","mp3","aac_m4a"]
-    function deliveryProfile(format) { return {format:format,sampleRate:44100,channels:1,bitrateKbps:192}; }
+    function deliveryProfile(format) { return {format:format,sampleRate:44100,channels:1,bitrateKbps:192,includeMemoryInfo:true}; }
     function deliveryExtension(format) { return format==="flac24"?"flac":format==="mp3"?"mp3":format==="aac_m4a"?"m4a":"wav"; }
     property var originalIds: []
     function require(value,message) { if(!value) throw new Error(message); }
@@ -73,8 +73,20 @@ Item {
             if(reopening) {
                 require(editor.asset.hasGeneratedSource,"portable source label missing");
                 editor.presentSourceDisclosure();require(editor.sourceDisclosureDialog.spans.length>0,"native source labels missing in reopened dialog");editor.sourceDisclosureDialog.close();
+                editor.memoryInfoDialog.present(editor.asset.id,false);
+                require(editor.memoryInfoDialog.notes === "个人回忆\nA quiet memory", "portable notes missing");
+                require(editor.memoryInfoDialog.moments.length === 1, "portable moment missing");
+                editor.memoryInfoDialog.close();facts.memoryInfoReopened=true;
                 facts.reopenedDialogVerified=true;stage=5;return;
             }
+            editor.memoryInfoDialog.present(editor.asset.id,false,100,200);
+            editor.memoryInfoDialog.notes="个人回忆\nA quiet memory";
+            editor.memoryInfoDialog.place="外婆家阳台";
+            editor.memoryInfoDialog.timeDescription="大约 2020 年夏天";
+            editor.memoryInfoDialog.addMoment();editor.memoryInfoDialog.moments[0].note="第一次叫爸爸";
+            editor.memoryInfoDialog.save();require(!editor.memoryInfoDialog.errorText,editor.memoryInfoDialog.errorText);
+            require(shell.projectDirty,"personal context did not dirty project");
+            facts.memoryInfoSaved=true;
             editor.adjustment.setGain(-300);
             editor.adjustment.setChannelRepairEnabled(true);
             editor.adjustment.setChannelRepairParameter("invertLeft",true);
@@ -126,6 +138,7 @@ Item {
             facts.batchFormats=deliveryFormats;
             const mix=backend.createSoundAssembly("Disclosed mix",[editor.asset.id],"layered");
             require(!mix.error,mix.error || "mix creation failed");
+            require(!backend.setMemoryInfo(mix.id,true,0,{notes:"Whole trip",place:"Several places",timeDescription:"A week",moments:[]}),"mix context failed");
             soundAssemblyController.exportOptions=deliveryProfile("aac_m4a");
             soundAssemblyController.exportAssembly(mix,'file://'+fixtureRoot+'/mix.m4a');stage=9;break;
         case 9:
@@ -141,7 +154,7 @@ Item {
             if(renderedSpectralWorkingCopy.running) return;
             require(renderedSpectralWorkingCopy.hasResult && renderedSpectralWorkingCopy.operationCount===1,renderedSpectralWorkingCopy.errorText || "working-copy erase failed");
             facts.workingCopyErased=true;
-            renderExporter.exportOptions={format:"wav_pcm24",sampleRate:48000,channels:2};
+            renderExporter.exportOptions={format:"wav_pcm24",sampleRate:48000,channels:2,includeMemoryInfo:true};
             renderExporter.exportRenderedSpectralWorkingCopy(editor.asset.id,Number(editor.asset.adjustmentRevision||0),renderedSpectralWorkingCopy.workingCopyId,renderedSpectralWorkingCopy.cachePath,'file://'+fixtureRoot+'/working-copy.wav');stage=11;break;
         case 11:
             if(renderExporter.running) return;

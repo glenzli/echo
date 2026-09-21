@@ -631,6 +631,14 @@ mod ffi {
         ) -> Result<SoundAssemblyRevisionWire>;
         fn session_list_originals(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
         fn session_list_assets(self: &LibrarySession) -> Result<Vec<AssetSummaryWire>>;
+        fn session_memory_info(self: &LibrarySession, id: &str, assembly: bool) -> Result<String>;
+        fn session_set_memory_info(
+            self: &LibrarySession,
+            id: &str,
+            assembly: bool,
+            expected: i64,
+            json: &str,
+        ) -> Result<()>;
         fn session_export_source_disclosure(
             self: &LibrarySession,
             id: &str,
@@ -1060,6 +1068,20 @@ impl LibrarySession {
         adjustment: &ffi::AssetAdjustmentWire,
     ) -> Result<ffi::SoundAssemblyRevisionWire, String> {
         self.save_project_clip_adjustment(document_json, clip_id, asset_id, adjustment)
+            .map_err(|e| e.to_string())
+    }
+    fn session_memory_info(&self, id: &str, assembly: bool) -> Result<String, String> {
+        self.memory_info_json(id, assembly)
+            .map_err(|e| e.to_string())
+    }
+    fn session_set_memory_info(
+        &self,
+        id: &str,
+        assembly: bool,
+        expected: i64,
+        json: &str,
+    ) -> Result<(), String> {
+        self.set_memory_info(id, assembly, expected, json)
             .map_err(|e| e.to_string())
     }
     fn session_export_source_disclosure(

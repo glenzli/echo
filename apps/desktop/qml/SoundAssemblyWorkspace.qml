@@ -54,6 +54,8 @@ Rectangle {
     property bool playbackOwned: false
     property bool previewSelection: false
     property bool loopPreview: false
+    property alias memoryInfoDialog: memoryInfo
+    MemoryInfoDialog { id: memoryInfo; catalogBackend: backend }
     property alias historyDialog: versionHistory
     AssemblyHistoryDialog {
         id: versionHistory
@@ -986,6 +988,14 @@ Rectangle {
                         onClicked: workspace.keepMemory()
                     }
 
+                    EchoIconButton {
+                        objectName: "assemblyMemoryInfo"
+                        source: "qrc:/EchoDesktop/icons/memory-info.svg"
+                        toolTipText: qsTr("Memory information")
+                        accessibleName: toolTipText
+                        enabled: workspace.hasDocument
+                        onClicked: memoryInfo.present(workspace.document.id, true)
+                    }
                     EchoIconButton {
                         objectName: "assemblyHistoryButton"
                         source: "qrc:/EchoDesktop/icons/history.svg"

@@ -674,6 +674,8 @@ Rectangle {
                     }
                 }
 
+                MemoryInfoSection { Layout.fillWidth: true; visible: inspector.hasAsset; catalogBackend: backend; asset: inspector.asset }
+
                 InspectorSection {
                     Layout.fillWidth: true
                     title: inspector.isAssemblyMemory ? qsTr("LISTENING EDITION") : qsTr("SOURCE METADATA")
@@ -739,6 +741,8 @@ Rectangle {
                         }
                     }
                 }
+
+                MemoryInfoSection { Layout.fillWidth: true; visible: inspector.hasAsset; catalogBackend: backend; asset: inspector.asset }
 
                 InspectorSection {
                     Layout.fillWidth: true

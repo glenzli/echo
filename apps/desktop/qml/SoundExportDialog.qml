@@ -136,7 +136,7 @@ Popup {
             Text {
                 Layout.fillWidth: true; wrapMode: Text.WordWrap
                 font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
-                text: qsTr("Source labels are embedded in the audio file. Private notes and local paths stay in Echo.")
+                text: qsTr("Source labels are always embedded. Memory information is included only when selected; local paths stay in Echo.")
             }
 
             AudioExportSettings { id:deliverySettings; Layout.fillWidth:true; enabled:!dialog.exporter.running }

@@ -383,9 +383,15 @@ void BatchExportController::startWorker(QVariantMap manifest) {
     emit stateChanged();
     emit progressChanged();
 
-    worker_ = std::jthread([this, generation, manifest, items, directory, format, profile](
-                               std::stop_token stop
-                           ) mutable {
+    worker_ = std::jthread([this,
+                            generation,
+                            manifest,
+                            items,
+                            directory,
+                            format,
+                            profile,
+                            includeMemory = options.value(QStringLiteral("includeMemoryInfo"))
+                                                .toBool()](std::stop_token stop) mutable {
         int completed = 0;
         int failed = 0;
         QSet<QString> reserved;
@@ -461,11 +467,20 @@ void BatchExportController::startWorker(QVariantMap manifest) {
                         throw std::runtime_error("cannot save delivery recovery state");
                     }
                     auto last_progress = std::chrono::steady_clock::now() - std::chrono::seconds(1);
+                    auto delivery_profile = profile;
+                    if (includeMemory)
+                        AudioExportOptions::attachMemory(
+                            delivery_profile,
+                            backend_.exportMemoryInfo(
+                                asset.value(QStringLiteral("id")).toString(),
+                                false
+                            )
+                        );
                     const auto result = render_file(
                         asset.value(QStringLiteral("path")).toString(),
                         temporary_path,
                         output_path,
-                        profile,
+                        delivery_profile,
                         *adjustment,
                         {
                             .cancelled = [&stop] { return stop.stop_requested(); },

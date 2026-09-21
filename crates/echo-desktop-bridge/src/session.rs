@@ -1,6 +1,7 @@
 //! The long-lived Library session: one catalog attachment for the desktop
 //! process lifetime.
 
+mod memory_info;
 mod processing_recipe;
 mod rendered_spectral_working_copy;
 mod sound_assembly;

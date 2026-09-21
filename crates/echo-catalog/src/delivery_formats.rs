@@ -29,6 +29,7 @@ pub(crate) fn migrate(connection: &Connection) -> Result<(), CatalogError> {
             .optional()?;
         tx.execute_batch("DROP VIEW IF EXISTS memory_sources;")?;
         tx.execute_batch(SQL)?;
+        tx.execute_batch(crate::memory_info::SCHEMA_SQL)?;
         if let Some(sql) = memory_view {
             tx.execute_batch(&sql)?;
         }

@@ -153,6 +153,8 @@ void RenderExportController::exportAdjusted(
     QString output_path;
     try {
         profile = AudioExportOptions::profile(export_options_);
+        if (export_options_.value(QStringLiteral("includeMemoryInfo")).toBool())
+            AudioExportOptions::attachMemory(profile, backend_.exportMemoryInfo(assetId, false));
         output_path = AudioExportOptions::destination(destination, profile);
     } catch (const std::exception& error) {
         reject(QString::fromUtf8(error.what()));
@@ -347,6 +349,8 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
     QString output_path;
     try {
         profile = AudioExportOptions::profile(export_options_);
+        if (export_options_.value(QStringLiteral("includeMemoryInfo")).toBool())
+            AudioExportOptions::attachMemory(profile, backend_.exportMemoryInfo(assetId, false));
         output_path = AudioExportOptions::destination(destination, profile);
     } catch (const std::exception& error) {
         reject(QString::fromUtf8(error.what()));

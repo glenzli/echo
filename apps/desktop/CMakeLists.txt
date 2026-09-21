@@ -119,6 +119,7 @@ qt_add_executable(
     src/generated_narration_controller.hpp
     src/desktop_sound_library.cpp
         src/desktop_source_disclosure.cpp
+        src/desktop_memory_info.cpp
     src/desktop_backend.cpp
     src/desktop_backend.hpp
     src/impulse_response_controller.cpp
@@ -190,6 +191,8 @@ qt_add_qml_module(
         qml/SourceDisclosure.js
         qml/SourceDisclosureBadge.qml
         qml/SourceDisclosureDialog.qml
+        qml/MemoryInfoDialog.qml
+        qml/MemoryInfoSection.qml
         qml/SourceDisclosureSmoke.qml
         qml/EditorOpenError.qml
         qml/IndependentEditor.qml
@@ -333,6 +336,7 @@ qt_add_qml_module(
         qml/WaveformView.qml
     RESOURCES
         icons/play.svg
+        icons/memory-info.svg
         icons/marker.svg
         icons/pause.svg
         icons/stop.svg
