@@ -27,7 +27,42 @@ TestCase {
     SignalSpy { id: selections; target: clip; signalName: "selectedRequested" }
     SignalSpy { id: previews; target: clip; signalName: "movePreviewRequested" }
     function initTestCase() { Theme.mode = Theme.AppearanceMode.Dark; }
-    function init() { patches.clear(); selections.clear(); previews.clear(); clip.automationEditing = false; }
+    function init() {
+        patches.clear(); selections.clear(); previews.clear(); clip.automationEditing = false;
+        Theme.mode = Theme.AppearanceMode.Dark;
+        clip.trackColor = "#498eba";
+        clip.clipData = initialClip;
+    }
+    function luminance(color) {
+        const linear = value => value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+        return 0.2126 * linear(color.r) + 0.7152 * linear(color.g) + 0.0722 * linear(color.b);
+    }
+    function test_waveform_contrast_data() {
+        const rows = [];
+        for (const mode of [Theme.AppearanceMode.Light, Theme.AppearanceMode.Dark])
+            for (const color of Theme.assemblyTrackColors)
+                rows.push({tag: mode + ":" + color, mode: mode, color: color});
+        return rows;
+    }
+    function test_waveform_contrast(data) {
+        Theme.mode = data.mode; clip.trackColor = data.color;
+        wait(50);
+        const pixels = grabImage(clip);
+        const scale = pixels.width / clip.width;
+        const wave = luminance(pixels.pixel(Math.round(250 * scale), Math.round(48 * scale)));
+        const background = luminance(pixels.pixel(Math.round(250 * scale), Math.round(85 * scale)));
+        const ratio = (Math.max(wave, background) + 0.05) / (Math.min(wave, background) + 0.05);
+        verify(ratio >= 3, "rendered waveform contrast too low: " + ratio);
+    }
+    function test_fade_curve_only_appears_for_authored_fades() {
+        const curve = findChild(clip, "assemblyFadeCurve");
+        verify(curve !== null);
+        compare(curve.visible, false);
+        clip.clipData = Object.assign({}, initialClip, {fadeInMillis: 1000});
+        compare(curve.visible, true);
+        clip.clipData = initialClip;
+        compare(curve.visible, false);
+    }
     function test_modifier_click_preserves_selection_intent() {
         mouseClick(clip, 50, 8, Qt.LeftButton, Qt.ControlModifier);
         compare(selections.count, 1);

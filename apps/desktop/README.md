@@ -153,6 +153,10 @@ warm highlights. The palette has monotonically increasing measured luminance,
 including in grayscale. Spectral selection uses a light edge with a dark rim
 and a translucent fill so underlying energy remains visible. `Theme.qml` owns
 waveform/background contrast independently in light and dark appearances.
+Arrangement clips keep their track hue while adjusting waveform brightness for
+each appearance. Fade curves show only authored fade regions, with a narrow
+surface-colored rim to separate them from peaks. Native pixel checks cover all
+eight track colors in both appearances, including Retina capture scale.
 
 `SemanticSearchController` runs one inference request at a time and keeps only
 the latest pending query. Clear, source endpoint changes and obsolete results

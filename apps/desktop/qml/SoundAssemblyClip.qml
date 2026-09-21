@@ -14,6 +14,7 @@ Rectangle {
     required property real pixelsPerSecond
     required property bool selected
     required property color trackColor
+    readonly property color waveformColor: Theme.effectiveDark ? Qt.lighter(trackColor, 1.2) : Qt.darker(trackColor, 1.3)
     required property var snapPosition
     property bool automationEditing: false
     property real viewportStart: 0
@@ -107,6 +108,7 @@ Rectangle {
     Repeater {
         model: clipItem.spans
         delegate: WaveformView {
+            objectName: "assemblyWaveform"
             required property var modelData
             readonly property real spanX: modelData.offset * clipItem.pixelsPerSecond / 1000
             readonly property real spanEnd: spanX + modelData.length * clipItem.pixelsPerSecond / 1000
@@ -118,7 +120,7 @@ Rectangle {
             levels: clipItem.waveformLevels
             viewStartRatio: (modelData.sourceStart + (x - spanX) * 1000 / clipItem.pixelsPerSecond) / Math.max(1, clipItem.originalDuration)
             viewEndRatio: (modelData.sourceStart + (x + width - spanX) * 1000 / clipItem.pixelsPerSecond) / Math.max(1, clipItem.originalDuration)
-            fillColor: clipItem.trackColor
+            fillColor: clipItem.waveformColor
             progressColor: fillColor
             outlineColor: fillColor
             normalize: true
@@ -147,6 +149,8 @@ Rectangle {
     }
     Canvas {
         id: fadeCanvas
+        objectName: "assemblyFadeCurve"
+        visible: clipItem.shown.fadeInMillis > 0 || clipItem.shown.fadeOutMillis > 0
         x: clipItem.visibleStart
         width: clipItem.visibleWidth
         height: clipItem.height
@@ -160,6 +164,7 @@ Rectangle {
             const incoming = clipItem.shown.fadeInMillis * clipItem.pixelsPerSecond / 1000;
             const outgoing = clipItem.shown.fadeOutMillis * clipItem.pixelsPerSecond / 1000;
             ctx.beginPath();
+            let drawing = false;
             for (let pixel = 0; pixel <= width; pixel += 2) {
                 const local = x + pixel;
                 let gain = 1;
@@ -168,13 +173,23 @@ Rectangle {
                 if (outgoing > 0 && local > clipItem.width - outgoing)
                     gain = Editing.fadeValue((clipItem.width - local) / outgoing, clipItem.shown.fadeOutCurve);
                 const y = 31 + (1 - gain) * 48;
-                if (pixel === 0)
+                if (gain >= 1) {
+                    if (drawing)
+                        ctx.lineTo(pixel, y);
+                    drawing = false;
+                    continue;
+                }
+                if (!drawing)
                     ctx.moveTo(pixel, y);
                 else
                     ctx.lineTo(pixel, y);
+                drawing = true;
             }
-            ctx.strokeStyle = Qt.alpha(clipItem.trackColor, 0.9);
-            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = Qt.alpha(Theme.panelRaised, 0.8);
+            ctx.lineWidth = 3.5;
+            ctx.stroke();
+            ctx.strokeStyle = clipItem.waveformColor;
+            ctx.lineWidth = 1.25;
             ctx.stroke();
         }
         Connections {
@@ -186,6 +201,9 @@ Rectangle {
                 fadeCanvas.requestPaint();
             }
             function onTrackColorChanged(): void {
+                fadeCanvas.requestPaint();
+            }
+            function onWaveformColorChanged(): void {
                 fadeCanvas.requestPaint();
             }
         }
