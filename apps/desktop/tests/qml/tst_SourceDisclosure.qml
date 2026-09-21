@@ -42,6 +42,17 @@ TestCase {
         openDialog(); verify(dialog.readOnly); compare(dialog.generation.input_text,"Later narration");
         verify(!findChild(dialog,"disclosureSave").visible); dialog.save(); compare(writes.length,0);
     }
+    function test_sound_receipt_displays_prompt_duration_seed_and_cannot_be_cleared_data() {
+        return [{tag:"sound",kind:"sound_effect"},{tag:"music",kind:"music"}];
+    }
+    function test_sound_receipt_displays_prompt_duration_seed_and_cannot_be_cleared(data) {
+        asset={id:"source",durationMillis:8000,sourceDisclosure:{sources:[{assetId:"source",revisionId:0,origin:"runtime_generated",generation:{generation_kind:data.kind,input_text:"Quiet rain",request:{duration_seconds:8,seed:4294967295},runtime:{job:{physical_model:"small-sfx",model_build:"fixed"}}},spans:[{kind:"ai_generated",startMillis:0,endMillis:8000,note:""}]}]}};
+        openDialog(); mouseClick(findChild(dialog,"generationRecordToggle"));
+        const record=findChild(dialog,"generationRecordText").text;
+        verify(record.indexOf("Quiet rain")>=0); verify(record.indexOf("4294967295")>=0);
+        verify(record.indexOf("8 seconds")>=0); verify(dialog.readOnly);
+        dialog.save(); compare(writes.length,0);
+    }
     function test_full_generation_record_can_be_read_without_clipping() {
         const narration="这是完整的旁白。".repeat(60)+"最后一句";
         asset={id:"source",durationMillis:10000,sourceDisclosure:{sources:[{assetId:"source",revisionId:0,origin:"runtime_generated",generation:{input_text:narration,runtime:{job:{physical_model:"/cache/"+"model/".repeat(30),model_build:"build"}}},spans:[{kind:"ai_generated",startMillis:0,endMillis:10000,note:""}]}]}};

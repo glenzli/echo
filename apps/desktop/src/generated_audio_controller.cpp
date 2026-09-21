@@ -1,7 +1,8 @@
-#include "generated_narration_controller.hpp"
+#include "generated_audio_controller.hpp"
 #include "echo-desktop-bridge/src/lib.rs.h"
 #include <QFileInfo>
 #include <QFutureWatcher>
+#include <QRandomGenerator>
 #include <QTemporaryDir>
 #include <QUuid>
 #include <QtConcurrent/QtConcurrentRun>
@@ -9,18 +10,18 @@
 #include <utility>
 
 namespace {
-class RuntimeResult final : public NarrationResult {
-    rust::Box<echo::desktop::NarrationCandidate> candidate_;
+class RuntimeResult final : public GeneratedAudioResult {
+    rust::Box<echo::desktop::GeneratedAudioCandidate> candidate_;
 
   public:
-    explicit RuntimeResult(rust::Box<echo::desktop::NarrationCandidate> candidate) :
+    explicit RuntimeResult(rust::Box<echo::desktop::GeneratedAudioCandidate> candidate) :
         candidate_(std::move(candidate)) {}
     QString details() const override {
-        const auto json = echo::desktop::narration_candidate_details(*candidate_);
+        const auto json = echo::desktop::generated_audio_candidate_details(*candidate_);
         return QString::fromUtf8(json.data(), static_cast<qsizetype>(json.size()));
     }
     QString accept(const QString& catalog, const QString& assembly, bool global) const override {
-        const auto id = echo::desktop::accept_narration_candidate(
+        const auto id = echo::desktop::accept_generated_audio_candidate(
             catalog.toStdString(),
             *candidate_,
             assembly.toStdString(),
@@ -30,44 +31,64 @@ class RuntimeResult final : public NarrationResult {
     }
 };
 struct Outcome {
-    std::shared_ptr<NarrationResult> candidate;
+    std::shared_ptr<GeneratedAudioResult> candidate;
     QString details;
 };
 } // namespace
 
-GeneratedNarrationController::GeneratedNarrationController(
+GeneratedAudioController::GeneratedAudioController(
     QString catalog,
     QObject* parent,
-    Generate generate
+    Generate generate,
+    Kind kind
 ) :
-    QObject(parent), generate_(std::move(generate)),
+    QObject(parent), kind_(kind), generate_(std::move(generate)),
     catalog_(QFileInfo(catalog).absoluteFilePath()) {
     if (!generate_)
-        generate_ = [](const QString& text, const QString& directory, const QString& endpoint) {
+        generate_ = [kind](
+                        const GeneratedAudioRequest& input,
+                        const QString& directory,
+                        const QString& endpoint
+                    ) {
+            if (kind == Kind::SoundMaterial)
+                return std::make_shared<RuntimeResult>(
+                    echo::desktop::generate_sound_material_candidate(
+                        input.model.toStdString(),
+                        input.text.toStdString(),
+                        static_cast<std::uint32_t>(input.durationSeconds),
+                        input.seed,
+                        input.ambience,
+                        directory.toStdString(),
+                        endpoint.toStdString()
+                    )
+                );
             return std::make_shared<RuntimeResult>(echo::desktop::generate_narration_candidate(
-                text.toStdString(),
+                input.text.toStdString(),
                 directory.toStdString(),
                 endpoint.toStdString()
             ));
         };
 }
-const GeneratedNarrationController::Candidate* GeneratedNarrationController::selected() const {
+const GeneratedAudioController::Candidate* GeneratedAudioController::selected() const {
     const auto found =
         std::find_if(candidates_.begin(), candidates_.end(), [this](const auto& value) {
             return value.id == selected_id_;
         });
     return found == candidates_.end() ? nullptr : &*found;
 }
-QString GeneratedNarrationController::detailsJson() const {
+QString GeneratedAudioController::detailsJson() const {
     const auto* value = selected();
     return value ? value->details : QString{};
 }
-QUrl GeneratedNarrationController::audioUrl() const {
+QUrl GeneratedAudioController::audioUrl() const {
     const auto* value = selected();
-    return value ? QUrl::fromLocalFile(value->directory->filePath(QStringLiteral("narration.wav")))
+    return value ? QUrl::fromLocalFile(value->directory->filePath(
+                       kind_ == Kind::SoundMaterial ? QStringLiteral("sound.wav")
+                                                    : QStringLiteral("narration.wav")
+                   ))
                  : QUrl{};
 }
-QVariantList GeneratedNarrationController::candidates() const {
+QVariantList GeneratedAudioController::candidates() const {
     QVariantList values;
     for (const auto& value : candidates_)
         values.append(
@@ -75,7 +96,7 @@ QVariantList GeneratedNarrationController::candidates() const {
         );
     return values;
 }
-void GeneratedNarrationController::selectCandidate(const QString& id) {
+void GeneratedAudioController::selectCandidate(const QString& id) {
     if (accepting_ || id == selected_id_)
         return;
     if (std::none_of(candidates_.begin(), candidates_.end(), [&](const auto& value) {
@@ -86,7 +107,7 @@ void GeneratedNarrationController::selectCandidate(const QString& id) {
     error_.clear();
     emit stateChanged();
 }
-void GeneratedNarrationController::removeSelected() {
+void GeneratedAudioController::removeSelected() {
     if (running_ || accepting_)
         return;
     std::erase_if(candidates_, [this](const auto& value) { return value.id == selected_id_; });
@@ -94,7 +115,7 @@ void GeneratedNarrationController::removeSelected() {
     error_.clear();
     emit stateChanged();
 }
-void GeneratedNarrationController::discard() {
+void GeneratedAudioController::discard() {
     if (accepting_)
         return;
     ++generation_;
@@ -103,7 +124,30 @@ void GeneratedNarrationController::discard() {
     error_.clear();
     emit stateChanged();
 }
-void GeneratedNarrationController::request(const QString& text, const QString& endpoint) {
+void GeneratedAudioController::request(const QString& text, const QString& endpoint) {
+    if (kind_ != Kind::Narration)
+        return;
+    start({text.trimmed()}, endpoint);
+}
+void GeneratedAudioController::requestSoundMaterial(
+    const QString& prompt,
+    int durationSeconds,
+    bool ambience,
+    const QString& endpoint,
+    const QString& model
+) {
+    if (kind_ != Kind::SoundMaterial)
+        return;
+    start(
+        {prompt.trimmed(),
+         durationSeconds,
+         QRandomGenerator::global()->generate(),
+         ambience,
+         model},
+        endpoint
+    );
+}
+void GeneratedAudioController::start(const GeneratedAudioRequest& input, const QString& endpoint) {
     if (running_ || accepting_)
         return;
     error_.clear();
@@ -112,9 +156,17 @@ void GeneratedNarrationController::request(const QString& text, const QString& e
         emit stateChanged();
         return;
     }
-    const auto input = text.trimmed();
-    if (input.isEmpty() || input.toUcs4().size() > 500 || input.contains(QChar::Null)) {
-        error_ = tr("Enter between 1 and 500 characters for the narration.");
+    const bool knownModel = input.model == QStringLiteral("stable_audio_3_small_sfx")
+                            || input.model == QStringLiteral("stable_audio_3_small_music")
+                            || input.model == QStringLiteral("stable_audio_open_small");
+    const int maxSeconds = input.model == QStringLiteral("stable_audio_open_small") ? 11 : 30;
+    if (input.text.isEmpty() || input.text.toUcs4().size() > 500 || input.text.contains(QChar::Null)
+        || (kind_ == Kind::SoundMaterial
+            && (!knownModel || input.durationSeconds < 1 || input.durationSeconds > maxSeconds))) {
+        error_ = kind_ == Kind::SoundMaterial
+                     ? tr("Choose a supported model, enter 1–500 prompt characters, and keep the "
+                          "duration within its limit.")
+                     : tr("Enter between 1 and 500 characters for the narration.");
         emit stateChanged();
         return;
     }
@@ -142,14 +194,17 @@ void GeneratedNarrationController::request(const QString& text, const QString& e
                     candidates_.push_back(
                         {selected_id_,
                          outcome.details,
-                         input,
+                         input.text,
                          std::move(outcome.candidate),
                          directory}
                     );
                 } else
-                    error_ =
-                        tr("Narration is unavailable. Check Infer Runtime, its speech model and "
-                           "Echo's speech access.");
+                    error_ = kind_ == Kind::SoundMaterial
+                                 ? tr("Sound generation is unavailable. Check Infer Runtime, its "
+                                      "sound model and Echo’s generation access.")
+                                 : tr("Narration is unavailable. Check Infer Runtime, its speech "
+                                      "model and "
+                                      "Echo's speech access.");
             }
             emit stateChanged();
         }
@@ -165,7 +220,7 @@ void GeneratedNarrationController::request(const QString& text, const QString& e
         return outcome;
     }));
 }
-void GeneratedNarrationController::accept(const QString& assembly, bool global) {
+void GeneratedAudioController::accept(const QString& assembly, bool global) {
     const auto* value = selected();
     if (running_ || accepting_ || !value)
         return;
@@ -178,8 +233,9 @@ void GeneratedNarrationController::accept(const QString& assembly, bool global) 
         watcher->deleteLater();
         accepting_ = false;
         if (id.isEmpty())
-            error_ =
-                tr("Could not save this narration. The candidate is still available; try again.");
+            error_ = tr(
+                "Could not save this generated sound. The candidate is still available; try again."
+            );
         else {
             discard();
             emit accepted(id);

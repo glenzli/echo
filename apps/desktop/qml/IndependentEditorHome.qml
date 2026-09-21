@@ -6,11 +6,11 @@ import QtQuick.Layouts
 Item {
     id: home
     required property var controller
-    property bool narrationAvailable: true
+    property bool generationAvailable: true
     readonly property var projects: controller.recentProjects || []
     signal openAudioRequested()
     signal openProjectRequested()
-    signal narrationRequested()
+    signal generationRequested(var anchor)
 
     ColumnLayout {
         id: content
@@ -29,7 +29,7 @@ Item {
                 model: [
                     {key: "audio", title: qsTr("Open audio…"), detail: qsTr("Edit, repair or arrange"), icon: "waveform"},
                     {key: "project", title: qsTr("Open project…"), detail: qsTr("Continue an Echo project"), icon: "folder"},
-                    {key: "narration", title: qsTr("Generate narration…"), detail: qsTr("Create a voice from text"), icon: "sparkles"}
+                    {key: "generation", title: qsTr("Generate a sound…"), detail: qsTr("Sound effects, backgrounds or narration"), icon: "sparkles"}
                 ]
                 delegate: AbstractButton {
                     id: action
@@ -37,13 +37,13 @@ Item {
                     objectName: "editorStart-" + modelData.key
                     Layout.fillWidth: true; Layout.preferredWidth: 1
                     implicitHeight: 82
-                    enabled: modelData.key !== "narration" || home.narrationAvailable
+                    enabled: modelData.key !== "generation" || home.generationAvailable
                     Accessible.name: modelData.title
                     Accessible.role: Accessible.Button
                     onClicked: {
                         if (modelData.key === "audio") home.openAudioRequested();
                         else if (modelData.key === "project") home.openProjectRequested();
-                        else home.narrationRequested();
+                        else home.generationRequested(action);
                     }
                     background: Rectangle {
                         color: action.down ? Theme.accentSurface : action.hovered ? Theme.accentSurfaceQuiet : Theme.panelRaised

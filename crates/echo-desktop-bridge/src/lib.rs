@@ -7,10 +7,10 @@
 mod editor_project;
 mod editor_recovery;
 mod editor_session;
-mod generated_narration;
+mod generated_audio;
 mod render_exports;
 mod selection_transcription;
-use generated_narration::NarrationCandidate;
+use generated_audio::GeneratedAudioCandidate;
 mod session;
 
 use crate::session::LibrarySession;
@@ -601,16 +601,26 @@ mod ffi {
             value: &str,
         ) -> Result<()>;
         fn session_selection_transcripts(self: &LibrarySession, id: &str) -> Result<String>;
-        type NarrationCandidate;
+        type GeneratedAudioCandidate;
         fn generate_narration_candidate(
             text: &str,
             directory: &str,
             endpoint: &str,
-        ) -> Result<Box<NarrationCandidate>>;
-        fn narration_candidate_details(candidate: &NarrationCandidate) -> Result<String>;
-        fn accept_narration_candidate(
+        ) -> Result<Box<GeneratedAudioCandidate>>;
+        fn generate_sound_material_candidate(
+            model: &str,
+            prompt: &str,
+            duration_seconds: u32,
+            seed: u32,
+            ambience: bool,
+            directory: &str,
+            endpoint: &str,
+        ) -> Result<Box<GeneratedAudioCandidate>>;
+        fn generated_audio_candidate_details(candidate: &GeneratedAudioCandidate)
+        -> Result<String>;
+        fn accept_generated_audio_candidate(
             catalog: &str,
-            candidate: &NarrationCandidate,
+            candidate: &GeneratedAudioCandidate,
             assembly: &str,
             global: bool,
         ) -> Result<String>;
@@ -1794,19 +1804,40 @@ fn generate_narration_candidate(
     text: &str,
     directory: &str,
     endpoint: &str,
-) -> Result<Box<NarrationCandidate>, String> {
-    generated_narration::generate(text, directory, endpoint)
+) -> Result<Box<GeneratedAudioCandidate>, String> {
+    generated_audio::generate_narration(text, directory, endpoint)
 }
-fn narration_candidate_details(candidate: &NarrationCandidate) -> Result<String, String> {
+fn generate_sound_material_candidate(
+    model: &str,
+    prompt: &str,
+    duration_seconds: u32,
+    seed: u32,
+    ambience: bool,
+    directory: &str,
+    endpoint: &str,
+) -> Result<Box<GeneratedAudioCandidate>, String> {
+    generated_audio::generate_sound_material(
+        model,
+        prompt,
+        duration_seconds,
+        seed,
+        ambience,
+        directory,
+        endpoint,
+    )
+}
+fn generated_audio_candidate_details(
+    candidate: &GeneratedAudioCandidate,
+) -> Result<String, String> {
     candidate.details_json().map_err(|e| e.to_string())
 }
-fn accept_narration_candidate(
+fn accept_generated_audio_candidate(
     catalog: &str,
-    candidate: &NarrationCandidate,
+    candidate: &GeneratedAudioCandidate,
     assembly: &str,
     global: bool,
 ) -> Result<String, String> {
-    generated_narration::accept(catalog, candidate, assembly, global)
+    generated_audio::accept(catalog, candidate, assembly, global)
 }
 
 #[cfg(test)]

@@ -295,8 +295,9 @@ cmake --build --preset desktop-dev
 ../.echo-local-build/desktop-dev/apps/desktop/Echo.app/Contents/MacOS/Echo ./catalogs/demo.sqlite ./cache
 ```
 
-The CMake graph builds `echo-desktop-bridge` with Cargo into its own target
-directory and syncs the generated CXX headers into a stable include root
+The CMake graph requires Python 3 and builds `echo-desktop-bridge` with Cargo into its own target
+directory. [`cmake/build_rust_bridge.py`](cmake/build_rust_bridge.py) binds Cargo's
+reported static library to its build-script output, then syncs those CXX headers into a stable include root
 ([`cmake/sync_cxxbridge_headers.cmake`](cmake/sync_cxxbridge_headers.cmake)).
 Headless smoke: `ECHO_DEBUG_SCREENSHOT=/tmp/echo.png ../.echo-local-build/desktop-dev/apps/desktop/Echo.app/Contents/MacOS/Echo <catalog> <cache>`
 
@@ -450,14 +451,27 @@ filters and stopping playback when the active generated source is excluded.
 Focused contracts live in domain/catalog/session `source_disclosure/tests.rs`,
 `tests/source_disclosure_contract.mjs` and `tests/qml/tst_SourceDisclosure.qml`.
 
-`GeneratedNarrationController` owns at most three temporary narration candidates,
+`GeneratedAudioController` owns at most three temporary candidates per generation kind,
 including exact result selection, asynchronous generation/admission and file lifetime.
-`GeneratedNarrationDialog.qml` tracks audition per candidate and requires it before keeping.
+`GeneratedAudioDialog.qml` tracks audition per candidate and requires it before keeping.
+`GeneratedMaterialMenu.qml` exposes sound effects, music backgrounds and narration.
+Sound effects use the distinct `audio.generate_sound` intent, 1–30 seconds, an explicit seed
+and at most 500 prompt characters. English presets describe rain, room tone, footsteps, a
+door and traffic; music presets cover piano, synth pads and acoustic guitar.
+The explicit model choice routes Small-SFX or Small-Music without substituting deployments.
+Music receipts retain their own `music` category; absent choice in old sound receipts still
+means Small-SFX. Open Small remains hidden until authorized local execution is verified.
+This workflow does not promise seamless loops or prompt translation.
+Core `generated_audio` stages immutable WAV bytes and mandatory typed receipts; Catalog
+validates duration, prompt, seed and generation kind before accepting the material.
 Changing the input applies to the next generation; accepting keeps the selected audio and
 its generation record. Unselected candidates stay outside the catalog and are discarded on close.
-`generated_narration_controller_test.cpp` covers lifecycle failures and exact acceptance;
+`generated_audio_controller_test.cpp` covers lifecycle failures and exact acceptance;
 `ECHO_NARRATION_LIVE_ROOT` opts into local Infer generation and muted device playback using
-a fresh caller-owned catalog directory. This integration mode needs the normal GUI event loop.
+a fresh caller-owned catalog directory. `ECHO_SOUND_EFFECT_LIVE_ROOT` runs the same selection,
+playback and acceptance contract against the local sound model;
+`ECHO_SOUND_MATERIAL_MODEL=stable_audio_3_small_music` selects the music path. These integration modes need
+the normal GUI event loop. Neither mode touches the user’s existing sound library.
 
 Audio exports carry the source-kind union in a bounded `echo.source-disclosure.v1` container
 comment (WAV LIST/INFO/ICMT or FLAC comment). `echo-domain::portable_disclosure` owns that
@@ -477,3 +491,9 @@ values remain absent so projection defaults retain their meaning.
 Offline render accepts the playback contract's zero end as the remaining source duration.
 This keeps frozen working-copy spectral erasure and delivery usable without reapplying the
 original adjustment chain; invalid or empty resolved ranges still fail validation.
+
+`cmake/build_rust_bridge.py` selects the header directory reported by the successful
+Cargo invocation that produced the linked static library, including fresh-cache builds.
+Historical test/lint output variants do not affect that selection. Missing or ambiguous
+artifact identity stops the build before header synchronization. `tests/cxxbridge_headers_contract.py`
+covers stale-cache coexistence, fresh artifact reuse, failed builds and missing headers.

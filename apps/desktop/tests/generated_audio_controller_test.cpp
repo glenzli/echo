@@ -1,5 +1,5 @@
 #include "echo-desktop-bridge/src/lib.rs.h"
-#include "generated_narration_controller.hpp"
+#include "generated_audio_controller.hpp"
 #include <QAudioOutput>
 #include <QCoreApplication>
 #include <QDir>
@@ -26,7 +26,7 @@ template <class F> void waitFor(F ready, qint64 timeout = 5000) {
         QThread::msleep(1);
     }
 }
-class Result final : public NarrationResult {
+class Result final : public GeneratedAudioResult {
     QString name_;
 
   public:
@@ -42,7 +42,9 @@ class Result final : public NarrationResult {
     }
 };
 int main(int argc, char** argv) {
-    const auto liveRoot = qEnvironmentVariable("ECHO_NARRATION_LIVE_ROOT");
+    const auto soundRoot = qEnvironmentVariable("ECHO_SOUND_EFFECT_LIVE_ROOT");
+    const bool soundLive = !soundRoot.isEmpty();
+    const auto liveRoot = soundLive ? soundRoot : qEnvironmentVariable("ECHO_NARRATION_LIVE_ROOT");
     std::unique_ptr<QCoreApplication> app;
     if (liveRoot.isEmpty())
         app = std::make_unique<QCoreApplication>(argc, argv);
@@ -51,21 +53,22 @@ int main(int argc, char** argv) {
     QSemaphore release;
     std::atomic<int> calls = 0;
     QString directory;
-    auto generate = [&](const QString& text,
+    auto generate = [&](const GeneratedAudioRequest& input,
                         const QString& root,
-                        const QString&) -> std::shared_ptr<NarrationResult> {
+                        const QString&) -> std::shared_ptr<GeneratedAudioResult> {
+        const auto& text = input.text;
         directory = root;
         ++calls;
         if (text == "slow")
             release.acquire();
         if (text == "failure")
             throw std::runtime_error("private detail");
-        QFile file(root + "/narration.wav");
+        QFile file(root + (input.durationSeconds > 0 ? "/sound.wav" : "/narration.wav"));
         assert(file.open(QIODevice::WriteOnly));
         file.write("fixture");
         return std::make_shared<Result>(text);
     };
-    GeneratedNarrationController controller("catalog", nullptr, generate);
+    GeneratedAudioController controller("catalog", nullptr, generate);
     controller.request("slow", "");
     waitFor([&] { return calls == 1; });
     controller.discard();
@@ -85,7 +88,7 @@ int main(int argc, char** argv) {
     assert(!controller.errorText().isEmpty() && !controller.errorText().contains("private"));
     assert(!controller.detailsJson().isEmpty());
     int accepted = 0;
-    QObject::connect(&controller, &GeneratedNarrationController::accepted, [&](const QString& id) {
+    QObject::connect(&controller, &GeneratedAudioController::accepted, [&](const QString& id) {
         assert(id == "fresh");
         ++accepted;
     });
@@ -100,7 +103,7 @@ int main(int argc, char** argv) {
     assert(!controller.errorText().isEmpty() && !controller.errorText().contains("private"));
     controller.request(QString(501, 'x'), "");
     assert(!controller.running() && calls == 3);
-    auto* destroyed = new GeneratedNarrationController("catalog", nullptr, generate);
+    auto* destroyed = new GeneratedAudioController("catalog", nullptr, generate);
     destroyed->request("slow", "");
     waitFor([&] { return calls == 4; });
     delete destroyed;
@@ -108,7 +111,7 @@ int main(int argc, char** argv) {
     QThreadPool::globalInstance()->waitForDone();
     assert(!QDir(directory).exists());
 
-    GeneratedNarrationController bank("catalog", nullptr, generate);
+    GeneratedAudioController bank("catalog", nullptr, generate);
     bank.request("one", "");
     waitFor([&] { return !bank.running(); });
     const auto first = bank.selectedCandidateId();
@@ -135,7 +138,7 @@ int main(int argc, char** argv) {
         && !bank.errorText().isEmpty()
     );
     QString selectedAcceptance;
-    QObject::connect(&bank, &GeneratedNarrationController::accepted, [&](const QString& id) {
+    QObject::connect(&bank, &GeneratedAudioController::accepted, [&](const QString& id) {
         selectedAcceptance = id;
     });
     bank.accept("project", false);
@@ -146,27 +149,105 @@ int main(int argc, char** argv) {
     assert(selectedAcceptance == "two" && bank.candidates().isEmpty());
     waitFor([&] { return !QFile::exists(secondPath); });
 
+    GeneratedAudioRequest captured;
+    GeneratedAudioController sound(
+        "catalog",
+        nullptr,
+        [&](const GeneratedAudioRequest& input, const QString& root, const QString& endpoint) {
+            captured = input;
+            return generate(input, root, endpoint);
+        },
+        GeneratedAudioController::Kind::SoundMaterial
+    );
+    const int beforeSound = calls;
+    sound.request("wrong intent", "");
+    sound.requestSoundMaterial("rain", 0, true, "");
+    sound.requestSoundMaterial("rain", 31, true, "");
+    assert(!sound.running() && calls == beforeSound);
+    sound.requestSoundMaterial("  rain  ", 8, true, "");
+    waitFor([&] { return !sound.running(); });
+    assert(captured.text == "rain" && captured.durationSeconds == 8 && captured.ambience);
+    assert(sound.audioUrl().toLocalFile().endsWith("/sound.wav"));
+    assert(QFile::exists(sound.audioUrl().toLocalFile()));
+    sound.discard();
+    sound.requestSoundMaterial("piano", 8, false, "", "stable_audio_3_small_music");
+    waitFor([&] { return !sound.running(); });
+    assert(captured.model == QStringLiteral("stable_audio_3_small_music"));
+    sound.discard();
+    const int beforeInvalid = calls;
+    sound.requestSoundMaterial("door", 12, false, "", "stable_audio_open_small");
+    sound.requestSoundMaterial("piano", 8, false, "", "unknown");
+    assert(!sound.running() && calls == beforeInvalid);
+    sound.requestSoundMaterial("slow", 8, false, "");
+    waitFor([&] { return calls == beforeInvalid + 1; });
+    sound.discard();
+    release.release();
+    waitFor([&] { return !sound.running(); });
+    assert(sound.candidates().isEmpty());
+    controller.requestSoundMaterial("wrong intent", 8, true, "");
+    assert(!controller.running());
+
     // Explicit opt-in integration: real local SDK jobs, muted audio-device audition,
     // and admission into a caller-owned catalog. No production library is written.
     if (!liveRoot.isEmpty()) {
         fprintf(stderr, "Live integration: unit lifecycle passed\n");
         assert(QDir().mkpath(liveRoot));
         const auto catalog = liveRoot + "/catalog.sqlite";
-        auto session =
-            echo::desktop::open_session(catalog.toStdString(), (liveRoot + "/cache").toStdString());
+        auto session = soundLive ? echo::desktop::open_editor_session(liveRoot.toStdString())
+                                 : echo::desktop::open_session(
+                                       catalog.toStdString(),
+                                       (liveRoot + "/cache").toStdString()
+                                   );
         assert(session->session_list_assets().empty());
-        GeneratedNarrationController live(catalog);
-        const QString textA = QStringLiteral("这是一段用于测试候选对比的合成旁白。");
-        const QString textB = QStringLiteral("这是第二个候选，用来验证选择和试听流程。");
+        GeneratedAudioController live(
+            catalog,
+            nullptr,
+            {},
+            soundLive ? GeneratedAudioController::Kind::SoundMaterial
+                      : GeneratedAudioController::Kind::Narration
+        );
+        const auto model =
+            qEnvironmentVariable("ECHO_SOUND_MATERIAL_MODEL", "stable_audio_3_small_sfx");
+        const bool musicLive = model == QStringLiteral("stable_audio_3_small_music");
+        const QString textA =
+            musicLive ? QStringLiteral(
+                            "Soft sparse piano notes, warm gentle instrumental background, no "
+                            "vocals or drums."
+                        )
+            : soundLive
+                ? QStringLiteral(
+                      "Gentle rain outside a window, soft steady patter, no speech or music."
+                  )
+                : QStringLiteral("这是一段用于测试候选对比的合成旁白。");
+        const QString textB = musicLive ? QStringLiteral(
+                                              "Warm slowly evolving ambient synthesizer pad, calm "
+                                              "instrumental texture, no vocals or drums."
+                                          )
+                              : soundLive
+                                  ? QStringLiteral(
+                                        "A wooden door closing with a soft creak and a single "
+                                        "latch click, no speech or music."
+                                    )
+                                  : QStringLiteral("这是第二个候选，用来验证选择和试听流程。");
         const QString endpoint = QStringLiteral("http://127.0.0.1:8787");
-        live.request(textA, endpoint);
+        if (soundLive)
+            live.requestSoundMaterial(textA, 8, !musicLive, endpoint, model);
+        else
+            live.request(textA, endpoint);
         fprintf(stderr, "Live integration: generating candidate A\n");
         waitFor([&] { return !live.running(); }, 240000);
         assert(live.errorText().isEmpty() && live.candidates().size() == 1);
         const auto idA = live.selectedCandidateId();
         const auto receiptA = QJsonDocument::fromJson(live.detailsJson().toUtf8()).object();
+        QFile candidateAudio(live.audioUrl().toLocalFile());
+        assert(candidateAudio.open(QIODevice::ReadOnly));
+        const auto originalBytes = candidateAudio.readAll();
+        candidateAudio.close();
         fprintf(stderr, "Live integration: candidate A ready\n");
-        live.request(textB, endpoint);
+        if (soundLive)
+            live.requestSoundMaterial(textB, 5, false, endpoint, model);
+        else
+            live.request(textB, endpoint);
         waitFor([&] { return !live.running(); }, 240000);
         assert(live.errorText().isEmpty() && live.candidates().size() == 2);
         const auto idB = live.selectedCandidateId();
@@ -189,7 +270,7 @@ int main(int argc, char** argv) {
         }
         assert(session->session_list_assets().empty());
         QString admitted;
-        QObject::connect(&live, &GeneratedNarrationController::accepted, [&](const QString& id) {
+        QObject::connect(&live, &GeneratedAudioController::accepted, [&](const QString& id) {
             admitted = id;
         });
         live.accept("", true);
@@ -201,6 +282,36 @@ int main(int argc, char** argv) {
         const auto disclosure =
             QString::fromStdString(std::string(assets[0].source_disclosure_json));
         assert(disclosure.contains(textA) && !disclosure.contains(textB));
+        if (soundLive) {
+            assert(receiptA.value("request").toObject().value("model_choice").toString() == model);
+            assert(
+                receiptA.value("generation_kind").toString()
+                == (musicLive ? "music" : "sound_effect")
+            );
+            assert(!assets[0].in_memory && !assets[0].in_materials);
+            const auto delivered = QString::fromStdString(
+                std::string(session->session_export_source_disclosure(admitted.toStdString(), 0))
+            );
+            assert(delivered.contains("ai_generated"));
+            const auto project = liveRoot + ".echo";
+            const auto reopened = liveRoot + "-reopened";
+            echo::desktop::editor_save_project(liveRoot.toStdString(), project.toStdString());
+            echo::desktop::editor_open_project(project.toStdString(), reopened.toStdString());
+            auto moved = echo::desktop::open_editor_session(reopened.toStdString());
+            const auto restored = moved->session_list_assets();
+            assert(restored.size() == 1);
+            assert(
+                std::string(restored[0].source_disclosure_json)
+                == std::string(assets[0].source_disclosure_json)
+            );
+            const auto path = QString::fromStdString(std::string(restored[0].path));
+            QFile restoredAudio(QDir(reopened).absoluteFilePath(path));
+            assert(restoredAudio.open(QIODevice::ReadOnly));
+            assert(restoredAudio.readAll() == originalBytes);
+            QFile receipt(liveRoot + "/receipt.json");
+            assert(receipt.open(QIODevice::WriteOnly));
+            receipt.write(QJsonDocument(receiptA).toJson());
+        }
         QFile report(liveRoot + "/validation.json");
         assert(report.open(QIODevice::WriteOnly));
         report.write(QJsonDocument(
@@ -210,6 +321,7 @@ int main(int argc, char** argv) {
                              {"candidatesAuditioned", 2},
                              {"acceptedFirst", true},
                              {"unacceptedExcluded", true},
+                             {"privateProjectRoundTrip", soundLive},
                              {"acceptedOutputHash", receiptA.value("output_hash")}
                          }
         ).toJson());

@@ -78,7 +78,9 @@ Popup {
                 textFormat: TextEdit.PlainText; font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
                 selectionColor: Theme.accent; selectedTextColor: Theme.accentText; padding: 10
                 background: Rectangle { color: Theme.surfaceSubtle; radius: 7 }
-                text: dialog.generation ? qsTr("Model: %1\nBuild: %2\nNarration: %3").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text) : ""
+                text: !dialog.generation ? "" : ["sound_effect","music"].indexOf(dialog.generation.generation_kind)>=0
+                    ? qsTr("Model: %1\nBuild: %2\nPrompt: %3\nDuration: %4 seconds\nSeed: %5").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text).arg(dialog.generation.request.duration_seconds).arg(String(dialog.generation.request.seed))
+                    : qsTr("Model: %1\nBuild: %2\nNarration: %3").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text)
             }
         }
         Rectangle { Layout.fillWidth: true; implicitHeight: disclaimer.implicitHeight+16; radius: 7; color: Theme.warningSurface

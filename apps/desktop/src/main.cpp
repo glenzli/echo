@@ -8,7 +8,7 @@
 #include "click_analysis_controller.hpp"
 #include "creative_vfx_presets.hpp"
 #include "desktop_backend.hpp"
-#include "generated_narration_controller.hpp"
+#include "generated_audio_controller.hpp"
 #include "impulse_response_controller.hpp"
 #include "independent_editor_controller.hpp"
 #include "inference_preferences.hpp"
@@ -124,7 +124,13 @@ int main(int argc, char* argv[]) {
             QString::fromStdString(cache_root)
         );
         TranscriptExportController transcript_exporter;
-        GeneratedNarrationController generated_narration(QString::fromStdString(catalog));
+        GeneratedAudioController generated_narration(QString::fromStdString(catalog));
+        GeneratedAudioController generated_sound_material(
+            QString::fromStdString(catalog),
+            nullptr,
+            {},
+            GeneratedAudioController::Kind::SoundMaterial
+        );
         AudioStreamImportController audio_stream_import(
             QFileInfo(QString::fromStdString(catalog)).absolutePath()
         );
@@ -172,6 +178,10 @@ int main(int argc, char* argv[]) {
         engine.rootContext()->setContextProperty(
             QStringLiteral("assemblyHistoryPlayer"),
             &assembly_history_player
+        );
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("generatedSoundMaterial"),
+            &generated_sound_material
         );
         engine.rootContext()->setContextProperty(
             QStringLiteral("generatedNarration"),

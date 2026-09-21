@@ -885,9 +885,10 @@ Rectangle {
 
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/sparkles.svg"
-                toolTipText: qsTr("Add a narration")
-                enabled: !generatedNarration.running && !generatedNarration.accepting
-                onClicked: narrationDialog.present()
+                id: generationButton
+                objectName: "generateMaterialButton"
+                toolTipText: qsTr("Generate a sound")
+                onClicked: generationMenu.popup(generationButton, 0, generationButton.height)
             }
             EchoIconButton {
                 objectName: "editorMemoryInfo"
@@ -1341,8 +1342,8 @@ Rectangle {
         interval: workspace.lastProcessingRecipeBatchId.length > 0 ? 6000 : 2600
         onTriggered: processingRecipeNoticePopup.close()
     }
-    GeneratedNarrationDialog {
-        id: narrationDialog
+    GeneratedMaterialMenu {
+        id: generationMenu
         assemblyId: workspace.editingProjectClip ? workspace.projectDocument.id || "" : ""
         onMaterialAccepted: assetId => workspace.acceptedNarrationId=assetId
     }

@@ -17,21 +17,21 @@ TestCase {
     IndependentEditorHome { id: home; anchors.fill: parent; controller: controller }
     SignalSpy { id: audio; target: home; signalName: "openAudioRequested" }
     SignalSpy { id: project; target: home; signalName: "openProjectRequested" }
-    SignalSpy { id: narration; target: home; signalName: "narrationRequested" }
-    function init() { controller.recentProjects = []; controller.opened = ""; controller.recovered = false; home.narrationAvailable = true; audio.clear(); project.clear(); narration.clear(); }
+    SignalSpy { id: narration; target: home; signalName: "generationRequested" }
+    function init() { controller.recentProjects = []; controller.opened = ""; controller.recovered = false; home.generationAvailable = true; audio.clear(); project.clear(); narration.clear(); }
     function entries(count) {
         const result = [];
         for (let i = 0; i < count; ++i) result.push({path: "/fixture/" + i, title: "雨声与旅行 " + i, kind: i % 2 ? "recovery" : "project", sourceCount: 2, folder: "/旅行", modifiedMillis: 1700000000000});
         return result;
     }
     function test_actions_share_one_row_and_dispatch_the_right_flow() {
-        const a = findChild(home, "editorStart-audio"), p = findChild(home, "editorStart-project"), n = findChild(home, "editorStart-narration");
+        const a = findChild(home, "editorStart-audio"), p = findChild(home, "editorStart-project"), n = findChild(home, "editorStart-generation");
         tryVerify(function() { return a.width > 100 && a.height === 82; });
         compare(a.y, p.y); compare(p.y, n.y);
         mouseClick(a); compare(audio.count, 1);
         mouseClick(p); compare(project.count, 1);
-        home.narrationAvailable = false; mouseClick(n); compare(narration.count, 0);
-        home.narrationAvailable = true; mouseClick(n); compare(narration.count, 1);
+        home.generationAvailable = false; mouseClick(n); compare(narration.count, 0);
+        home.generationAvailable = true; mouseClick(n); compare(narration.count, 1);
     }
     function test_large_recent_list_stays_bounded_and_last_item_is_reachable() {
         controller.recentProjects = entries(1000);

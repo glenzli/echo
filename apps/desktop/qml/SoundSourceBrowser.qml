@@ -114,7 +114,7 @@ Rectangle {
     SoundPlaybackSource { id: savedSound; asset: browser.auditionAsset; transport: materialPlayer }
     SourceDisclosureDialog { id: disclosure; catalogBackend: backend }
 
-    GeneratedNarrationDialog { id: narrationDialog; assemblyId: browser.assemblyId
+    GeneratedMaterialMenu { id: generationMenu; assemblyId: browser.assemblyId
         onMaterialAccepted: assetId => browser.revealAsset(assetId)
     }
     component SourceTab: TabButton {
@@ -147,9 +147,10 @@ Rectangle {
             }
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/sparkles.svg"
-                toolTipText: qsTr("Add a narration")
-                enabled: !generatedNarration.running && !generatedNarration.accepting
-                onClicked: narrationDialog.present()
+                id: generationButton
+                objectName: "generateMaterialButton"
+                toolTipText: qsTr("Generate a sound")
+                onClicked: generationMenu.popup(generationButton, 0, generationButton.height)
             }
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/plus.svg"

@@ -8,6 +8,7 @@ mod audio_embeddings;
 mod audio_events;
 mod embeddings;
 mod responses;
+pub(crate) mod sound_generation;
 pub(crate) mod speech;
 mod speech_input;
 

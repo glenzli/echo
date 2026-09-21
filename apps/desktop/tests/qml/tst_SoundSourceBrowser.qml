@@ -11,6 +11,7 @@ TestCase {
         property bool independentEditing: false
         property string audioFileFilter:"Audio files (*.wav)"
         signal assetsChanged()
+        function refresh() {}
         function listAssets() { return test.sources; }
         function projectMaterials(id) { return ["a", "b"]; }
     }
@@ -35,6 +36,13 @@ TestCase {
         signal accepted(string assetId)
         function discard() {}
     }
+    QtObject { id: generatedSoundMaterial
+        property bool running:false; property bool accepting:false; property var candidates:[]
+        property string selectedCandidateId:""; property string detailsJson:""; property string errorText:""; property url audioUrl:""
+        signal accepted(string assetId)
+        function discard() {}
+    }
+    QtObject { id: inferencePrefs; property string runtimeEndpoint:"" }
     QtObject { id:audioStreamImport; property bool busy:false; property bool choosing:false; property var streams:[]; property string sourceName:""; property string errorText:""; signal filesReady(var files); signal stateChanged(); function cancel(){} }
     SoundSourceBrowser { id: browser; anchors.fill: parent }
     function source(id, generated) {
@@ -46,6 +54,20 @@ TestCase {
         materialPlayer.stop(); played=[]; sources=[source("a",false),source("b",true)]; backend.independentEditing=false;
         browser.visible=true; browser.assemblyId=""; browser.editorMode=false; browser.sourceTab=2; browser.query=""; browser.category=""; browser.eventFilter=""; browser.auditionId=""; browser.auditionAsset=null; browser.refresh();
         waitForRendering(browser);
+    }
+    function test_generation_menu_routes_sound_and_narration_separately() {
+        mouseClick(findChild(browser,"generateMaterialButton"));
+        const sound=findChild(browser,"generateSoundEffectAction");
+        tryVerify(()=>sound.visible); mouseClick(sound);
+        const soundDialog=findChild(browser,"soundMaterialDialog"); tryCompare(soundDialog,"opened",true);
+        verify(soundDialog.soundMaterial); soundDialog.close(); tryCompare(soundDialog,"visible",false);
+        mouseClick(findChild(browser,"generateMaterialButton"));
+        const music=findChild(browser,"generateMusicAction"); tryVerify(()=>music.visible); mouseClick(music);
+        tryCompare(soundDialog,"opened",true); verify(soundDialog.musicMode); soundDialog.close(); tryCompare(soundDialog,"visible",false);
+        mouseClick(findChild(browser,"generateMaterialButton"));
+        const narration=findChild(browser,"generateNarrationAction"); tryVerify(()=>narration.visible); mouseClick(narration);
+        const narrationDialog=findChild(browser,"narrationDialog"); tryCompare(narrationDialog,"opened",true);
+        verify(!narrationDialog.soundMaterial); narrationDialog.close();
     }
     function test_selection_cannot_retarget_queued_audition() {
         browser.audition(sources[0]); browser.selectedAsset=sources[1];

@@ -36,10 +36,10 @@ ApplicationWindow {
     property bool allowClose: false
     property bool closeAfterSave: false
     property string notice: ""
-    GeneratedNarrationDialog { id: emptyNarrationDialog }
+    GeneratedMaterialMenu { id: emptyGenerationMenu }
     SourceDisclosureSmoke { id: disclosureSmoke; shell: window; editor: editor; fixtureRoot: independentDisclosureValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
     ClickRepairSmoke { id: clickSmoke; shell: window; editor: editor; fixtureRoot: independentClickValidation && !independentDisclosureValidation ? independentSmokeRoot : ""; reopening: independentSmokeReopen }
-    readonly property bool processing: generatedNarration.accepting || clickAnalysis.running || selectionTranscription.running || independentEditor.busy || renderExporter.running || renderedSpectralWorkingCopy.running || soundAssemblyController.running || noiseProfile.running
+    readonly property bool processing: generatedNarration.accepting || generatedSoundMaterial.accepting || clickAnalysis.running || selectionTranscription.running || independentEditor.busy || renderExporter.running || renderedSpectralWorkingCopy.running || soundAssemblyController.running || noiseProfile.running
 
     function refreshSources(): void {
         const selectedId = selectedAsset ? selectedAsset.id : "";
@@ -107,6 +107,10 @@ ApplicationWindow {
     }
     Connections {
         target: generatedNarration
+        function onAccepted(): void { if (ready) projectDirty = true; }
+    }
+    Connections {
+        target: generatedSoundMaterial
         function onAccepted(): void { if (ready) projectDirty = true; }
     }
     Connections {
@@ -182,10 +186,9 @@ ApplicationWindow {
             currentIndex: window.assets.length === 0 ? 0 : window.multitrack ? 2 : 1
             IndependentEditorHome {
                 controller: independentEditor
-                narrationAvailable: !generatedNarration.running && !generatedNarration.accepting
                 onOpenAudioRequested: audioDialog.open()
                 onOpenProjectRequested: projectDialog.open()
-                onNarrationRequested: emptyNarrationDialog.present()
+                onGenerationRequested: anchor => emptyGenerationMenu.popup(anchor, 0, anchor.height)
             }
             SoundEditingWorkspace {
                 id: editor

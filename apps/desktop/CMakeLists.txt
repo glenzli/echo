@@ -11,6 +11,7 @@ qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh_CN)
 # The Rust desktop bridge is built by Cargo with its own target directory so
 # the generated CXX ABI header can be synced into a stable include root.
 find_program(ECHO_CARGO_EXECUTABLE cargo REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(ECHO_CARGO_PROFILE release)
     set(ECHO_CARGO_PROFILE_ARGUMENT --release)
@@ -48,6 +49,7 @@ set(
     ECHO_CXXBRIDGE_INCLUDE_DIRECTORY
     "${ECHO_CARGO_TARGET_DIRECTORY}/cxxbridge"
 )
+set(ECHO_CARGO_BUILD_RECEIPT "${CMAKE_CURRENT_BINARY_DIR}/desktop-bridge-build.json")
 
 if(UNIX)
     # `cmake -E env` closes GNU Make's jobserver descriptors before launching
@@ -70,17 +72,21 @@ add_custom_command(
     BYPRODUCTS
         "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}/echo-desktop-bridge/src/lib.rs.h"
     COMMAND
-        ${ECHO_CARGO_ENV} "${ECHO_CARGO_EXECUTABLE}" build
+        ${ECHO_CARGO_ENV} "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_rust_bridge.py"
+        "${ECHO_CARGO_BUILD_RECEIPT}" "${ECHO_DESKTOP_RUST_LIBRARY}"
+        "${ECHO_CARGO_EXECUTABLE}" build --message-format=json
         --package echo-desktop-bridge
         ${ECHO_CARGO_PROFILE_ARGUMENT}
         --target-dir "${ECHO_CARGO_TARGET_DIRECTORY}"
     COMMAND
         "${CMAKE_COMMAND}"
-        "-DECHO_CARGO_TARGET_DIRECTORY=${ECHO_CARGO_TARGET_DIRECTORY}"
-        "-DECHO_CARGO_PROFILE=${ECHO_CARGO_PROFILE}"
+        "-DECHO_CARGO_BUILD_RECEIPT=${ECHO_CARGO_BUILD_RECEIPT}"
         "-DECHO_CXXBRIDGE_INCLUDE_DIRECTORY=${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/sync_cxxbridge_headers.cmake"
     DEPENDS ${ECHO_RUST_BRIDGE_INPUTS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_rust_bridge.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/sync_cxxbridge_headers.cmake"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building the Rust desktop bridge"
     JOB_SERVER_AWARE TRUE
@@ -121,8 +127,8 @@ qt_add_executable(
     src/transcript_export_controller.hpp
     src/audio_stream_import_controller.cpp
     src/audio_stream_import_controller.hpp
-    src/generated_narration_controller.cpp
-    src/generated_narration_controller.hpp
+    src/generated_audio_controller.cpp
+    src/generated_audio_controller.hpp
     src/desktop_sound_library.cpp
         src/desktop_source_disclosure.cpp
         src/desktop_memory_info.cpp
@@ -295,6 +301,9 @@ qt_add_qml_module(
         qml/SoundPlaybackSource.qml
         qml/SoundSourceSearch.js
         qml/SoundSourceBrowser.qml
+        qml/GeneratedMaterialMenu.qml
+        qml/GeneratedAudioDialog.qml
+        qml/GeneratedSoundMaterialDialog.qml
         qml/GeneratedNarrationDialog.qml
         qml/SoundAssemblyInspector.qml
         qml/SoundAssemblyWorkspace.qml
@@ -492,13 +501,15 @@ if(BUILD_TESTING)
     target_link_libraries(echo-audio-stream-import-controller-test PRIVATE Qt6::Core Qt6::Concurrent Echo::Audio)
     add_test(NAME echo-audio-stream-import-controller-test COMMAND echo-audio-stream-import-controller-test)
 
-    add_executable(echo-generated-narration-controller-test tests/generated_narration_controller_test.cpp src/generated_narration_controller.cpp src/generated_narration_controller.hpp)
-    target_include_directories(echo-generated-narration-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
-    target_compile_features(echo-generated-narration-controller-test PRIVATE cxx_std_20)
-    target_link_libraries(echo-generated-narration-controller-test PRIVATE Qt6::Core Qt6::Concurrent Qt6::Multimedia echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
-    add_dependencies(echo-generated-narration-controller-test echo-desktop-rust-build)
-    echo_audio_enable_warnings(echo-generated-narration-controller-test)
-    add_test(NAME echo-generated-narration-controller-test COMMAND echo-generated-narration-controller-test)
+    add_executable(echo-generated-audio-controller-test tests/generated_audio_controller_test.cpp src/generated_audio_controller.cpp src/generated_audio_controller.hpp)
+    target_include_directories(echo-generated-audio-controller-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
+    target_compile_features(echo-generated-audio-controller-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-generated-audio-controller-test PRIVATE Qt6::Core Qt6::Concurrent Qt6::Multimedia echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
+    add_dependencies(echo-generated-audio-controller-test echo-desktop-rust-build)
+    echo_audio_enable_warnings(echo-generated-audio-controller-test)
+    add_test(NAME echo-generated-audio-controller-test COMMAND echo-generated-audio-controller-test)
+    add_test(NAME echo-cxxbridge-headers-contract
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/cxxbridge_headers_contract.py")
     add_executable(echo-prepared-assembly-source-cache-test tests/prepared_assembly_source_cache_test.cpp src/prepared_assembly_source_cache.cpp)
     target_include_directories(echo-prepared-assembly-source-cache-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_compile_features(echo-prepared-assembly-source-cache-test PRIVATE cxx_std_20)
