@@ -1,24 +1,18 @@
 #include "independent_editor_controller.hpp"
 #include "echo-desktop-bridge/src/lib.rs.h"
+#include "editor_recovery.hpp"
 #include "rust/cxx.h"
 #include <QCoreApplication>
-#include <QDateTime>
 #include <QDir>
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QFileOpenEvent>
 #include <QProcess>
-#include <QStandardPaths>
 #include <QTimer>
 #include <QUuid>
-#include <QVariantMap>
 #include <QtConcurrentRun>
 
 namespace {
-QString sessionHome() {
-    return QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
-        .filePath(QStringLiteral("IndependentEditor"));
-}
 QString absolute(const QString& path) {
     return QFileInfo(path).absoluteFilePath();
 }
@@ -43,6 +37,10 @@ IndependentEditorController::IndependentEditorController(QObject* parent) : QObj
         }
     }
     QCoreApplication::instance()->installEventFilter(this);
+    connect(&recoveryWatcher_, &QFutureWatcher<QVariantList>::finished, this, [this] {
+        recoverableSessions_ = recoveryWatcher_.result();
+        emit recoveryChanged();
+    });
     connect(&watcher_, &QFutureWatcher<Result>::finished, this, [this] {
         const auto result = watcher_.result();
         errorText_ = result.error;
@@ -66,7 +64,8 @@ bool IndependentEditorController::prepare() {
     if (!independent_)
         return true;
     previousDirectory_ = QDir::currentPath();
-    const QString home = sessionHome();
+    const QString home = EditorRecovery::sessionHome();
+    sessionHome_ = home;
     if (!QDir().mkpath(home)) {
         errorText_ = tr("The editing workspace could not be created.");
         return false;
@@ -102,11 +101,13 @@ bool IndependentEditorController::prepare() {
         errorText_ = tr("The editing workspace could not be opened.");
         return false;
     }
+    refreshRecoverableSessions();
     return true;
 }
 
 IndependentEditorController::~IndependentEditorController() {
     watcher_.waitForFinished();
+    recoveryWatcher_.waitForFinished();
     lock_.reset();
     if (!previousDirectory_.isEmpty())
         QDir::setCurrent(previousDirectory_);
@@ -115,27 +116,17 @@ IndependentEditorController::~IndependentEditorController() {
 }
 
 QVariantList IndependentEditorController::recoverableSessions() const {
-    QVariantList result;
-    const auto directories =
-        QDir(sessionHome()).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Time);
-    for (const auto& directory : directories) {
-        if (directory.absoluteFilePath() == root_
-            || !QFileInfo::exists(
-                QDir(directory.absoluteFilePath()).filePath(QStringLiteral("catalog.sqlite"))
-            ))
-            continue;
-        QLockFile lock(QDir(directory.absoluteFilePath()).filePath(QStringLiteral("session.lock")));
-        if (!lock.tryLock())
-            continue;
-        result.append(
-            QVariantMap{
-                {QStringLiteral("path"), directory.absoluteFilePath()},
-                {QStringLiteral("name"),
-                 directory.lastModified().toString(QStringLiteral("yyyy-MM-dd hh:mm"))}
-            }
-        );
-    }
-    return result;
+    return recoverableSessions_;
+}
+
+void IndependentEditorController::refreshRecoverableSessions() {
+    if (!independent_ || recoveryWatcher_.isRunning())
+        return;
+    const auto home = sessionHome_;
+    const auto current = root_;
+    recoveryWatcher_.setFuture(QtConcurrent::run([home, current] {
+        return EditorRecovery::list(home, current);
+    }));
 }
 
 void IndependentEditorController::importAudio(const QList<QUrl>& files) {

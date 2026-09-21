@@ -2365,11 +2365,6 @@
             <translation>拖入音频，开始编辑、修复或编排。保存工程以便继续编辑，或导出处理后的声音。</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="182" />
-            <source>Recover editing session · %1</source>
-            <translation>恢复未关闭的编辑 · %1</translation>
-        </message>
-        <message>
             <location filename="../qml/IndependentEditor.qml" line="210" />
             <source>Working on your project…</source>
             <translation>正在处理工程…</translation>
@@ -8236,6 +8231,39 @@ Narration: %3</source>
             <location filename="../qml/MemoryInfoSection.qml" line="32" />
             <source>Edit memory information</source>
             <translation>编辑记忆信息</translation>
+        </message>
+    </context>
+    <context>
+        <name>EditorRecoveryPicker</name>
+        <message>
+            <location filename="../qml/EditorRecoveryPicker.qml" line="16" />
+            <source>Recover previous editing… (%1)</source>
+            <translation>恢复之前的编辑…（%1）</translation>
+        </message>
+        <message>
+            <location filename="../qml/EditorRecoveryPicker.qml" line="32" />
+            <source>Recover previous editing</source>
+            <translation>恢复之前的编辑</translation>
+        </message>
+        <message>
+            <location filename="../qml/EditorRecoveryPicker.qml" line="33" />
+            <source>Choose an unfinished project to open in another window.</source>
+            <translation>选择一个尚未关闭的工程，在新窗口中继续编辑。</translation>
+        </message>
+        <message>
+            <location filename="../qml/EditorRecoveryPicker.qml" line="54" />
+            <source>%1 sources · %2</source>
+            <translation>%1 个声音来源 · %2</translation>
+        </message>
+        <message>
+            <location filename="../qml/EditorRecoveryPicker.qml" line="58" />
+            <source>No unfinished projects are available.</source>
+            <translation>没有可恢复的工程。</translation>
+        </message>
+        <message>
+            <location filename="../qml/EditorRecoveryPicker.qml" line="59" />
+            <source>Close</source>
+            <translation>关闭</translation>
         </message>
     </context>
 </TS>

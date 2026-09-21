@@ -185,10 +185,7 @@ ApplicationWindow {
                         EchoButton { text: qsTr("Open project…"); ghost: true; onClicked: projectDialog.open() }
                     }
                     EchoButton { Layout.alignment: Qt.AlignHCenter; text: qsTr("Add a narration"); ghost: true; enabled: !generatedNarration.running && !generatedNarration.accepting; onClicked: emptyNarrationDialog.present() }
-                    Repeater {
-                        model: independentEditor.recoverableSessions
-                        EchoButton { required property var modelData; Layout.alignment: Qt.AlignHCenter; text: qsTr("Recover editing session · %1").arg(modelData.name); ghost: true; onClicked: independentEditor.resumeSession(modelData.path) }
-                    }
+                    EditorRecoveryPicker { Layout.alignment: Qt.AlignHCenter; controller: independentEditor }
                 }
             }
             SoundEditingWorkspace {

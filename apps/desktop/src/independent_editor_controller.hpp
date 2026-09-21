@@ -1,4 +1,5 @@
 //! Independent editor process entry and asynchronous project file operations.
+//! Recovery discovery and validation isolation live in editor_recovery.hpp.
 #pragma once
 #include <QFutureWatcher>
 #include <QLockFile>
@@ -14,7 +15,7 @@ class IndependentEditorController final : public QObject {
     Q_PROPERTY(QString projectPath READ projectPath NOTIFY stateChanged)
     Q_PROPERTY(QUrl projectUrl READ projectUrl NOTIFY stateChanged)
     Q_PROPERTY(QString errorText READ errorText NOTIFY stateChanged)
-    Q_PROPERTY(QVariantList recoverableSessions READ recoverableSessions CONSTANT)
+    Q_PROPERTY(QVariantList recoverableSessions READ recoverableSessions NOTIFY recoveryChanged)
   public:
     explicit IndependentEditorController(QObject* parent = nullptr);
     ~IndependentEditorController() override;
@@ -43,9 +44,11 @@ class IndependentEditorController final : public QObject {
     Q_INVOKABLE bool launchEditor(const QList<QUrl>& files = {});
     Q_INVOKABLE bool launchProject(const QUrl& file);
     Q_INVOKABLE bool resumeSession(const QString& directory);
+    Q_INVOKABLE void refreshRecoverableSessions();
     Q_INVOKABLE void finishSession();
   signals:
     void stateChanged();
+    void recoveryChanged();
     void audioImported(const QStringList& ids);
     void projectSaved();
 
@@ -62,8 +65,10 @@ class IndependentEditorController final : public QObject {
     bool prepared_ = false;
     bool independent_ = false;
     bool cleanExit_ = false;
-    QString root_, projectPath_, resumePath_, errorText_, previousDirectory_;
+    QString root_, sessionHome_, projectPath_, resumePath_, errorText_, previousDirectory_;
     QStringList initialFiles_;
     std::unique_ptr<QLockFile> lock_;
     QFutureWatcher<Result> watcher_;
+    QFutureWatcher<QVariantList> recoveryWatcher_;
+    QVariantList recoverableSessions_;
 };

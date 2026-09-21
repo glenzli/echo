@@ -108,6 +108,8 @@ qt_add_executable(
     src/main.cpp
     src/independent_editor_controller.cpp
     src/independent_editor_controller.hpp
+    src/editor_recovery.cpp
+    src/editor_recovery.hpp
     src/application_paths.cpp
     src/application_paths.hpp
     src/desktop_selection_transcription.cpp
@@ -196,6 +198,7 @@ qt_add_qml_module(
         qml/SourceDisclosureSmoke.qml
         qml/EditorOpenError.qml
         qml/IndependentEditor.qml
+        qml/EditorRecoveryPicker.qml
         qml/IndependentAiSmoke.qml
         qml/IndependentEditorSmoke.qml
         qml/Main.qml
@@ -456,6 +459,13 @@ if(BUILD_TESTING)
     add_dependencies(echo-selection-transcription-controller-test echo-desktop-rust-build)
     echo_audio_enable_warnings(echo-selection-transcription-controller-test)
     add_test(NAME echo-selection-transcription-controller-test COMMAND echo-selection-transcription-controller-test)
+    add_executable(echo-editor-recovery-test tests/editor_recovery_test.cpp src/editor_recovery.cpp)
+    target_include_directories(echo-editor-recovery-test PRIVATE src "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
+    target_compile_features(echo-editor-recovery-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-editor-recovery-test PRIVATE Qt6::Core echo-desktop-rust PkgConfig::FFmpeg ${CMAKE_DL_LIBS} Iconv::Iconv)
+    add_dependencies(echo-editor-recovery-test echo-desktop-rust-build)
+    echo_audio_enable_warnings(echo-editor-recovery-test)
+    add_test(NAME echo-editor-recovery-test COMMAND echo-editor-recovery-test)
     add_executable(echo-audio-stream-import-controller-test tests/audio_stream_import_controller_test.cpp src/audio_stream_import_controller.cpp src/audio_stream_import_controller.hpp)
     target_include_directories(echo-audio-stream-import-controller-test PRIVATE src)
     target_link_libraries(echo-audio-stream-import-controller-test PRIVATE Qt6::Core Qt6::Concurrent Echo::Audio)

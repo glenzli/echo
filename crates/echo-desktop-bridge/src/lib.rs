@@ -5,6 +5,7 @@
 //! owns the durable [`LibrarySession`] lifecycle.
 
 mod editor_project;
+mod editor_recovery;
 mod editor_session;
 mod generated_narration;
 mod render_exports;
@@ -614,6 +615,7 @@ mod ffi {
             global: bool,
         ) -> Result<String>;
         fn open_editor_session(root: &str) -> Result<Box<LibrarySession>>;
+        fn editor_recovery_summary(root: &str) -> Result<String>;
         fn editor_import_audio(root: &str, input: &str) -> Result<String>;
         fn editor_save_project(root: &str, destination: &str) -> Result<()>;
         fn editor_open_project(project: &str, root: &str) -> Result<()>;
@@ -1733,6 +1735,14 @@ impl LibrarySession {
 /// Returns a diagnostic when validation or project I/O fails.
 pub fn open_editor_session(root: &str) -> Result<Box<LibrarySession>, String> {
     editor_session::open(Path::new(root)).map(Box::new)
+}
+/// Reads a private editor's recovery label without opening or migrating the project.
+/// Empty workspaces return an empty string.
+///
+/// # Errors
+/// Returns a diagnostic for foreign or unreadable catalogs.
+pub fn editor_recovery_summary(root: &str) -> Result<String, String> {
+    editor_recovery::summary_json(Path::new(root))
 }
 /// Admits one source explicitly, without background analysis.
 ///
