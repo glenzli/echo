@@ -1,5 +1,6 @@
 #include "independent_editor_controller.hpp"
 #include "echo-desktop-bridge/src/lib.rs.h"
+#include "editor_recent_projects.hpp"
 #include "editor_recovery.hpp"
 #include "rust/cxx.h"
 #include <QCoreApplication>
@@ -37,15 +38,16 @@ IndependentEditorController::IndependentEditorController(QObject* parent) : QObj
         }
     }
     QCoreApplication::instance()->installEventFilter(this);
-    connect(&recoveryWatcher_, &QFutureWatcher<QVariantList>::finished, this, [this] {
-        recoverableSessions_ = recoveryWatcher_.result();
-        emit recoveryChanged();
+    connect(&recentWatcher_, &QFutureWatcher<QVariantList>::finished, this, [this] {
+        recentProjects_ = recentWatcher_.result();
+        emit recentProjectsChanged();
     });
     connect(&watcher_, &QFutureWatcher<Result>::finished, this, [this] {
         const auto result = watcher_.result();
         errorText_ = result.error;
         if (!result.savedPath.isEmpty() && errorText_.isEmpty()) {
             projectPath_ = result.savedPath;
+            refreshRecentProjects();
             emit projectSaved();
         }
         if (!result.ids.isEmpty())
@@ -101,13 +103,15 @@ bool IndependentEditorController::prepare() {
         errorText_ = tr("The editing workspace could not be opened.");
         return false;
     }
-    refreshRecoverableSessions();
+    if (!projectPath_.isEmpty() && !EditorRecentProjects::remember(home, projectPath_))
+        qWarning("Recent project history could not be updated.");
+    refreshRecentProjects();
     return true;
 }
 
 IndependentEditorController::~IndependentEditorController() {
     watcher_.waitForFinished();
-    recoveryWatcher_.waitForFinished();
+    recentWatcher_.waitForFinished();
     lock_.reset();
     if (!previousDirectory_.isEmpty())
         QDir::setCurrent(previousDirectory_);
@@ -115,17 +119,17 @@ IndependentEditorController::~IndependentEditorController() {
         QDir(root_).removeRecursively();
 }
 
-QVariantList IndependentEditorController::recoverableSessions() const {
-    return recoverableSessions_;
+QVariantList IndependentEditorController::recentProjects() const {
+    return recentProjects_;
 }
 
-void IndependentEditorController::refreshRecoverableSessions() {
-    if (!independent_ || recoveryWatcher_.isRunning())
+void IndependentEditorController::refreshRecentProjects() {
+    if (!independent_ || recentWatcher_.isRunning())
         return;
     const auto home = sessionHome_;
     const auto current = root_;
-    recoveryWatcher_.setFuture(QtConcurrent::run([home, current] {
-        return EditorRecovery::list(home, current);
+    recentWatcher_.setFuture(QtConcurrent::run([home, current] {
+        return EditorRecentProjects::list(home, current);
     }));
 }
 
@@ -171,11 +175,14 @@ void IndependentEditorController::saveProject(const QUrl& destination) {
         path += QStringLiteral(".echo");
     errorText_.clear();
     const QString root = root_;
-    watcher_.setFuture(QtConcurrent::run([root, path] {
+    const QString home = sessionHome_;
+    watcher_.setFuture(QtConcurrent::run([root, home, path] {
         Result result;
         try {
             echo::desktop::editor_save_project(root.toStdString(), path.toStdString());
             result.savedPath = path;
+            if (!EditorRecentProjects::remember(home, path))
+                qWarning("Recent project history could not be updated.");
         } catch (const rust::Error& error) {
             result.error =
                 tr("The project could not be saved: %1").arg(QString::fromUtf8(error.what()));
@@ -208,6 +215,9 @@ bool IndependentEditorController::launchProject(const QUrl& file) {
 }
 bool IndependentEditorController::resumeSession(const QString& directory) {
     return spawn({QStringLiteral("--resume-editor"), directory});
+}
+bool IndependentEditorController::openRecentProject(const QString& path, bool recovery) {
+    return recovery ? resumeSession(path) : launchProject(QUrl::fromLocalFile(path));
 }
 void IndependentEditorController::finishSession() {
     if (!busy())

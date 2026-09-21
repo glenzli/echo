@@ -91,6 +91,7 @@ ApplicationWindow {
         if (assembly.hasDocument) multitrack = true;
         ready = true; projectDirty = assets.length > 0 && !independentEditor.projectPath;
     }
+    onActiveChanged: if (active && ready && !assets.length) independentEditor.refreshRecentProjects()
     onClosing: close => {
         if (allowClose) return;
         close.accepted = false;
@@ -174,19 +175,12 @@ ApplicationWindow {
             Layout.fillWidth: true; Layout.fillHeight: true
             enabled: !independentEditor.busy
             currentIndex: window.assets.length === 0 ? 0 : window.multitrack ? 2 : 1
-            Item {
-                ColumnLayout {
-                    anchors.centerIn: parent; width: 480; spacing: 18
-                    Text { Layout.fillWidth: true; text: qsTr("A space for the sound in front of you"); font.pixelSize: 26; font.weight: Font.DemiBold; color: Theme.textPrimary; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter }
-                    Text { Layout.fillWidth: true; text: qsTr("Drop audio here to edit, repair or arrange it. Save a project to continue later, or export your finished sound."); font.pixelSize: Theme.fontBody; color: Theme.textMuted; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter }
-                    RowLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        EchoButton { text: qsTr("Open audio…"); onClicked: audioDialog.open() }
-                        EchoButton { text: qsTr("Open project…"); ghost: true; onClicked: projectDialog.open() }
-                    }
-                    EchoButton { Layout.alignment: Qt.AlignHCenter; text: qsTr("Add a narration"); ghost: true; enabled: !generatedNarration.running && !generatedNarration.accepting; onClicked: emptyNarrationDialog.present() }
-                    EditorRecoveryPicker { Layout.alignment: Qt.AlignHCenter; controller: independentEditor }
-                }
+            IndependentEditorHome {
+                controller: independentEditor
+                narrationAvailable: !generatedNarration.running && !generatedNarration.accepting
+                onOpenAudioRequested: audioDialog.open()
+                onOpenProjectRequested: projectDialog.open()
+                onNarrationRequested: emptyNarrationDialog.present()
             }
             SoundEditingWorkspace {
                 id: editor
@@ -217,13 +211,14 @@ ApplicationWindow {
             }
         }
         Rectangle {
+            visible: window.assets.length > 0 || independentEditor.busy || !!independentEditor.errorText || !!window.notice
             Layout.fillWidth: true
             implicitHeight: statusText.implicitHeight + 16
             color: Theme.chrome
             RowLayout {
                 anchors.fill: parent; anchors.margins: 8
                 BusyIndicator { visible: independentEditor.busy; running: visible; implicitWidth: 22; implicitHeight: 22 }
-                Text { id: statusText; Layout.fillWidth: true; text: independentEditor.errorText || window.notice || (independentEditor.busy ? qsTr("Working on your project…") : window.projectDirty ? qsTr("Changes are recoverable. Save the project to keep a portable copy.") : qsTr("Only this project is open. Automatic library analysis is off.")); wrapMode: Text.WordWrap; color: independentEditor.errorText ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
+                Text { id: statusText; Layout.fillWidth: true; text: independentEditor.errorText || window.notice || (independentEditor.busy ? qsTr("Working on your project…") : window.projectDirty ? qsTr("Changes are recoverable. Save the project to keep a portable copy.") : qsTr("Original files stay unchanged")); wrapMode: Text.WordWrap; color: independentEditor.errorText ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
             }
         }
     }

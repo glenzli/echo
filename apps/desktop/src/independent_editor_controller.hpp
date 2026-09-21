@@ -1,5 +1,6 @@
 //! Independent editor process entry and asynchronous project file operations.
 //! Recovery discovery and validation isolation live in editor_recovery.hpp.
+//! Saved-project history and the start-page projection live in editor_recent_projects.hpp.
 #pragma once
 #include <QFutureWatcher>
 #include <QLockFile>
@@ -15,7 +16,7 @@ class IndependentEditorController final : public QObject {
     Q_PROPERTY(QString projectPath READ projectPath NOTIFY stateChanged)
     Q_PROPERTY(QUrl projectUrl READ projectUrl NOTIFY stateChanged)
     Q_PROPERTY(QString errorText READ errorText NOTIFY stateChanged)
-    Q_PROPERTY(QVariantList recoverableSessions READ recoverableSessions NOTIFY recoveryChanged)
+    Q_PROPERTY(QVariantList recentProjects READ recentProjects NOTIFY recentProjectsChanged)
   public:
     explicit IndependentEditorController(QObject* parent = nullptr);
     ~IndependentEditorController() override;
@@ -35,7 +36,7 @@ class IndependentEditorController final : public QObject {
     QString errorText() const {
         return errorText_;
     }
-    QVariantList recoverableSessions() const;
+    QVariantList recentProjects() const;
     QStringList initialFiles() const {
         return initialFiles_;
     }
@@ -44,11 +45,12 @@ class IndependentEditorController final : public QObject {
     Q_INVOKABLE bool launchEditor(const QList<QUrl>& files = {});
     Q_INVOKABLE bool launchProject(const QUrl& file);
     Q_INVOKABLE bool resumeSession(const QString& directory);
-    Q_INVOKABLE void refreshRecoverableSessions();
+    Q_INVOKABLE bool openRecentProject(const QString& path, bool recovery);
+    Q_INVOKABLE void refreshRecentProjects();
     Q_INVOKABLE void finishSession();
   signals:
     void stateChanged();
-    void recoveryChanged();
+    void recentProjectsChanged();
     void audioImported(const QStringList& ids);
     void projectSaved();
 
@@ -69,6 +71,6 @@ class IndependentEditorController final : public QObject {
     QStringList initialFiles_;
     std::unique_ptr<QLockFile> lock_;
     QFutureWatcher<Result> watcher_;
-    QFutureWatcher<QVariantList> recoveryWatcher_;
-    QVariantList recoverableSessions_;
+    QFutureWatcher<QVariantList> recentWatcher_;
+    QVariantList recentProjects_;
 };

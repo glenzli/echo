@@ -2355,16 +2355,6 @@
             <translation>原始文件保持不变</translation>
         </message>
         <message>
-            <location filename="../qml/IndependentEditor.qml" line="173" />
-            <source>A space for the sound in front of you</source>
-            <translation>专注眼前的声音</translation>
-        </message>
-        <message>
-            <location filename="../qml/IndependentEditor.qml" line="174" />
-            <source>Drop audio here to edit, repair or arrange it. Save a project to continue later, or export your finished sound.</source>
-            <translation>拖入音频，开始编辑、修复或编排。保存工程以便继续编辑，或导出处理后的声音。</translation>
-        </message>
-        <message>
             <location filename="../qml/IndependentEditor.qml" line="210" />
             <source>Working on your project…</source>
             <translation>正在处理工程…</translation>
@@ -2373,11 +2363,6 @@
             <location filename="../qml/IndependentEditor.qml" line="210" />
             <source>Changes are recoverable. Save the project to keep a portable copy.</source>
             <translation>编辑记录可恢复。保存工程后，可携带素材继续编辑。</translation>
-        </message>
-        <message>
-            <location filename="../qml/IndependentEditor.qml" line="210" />
-            <source>Only this project is open. Automatic library analysis is off.</source>
-            <translation>仅处理当前工程，不自动分析记忆库。</translation>
         </message>
         <message>
             <location filename="../qml/IndependentEditor.qml" line="224" />
@@ -2419,10 +2404,6 @@
             <location filename="../qml/IndependentEditor.qml" line="245" />
             <source>Discard changes</source>
             <translation>放弃修改</translation>
-        </message>
-        <message>
-            <source>Add a narration</source>
-            <translation>补充旁白</translation>
         </message>
     </context>
     <context>
@@ -8234,36 +8215,78 @@ Narration: %3</source>
         </message>
     </context>
     <context>
-        <name>EditorRecoveryPicker</name>
+        <name>IndependentEditorHome</name>
         <message>
-            <location filename="../qml/EditorRecoveryPicker.qml" line="16" />
-            <source>Recover previous editing… (%1)</source>
-            <translation>恢复之前的编辑…（%1）</translation>
+            <location filename="../qml/IndependentEditorHome.qml" line="21" />
+            <source>Sound editing</source>
+            <translation>声音编辑</translation>
         </message>
         <message>
-            <location filename="../qml/EditorRecoveryPicker.qml" line="32" />
-            <source>Recover previous editing</source>
-            <translation>恢复之前的编辑</translation>
+            <location filename="../qml/IndependentEditorHome.qml" line="22" />
+            <source>Drop audio here, or pick up where you left off.</source>
+            <translation>拖入音频开始编辑，或继续最近的工程。</translation>
         </message>
         <message>
-            <location filename="../qml/EditorRecoveryPicker.qml" line="33" />
-            <source>Choose an unfinished project to open in another window.</source>
-            <translation>选择一个尚未关闭的工程，在新窗口中继续编辑。</translation>
+            <location filename="../qml/IndependentEditorHome.qml" line="30" />
+            <source>Open audio…</source>
+            <translation>打开音频…</translation>
         </message>
         <message>
-            <location filename="../qml/EditorRecoveryPicker.qml" line="54" />
-            <source>%1 sources · %2</source>
-            <translation>%1 个声音来源 · %2</translation>
+            <location filename="../qml/IndependentEditorHome.qml" line="30" />
+            <source>Edit, repair or arrange</source>
+            <translation>剪辑、修复与编排</translation>
         </message>
         <message>
-            <location filename="../qml/EditorRecoveryPicker.qml" line="58" />
-            <source>No unfinished projects are available.</source>
-            <translation>没有可恢复的工程。</translation>
+            <location filename="../qml/IndependentEditorHome.qml" line="31" />
+            <source>Open project…</source>
+            <translation>打开工程…</translation>
         </message>
         <message>
-            <location filename="../qml/EditorRecoveryPicker.qml" line="59" />
-            <source>Close</source>
-            <translation>关闭</translation>
+            <location filename="../qml/IndependentEditorHome.qml" line="31" />
+            <source>Continue an Echo project</source>
+            <translation>继续编辑 Echo 工程</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="32" />
+            <source>Generate narration…</source>
+            <translation>生成旁白…</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="32" />
+            <source>Create a voice from text</source>
+            <translation>将文字变为声音</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="67" />
+            <source>Recent projects</source>
+            <translation>最近工程</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="87" />
+            <location filename="../qml/IndependentEditorHome.qml" line="103" />
+            <source>Recoverable edit</source>
+            <translation>可恢复编辑</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="87" />
+            <location filename="../qml/IndependentEditorHome.qml" line="103" />
+            <source>Saved project</source>
+            <translation>已保存工程</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="101" />
+            <source>%1 sources</source>
+            <translation>%1 个声音来源</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="109" />
+            <source>No recent projects yet</source>
+            <translation>还没有最近工程</translation>
+        </message>
+        <message>
+            <location filename="../qml/IndependentEditorHome.qml" line="110" />
+            <source>Saved projects and unfinished edits will appear here.</source>
+            <translation>已保存的工程和未完成的编辑会显示在这里。</translation>
         </message>
     </context>
 </TS>
