@@ -12,6 +12,7 @@ Item {
     property var facts: ({})
     property string beforeEdit: ""
     property int auditionTick: 0
+    property real requestStarted: 0
     function require(value,message) { if(!value)throw new Error(message); }
     function reviewText() {
         const panel=editor.transcriptPanel;
@@ -42,6 +43,7 @@ Item {
         case 0:
             if(independentEditor.busy || !shell.assets.length) return;
             require(backend.independentEditing,"not private editing");
+            if(reopening) require(!shell.projectDirty, "AI project opened dirty");
             shell.chooseSource(0);editor.transcriptFocus=true;stage=1;break;
         case 1:
             if(!editor.hasAsset) return;
@@ -49,6 +51,7 @@ Item {
             editor.timeline.selectionStartMillis=1000;
             editor.timeline.selectionEndMillis=Math.min(10000,Number(editor.asset.durationMillis));
             editor.timeline.hasTimeSelection=true;
+            requestStarted=Date.now();
             editor.transcriptPanel.requestTranscription();stage=2;break;
         case 2:
             if(selectionTranscription.running) return;
@@ -59,6 +62,7 @@ Item {
             require(records[0].start_millis===1000,"source offset lost");
             require(records[0].transcript.segments.length>0,"no segment timing");
             require(records[0].alignment,"no real aligned timing available");
+            facts.inferenceMillis=Date.now()-requestStarted;
             facts.evidence=records[0];facts.alignedUnitCount=records[0].alignment.items.length;
             editor.transcriptPanel.gapMode=true;
             facts.speechGaps=editor.transcriptPanel.segments;
@@ -88,6 +92,13 @@ Item {
             require(editor.adjustment.editSegments.filter(s=>s.state===2).length===2,"batch text edit not restored");
             const jobs=backend.jobStats();
             require(jobs.pending===0 && jobs.running===0 && jobs.done===0 && jobs.failed===0,"global analysis jobs started");
+            const record=editor.transcriptPanel.record;
+            require(transcriptExporter.hasTiming(record), "real AI timing cannot be exported");
+            for (const format of ["txt","srt","vtt"]) {
+                const error=transcriptExporter.save(record, 'file://'+fixtureRoot+'/transcript.'+format, format, editor.asset.path);
+                require(!error,error);
+            }
+            facts.transcriptExports=["txt","srt","vtt"];
             facts.evidence=saved[0];facts.editedSegments=editor.adjustment.editSegments;
             facts.scopedRecords=saved.length;facts.jobs=jobs;facts.reopening=reopening;
             editor.auditionOriginal=false;

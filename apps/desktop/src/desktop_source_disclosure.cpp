@@ -13,6 +13,7 @@ QString DesktopBackend::setSourceDisclosure(
             QJsonDocument(QJsonArray::fromVariantList(spans)).toJson(QJsonDocument::Compact);
         session_
             ->session_set_source_disclosure(id.toStdString(), expectedRevision, json.toStdString());
+        emit projectContentChanged();
         emit assetsChanged();
         return {};
     } catch (const rust::Error&) {

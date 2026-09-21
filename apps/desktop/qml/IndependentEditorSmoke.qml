@@ -153,6 +153,12 @@ Item {
             require(jobs.pending===0 && jobs.running===0 && jobs.done===0 && jobs.failed===0, "library jobs started");
             facts.assets=shell.assets.map(value=>({id:value.id,path:value.path,gain:value.gainCentibels}));
             if(reopening) {
+                require(!shell.projectDirty && !editor.dirty && !assembly.dirty, "saved project opened dirty");
+                backend.refresh();
+                require(!shell.projectDirty, "read-only refresh dirtied the saved project");
+                shell.chooseSource(0); shell.chooseSource(1); shell.showMultitrack();
+                require(!shell.projectDirty && !editor.dirty, "source switching dirtied the saved project");
+                facts.cleanProjectLifecycle = true;
                 require(assembly.hasDocument && assembly.tracks.length===2,"portable assembly missing");
                 require(shell.assets.some(value=>value.gainCentibels===-600),"source adjustment lost");
                 require(assembly.tracks[1].clips[0].gainEnvelope.enabled,"portable envelope lost");

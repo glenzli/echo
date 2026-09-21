@@ -30,6 +30,7 @@ QString DesktopBackend::setMemoryInfo(
             expectedRevision,
             json.toStdString()
         );
+        emit projectContentChanged();
         emit assetsChanged();
         return {};
     } catch (const rust::Error&) {

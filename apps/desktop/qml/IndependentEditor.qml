@@ -101,8 +101,13 @@ ApplicationWindow {
     }
     Connections {
         target: backend
-        function onAssetsChanged(): void { refreshSources(); if (ready) projectDirty = true; }
+        function onAssetsChanged(): void { refreshSources(); }
+        function onProjectContentChanged(): void { if (ready) projectDirty = true; }
         function onProcessingRecipesChanged(): void { if (ready) projectDirty = true; }
+    }
+    Connections {
+        target: generatedNarration
+        function onAccepted(): void { if (ready) projectDirty = true; }
     }
     Connections {
         target: independentEditor

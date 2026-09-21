@@ -6343,6 +6343,16 @@
             <source>No transcript yet. Select a range of up to five minutes and transcribe it.</source>
             <translation>暂无转写。请选择不超过五分钟的音频区间进行转写。</translation>
         </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="169" />
+            <source>This transcript has no timing. You can read, copy, or export the text; timed audio edits are unavailable.</source>
+            <translation>此转写没有时间信息，可阅读、复制或导出文字，暂不能用于定位和剪辑音频。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="175" />
+            <source>Exports include this complete AI transcript. Subtitle times refer to the original recording, before audio edits.</source>
+            <translation>导出包含当前这份完整 AI 转写。字幕时间对应剪辑前的原始录音。</translation>
+        </message>
     </context>
     <context>
         <name>SoundWall</name>
@@ -8287,6 +8297,98 @@ Narration: %3</source>
             <location filename="../qml/IndependentEditorHome.qml" line="110" />
             <source>Saved projects and unfinished edits will appear here.</source>
             <translation>已保存的工程和未完成的编辑会显示在这里。</translation>
+        </message>
+    </context>
+    <context>
+        <name>TranscriptExportController</name>
+        <message>
+            <location filename="../src/transcript_export_controller.cpp" line="43" />
+            <source>There is no transcript text to copy.</source>
+            <translation>没有可复制的转写文字。</translation>
+        </message>
+        <message>
+            <location filename="../src/transcript_export_controller.cpp" line="50" />
+            <source>Choose a local TXT, SRT, or VTT file.</source>
+            <translation>请选择本地 TXT、SRT 或 VTT 文件。</translation>
+        </message>
+        <message>
+            <location filename="../src/transcript_export_controller.cpp" line="52" />
+            <source>The file extension must match the selected transcript format.</source>
+            <translation>文件扩展名须与所选转写格式一致。</translation>
+        </message>
+        <message>
+            <location filename="../src/transcript_export_controller.cpp" line="56" />
+            <source>Choose a different file to preserve the original recording.</source>
+            <translation>请选择其他文件，以保留原始录音。</translation>
+        </message>
+        <message>
+            <location filename="../src/transcript_export_controller.cpp" line="60" />
+            <source>There is no transcript text to export.</source>
+            <translation>没有可导出的转写文字。</translation>
+        </message>
+        <message>
+            <location filename="../src/transcript_export_controller.cpp" line="64" />
+            <source>Subtitle export needs valid sentence timing. Export plain text instead.</source>
+            <translation>字幕导出需要有效的句段时间，请改为导出纯文本。</translation>
+        </message>
+        <message>
+            <location filename="../src/transcript_export_controller.cpp" line="76" />
+            <source>The transcript could not be saved. Check the destination and try again.</source>
+            <translation>无法保存转写，请检查保存位置后重试。</translation>
+        </message>
+    </context>
+    <context>
+        <name>TranscriptExportMenu</name>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="27" />
+            <source>Transcript exported.</source>
+            <translation>已导出转写。</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="32" />
+            <source>Copy text</source>
+            <translation>复制文字</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="33" />
+            <source>Transcript copied.</source>
+            <translation>已复制转写。</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="38" />
+            <location filename="../qml/TranscriptExportMenu.qml" line="49" />
+            <source>Export transcript</source>
+            <translation>导出转写</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="42" />
+            <source>Plain text (.txt)</source>
+            <translation>纯文本（.txt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="43" />
+            <source>SubRip subtitles (.srt)</source>
+            <translation>SubRip 字幕（.srt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="44" />
+            <source>WebVTT subtitles (.vtt)</source>
+            <translation>WebVTT 字幕（.vtt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="50" />
+            <source>SubRip subtitles (*.srt)</source>
+            <translation>SubRip 字幕（*.srt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="50" />
+            <source>WebVTT subtitles (*.vtt)</source>
+            <translation>WebVTT 字幕（*.vtt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="50" />
+            <source>Plain text (*.txt)</source>
+            <translation>纯文本（*.txt）</translation>
         </message>
     </context>
 </TS>

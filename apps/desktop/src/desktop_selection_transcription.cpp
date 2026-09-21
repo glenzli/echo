@@ -16,6 +16,7 @@ QVariantList DesktopBackend::selectionTranscripts(const QString& id) const {
 QString DesktopBackend::acceptSelectionTranscript(const QString& id, const QString& value) {
     try {
         session_->session_accept_selection_transcript(id.toStdString(), value.toStdString());
+        emit projectContentChanged();
         emit assetsChanged();
         return {};
     } catch (const rust::Error&) {

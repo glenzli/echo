@@ -85,13 +85,14 @@ QtObject {
     property int _historyIndex: -1
     property var _gestureStart: null
     property bool _restoring: false
+    property bool _resetting: true
 
     readonly property int sourceDurationMillis: asset ? Math.max(0, Number(asset.durationMillis)) : 0
     readonly property int selectedDurationMillis: Math.max(0, trimEndMillis - trimStartMillis)
     readonly property bool canUndo: _historyIndex > 0
     readonly property bool canRedo: _historyIndex >= 0 && _historyIndex < _history.length - 1
     readonly property bool identity: trimStartMillis === 0 && trimEndMillis === sourceDurationMillis && fadeInMillis === 0 && fadeOutMillis === 0 && fadeInCurve === 0 && fadeOutCurve === 0 && gainCentibels === 0 && lowCutHertz === 0 && (!containsEffectNode(0) || !restorationEnabled || (!dePlosiveEnabled && !noiseReductionEnabled && !deEsserEnabled)) && (!containsEffectNode(5) || !deHumEnabled) && (!containsEffectNode(6) || !deClickEnabled) && (!containsEffectNode(7) || !channelRepairEnabled || (!channelRepairInvertLeft && !channelRepairInvertRight && !channelRepairSwapChannels && !channelRepairMonoFoldDown && channelRepairBalancePercent === 0)) && (!containsEffectNode(8) || !creativeVfxFamilyEnabled("scene")) && (!containsEffectNode(9) || !creativeVfxFamilyEnabled("delay")) && (!containsEffectNode(10) || !creativeVfxFamilyEnabled("modulation")) && (!containsEffectNode(11) || !creativeVfxFamilyEnabled("transform")) && (!containsEffectNode(12) || !creativeVfxFamilyEnabled("digitalDegrade")) && (!containsEffectNode(13) || !creativeVfxFamilyEnabled("drive")) && (!containsEffectNode(14) || !creativeVfxFamilyEnabled("rotary")) && (!containsEffectNode(15) || !creativeVfxFamilyEnabled("freeze")) && (!containsEffectNode(16) || !creativeVfxFamilyEnabled("granular")) && (!containsEffectNode(17) || !creativeVfxFamilyEnabled("tape")) && (!containsEffectNode(18) || !creativeVfxFamilyEnabled("pitch")) && (!containsEffectNode(19) || !creativeVfxFamilyEnabled("autoWah")) && (!containsEffectNode(20) || !creativeVfxFamilyEnabled("stereo")) && (!containsEffectNode(21) || !creativeVfxFamilyEnabled("beatRepeat")) && (!containsEffectNode(1) || !equalizerEnabled || equalizerIsFlat()) && (!containsEffectNode(2) || !compressorEnabled) && (!containsEffectNode(3) || !reverbEnabled) && !limiterEnabled && editSegmentsAreIdentity() && effectMasks.length === 0 && (!spectralRepair.enabled || (spectralRepair.regions.length === 0 && (!spectralRepair.noiseProfile || !spectralRepair.noiseProfile.enabled)))
-    readonly property bool dirty: !sameSnapshot(snapshot(), _savedSnapshot)
+    readonly property bool dirty: !_resetting && !_restoring && asset !== null && !sameSnapshot(snapshot(), _savedSnapshot)
 
     signal saveRequested(int startMillis, int endMillis, int fadeIn, int fadeOut, int fadeInCurve, int fadeOutCurve, int gain, int lowCut, bool restorationEnabled, bool dePlosiveEnabled, int dePlosiveFrequency, int dePlosiveSensitivity, int dePlosiveReduction, int dePlosiveRelease, bool noiseEnabled, int noiseReduction, int noiseSensitivity, int noiseSmoothing, bool deEsserEnabled, int deEsserFrequency, int deEsserThreshold, int deEsserReduction, bool deHumEnabled, int deHumFundamental, int deHumHarmonicCount, int deHumQuality, int deHumDepth, bool deClickEnabled, int deClickSensitivity, int deClickMaximumClick, int deClickRepair, bool channelRepairEnabled, bool channelRepairInvertLeft, bool channelRepairInvertRight, bool channelRepairSwapChannels, bool channelRepairMonoFoldDown, int channelRepairBalance, bool equalizerEnabled, var equalizerBands, bool compressorEnabled, int compressorThreshold, int compressorRatio, int compressorAttack, int compressorRelease, int compressorMakeup, int reverbCharacter, bool reverbEnabled, int reverbMix, int reverbPreDelay, int reverbDecay, int reverbSize, int reverbDamping, int reverbLowCut, int reverbHighCut, bool limiterEnabled, int limiterCeiling, int limiterRelease, var effectChain, var editSegments, var effectMasks, var creativeVfx, var spectralRepair, var space)
 
@@ -960,12 +961,14 @@ QtObject {
     }
 
     function resetFromAsset(): void {
+        _resetting = true;
         const persisted = assetSnapshot();
         applySnapshot(persisted);
         _savedSnapshot = copySnapshot(persisted);
         _history = [copySnapshot(persisted)];
         _historyIndex = 0;
         _gestureStart = null;
+        _resetting = false;
     }
 
     function pushCurrent(): void {

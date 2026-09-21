@@ -27,6 +27,7 @@ Rectangle {
     readonly property string assetKey: asset ? asset.id : ""
     readonly property string currentKey: asset ? asset.id + ":" + revisionKey + ":" + rangeStart + ":" + rangeEnd : ""
     readonly property var record: records[recordIndex] || null
+    readonly property bool textOnly: record !== null && record.text.length > 0 && !record.segments.concat(record.units).some(s => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start >= 0 && s.end > s.start)
     readonly property bool usingUnits: unitMode && record !== null && record.units.length > 0
     readonly property var candidates: !record ? [] : gapMode
         ? TranscriptEditing.gaps(record.units, minimumGap, boundaryMargin)
@@ -116,6 +117,10 @@ Rectangle {
             Label { text: qsTr("Transcript editing"); font.weight: Font.DemiBold; font.pixelSize: Theme.fontSection }
             EchoComboBox { Layout.fillWidth: true; visible: panel.records.length > 1; model: panel.records; textRole: "label"; selectionIndex: panel.recordIndex; onActivated: panel.recordIndex=currentIndex }
             Label { Layout.fillWidth: true; visible: panel.records.length <= 1; text: panel.record ? panel.record.label : qsTr("Original-time evidence"); color: Theme.textMuted; elide: Text.ElideRight }
+            TranscriptExportMenu {
+                id: transcriptDelivery
+                record: panel.record; sourcePath: panel.asset ? String(panel.asset.path || "") : ""
+            }
             EchoButton {
                 objectName: "transcribeSelectionButton"
                 Layout.preferredWidth: 180
@@ -160,12 +165,29 @@ Rectangle {
         Label {
             Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.textSecondary; font.pixelSize: Theme.fontMeta
             text: selectionTranscription.running ? (selectionTranscription.discarded ? qsTr("The result will be discarded. Infer Runtime may still be processing the request.") : qsTr("Transcribing the selected original audio…"))
-                : selectionTranscription.errorText || panel.notice || (panel.gapMode
+                : selectionTranscription.errorText || panel.notice || transcriptDelivery.notice || (panel.textOnly
+                    ? qsTr("This transcript has no timing. You can read, copy, or export the text; timed audio edits are unavailable.") : panel.gapMode
                     ? qsTr("Gaps between aligned speech may contain ambience. Audition includes 250 ms of context; only the marked interval is edited.")
                     : qsTr("Search and check sentences or aligned units. Audition plays the original; batch edits are reversible and keep the transcript intact."))
         }
+        Label {
+            Layout.fillWidth: true; visible: panel.record !== null; wrapMode: Text.Wrap
+            text: qsTr("Exports include this complete AI transcript. Subtitle times refer to the original recording, before audio edits.")
+            color: Theme.textMuted; font.pixelSize: Theme.fontMeta
+        }
+        ScrollView {
+            Layout.fillWidth: true; Layout.fillHeight: true; visible: panel.textOnly && !panel.gapMode; clip: true
+            TextArea {
+                objectName: "untimedTranscript"
+                text: panel.record ? panel.record.text : ""; textFormat: Text.PlainText
+                readOnly: true; selectByMouse: true; wrapMode: Text.Wrap
+                color: Theme.textPrimary; font.pixelSize: Theme.fontBody
+                background: Rectangle { color: Theme.panelRaised; radius: 5 }
+            }
+        }
         ListView {
             id: list
+            visible: !panel.textOnly || panel.gapMode
             objectName: "transcriptRows"
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 4
             model: panel.segments; reuseItems: true

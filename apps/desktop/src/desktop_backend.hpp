@@ -370,6 +370,8 @@ class DesktopBackend : public QObject {
     void projectClipSaved(const QVariantMap& revision);
     void adjustmentSaveFailed(const QString& message);
     void assetsChanged();
+    // Durable asset edits, distinct from a read-only projection refresh.
+    void projectContentChanged();
     void soundAssembliesChanged();
     void albumsChanged();
     void processingRecipesChanged();

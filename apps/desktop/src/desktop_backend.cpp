@@ -1627,6 +1627,7 @@ QVariantMap DesktopBackend::applyProcessingRecipe(
             targetResults.append(targetResult);
         }
         result.insert(QStringLiteral("results"), targetResults);
+        emit projectContentChanged();
         emit assetsChanged();
     } catch (const rust::Error& error) {
         qWarning("cannot apply processing recipe: %s", error.what());
@@ -1685,6 +1686,7 @@ QVariantMap DesktopBackend::revertProcessingRecipeApplication(const QString& bat
             targetResults.append(targetResult);
         }
         result.insert(QStringLiteral("results"), targetResults);
+        emit projectContentChanged();
         emit assetsChanged();
     } catch (const rust::Error& error) {
         qWarning("cannot revert processing recipe application: %s", error.what());
@@ -1763,6 +1765,7 @@ bool DesktopBackend::setAssetAffinity(const QString& id, bool liked, int rating)
             liked,
             static_cast<std::uint8_t>(rating)
         );
+        emit projectContentChanged();
         emit assetsChanged();
         return true;
     } catch (const rust::Error& error) {
@@ -1805,6 +1808,7 @@ QVariantMap DesktopBackend::calibrateAssetMetadata(
             language.toStdString(),
             calibratedFieldsJson.toStdString()
         );
+        emit projectContentChanged();
         emit assetsChanged();
         return {
             {QStringLiteral("ok"), true},
@@ -2252,6 +2256,7 @@ bool DesktopBackend::setAssetAdjustment(
         } else {
             session_->session_set_asset_adjustment(id.toStdString(), adjustment);
         }
+        emit projectContentChanged();
         emit assetsChanged();
         return true;
     } catch (const rust::Error& error) {

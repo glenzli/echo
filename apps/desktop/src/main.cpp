@@ -21,6 +21,7 @@
 #include "semantic_search_controller.hpp"
 #include "sound_assembly_controller.hpp"
 #include "spectrogram_preview_controller.hpp"
+#include "transcript_export_controller.hpp"
 #include "ui_preferences.hpp"
 
 #if defined(Q_OS_MACOS)
@@ -122,6 +123,7 @@ int main(int argc, char* argv[]) {
             QString::fromStdString(catalog),
             QString::fromStdString(cache_root)
         );
+        TranscriptExportController transcript_exporter;
         GeneratedNarrationController generated_narration(QString::fromStdString(catalog));
         AudioStreamImportController audio_stream_import(
             QFileInfo(QString::fromStdString(catalog)).absolutePath()
@@ -159,6 +161,10 @@ int main(int argc, char* argv[]) {
             &audio_stream_import
         );
         engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("transcriptExporter"),
+            &transcript_exporter
+        );
         engine.rootContext()->setContextProperty(
             QStringLiteral("assemblyHistoryController"),
             &assembly_history

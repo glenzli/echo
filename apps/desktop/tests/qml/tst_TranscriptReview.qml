@@ -27,6 +27,14 @@ TestCase {
         signal resultChanged()
         function discard() { requestKey=""; }
     }
+    QtObject {
+        id: transcriptExporter
+        property string copied: ""
+        property var saved: null
+        function hasTiming(record) { return record.segments.length > 0; }
+        function copyText(record) { copied=record.text; return ""; }
+        function save(record, url, format, source) { saved={record:record,url:url,format:format,source:source}; return ""; }
+    }
     QtObject { id: inferencePrefs; property string runtimeEndpoint: "" }
     SoundAdjustmentDraft { id: draft; asset: test.asset }
     SoundTranscriptPanel {
@@ -48,6 +56,20 @@ TestCase {
             {text:"Soft rain.",start:1,end:2},{text:"Slow steps.",start:4,end:5},{text:"Soft rain again.",start:6,end:7}],
             units:[{text:"Soft",start:1,end:1.4},{text:"rain",start:1.4,end:2},{text:"Slow",start:4,end:4.4},{text:"steps",start:4.4,end:5},{text:"Soft",start:6,end:6.4},{text:"rain",start:6.4,end:7}]}];
         panel.clearSelection(); located=[];lastResult=null;wait(30);
+    }
+    function test_text_only_result_remains_readable_and_copyable() {
+        panel.records=[{label:"Recording",model:"text-model",text:"只有文字的识别结果。",segments:[],units:[]}];
+        verify(panel.textOnly);
+        const text=findChild(panel,"untimedTranscript");
+        verify(text.visible); compare(text.text,"只有文字的识别结果。");
+        mouseClick(findChild(panel,"copyTranscript"));
+        compare(transcriptExporter.copied,text.text);
+        verify(!findChild(panel,"hideTranscriptSelection").enabled);
+    }
+    function test_copy_includes_complete_record_despite_search() {
+        panel.searchText="rain";
+        mouseClick(findChild(panel,"copyTranscript"));
+        compare(transcriptExporter.copied,panel.record.text);
     }
     function test_search_check_and_one_step_undo() {
         const input=findChild(panel,"transcriptSearch");mouseClick(input);keyClick(Qt.Key_R);keyClick(Qt.Key_A);keyClick(Qt.Key_I);keyClick(Qt.Key_N);

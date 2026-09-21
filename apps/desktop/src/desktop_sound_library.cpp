@@ -15,6 +15,7 @@ QString DesktopBackend::setSoundMembership(
             materials,
             category.toStdString()
         );
+        emit projectContentChanged();
         emit assetsChanged();
         return {};
     } catch (const rust::Error& error) {

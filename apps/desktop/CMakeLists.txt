@@ -117,6 +117,8 @@ qt_add_executable(
     src/desktop_selection_transcription.cpp
     src/selection_transcription_controller.cpp
     src/selection_transcription_controller.hpp
+    src/transcript_export_controller.cpp
+    src/transcript_export_controller.hpp
     src/audio_stream_import_controller.cpp
     src/audio_stream_import_controller.hpp
     src/generated_narration_controller.cpp
@@ -314,6 +316,7 @@ qt_add_qml_module(
         qml/ClickRepairEditing.js
         qml/ClickRepairSmoke.qml
         qml/SoundTranscriptPanel.qml
+        qml/TranscriptExportMenu.qml
         qml/EchoCheckBox.qml
         qml/SoundEditingWorkspace.qml
         qml/AudioStreamImportDialog.qml
@@ -461,6 +464,13 @@ if(BUILD_TESTING)
     add_dependencies(echo-selection-transcription-controller-test echo-desktop-rust-build)
     echo_audio_enable_warnings(echo-selection-transcription-controller-test)
     add_test(NAME echo-selection-transcription-controller-test COMMAND echo-selection-transcription-controller-test)
+    add_executable(echo-transcript-export-test tests/transcript_export_controller_test.cpp src/transcript_export_controller.cpp src/transcript_export_controller.hpp)
+    target_include_directories(echo-transcript-export-test PRIVATE src)
+    target_compile_features(echo-transcript-export-test PRIVATE cxx_std_20)
+    target_link_libraries(echo-transcript-export-test PRIVATE Qt6::Gui)
+    echo_audio_enable_warnings(echo-transcript-export-test)
+    add_test(NAME echo-transcript-export-test COMMAND echo-transcript-export-test)
+    set_tests_properties(echo-transcript-export-test PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_executable(echo-editor-recovery-test tests/editor_recovery_test.cpp src/editor_recovery.cpp)
     target_include_directories(echo-editor-recovery-test PRIVATE src "${ECHO_CXXBRIDGE_INCLUDE_DIRECTORY}")
     target_compile_features(echo-editor-recovery-test PRIVATE cxx_std_20)
