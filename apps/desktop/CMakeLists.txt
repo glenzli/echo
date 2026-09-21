@@ -307,6 +307,8 @@ qt_add_qml_module(
         qml/StereoVfxPanel.qml
         qml/ImpulseResponseImportDialog.qml
         qml/SoundEditorTimeline.qml
+        qml/TimeRangeDialog.qml
+        qml/Timecode.js
         qml/SourceEditTimeline.qml
         qml/SourceRegionInspector.qml
         qml/EffectMaskEditor.qml

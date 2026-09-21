@@ -2299,7 +2299,6 @@ QVariantList DesktopBackend::transcriptsForAsset(const QString& id) const {
         qWarning("transcript query failed for %s: %s", qPrintable(id), error.what());
         return transcripts;
     }
-    qInfo("transcripts for %s: %zu record(s)", qPrintable(id), wires.size());
     for (const auto& wire : wires) {
         QVariantList segments;
         for (const auto& segment : wire.segments) {

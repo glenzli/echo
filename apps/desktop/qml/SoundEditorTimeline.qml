@@ -223,6 +223,31 @@ Rectangle {
         editGestureFinished();
     }
 
+    readonly property alias exactTimeDialog: timeRange
+    TimeRangeDialog {
+        id: timeRange
+        minimumMillis: timeline.trimStartMillis; maximumMillis: timeline.trimEndMillis
+        contextKey: draft.asset ? String(draft.asset.id) + ":" + String(draft.asset.path) : ""
+        onRequested: (start,end) => timeline.selectExactRange(start,end)
+    }
+    function presentExactRange(): void {
+        timeRange.present(hasTimeSelection ? selectionStartMillis : trimStartMillis,
+                          hasTimeSelection ? selectionEndMillis : trimEndMillis);
+    }
+    function selectExactRange(start: real, end: real): bool {
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start < trimStartMillis || end > trimEndMillis || end <= start) return false;
+        const first = Math.round(start), last = Math.round(end);
+        if (last <= first) return false;
+        selectionStartMillis = first; selectionEndMillis = last;
+        hasTimeSelection = true; fitSelection(); forceActiveFocus(); return true;
+    }
+    function constrainSelection(): void {
+        if (!hasTimeSelection) return;
+        const start = Math.max(trimStartMillis, selectionStartMillis);
+        const end = Math.min(trimEndMillis, selectionEndMillis);
+        if (end <= start) { clearTimeSelection(); return; }
+        selectionStartMillis = start; selectionEndMillis = end;
+    }
     function clearTimeSelection(): void {
         hasTimeSelection = false;
         selectionStartMillis = 0;
@@ -265,8 +290,8 @@ Rectangle {
     }
 
     onSourceDurationMillisChanged: fitAll()
-    onTrimStartMillisChanged: envelopeCanvas.requestPaint()
-    onTrimEndMillisChanged: envelopeCanvas.requestPaint()
+    onTrimStartMillisChanged: { envelopeCanvas.requestPaint(); Qt.callLater(constrainSelection); }
+    onTrimEndMillisChanged: { envelopeCanvas.requestPaint(); Qt.callLater(constrainSelection); }
     onFadeInMillisChanged: envelopeCanvas.requestPaint()
     onFadeOutMillisChanged: envelopeCanvas.requestPaint()
     onFadeInCurveChanged: envelopeCanvas.requestPaint()
@@ -287,19 +312,19 @@ Rectangle {
 
     Keys.onPressed: function (event) {
         const noModifiers = event.modifiers === Qt.NoModifier;
-        if (event.key === Qt.Key_Space) {
+        if (event.key === Qt.Key_Space && noModifiers) {
             timeline.playPauseRequested();
             event.accepted = true;
-        } else if (event.key === Qt.Key_I) {
+        } else if (event.key === Qt.Key_I && noModifiers) {
             timeline.setSelectionBoundary(timeline.playbackPositionMillis, true);
             event.accepted = true;
-        } else if (event.key === Qt.Key_O) {
+        } else if (event.key === Qt.Key_O && noModifiers) {
             timeline.setSelectionBoundary(timeline.playbackPositionMillis, false);
             event.accepted = true;
         } else if (event.key === Qt.Key_Escape) {
             timeline.clearTimeSelection();
             event.accepted = true;
-        } else if (event.key === Qt.Key_Z && (event.modifiers & Qt.MetaModifier)) {
+        } else if (event.key === Qt.Key_Z && (event.modifiers & (Qt.MetaModifier | Qt.ControlModifier))) {
             if (event.modifiers & Qt.ShiftModifier)
                 timeline.redoRequested();
             else
@@ -343,6 +368,13 @@ Rectangle {
                 Layout.fillWidth: true
             }
 
+            EchoIconButton {
+                objectName: "exactTimeRangeButton"
+                source: "qrc:/EchoDesktop/icons/clock.svg"
+                toolTipText: qsTr("Select exact time range")
+                enabled: timeline.trimEndMillis > timeline.trimStartMillis
+                onClicked: timeline.presentExactRange()
+            }
             EchoIconButton {
                 source: "qrc:/EchoDesktop/icons/follow-playhead.svg"
                 toolTipText: qsTr("Follow")

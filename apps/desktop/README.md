@@ -56,7 +56,10 @@ never mutates adjustment parameters.
 `SoundEditorTimeline.qml` owns the editor's high-frequency interaction state:
 time projection, logarithmic zoom, horizontal navigation, direct trim and fade
 handles, time selection, the clip-gain dB line, playhead, and transient gesture
-readouts. Its `SourceEditTimeline.qml` overlay owns source-anchored segment
+readouts. `TimeRangeDialog.qml` owns exact-time entry and validation for source
+selection and arrangement navigation; `Timecode.js` parses and formats milliseconds.
+These commands change view state without creating an audio revision.
+Its `SourceEditTimeline.qml` overlay owns source-anchored segment
 discovery and the contextual split, hide, mute, restore, gap, and mask actions;
 `EffectMaskEditor.qml` keeps multi-effect selection and soft mask edges with the
 authored serial chain rather than presenting a branch graph.
@@ -71,7 +74,10 @@ timeline, so both ratios can be resized without changing draft semantics.
 Meanwhile,
 `SoundEditingWorkspace.qml` owns source, transport, selection looping,
 adjusted/original audition, backend lifecycle, and the small command projection
-consumed by the window chrome. `EchoWindowChrome.qml` shares the 44 px titlebar,
+consumed by the window chrome. It retains the current immutable source waveform
+across metadata and transcript refreshes, invalidating it when source identity,
+availability, duration, or preserved assembly revision changes.
+`EchoWindowChrome.qml` shares the 44 px titlebar,
 native safe areas, surface and drag gesture between both application shells.
 `EchoWorkspaceTab.qml` shares icon navigation and the selection marker between both shells.
 `IndependentTitleBar.qml` owns the project identity, active-editor history and icon document actions; native

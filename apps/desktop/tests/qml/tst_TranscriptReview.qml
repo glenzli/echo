@@ -57,6 +57,17 @@ TestCase {
             units:[{text:"Soft",start:1,end:1.4},{text:"rain",start:1.4,end:2},{text:"Slow",start:4,end:4.4},{text:"steps",start:4.4,end:5},{text:"Soft",start:6,end:6.4},{text:"rain",start:6.4,end:7}]}];
         panel.clearSelection(); located=[];lastResult=null;wait(30);
     }
+    function test_copy_selected_preserves_original_timing_without_boundary_margin() {
+        panel.toggleEntry("text:1");
+        mouseClick(findChild(panel,"copyTranscript"));compare(transcriptExporter.copied,"Slow steps.");
+        compare(panel.selectedTranscript.segments,[{text:"Slow steps.",start:4,end:5}]);
+        panel.gapMode=true;compare(panel.selectedTranscript,null);
+    }
+    function test_transcription_limit_matches_available_button() {
+        panel.rangeStart=0;panel.rangeEnd=300001;
+        verify(!findChild(panel,"transcribeSelectionButton").enabled);
+        panel.rangeEnd=10000;verify(findChild(panel,"transcribeSelectionButton").enabled);
+    }
     function test_text_only_result_remains_readable_and_copyable() {
         panel.records=[{label:"Recording",model:"text-model",text:"只有文字的识别结果。",segments:[],units:[]}];
         verify(panel.textOnly);

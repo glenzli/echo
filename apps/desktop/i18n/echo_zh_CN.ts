@@ -4927,6 +4927,11 @@
             <source>Memory information</source>
             <translation>记忆信息</translation>
         </message>
+        <message>
+            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1276" />
+            <source>Go to time</source>
+            <translation>跳转到时间</translation>
+        </message>
     </context>
     <context>
         <name>SoundCard</name>
@@ -5320,6 +5325,11 @@
             <location filename="../qml/SoundEditorTimeline.qml" line="933" />
             <source>Clip %1</source>
             <translation>片段 %1</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundEditorTimeline.qml" line="374" />
+            <source>Select exact time range</source>
+            <translation>精确选择时间范围</translation>
         </message>
     </context>
     <context>
@@ -6349,9 +6359,14 @@
             <translation>此转写没有时间信息，可阅读、复制或导出文字，暂不能用于定位和剪辑音频。</translation>
         </message>
         <message>
-            <location filename="../qml/SoundTranscriptPanel.qml" line="175" />
-            <source>Exports include this complete AI transcript. Subtitle times refer to the original recording, before audio edits.</source>
-            <translation>导出包含当前这份完整 AI 转写。字幕时间对应剪辑前的原始录音。</translation>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="174" />
+            <source>Select up to five minutes to transcribe. Use the clock button on the timeline for an exact range.</source>
+            <translation>请选取不超过五分钟的音频再转写，可用时间轴上的时钟按钮精确设置范围。</translation>
+        </message>
+        <message>
+            <location filename="../qml/SoundTranscriptPanel.qml" line="181" />
+            <source>Export the complete AI transcript or checked text. Subtitle times refer to the original recording, before audio edits.</source>
+            <translation>可导出完整 AI 转写或勾选文字。字幕时间对应剪辑前的原始录音。</translation>
         </message>
     </context>
     <context>
@@ -8389,6 +8404,97 @@ Narration: %3</source>
             <location filename="../qml/TranscriptExportMenu.qml" line="50" />
             <source>Plain text (*.txt)</source>
             <translation>纯文本（*.txt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="36" />
+            <source>Copy selected</source>
+            <translation>复制所选</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="47" />
+            <source>Copy complete transcript</source>
+            <translation>复制完整转写</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="53" />
+            <source>Selected text (.txt)</source>
+            <translation>所选文字（.txt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="54" />
+            <source>Selected subtitles (.srt)</source>
+            <translation>所选字幕（.srt）</translation>
+        </message>
+        <message>
+            <location filename="../qml/TranscriptExportMenu.qml" line="55" />
+            <source>Selected subtitles (.vtt)</source>
+            <translation>所选字幕（.vtt）</translation>
+        </message>
+    </context>
+    <context>
+        <name>TimeRangeDialog</name>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="37" />
+            <source>Select exact time range</source>
+            <translation>精确选择时间范围</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="37" />
+            <source>Go to time</source>
+            <translation>跳转到时间</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="38" />
+            <source>Enter seconds, m:ss, or h:mm:ss. Milliseconds are optional.</source>
+            <translation>可输入秒数、分:秒或时:分:秒，也可加上毫秒。</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="39" />
+            <location filename="../qml/TimeRangeDialog.qml" line="40" />
+            <source>Start</source>
+            <translation>开始</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="39" />
+            <location filename="../qml/TimeRangeDialog.qml" line="40" />
+            <source>Position</source>
+            <translation>位置</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="41" />
+            <location filename="../qml/TimeRangeDialog.qml" line="42" />
+            <source>End</source>
+            <translation>结束</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="45" />
+            <source>Available: %1 – %2</source>
+            <translation>可用范围：%1 – %2</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="50" />
+            <source>Enter a valid range with the end after the start, within the available audio.</source>
+            <translation>请在可用音频范围内输入有效时间，结束须晚于开始。</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="50" />
+            <source>Enter a valid time within the project.</source>
+            <translation>请输入工程范围内的有效时间。</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="55" />
+            <source>Cancel</source>
+            <translation>取消</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="56" />
+            <source>Select range</source>
+            <translation>选择范围</translation>
+        </message>
+        <message>
+            <location filename="../qml/TimeRangeDialog.qml" line="56" />
+            <source>Go</source>
+            <translation>跳转</translation>
         </message>
     </context>
 </TS>

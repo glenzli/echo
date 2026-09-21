@@ -38,6 +38,11 @@ Rectangle {
     readonly property var selectedEntries: segments.filter(s => selectedLookup[s.key] === true)
     readonly property var selectedRanges: SourceEditRanges.normalized(selectedEntries.map(s => bounds(s)),trimStart,trimEnd) || []
     readonly property real selectedDuration: selectedRanges.reduce((sum,r) => sum+r.end-r.start,0)
+    readonly property bool transcriptionRangeValid: asset !== null && Number.isFinite(rangeStart) && Number.isFinite(rangeEnd) && rangeStart >= 0 && rangeEnd > rangeStart && rangeEnd <= Number(asset.durationMillis) && rangeEnd - rangeStart <= 300000
+    readonly property var selectedTranscript: gapMode || !selectedEntries.length ? null : ({
+        model: record ? record.model : "", text: selectedEntries.map(s => s.text).join("\n"),
+        segments: selectedEntries.map(s => ({start:s.start,end:s.end,text:s.text}))
+    })
     signal rangeRequested(real start, real end, bool play)
     signal editsRequested(string kind, var ranges)
     color: Theme.panel
@@ -119,13 +124,14 @@ Rectangle {
             Label { Layout.fillWidth: true; visible: panel.records.length <= 1; text: panel.record ? panel.record.label : qsTr("Original-time evidence"); color: Theme.textMuted; elide: Text.ElideRight }
             TranscriptExportMenu {
                 id: transcriptDelivery
-                record: panel.record; sourcePath: panel.asset ? String(panel.asset.path || "") : ""
+                record: panel.record; selectionRecord: panel.selectedTranscript
+                sourcePath: panel.asset ? String(panel.asset.path || "") : ""
             }
             EchoButton {
                 objectName: "transcribeSelectionButton"
                 Layout.preferredWidth: 180
                 text: selectionTranscription.running ? qsTr("Discard result") : qsTr("Transcribe selection")
-                enabled: panel.asset !== null && (!selectionTranscription.running || !selectionTranscription.discarded)
+                enabled: selectionTranscription.running ? !selectionTranscription.discarded : panel.transcriptionRangeValid
                 onClicked: panel.requestTranscription()
             }
         }
@@ -165,14 +171,14 @@ Rectangle {
         Label {
             Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.textSecondary; font.pixelSize: Theme.fontMeta
             text: selectionTranscription.running ? (selectionTranscription.discarded ? qsTr("The result will be discarded. Infer Runtime may still be processing the request.") : qsTr("Transcribing the selected original audio…"))
-                : selectionTranscription.errorText || panel.notice || transcriptDelivery.notice || (panel.textOnly
+                : selectionTranscription.errorText || panel.notice || transcriptDelivery.notice || (!panel.transcriptionRangeValid ? qsTr("Select up to five minutes to transcribe. Use the clock button on the timeline for an exact range.") : panel.textOnly
                     ? qsTr("This transcript has no timing. You can read, copy, or export the text; timed audio edits are unavailable.") : panel.gapMode
                     ? qsTr("Gaps between aligned speech may contain ambience. Audition includes 250 ms of context; only the marked interval is edited.")
                     : qsTr("Search and check sentences or aligned units. Audition plays the original; batch edits are reversible and keep the transcript intact."))
         }
         Label {
             Layout.fillWidth: true; visible: panel.record !== null; wrapMode: Text.Wrap
-            text: qsTr("Exports include this complete AI transcript. Subtitle times refer to the original recording, before audio edits.")
+            text: qsTr("Export the complete AI transcript or checked text. Subtitle times refer to the original recording, before audio edits.")
             color: Theme.textMuted; font.pixelSize: Theme.fontMeta
         }
         ScrollView {

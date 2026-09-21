@@ -712,6 +712,17 @@ Rectangle {
         if (playbackOwned && previewCurrent && player.active)
             player.seek(Math.round(Editing.clamp(playheadMillis - previewRangeStart, 0, previewRangeEnd - previewRangeStart)));
     }
+    readonly property alias exactTimeDialog: projectTime
+    TimeRangeDialog {
+        id: projectTime
+        rangeMode: false; maximumMillis: workspace.durationMillis
+        contextKey: workspace.document ? String(workspace.document.assemblyId || "") : ""
+        onRequested: (start,end) => {
+            workspace.seekTo(start);
+            timelineFlick.contentX = Editing.clamp(start * workspace.pixelsPerSecond / 1000 - workspace.laneViewportWidth / 2, 0, Math.max(0, workspace.timelineWidth - workspace.laneViewportWidth));
+            workspace.forceActiveFocus();
+        }
+    }
     function fitProject(): void {
         if (!hasDocument) return;
         if (!visible || laneViewportWidth <= 80) { fitPending = true; return; }
@@ -755,7 +766,7 @@ Rectangle {
         if (!hasDocument || soundAssemblyController.running)
             return;
         const command = event.modifiers & (Qt.ControlModifier | Qt.MetaModifier);
-        if (event.key === Qt.Key_Space)
+        if (event.key === Qt.Key_Space && event.modifiers === Qt.NoModifier)
             togglePlayback();
         else if (event.key === Qt.Key_S && !command)
             splitSelectedClip();
@@ -1258,6 +1269,13 @@ Rectangle {
                                 font.family: "Menlo"
                                 font.pixelSize: 12
                                 Layout.preferredWidth: 104
+                            }
+                            EchoIconButton {
+                                objectName: "goToProjectTimeButton"
+                                source: "qrc:/EchoDesktop/icons/clock.svg"
+                                toolTipText: qsTr("Go to time")
+                                enabled: workspace.durationMillis > 0 && !soundAssemblyController.running
+                                onClicked: projectTime.present(workspace.playheadMillis,workspace.playheadMillis)
                             }
                             EchoIconButton {
                                 source: "qrc:/EchoDesktop/icons/stop.svg"

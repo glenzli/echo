@@ -13,6 +13,7 @@ Item {
     property string beforeEdit: ""
     property int auditionTick: 0
     property real requestStarted: 0
+    readonly property int sourceOffset: editor.asset && Number(editor.asset.durationMillis) > 1210000 ? 1200000 : 0
     function require(value,message) { if(!value)throw new Error(message); }
     function reviewText() {
         const panel=editor.transcriptPanel;
@@ -47,10 +48,18 @@ Item {
             shell.chooseSource(0);editor.transcriptFocus=true;stage=1;break;
         case 1:
             if(!editor.hasAsset) return;
+            const waveform=editor.waveformLevels;
+            require(waveform.length>0,"source waveform not loaded");
+            for(let refresh=0;refresh<8;++refresh) editor.refreshAsset();
+            require(editor.waveformLevels===waveform,"metadata refresh replaced the immutable source waveform");
+            facts.waveformReused=true;
             if(reopening) { stage=5;return; }
-            editor.timeline.selectionStartMillis=1000;
-            editor.timeline.selectionEndMillis=Math.min(10000,Number(editor.asset.durationMillis));
-            editor.timeline.hasTimeSelection=true;
+            const cleanBefore=editor.dirty;
+            editor.timeline.exactTimeDialog.present(sourceOffset+1000,Math.min(sourceOffset+10000,Number(editor.asset.durationMillis)));
+            editor.timeline.exactTimeDialog.apply();
+            require(editor.timeline.hasTimeSelection && editor.timeline.selectionStartMillis===sourceOffset+1000, "exact selection did not reach the timeline");
+            require(editor.dirty===cleanBefore,"navigation dirtied the audio draft");
+            facts.exactTimeRange=true;facts.sourceOffset=sourceOffset;
             requestStarted=Date.now();
             editor.transcriptPanel.requestTranscription();stage=2;break;
         case 2:
@@ -59,7 +68,7 @@ Item {
             require(!editor.transcriptPanel.notice,editor.transcriptPanel.notice);
             const records=backend.selectionTranscripts(editor.asset.id);
             require(records.length===1,"scoped result not accepted");
-            require(records[0].start_millis===1000,"source offset lost");
+            require(records[0].start_millis===sourceOffset+1000,"source offset lost");
             require(records[0].transcript.segments.length>0,"no segment timing");
             require(records[0].alignment,"no real aligned timing available");
             facts.inferenceMillis=Date.now()-requestStarted;
@@ -98,10 +107,23 @@ Item {
                 const error=transcriptExporter.save(record, 'file://'+fixtureRoot+'/transcript.'+format, format, editor.asset.path);
                 require(!error,error);
             }
+            editor.transcriptPanel.gapMode=false; editor.transcriptPanel.unitMode=true;
+            const entries=editor.transcriptPanel.segments;
+            editor.transcriptPanel.selectedKeys=[entries[0].key,entries[entries.length-1].key];
+            const selected=editor.transcriptPanel.selectedTranscript;
+            require(selected && selected.segments.length===2,"selected transcript projection missing");
+            require(selected.segments[0].start===entries[0].start,"selected export changed source time");
+            for (const format of ["txt","srt","vtt"]) {
+                const error=transcriptExporter.save(selected,'file://'+fixtureRoot+'/selected.'+format,format,editor.asset.path);
+                require(!error,error);
+            }
+            facts.selectedTranscript=selected;
+            editor.transcriptPanel.clearSelection();
             facts.transcriptExports=["txt","srt","vtt"];
             facts.evidence=saved[0];facts.editedSegments=editor.adjustment.editSegments;
             facts.scopedRecords=saved.length;facts.jobs=jobs;facts.reopening=reopening;
             editor.auditionOriginal=false;
+            if(sourceOffset>0) { facts.longSourceDurationMillis=editor.asset.durationMillis; reportJson=JSON.stringify({ok:true,facts:facts}); return; }
             editor.debugExport('file://'+fixtureRoot+(reopening?'/reopened.wav':'/edited.wav'));stage=6;break;
         case 6:
             if(renderExporter.running) return;

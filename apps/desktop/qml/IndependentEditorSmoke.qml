@@ -40,6 +40,11 @@ Item {
         require(!assembly.sourcesVisible, "mode switching reopened the source sidebar");
         require(assembly.selectedClipId === selected && assembly.playheadMillis === playhead, "mode switching lost editing context");
         checkUnchangedEdits();
+        const dirtyBefore=assembly.dirty;
+        assembly.exactTimeDialog.present(500,500);assembly.exactTimeDialog.apply();
+        require(assembly.playheadMillis===500 && assembly.dirty===dirtyBefore,"exact project navigation changed the document");
+        assembly.seekTo(playhead);
+        facts.exactProjectTime=true;
         facts.editingContext = {sidebar: true, selection: true, playhead: true, unchangedEdits: true};
     }
     function checkLiveMix() {

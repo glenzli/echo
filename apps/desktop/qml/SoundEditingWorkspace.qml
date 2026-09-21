@@ -20,6 +20,7 @@ Rectangle {
     property string acceptedNarrationId: ""
 
     property var waveformLevels: []
+    property string waveformSourceKey: ""
     property string loadedPath: ""
     property string sourceIdentity: ""
     property string loadedBaseAdjustmentKey: ""
@@ -233,12 +234,20 @@ Rectangle {
     }
 
     function refreshAsset(): void {
-        waveformLevels = [];
         renderedSpectralWorkingCopies = [];
         spectrogramPreview.clear();
-        if (!asset || !asset.id || asset.pathStatus === "missing")
+        if (!asset || !asset.id || asset.pathStatus === "missing") {
+            waveformSourceKey = "";
+            waveformLevels = [];
             return;
-        waveformLevels = backend.waveformForAsset(asset.id);
+        }
+        // Metadata, transcript evidence, and draft saves do not change the
+        // immutable source waveform. Keep only the current source's pyramid.
+        const key = JSON.stringify([asset.id, asset.path, asset.pathStatus, asset.durationMillis, asset.assemblyRevisionId]);
+        if (key !== waveformSourceKey || waveformLevels.length === 0) {
+            waveformLevels = backend.waveformForAsset(asset.id);
+            waveformSourceKey = key;
+        }
         renderedSpectralWorkingCopies = editingProjectClip ? [] : backend.renderedSpectralWorkingCopies(asset.id);
         refreshSpectrogramPreview();
     }
