@@ -75,6 +75,7 @@ fn complete_document_save_and_verified_export_append_history() {
     let mut value: serde_json::Value =
         serde_json::from_str(&created.document_json).expect("document value decodes");
     value["name"] = serde_json::Value::String("Renamed layer".to_owned());
+    value["markers"] = serde_json::json!([{"id": echo_domain::AssemblyMarkerId::new().to_string(), "name":"Opening", "startMillis":100, "endMillis":500}]);
     value["tracks"][0]["clips"][0]["fadeInCurve"] =
         serde_json::Value::String("equal_power".to_owned());
     let saved = session
@@ -83,6 +84,10 @@ fn complete_document_save_and_verified_export_append_history() {
     assert_eq!(saved.revision_number, 2);
     let saved_document: SoundAssembly =
         serde_json::from_str(&saved.document_json).expect("saved document decodes");
+    assert_eq!(saved_document.markers()[0].name(), "Opening");
+    assert_eq!(saved_document.markers()[0].end_millis(), Some(500));
+    let reopened = session.sound_assembly(&saved.assembly_id).unwrap();
+    assert_eq!(reopened.document_json, saved.document_json);
     assert_eq!(
         saved_document.tracks()[0].clips()[0].fade_in_curve(),
         FadeCurve::EqualPower

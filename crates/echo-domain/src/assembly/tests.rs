@@ -1,5 +1,59 @@
 use super::*;
 
+#[test]
+fn markers_preserve_legacy_bytes_and_do_not_extend_audio() {
+    let track = AssemblyTrack::new(
+        AssemblyTrackId::new(),
+        "Track".into(),
+        0,
+        0,
+        false,
+        false,
+        vec![clip(AssemblyClipId::new(), 0)],
+    )
+    .unwrap();
+    let legacy = SoundAssembly::new(
+        SoundAssemblyId::new(),
+        "Project".into(),
+        AssemblyMaster::standard(),
+        vec![track],
+    )
+    .unwrap();
+    let old_bytes = serde_json::to_string(&legacy).unwrap();
+    assert!(!old_bytes.contains("markers"));
+    let loaded: SoundAssembly = serde_json::from_str(&old_bytes).unwrap();
+    assert!(loaded.markers().is_empty());
+    assert_eq!(serde_json::to_string(&loaded).unwrap(), old_bytes);
+    let marker = AssemblyMarker::new(
+        crate::AssemblyMarkerId::new(),
+        "Later".into(),
+        8000,
+        Some(9000),
+    )
+    .unwrap();
+    let annotated = legacy.clone().with_markers(vec![marker.clone()]).unwrap();
+    assert_eq!(annotated.duration_millis(), 4000);
+    annotated.validate().unwrap();
+    assert_eq!(
+        legacy
+            .clone()
+            .with_markers(vec![marker.clone(), marker.clone()]),
+        Err(SoundAssemblyError::InvalidMarker)
+    );
+    assert_eq!(
+        legacy.with_markers(vec![marker; 257]),
+        Err(SoundAssemblyError::InvalidMarker)
+    );
+    let mut encoded = serde_json::to_value(&annotated).unwrap();
+    encoded["markers"][0]["endMillis"] = 7000.into();
+    assert_eq!(
+        serde_json::from_value::<SoundAssembly>(encoded)
+            .unwrap()
+            .validate(),
+        Err(SoundAssemblyError::InvalidMarker)
+    );
+}
+
 fn clip(id: AssemblyClipId, timeline_start_millis: u64) -> AssemblyClip {
     AssemblyClip::new(
         id,

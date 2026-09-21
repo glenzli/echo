@@ -11,7 +11,9 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 
 mod envelope;
+mod marker;
 pub use envelope::{GainEnvelope, GainEnvelopePoint, MAX_GAIN_ENVELOPE_POINTS};
+pub use marker::{AssemblyMarker, MAX_ASSEMBLY_MARKERS};
 
 use crate::{
     AssemblyClipId, AssemblyTrackId, AssetId, FadeCurve, MAX_GAIN_CENTIBELS, MIN_GAIN_CENTIBELS,
@@ -444,6 +446,8 @@ pub struct SoundAssembly {
     name: String,
     master: AssemblyMaster,
     tracks: Vec<AssemblyTrack>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    markers: Vec<AssemblyMarker>,
 }
 
 impl SoundAssembly {
@@ -489,7 +493,40 @@ impl SoundAssembly {
             name,
             master,
             tracks,
+            markers: Vec::new(),
         })
+    }
+
+    /// Attaches composition-time navigation annotations without changing audio.
+    ///
+    /// # Errors
+    /// Rejects invalid annotations, duplicate identities or more than 256 entries.
+    pub fn with_markers(
+        mut self,
+        markers: Vec<AssemblyMarker>,
+    ) -> Result<Self, SoundAssemblyError> {
+        self.markers = markers;
+        self.validate_markers()?;
+        Ok(self)
+    }
+
+    #[must_use]
+    pub fn markers(&self) -> &[AssemblyMarker] {
+        &self.markers
+    }
+
+    fn validate_markers(&self) -> Result<(), SoundAssemblyError> {
+        if self.markers.len() > MAX_ASSEMBLY_MARKERS {
+            return Err(SoundAssemblyError::InvalidMarker);
+        }
+        let mut ids = BTreeSet::new();
+        for marker in &self.markers {
+            marker.validate()?;
+            if !ids.insert(marker.id()) {
+                return Err(SoundAssemblyError::InvalidMarker);
+            }
+        }
+        Ok(())
     }
 
     #[must_use]
@@ -533,6 +570,7 @@ impl SoundAssembly {
     ///
     /// Returns the first violated document, master, track, or clip contract.
     pub fn validate(&self) -> Result<(), SoundAssemblyError> {
+        self.validate_markers()?;
         self.master.validate()?;
         for track in &self.tracks {
             track.validate()?;
@@ -568,6 +606,7 @@ pub enum SoundAssemblyError {
     DurationOutOfRange,
     InvalidLimiter,
     InvalidGainEnvelope,
+    InvalidMarker,
 }
 
 impl std::fmt::Display for SoundAssemblyError {
@@ -587,6 +626,7 @@ impl std::fmt::Display for SoundAssemblyError {
             Self::DurationOutOfRange => "assembly duration must not exceed 4 hours",
             Self::InvalidLimiter => "assembly limiter is outside the supported range",
             Self::InvalidGainEnvelope => "gain envelope requires ordered unique source times, at most 2048 points and gains from -96 to +12 dB",
+            Self::InvalidMarker => "assembly markers require unique identities, names of 1 to 120 characters, valid times within four hours and at most 256 entries",
         })
     }
 }

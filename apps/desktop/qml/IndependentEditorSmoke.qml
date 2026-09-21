@@ -77,6 +77,25 @@ Item {
         require(player.playing && assembly.previewCurrent, "rejected control update disturbed audition");
         facts.liveMix = {trackControls:true, masterGain:true, transientDrag:true, undoRedo:true, pause:true, save:true, topologyRejection:true};
     }
+    function checkMarkers() {
+        const audio = JSON.stringify(assembly.tracks);
+        assembly.playheadMillis = 1200;
+        assembly.addMarker(false);
+        const point = assembly.selectedMarkerId;
+        assembly.patchMarker(point, "name", "Rain entrance");
+        assembly.addMarker(true);
+        const range = assembly.selectedMarkerId;
+        assembly.patchMarker(range, "name", "Listen detail");
+        assembly.patchMarker(range, "startMillis", 1000);
+        assembly.patchMarker(range, "endMillis", 2500);
+        assembly.deleteMarker(point); assembly.undo();
+        require(assembly.markers.length === 2 && JSON.stringify(assembly.tracks) === audio, "markers altered audio or failed undo");
+        assembly.playheadMillis = 0; assembly.navigateMarker(1);
+        require(assembly.playheadMillis === 1000, "next marker did not navigate");
+        assembly.navigateMarker(1); require(assembly.playheadMillis === 1200, "next point marker did not navigate");
+        assembly.navigateMarker(-1); require(assembly.playheadMillis === 1000, "previous marker did not navigate");
+        facts.markers = {point: point, range: range, count: 2, undo: true, navigation: true};
+    }
     function checkWaveforms() {
         const counts = [];
         for (const levels of Object.values(assemblyWaveforms.waveforms)) {
@@ -137,6 +156,7 @@ Item {
                 require(assembly.hasDocument && assembly.tracks.length===2,"portable assembly missing");
                 require(shell.assets.some(value=>value.gainCentibels===-600),"source adjustment lost");
                 require(assembly.tracks[1].clips[0].gainEnvelope.enabled,"portable envelope lost");
+                require(assembly.markers.length === 2 && assembly.markers.some(item => item.name === "Listen detail" && item.endMillis === 2500), "portable markers lost");
                 stage=6; return;
             }
             shell.chooseSource(0); ++stage; break;
@@ -179,13 +199,13 @@ Item {
             facts.duckingEnvelope=assembly.selectedClip.gainEnvelope;
             assembly.undo();require(!assembly.selectedClip.gainEnvelope,"ducking undo failed");
             assembly.redo();require(assembly.selectedClip.gainEnvelope.enabled,"ducking redo failed");
+            checkMarkers();
             require(shell.flushDrafts(),"assembly failed to save");
             independentEditor.saveProject('file://'+fixtureRoot+'/portable.echo');stage=4;break;
         case 4:
             if(independentEditor.busy) return;
             require(!independentEditor.errorText,independentEditor.errorText);
-            assembly.previewSelection=true;
-            assembly.preview();++stage;break;
+            assembly.previewMarker(facts.markers.range);++stage;break;
         case 5:
             if(soundAssemblyController.running) return;
             require(soundAssemblyController.hasPreview,soundAssemblyController.errorText || "preview failed");
@@ -194,6 +214,16 @@ Item {
             checkUnchangedEdits();
             facts.unchangedEditsPreservePlayback = true;
             checkLiveMix();
+            const marker = assembly.markers.find(item => item.id === facts.markers.range);
+            assembly.patchMarker(marker.id, "name", "Temporary name");
+            require(player.playing && assembly.previewCurrent, "marker rename interrupted playback");
+            assembly.undo();
+            assembly.patchMarker(marker.id, "endMillis", marker.endMillis + 250);
+            require(!player.active && !assembly.previewCurrent, "named-range boundary retained a stale preview window");
+            assembly.undo();
+            require(assembly.previewCurrent, "range undo did not recover the correct preview identity");
+            facts.markers.previewDuration = facts.previewDuration;
+            facts.markers.rangeInvalidation = true;
             assembly.stopPlayback();
             auditionVolume=player.volume;player.volume=0;
             stage=30;break;

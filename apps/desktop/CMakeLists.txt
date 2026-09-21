@@ -261,6 +261,8 @@ qt_add_qml_module(
         qml/SoundGainEnvelope.qml
         qml/SoundAssemblyClip.qml
         qml/SoundAssemblyTrack.qml
+        qml/SoundAssemblyMarkers.qml
+        qml/SoundAssemblyMarkerLane.qml
         qml/MemoryWorkflowSmoke.qml
         qml/MultitrackWorkflowSmoke.qml
         qml/SpectralWorkflowSmoke.qml
@@ -308,6 +310,7 @@ qt_add_qml_module(
         qml/WaveformView.qml
     RESOURCES
         icons/play.svg
+        icons/marker.svg
         icons/pause.svg
         icons/stop.svg
         icons/refresh.svg

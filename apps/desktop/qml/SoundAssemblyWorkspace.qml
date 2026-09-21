@@ -40,6 +40,9 @@ Rectangle {
     readonly property string noticeText: memorySavedNotice ? qsTr("This version is now in your memory library.") : ""
     property bool sourcesVisible: false
     property bool inspectorVisible: true
+    property bool markersVisible: false
+    property string selectedMarkerId: ""
+    property string previewMarkerId: ""
     property alias ducking: clipInspector.ducking
     property bool duckingVisible: false
     property bool automationEditing: false
@@ -51,8 +54,9 @@ Rectangle {
     property bool playbackOwned: false
     property bool previewSelection: false
     property bool loopPreview: false
-    readonly property real previewRangeStart: previewSelection && selectionBounds ? selectionBounds.start : 0
-    readonly property real previewRangeEnd: previewSelection && selectionBounds ? selectionBounds.end : durationMillis
+    readonly property var previewBounds: previewBoundsFor(document)
+    readonly property real previewRangeStart: previewBounds.start
+    readonly property real previewRangeEnd: previewBounds.end
     readonly property string previewKey: authoredJson(document) + "|" + previewRangeStart + ":" + previewRangeEnd
     property bool publishingLiveMix: false
     onPreviewKeyChanged: { if (playbackOwned && !publishingLiveMix) stopPlayback(); }
@@ -68,6 +72,7 @@ Rectangle {
     readonly property bool hasDocument: document && document.id !== undefined
     readonly property var tracks: hasDocument ? document.tracks : []
     readonly property real durationMillis: assemblyDuration(document)
+    readonly property var markers: (document.markers || []).slice().sort((a, b) => a.startMillis - b.startMillis || a.id.localeCompare(b.id))
     readonly property real timelineWidth: Math.max(laneViewportWidth, durationMillis * pixelsPerSecond / 1000 + 100)
     readonly property var selectedClip: clipById(selectedClipId)
     readonly property real tickStepSeconds: Editing.gridSeconds(pixelsPerSecond)
@@ -91,7 +96,8 @@ Rectangle {
             id: value.id,
             name: value.name,
             master: value.master,
-            tracks: value.tracks
+            tracks: value.tracks,
+            markers: value.markers || []
         });
     }
 
@@ -122,6 +128,8 @@ Rectangle {
         stopPlayback();
         previewDocumentJson = "";
         pendingPreviewJson = "";
+        previewMarkerId = "";
+        selectedMarkerId = "";
         document = clone(revision);
         selectedTrackIndex = document.tracks.length > 0 ? 0 : -1;
         selectedClipId = document.tracks.length > 0 && document.tracks[0].clips.length > 0 ? document.tracks[0].clips[0].id : "";
@@ -146,7 +154,7 @@ Rectangle {
     }
 
     function historySnapshot(): var {
-        return {document: clone(document), ids: selectedClipIds.slice(), primary: selectedClipId};
+        return {document: clone(document), ids: selectedClipIds.slice(), primary: selectedClipId, marker: selectedMarkerId};
     }
 
     function pushUndo(): void {
@@ -175,7 +183,9 @@ Rectangle {
     }
 
     function publishDocument(next: var): void {
-        const live = previewCurrent && soundAssemblyController.updatePreviewMix(next, playbackOwned && player.active);
+        const bounds = previewBoundsFor(next);
+        const live = previewCurrent && bounds.start === previewRangeStart && bounds.end === previewRangeEnd
+                     && soundAssemblyController.updatePreviewMix(next, playbackOwned && player.active);
         if (!live) stopPlayback();
         publishingLiveMix = live;
         document = next;
@@ -190,6 +200,62 @@ Rectangle {
         soundAssemblyController.updatePreviewMix(next, true);
     }
 
+    function previewBoundsFor(value: var): var {
+        const duration = assemblyDuration(value);
+        const marker = (value.markers || []).find(item => item.id === previewMarkerId);
+        if (marker && marker.endMillis > marker.startMillis && marker.endMillis <= duration)
+            return {start: marker.startMillis, end: marker.endMillis};
+        const selected = previewSelection ? Selection.bounds(value.tracks || [], selectedClipIds) : null;
+        return selected ? selected : {start: 0, end: duration};
+    }
+
+    function addMarker(useSelection: bool): void {
+        if (!hasDocument || soundAssemblyController.running || markers.length >= 256 || (useSelection && !selectionBounds)) return;
+        const marker = {id: backend.newAssemblyObjectId(), name: (useSelection ? qsTr("Range %1") : qsTr("Marker %1")).arg(markers.length + 1),
+                        startMillis: Math.round(useSelection ? selectionBounds.start : playheadMillis)};
+        if (useSelection) marker.endMillis = Math.round(selectionBounds.end);
+        mutate(next => { next.markers = (next.markers || []).concat([marker]); });
+        selectedMarkerId = marker.id;
+        markersVisible = true;
+    }
+
+    function patchMarker(id: string, key: string, value: var): void {
+        mutate(next => {
+            const marker = (next.markers || []).find(item => item.id === id);
+            if (marker) marker[key] = value;
+        });
+    }
+
+    function deleteMarker(id: string): void {
+        mutate(next => next.markers = (next.markers || []).filter(item => item.id !== id));
+        if (selectedMarkerId === id) selectedMarkerId = "";
+    }
+
+    function seekMarker(id: string): void {
+        const marker = markers.find(item => item.id === id);
+        if (!marker || marker.startMillis > durationMillis) return;
+        selectedMarkerId = id;
+        seekTo(marker.startMillis);
+        timelineFlick.contentX = Math.max(0, Math.min(timelineFlick.contentWidth - timelineFlick.width, marker.startMillis * pixelsPerSecond / 1000 - 40));
+    }
+
+    function navigateMarker(direction: int): void {
+        const available = markers.filter(item => item.startMillis <= durationMillis);
+        const next = direction > 0 ? available.find(item => item.startMillis > playheadMillis + 1)
+                                  : available.slice().reverse().find(item => item.startMillis < playheadMillis - 1);
+        if (next) seekMarker(next.id);
+    }
+
+    function previewMarker(id: string): void {
+        const marker = markers.find(item => item.id === id);
+        if (!marker || !(marker.endMillis > marker.startMillis) || marker.endMillis > durationMillis) return;
+        previewSelection = false;
+        previewMarkerId = id;
+        selectedMarkerId = id;
+        playheadMillis = marker.startMillis;
+        preview();
+    }
+
     function undo(): void {
         if (!canUndo)
             return;
@@ -202,6 +268,7 @@ Rectangle {
         publishDocument(target.document);
         selectedClipIds = target.ids;
         selectedClipId = target.primary;
+        selectedMarkerId = target.marker || "";
         dirty = authoredJson(document) !== savedDocumentJson;
         reconcileSelection();
     }
@@ -218,6 +285,7 @@ Rectangle {
         publishDocument(target.document);
         selectedClipIds = target.ids;
         selectedClipId = target.primary;
+        selectedMarkerId = target.marker || "";
         dirty = authoredJson(document) !== savedDocumentJson;
         reconcileSelection();
     }
@@ -662,6 +730,10 @@ Rectangle {
             togglePlayback();
         else if (event.key === Qt.Key_S && !command)
             splitSelectedClip();
+        else if (event.key === Qt.Key_M && !command)
+            addMarker((event.modifiers & Qt.ShiftModifier) !== 0);
+        else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right) && (event.modifiers & Qt.AltModifier))
+            navigateMarker(event.key === Qt.Key_Left ? -1 : 1);
         else if (event.key === Qt.Key_A && command)
             selectAllClips();
         else if (event.key === Qt.Key_D && command)
@@ -842,9 +914,13 @@ Rectangle {
                     EchoIconButton {
                         source: "qrc:/EchoDesktop/icons/fit-selection.svg"
                                 toolTipText: qsTr("Preview selection range")
-                        selected: workspace.previewSelection
+                        selected: workspace.previewSelection || workspace.previewMarkerId.length > 0
                         enabled: workspace.selectedClip !== null && !soundAssemblyController.running
-                        onClicked: workspace.previewSelection = !workspace.previewSelection
+                        onClicked: {
+                            const wasRange = workspace.previewSelection || workspace.previewMarkerId.length > 0;
+                            workspace.previewMarkerId = "";
+                            workspace.previewSelection = !wasRange;
+                        }
                     }
                     EchoIconButton {
                         source: "qrc:/EchoDesktop/icons/loop.svg"
@@ -859,10 +935,19 @@ Rectangle {
                         onClicked: workspace.togglePlayback()
                     }
                     EchoIconButton {
+                        source: "qrc:/EchoDesktop/icons/marker.svg"
+                        toolTipText: qsTr("Markers & ranges")
+                        selected: workspace.markersVisible
+                        onClicked: workspace.markersVisible = !workspace.markersVisible
+                    }
+                    EchoIconButton {
                         source: "qrc:/EchoDesktop/icons/tune.svg"
                         toolTipText: qsTr("Show clip inspector")
-                        selected: workspace.inspectorVisible
-                        onClicked: workspace.inspectorVisible = !workspace.inspectorVisible
+                        selected: workspace.inspectorVisible && !workspace.markersVisible
+                        onClicked: {
+                            workspace.inspectorVisible = workspace.markersVisible || !workspace.inspectorVisible;
+                            workspace.markersVisible = false;
+                        }
                     }
 
                     EchoButton {
@@ -995,6 +1080,12 @@ Rectangle {
                                 }
                             }
                         }
+                    }
+                    SoundAssemblyMarkerLane {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 28
+                        visible: workspace.markers.length > 0
+                        workspace: workspace
                     }
                     Item {
                         Layout.fillWidth: true
@@ -1185,7 +1276,7 @@ Rectangle {
 
                 SoundAssemblyInspector {
                     id: clipInspector
-                    visible: workspace.inspectorVisible
+                    visible: workspace.inspectorVisible && !workspace.markersVisible
                     Layout.preferredWidth: 280
                     Layout.minimumWidth: 280
                     Layout.maximumWidth: 280
@@ -1193,6 +1284,15 @@ Rectangle {
                     workspace: workspace
                     renderController: soundAssemblyController
                     waveforms: assemblyWaveforms.waveforms
+                }
+                SoundAssemblyMarkers {
+                    visible: workspace.markersVisible
+                    enabled: workspace.hasDocument && !soundAssemblyController.running
+                    Layout.preferredWidth: 280
+                    Layout.minimumWidth: 280
+                    Layout.maximumWidth: 280
+                    Layout.fillHeight: true
+                    workspace: workspace
                 }
             }
         }

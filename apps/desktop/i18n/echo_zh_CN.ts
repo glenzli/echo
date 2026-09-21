@@ -4935,6 +4935,9 @@
             <source>Untitled project</source>
             <translation>未命名工程</translation>
         </message>
+        <message><source>Range %1</source><translation>区间 %1</translation></message>
+        <message><source>Marker %1</source><translation>标记 %1</translation></message>
+        <message><source>Markers &amp; ranges</source><translation>标记与区间</translation></message>
     </context>
     <context>
         <name>SoundCard</name>
@@ -7233,5 +7236,27 @@
         <message><source>Track level</source><translation>轨道电平</translation></message>
         <message><source>Silent</source><translation>静音</translation></message>
         <message><source>Stereo peak after track gain, before master processing. Preview buffering may lead audible output.</source><translation>轨道增益之后、主处理之前的立体声峰值。受试听缓冲影响，读数可能先于实际播放。</translation></message>
+    </context>
+    <context>
+        <name>SoundAssemblyMarkers</name>
+        <message><source>Markers &amp; ranges</source><translation>标记与区间</translation></message>
+        <message><source>At playhead</source><translation>当前位置</translation></message>
+        <message><source>Add marker (M)</source><translation>添加标记（M）</translation></message>
+        <message><source>From selection</source><translation>所选范围</translation></message>
+        <message><source>Name selection range (Shift+M)</source><translation>命名所选区间（Shift+M）</translation></message>
+        <message><source>Mark moments to revisit, or name a range for repeated listening.</source><translation>标记值得重温的时刻，或为反复试听的区间命名。</translation></message>
+        <message><source>Outside current audio</source><translation>超出当前音频</translation></message>
+        <message><source>Marker name</source><translation>标记名称</translation></message>
+        <message><source>Start</source><translation>起点</translation></message>
+        <message><source>Marker start (seconds)</source><translation>标记起点（秒）</translation></message>
+        <message><source>End</source><translation>终点</translation></message>
+        <message><source>Marker end (seconds)</source><translation>标记终点（秒）</translation></message>
+        <message><source>Preview range</source><translation>试听区间</translation></message>
+        <message><source>Delete</source><translation>删除</translation></message>
+        <message><source>Markers stay at their timeline positions when clips move. Alt+← / → jumps between markers.</source><translation>移动片段时，标记保持在时间线上的原位置。Alt+← / → 可跳转到前后标记。</translation></message>
+    </context>
+    <context>
+        <name>SoundAssemblyMarkerLane</name>
+        <message><source>MARKERS</source><translation>标记</translation></message>
     </context>
 </TS>

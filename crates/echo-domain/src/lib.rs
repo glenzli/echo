@@ -6,7 +6,7 @@
 //! - `original` owns the immutable original reference and content identity;
 //! - `adjustment` owns validated non-destructive restoration intent;
 //! - `source_edit` owns original-time edit segments and effect masks;
-//! - `assembly` owns multi-asset tracks, clips, composition time, and master
+//! - `assembly` owns multi-asset tracks, clips, composition time, durable navigation markers, and master
 //!   output intent without widening the asset-local adjustment aggregate;
 //! - `processing_recipe` owns reusable processing snapshots and their
 //!   deterministic asset-local materialization;
@@ -65,8 +65,8 @@ pub use analysis::{
     ALL_ANALYSIS_LEVELS, AnalysisKind, AnalysisLevel, AnalysisRecord, ModelIdentity,
 };
 pub use assembly::{
-    AssemblyClip, AssemblyMaster, AssemblySourceRole, AssemblyTrack, GainEnvelope,
-    GainEnvelopePoint, MAX_ASSEMBLY_CLIPS, MAX_ASSEMBLY_DURATION_MILLIS,
+    AssemblyClip, AssemblyMarker, AssemblyMaster, AssemblySourceRole, AssemblyTrack, GainEnvelope,
+    GainEnvelopePoint, MAX_ASSEMBLY_CLIPS, MAX_ASSEMBLY_DURATION_MILLIS, MAX_ASSEMBLY_MARKERS,
     MAX_ASSEMBLY_NAME_CHARACTERS, MAX_ASSEMBLY_PAN_PERCENT, MAX_ASSEMBLY_TRACK_NAME_CHARACTERS,
     MAX_ASSEMBLY_TRACKS, MAX_GAIN_ENVELOPE_POINTS, MIN_ASSEMBLY_PAN_PERCENT, SoundAssembly,
     SoundAssemblyError,
@@ -85,8 +85,8 @@ pub use creative_vfx::{
 pub use freeze_vfx::{FREEZE_CAPTURE_PRE_ROLL_MILLIS, FreezeVfxSettings};
 pub use granular_vfx::GranularVfxSettings;
 pub use ids::{
-    AssemblyClipId, AssemblyTrackId, AssetId, ProcessingRecipeId, ProcessingRecipeRevisionId,
-    SoundAssemblyId,
+    AssemblyClipId, AssemblyMarkerId, AssemblyTrackId, AssetId, ProcessingRecipeId,
+    ProcessingRecipeRevisionId, SoundAssemblyId,
 };
 pub use metadata_calibration::{
     MAX_METADATA_CAPTION_CHARACTERS, MAX_METADATA_KEYWORDS, MAX_METADATA_LABEL_CHARACTERS,

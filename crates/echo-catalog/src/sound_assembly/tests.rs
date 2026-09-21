@@ -44,6 +44,40 @@ fn exact_asset_revision_and_source_bounds_are_durable() {
     assert_eq!(loaded.assembly, assembly);
     assert_eq!(list(&catalog)[0].duration_millis, 7_500);
 
+    let annotated = assembly
+        .clone()
+        .with_markers(vec![
+            echo_domain::AssemblyMarker::new(
+                echo_domain::AssemblyMarkerId::new(),
+                "Rain detail".into(),
+                1500,
+                Some(2800),
+            )
+            .unwrap(),
+        ])
+        .unwrap();
+    let annotated_revision = catalog
+        .with_transaction(|tx| record_sound_assembly(tx, &annotated, 25))
+        .unwrap();
+    assert_eq!(annotated_revision.revision_number, 2);
+    assert_eq!(
+        catalog
+            .with_transaction(|tx| latest_sound_assembly(tx, assembly.id()))
+            .unwrap()
+            .unwrap()
+            .assembly,
+        annotated
+    );
+    assert!(
+        catalog
+            .with_transaction(|tx| sound_assembly_at_revision(tx, assembly.id(), first.revision_id))
+            .unwrap()
+            .unwrap()
+            .assembly
+            .markers()
+            .is_empty()
+    );
+
     let invalid = document(assembly_id, asset_id, adjustment_id, 10_001, "Too long");
     let error = catalog
         .with_transaction(|transaction| record_sound_assembly(transaction, &invalid, 30))

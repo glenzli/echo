@@ -170,6 +170,43 @@ impl FromStr for AssemblyClipId {
     }
 }
 
+/// Identifies one durable timeline marker inside a sound assembly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct AssemblyMarkerId(Uuid);
+
+impl AssemblyMarkerId {
+    #[must_use]
+    pub fn new() -> Self {
+        Self(Uuid::now_v7())
+    }
+
+    #[must_use]
+    pub const fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+}
+
+impl Default for AssemblyMarkerId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl fmt::Display for AssemblyMarkerId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl FromStr for AssemblyMarkerId {
+    type Err = uuid::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(value).map(Self)
+    }
+}
+
 /// Identifies one user-owned reusable processing recipe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]

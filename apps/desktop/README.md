@@ -68,6 +68,14 @@ reusing track colors and typography; it dispatches edits to the workspace
 without owning another undo stack. `EchoValueSpinBox.qml` owns themed numeric
 input, and `EchoTimeSpinBox.qml` adds the seconds-to-milliseconds projection.
 `SoundAssemblyTrack.qml` owns a lane and its fixed mix controls.
+`SoundAssemblyMarkers.qml` owns named-point/range navigation and precision fields;
+`SoundAssemblyMarkerLane.qml` displays their composition-time positions. `M` adds a
+point, `Shift+M` names the selected span, and `Alt+Left/Right` navigates points.
+Annotations persist in assembly revisions and portable projects, use their own
+UUIDs, and remain fixed when clips move or ripple-delete. Out-of-audio entries
+remain editable but cannot start invalid playback. Named-range boundaries bind
+the preview window; editing those boundaries invalidates it. Domain validation
+lives in `assembly/marker.rs`; omitted/empty annotations preserve legacy JSON.
 Track gain, pan, mute, solo and master gain can change during audition, including
 undo/redo and paused playback. Drag samples remain temporary; release records
 one history step. `SoundAssemblyController` admits only controls over the same
