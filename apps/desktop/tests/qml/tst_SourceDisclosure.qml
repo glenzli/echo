@@ -64,4 +64,13 @@ TestCase {
         dialog.close(); openDialog(); verify(!dialog.recordExpanded);
     }
 
+    function test_prepared_sound_record_preserves_original_and_both_jobs() {
+        asset={id:"source",durationMillis:3000,sourceDisclosure:{sources:[{assetId:"source",revisionId:0,origin:"runtime_generated",generation:{generation_kind:"sound_effect",input_text:"雨声，不要音乐",request:{duration_seconds:3,seed:7},prompt_preparation:{effective_prompt:"Rain, no music",rules_revision:"rules-1",text_job:{physical_model:"local-text",id:"text-job-1"}},runtime:{job:{physical_model:"small-sfx",model_build:"fixed",id:"sound-job-2"}}},spans:[{kind:"ai_generated",startMillis:0,endMillis:3000,note:""}]}]}};
+        openDialog(); mouseClick(findChild(dialog,"generationRecordToggle"));
+        const record=findChild(dialog,"generationRecordText").text;
+        for (const value of ["雨声，不要音乐","Rain, no music","rules-1","local-text","text-job-1","sound-job-2"])
+            verify(record.indexOf(value)>=0,value);
+        verify(dialog.readOnly); dialog.save(); compare(writes.length,0);
+    }
+
 }
