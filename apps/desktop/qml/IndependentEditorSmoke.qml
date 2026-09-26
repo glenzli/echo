@@ -21,6 +21,45 @@ Item {
         function onWaveformsChanged() { ++smoke.waveformPublications; }
     }
     function require(value, message) { if (!value) throw new Error(message); }
+    function itemNamed(root, name) {
+        if (root.objectName === name) return root;
+        for (const child of root.children || []) {
+            const found = itemNamed(child, name);
+            if (found) return found;
+        }
+        return null;
+    }
+    function checkPendingInputs() {
+        assembly.markersVisible=false; assembly.inspectorVisible=true;
+        const first=assembly.tracks[0].clips[0].id, second=assembly.tracks[1].clips[0].id;
+        assembly.selectClip(0,first,0,false);
+        require(shell.flushDrafts(),"pending input baseline could not save");
+        const initial=assembly.selectedClip.sourceEndMillis, undoCount=assembly.undoStack.length;
+        const field=itemNamed(assembly,"inspector-sourceEndMillis");
+        require(field!==null,"timing field not instantiated");
+        const typed=Math.min(initial-500,3500);
+        field.contentItem.forceActiveFocus();
+        field.contentItem.text=field.textFromValue(typed,field.locale);
+        require(shell.checkpointDrafts(),"recovery checkpoint failed");
+        require(field.contentItem.activeFocus && assembly.selectedClip.sourceEndMillis===initial && assembly.undoStack.length===undoCount,
+                "recovery committed an unfinished input or stole focus");
+        require(shell.flushDrafts(),"focused timing failed to save");
+        require(assembly.selectedClip.sourceEndMillis===typed && assembly.undoStack.length===undoCount+1,
+                "save omitted pending seconds or recorded multiple edits");
+        const saved=backend.soundAssembly(assembly.document.id);
+        require(saved.tracks[0].clips[0].sourceEndMillis===typed,"saved revision retained stale seconds");
+        assembly.undo(); require(assembly.selectedClip.sourceEndMillis===initial,"typed timing undo failed");
+        assembly.redo(); require(assembly.selectedClip.sourceEndMillis===typed,"typed timing redo failed");
+        assembly.undo();
+        const otherEnd=assembly.tracks[1].clips[0].sourceEndMillis;
+        field.contentItem.forceActiveFocus(); field.contentItem.text=field.textFromValue(typed,field.locale);
+        assembly.selectClip(1,second,0,false);
+        require(assembly.tracks[0].clips[0].sourceEndMillis===typed && assembly.tracks[1].clips[0].sourceEndMillis===otherEnd,
+                "selection lost input or applied it to the next clip");
+        assembly.undo(); require(assembly.tracks[0].clips[0].sourceEndMillis===initial,"selection commit undo failed");
+        require(shell.flushDrafts(),"pending input baseline restoration failed");
+        facts.pendingInput={save:true,persisted:true,undoRedo:true,selectionTarget:true,recoveryPreservesTyping:true};
+    }
     function checkUnchangedEdits() {
         const document = assembly.document;
         const undo = assembly.undoStack.length, redo = assembly.redoStack.length;
@@ -193,6 +232,9 @@ Item {
             require(renderExporter.hasResult,renderExporter.errorText || "single-source export failed");
             facts.singleExport=renderExporter.outputPath;
             shell.showMultitrack();require(assembly.hasDocument,"assembly creation failed");
+            stage=22;break;
+        case 22:
+            checkPendingInputs();
             checkBatchEditing();
             checkEditingContext();
             assembly.mutate(next=>{next.name='Independent arrangement';next.tracks[0].clips[0].fadeInMillis=120;next.tracks[1].clips[0].timelineStartMillis=500;});

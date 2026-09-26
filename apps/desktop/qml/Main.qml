@@ -92,12 +92,14 @@ ApplicationWindow {
 
     // Audio Space owns selection; resolve the draft before that selection can change.
     function navigate(action): void {
+        contentItem.forceActiveFocus();
         if (workspaceIndex === 1) editNavigation.request(action);
         else action();
     }
     function showMaterials(): void { navigate(() => { workspaceIndex=4; }); }
     onClosing: event => {
         if (allowClose) return;
+        contentItem.forceActiveFocus();
         soundAssembly.historyDialog.close();
         event.accepted=false;
         editNavigation.request(() => {

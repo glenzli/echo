@@ -155,6 +155,7 @@ Rectangle {
     }
 
     function openAssembly(assemblyId: string): void {
+        commitFocusedInput();
         if (dirty && !saveRevision())
             return;
         soundAssemblyController.cancel();
@@ -266,6 +267,7 @@ Rectangle {
     }
 
     function undo(): void {
+        commitFocusedInput();
         if (!canUndo)
             return;
         const previous = undoStack.slice();
@@ -283,6 +285,7 @@ Rectangle {
     }
 
     function redo(): void {
+        commitFocusedInput();
         if (!canRedo)
             return;
         const future = redoStack.slice();
@@ -299,7 +302,21 @@ Rectangle {
         reconcileSelection();
     }
 
+    // Complete the focused field before reading dirty state or changing its clip.
+    // Toolbar buttons deliberately keep focus; Qt commits editable controls on
+    // focus loss, so doing this after selection/save would target stale state.
+    function commitFocusedInput(): void {
+        forceActiveFocus();
+    }
+
     function saveRevision(): var {
+        commitFocusedInput();
+        return checkpointRevision();
+    }
+
+    // Recovery may checkpoint authored changes while another field is being
+    // typed. It must not steal focus or turn each partial number into an edit.
+    function checkpointRevision(): var {
         if (!hasDocument)
             return null;
         const saved = backend.saveSoundAssembly(document);
@@ -320,6 +337,7 @@ Rectangle {
     }
 
     function restoreHistoryRevision(revision: var): void {
+        commitFocusedInput();
         if (!hasDocument || !revision || revision.id!==document.id || soundAssemblyController.running)
             return;
         if (authoredJson(revision)===authoredJson(document)) return;
@@ -334,6 +352,7 @@ Rectangle {
     }
 
     function preview(): void {
+        commitFocusedInput();
         materialPlayer.stop();
         const revision = dirty ? saveRevision() : document;
         if (revision) {
@@ -345,6 +364,7 @@ Rectangle {
     }
 
     function exportMix(): void {
+        commitFocusedInput();
         const revision = dirty ? saveRevision() : document;
         if (!revision)
             return;
@@ -353,6 +373,7 @@ Rectangle {
     }
 
     function keepMemory(): void {
+        commitFocusedInput();
         materialPlayer.stop();
         const revision = dirty ? saveRevision() : document;
         if (revision)
@@ -372,6 +393,7 @@ Rectangle {
         return asset ? SoundSemantics.sourceTitle(asset) : qsTr("Unavailable source");
     }
     function openClipEditor(): void {
+        commitFocusedInput();
         if (!selectedClip)
             return;
         const clipId = selectedClip.id;
@@ -473,6 +495,7 @@ Rectangle {
     }
 
     function deleteTrack(trackIndex: int): void {
+        commitFocusedInput();
         if (trackIndex < 0 || trackIndex >= tracks.length || tracks.length <= 1 || totalClipCount() <= tracks[trackIndex].clips.length)
             return;
         mutate(next => next.tracks.splice(trackIndex, 1));
@@ -514,22 +537,27 @@ Rectangle {
             patchClip(selectedClipId, Editing.trim(selectedClip, key === "sourceStartMillis" ? "left" : "right", value - selectedClip[key], sourceDurationFor(selectedClip)));
     }
     function deleteSelectedClip(): void {
+        commitFocusedInput();
         applySelectionResult(Selection.remove(tracks, selectedClipIds));
     }
 
     function duplicateSelectedClip(): void {
+        commitFocusedInput();
         applySelectionResult(Selection.duplicate(tracks, selectedClipIds, () => backend.newAssemblyObjectId()));
     }
 
     function splitSelectedClip(): void {
+        commitFocusedInput();
         applySelectionResult(Selection.split(tracks, selectedClipIds, playheadMillis, () => backend.newAssemblyObjectId()));
     }
 
     function moveSelectedClipToTrack(delta: int): void {
+        commitFocusedInput();
         applySelectionResult(Selection.moveTracks(tracks, selectedClipIds, delta));
     }
 
     function addTrack(): void {
+        commitFocusedInput();
         if (!hasDocument || tracks.length >= 8)
             return;
         const id = backend.newAssemblyObjectId();
@@ -565,6 +593,7 @@ Rectangle {
     }
 
     function addLibraryAsset(asset: var, role: string): void {
+        commitFocusedInput();
         if (!asset || asset.assemblyId || totalClipCount() >= 256)
             return;
         if (!hasDocument) {
@@ -610,6 +639,7 @@ Rectangle {
     }
 
     function selectClip(trackIndex: int, clipId: string, modifiers: int, preserve: bool): void {
+        commitFocusedInput();
         if (modifiers & (Qt.ControlModifier | Qt.MetaModifier | Qt.ShiftModifier)) {
             selectedClipIds = selectedClipIds.includes(clipId) ? selectedClipIds.filter(id => id !== clipId) : selectedClipIds.concat([clipId]);
             selectedClipId = selectedClipIds.includes(clipId) ? clipId : selectedClipIds[selectedClipIds.length - 1] || "";
@@ -622,6 +652,7 @@ Rectangle {
         forceActiveFocus();
     }
     function selectAllClips(): void {
+        commitFocusedInput();
         selectedClipIds = tracks.reduce((all, track) => all.concat(track.clips.map(clip => clip.id)), []);
         selectedClipId = selectedClipIds[0] || "";
         reconcileSelection();
@@ -662,6 +693,7 @@ Rectangle {
         return candidates.length ? candidates[0] : null;
     }
     function crossfadeSelected(): void {
+        commitFocusedInput();
         const candidate = crossfadeCandidate();
         if (!candidate)
             return;
@@ -679,6 +711,7 @@ Rectangle {
         });
     }
     function rippleDelete(allTracks: bool): void {
+        commitFocusedInput();
         const result = Selection.ripple(tracks, selectedClipIds, !!allTracks, () => backend.newAssemblyObjectId());
         if (applySelectionResult(result)) seekTo(result.position);
     }
@@ -689,6 +722,7 @@ Rectangle {
         if (owned) player.stop();
     }
     function togglePlayback(): void {
+        commitFocusedInput();
         if (soundAssemblyController.running) {
             soundAssemblyController.cancel();
             pendingPreviewJson = "";

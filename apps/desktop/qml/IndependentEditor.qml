@@ -50,9 +50,13 @@ ApplicationWindow {
         if (window.flushDrafts()) streamImport.present(files);
     }
     function flushDrafts(): bool {
+        contentItem.forceActiveFocus();
+        return checkpointDrafts();
+    }
+    function checkpointDrafts(): bool {
         if (editor.dirty) editor.save();
         if (editor.dirty) return false;
-        if (assembly.dirty && !assembly.saveRevision()) return false;
+        if (assembly.dirty && !assembly.checkpointRevision()) return false;
         return true;
     }
     function chooseSource(index: int): void {
@@ -96,6 +100,7 @@ ApplicationWindow {
         if (allowClose) return;
         close.accepted = false;
         if (processing) { notice = qsTr("Finish or cancel the current operation before closing."); return; }
+        contentItem.forceActiveFocus();
         if (projectDirty || editor.dirty || assembly.dirty) closeDialog.open();
         else finishClose();
     }
@@ -128,7 +133,7 @@ ApplicationWindow {
     }
     Timer {
         id: recoveryTimer; interval: 1500
-        onTriggered: if (!processing && !editor.adjustment.gestureActive) flushDrafts(); else restart();
+        onTriggered: if (!processing && !editor.adjustment.gestureActive) checkpointDrafts(); else restart();
     }
     Shortcut { sequences: [StandardKey.Save]; onActivated: saveProject(false) }
     Shortcut { sequences: [StandardKey.SaveAs]; onActivated: saveProject(true) }
