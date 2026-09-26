@@ -18,6 +18,17 @@ use std::path::Path;
 
 #[cxx::bridge(namespace = "echo::desktop")]
 mod ffi {
+    /// One prepared sound-generation request crossing the desktop ABI.
+    #[derive(Debug)]
+    struct SoundMaterialRequestWire {
+        model: String,
+        prompt: String,
+        preparation: String,
+        duration_seconds: u32,
+        seed: u32,
+        ambience: bool,
+    }
+
     /// One authored parametric equalizer band crossing the desktop ABI.
     #[derive(Debug)]
     struct EqualizerBandWire {
@@ -607,12 +618,9 @@ mod ffi {
             directory: &str,
             endpoint: &str,
         ) -> Result<Box<GeneratedAudioCandidate>>;
+        fn prepare_sound_material_prompt(prompt: &str, endpoint: &str) -> Result<String>;
         fn generate_sound_material_candidate(
-            model: &str,
-            prompt: &str,
-            duration_seconds: u32,
-            seed: u32,
-            ambience: bool,
+            input: &SoundMaterialRequestWire,
             directory: &str,
             endpoint: &str,
         ) -> Result<Box<GeneratedAudioCandidate>>;
@@ -1807,24 +1815,15 @@ fn generate_narration_candidate(
 ) -> Result<Box<GeneratedAudioCandidate>, String> {
     generated_audio::generate_narration(text, directory, endpoint)
 }
+fn prepare_sound_material_prompt(prompt: &str, endpoint: &str) -> Result<String, String> {
+    generated_audio::prepare_sound_prompt(prompt, endpoint)
+}
 fn generate_sound_material_candidate(
-    model: &str,
-    prompt: &str,
-    duration_seconds: u32,
-    seed: u32,
-    ambience: bool,
+    input: &ffi::SoundMaterialRequestWire,
     directory: &str,
     endpoint: &str,
 ) -> Result<Box<GeneratedAudioCandidate>, String> {
-    generated_audio::generate_sound_material(
-        model,
-        prompt,
-        duration_seconds,
-        seed,
-        ambience,
-        directory,
-        endpoint,
-    )
+    generated_audio::generate_sound_material(input, directory, endpoint)
 }
 fn generated_audio_candidate_details(
     candidate: &GeneratedAudioCandidate,

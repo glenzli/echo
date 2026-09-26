@@ -34,6 +34,17 @@ Popup {
         spans=JSON.parse(JSON.stringify(readOnly ? Disclosure.sources(source).reduce((rows,s) => rows.concat(Disclosure.list(s.spans).map(p => Object.assign({},p,{sourceId:s.assetId}))),[]) : revision.spans));
         note.text=""; errorText=""; kind.currentIndex=0; recordExpanded=false; open();
     }
+    function generationRecord() {
+        const g=generation;
+        if (!g) return "";
+        if (["sound_effect","music"].indexOf(g.generation_kind)<0)
+            return qsTr("Model: %1\nBuild: %2\nNarration: %3").arg(g.runtime.job.physical_model).arg(g.runtime.job.model_build).arg(g.input_text);
+        let text=qsTr("Model: %1\nBuild: %2\nPrompt: %3\nDuration: %4 seconds\nSeed: %5").arg(g.runtime.job.physical_model).arg(g.runtime.job.model_build).arg(g.input_text).arg(g.request.duration_seconds).arg(String(g.request.seed));
+        const p=g.prompt_preparation;
+        if (p && p.text_job)
+            text+= "\n\n"+qsTr("Effective prompt: %1\nPreparation model: %2\nRules: %3\nText job: %4").arg(p.effective_prompt).arg(p.text_job.physical_model).arg(p.rules_revision).arg(p.text_job.id);
+        return text+"\n"+qsTr("Sound job: %1").arg(g.runtime.job.id);
+    }
     function append(whole) {
         if (!asset || readOnly || spans.length>=64) return;
         const start=whole?0:rangeStart, end=whole?Number(asset.durationMillis):rangeEnd;
@@ -78,9 +89,7 @@ Popup {
                 textFormat: TextEdit.PlainText; font.pixelSize: Theme.fontMeta; color: Theme.textSecondary
                 selectionColor: Theme.accent; selectedTextColor: Theme.accentText; padding: 10
                 background: Rectangle { color: Theme.surfaceSubtle; radius: 7 }
-                text: !dialog.generation ? "" : ["sound_effect","music"].indexOf(dialog.generation.generation_kind)>=0
-                    ? qsTr("Model: %1\nBuild: %2\nPrompt: %3\nDuration: %4 seconds\nSeed: %5").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text).arg(dialog.generation.request.duration_seconds).arg(String(dialog.generation.request.seed))
-                    : qsTr("Model: %1\nBuild: %2\nNarration: %3").arg(dialog.generation.runtime.job.physical_model).arg(dialog.generation.runtime.job.model_build).arg(dialog.generation.input_text)
+                text: dialog.generationRecord()
             }
         }
         Rectangle { Layout.fillWidth: true; implicitHeight: disclaimer.implicitHeight+16; radius: 7; color: Theme.warningSurface

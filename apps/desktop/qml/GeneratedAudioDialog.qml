@@ -140,16 +140,16 @@ Popup {
                         textRole: "title"
                         model: dialog.musicMode ? [
                             {title:qsTr("Choose a starting point…"),prompt:"",ambience:false},
-                            {title:qsTr("Soft piano background"),prompt:"Soft sparse piano notes, gentle reflective instrumental background, warm intimate room, no vocals or percussion.",ambience:false},
-                            {title:qsTr("Ambient synth pad"),prompt:"A warm slowly evolving ambient synthesizer pad, calm spacious instrumental texture, no vocals or drums.",ambience:false},
-                            {title:qsTr("Light acoustic guitar"),prompt:"Gentle fingerpicked acoustic guitar, simple warm instrumental background, relaxed tempo, no vocals or percussion.",ambience:false}
+                            {title:qsTr("Soft piano background"),prompt:qsTr("Soft sparse piano notes, gentle reflective instrumental background, warm intimate room, no vocals or percussion."),ambience:false},
+                            {title:qsTr("Ambient synth pad"),prompt:qsTr("A warm slowly evolving ambient synthesizer pad, calm spacious instrumental texture, no vocals or drums."),ambience:false},
+                            {title:qsTr("Light acoustic guitar"),prompt:qsTr("Gentle fingerpicked acoustic guitar, simple warm instrumental background, relaxed tempo, no vocals or percussion."),ambience:false}
                         ] : [
                             {title:qsTr("Choose a starting point…"),prompt:"",ambience:false},
-                            {title:qsTr("Rain outside a window"),prompt:"Gentle rain outside a closed window, soft steady patter, distant outdoor ambience, no speech or music.",ambience:true},
-                            {title:qsTr("Quiet room"),prompt:"A quiet room with soft air ventilation, subtle steady room tone, no speech or music.",ambience:true},
-                            {title:qsTr("Footsteps on gravel"),prompt:"Slow footsteps on a gravel path, distinct close crunches, natural outdoor sound, no speech or music.",ambience:false},
-                            {title:qsTr("A wooden door closing"),prompt:"A wooden door slowly closes with a soft creak and a single gentle latch click, no speech or music.",ambience:false},
-                            {title:qsTr("Distant traffic"),prompt:"Distant road traffic heard from a quiet park, occasional cars passing, soft continuous background, no speech or music.",ambience:true}
+                            {title:qsTr("Rain outside a window"),prompt:qsTr("Gentle rain outside a closed window, soft steady patter, distant outdoor ambience, no speech or music."),ambience:true},
+                            {title:qsTr("Quiet room"),prompt:qsTr("A quiet room with soft air ventilation, subtle steady room tone, no speech or music."),ambience:true},
+                            {title:qsTr("Footsteps on gravel"),prompt:qsTr("Slow footsteps on a gravel path, distinct close crunches, natural outdoor sound, no speech or music."),ambience:false},
+                            {title:qsTr("A wooden door closing"),prompt:qsTr("A wooden door slowly closes with a soft creak and a single gentle latch click, no speech or music."),ambience:false},
+                            {title:qsTr("Distant traffic"),prompt:qsTr("Distant road traffic heard from a quiet park, occasional cars passing, soft continuous background, no speech or music."),ambience:true}
                         ]
                         onActivated: if (currentIndex>0) { input.text=model[currentIndex].prompt; ambience.checked=model[currentIndex].ambience; }
                     }
@@ -162,7 +162,7 @@ Popup {
                     TextArea {
                         id: input; objectName: dialog.soundMaterial ? "soundMaterialPrompt" : "narrationText"
                         readOnly: dialog.busy
-                        placeholderText: dialog.soundMaterial ? (dialog.musicMode ? qsTr("Describe the instruments, mood and pace in English…") : qsTr("Describe the sound in English, including its setting and distance…")) : qsTr("What would you like to add?")
+                        placeholderText: dialog.soundMaterial ? (dialog.musicMode ? qsTr("Describe the instruments, mood and pace in Chinese or English…") : qsTr("Describe the sound in Chinese or English, including its setting and distance…")) : qsTr("What would you like to add?")
                         onTextChanged: if (preset && preset.currentIndex>0 && text!==preset.model[preset.currentIndex].prompt) preset.currentIndex=0
                         color: Theme.textPrimary; placeholderTextColor: Theme.textMuted; selectionColor: Theme.accent
                         font.pixelSize: Theme.fontBody; wrapMode: TextEdit.Wrap
@@ -173,7 +173,7 @@ Popup {
                 RowLayout {
                     Layout.fillWidth: true
                     Text { Layout.fillWidth: true; text: qsTr("%1 / 500 characters").arg(dialog.characterCount); color: dialog.characterCount>500 ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
-                    Text { text: dialog.soundMaterial ? qsTr("Local sound model · English prompts") : qsTr("Local model · Mandarin voice"); color: Theme.textMuted; font.pixelSize: Theme.fontMeta }
+                    Text { text: dialog.soundMaterial ? qsTr("Local models · Chinese / English") : qsTr("Local model · Mandarin voice"); color: Theme.textMuted; font.pixelSize: Theme.fontMeta }
                 }
                 Text {
                     Layout.fillWidth: true; visible: !!dialog.receipt && (input.text.trim()!==dialog.receipt.input_text || (dialog.soundMaterial && (dialog.modelChoice!==(dialog.receipt.request.model_choice || "stable_audio_3_small_sfx") || duration.value!==dialog.receipt.request.duration_seconds || (!dialog.musicMode && ambience.checked!==(dialog.receipt.material_category==="ambience")))))
@@ -268,7 +268,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             BusyIndicator { running: dialog.busy; visible: running; implicitWidth: 24; implicitHeight: 24 }
-            Text { Layout.fillWidth: true; text: dialog.controller.accepting ? qsTr("Saving material…") : dialog.controller.running ? qsTr("Generating locally…") : dialog.controller.candidates.length>=3 ? qsTr("Three previews ready. Remove one to generate another.") : dialog.receipt && !dialog.reviewed ? qsTr("Listen before keeping this candidate.") : ""; color: Theme.textMuted; font.pixelSize: Theme.fontMeta; wrapMode: Text.WordWrap }
+            Text { Layout.fillWidth: true; text: dialog.controller.accepting ? qsTr("Saving material…") : dialog.controller.stopping ? qsTr("Stopping… The submitted task may finish; its result will be discarded.") : dialog.controller.preparing ? qsTr("Preparing your sound description locally…") : dialog.controller.running ? qsTr("Generating locally…") : dialog.controller.candidates.length>=3 ? qsTr("Three previews ready. Remove one to generate another.") : dialog.receipt && !dialog.reviewed ? qsTr("Listen before keeping this candidate.") : ""; color: Theme.textMuted; font.pixelSize: Theme.fontMeta; wrapMode: Text.WordWrap }
         }
         RowLayout {
             Layout.fillWidth: true
@@ -282,10 +282,11 @@ Popup {
             Item { Layout.fillWidth: true }
             EchoButton {
                 objectName: dialog.controlPrefix+"Generate"
-                text: dialog.controller.candidates.length ? qsTr("Generate another") : qsTr("Generate preview")
-                enabled: !dialog.busy && dialog.durationValid && dialog.characterCount>0 && dialog.characterCount<=500 && dialog.controller.candidates.length<3
+                Layout.minimumWidth: 150
+                text: dialog.controller.running ? qsTr("Stop") : dialog.controller.candidates.length ? qsTr("Generate another") : qsTr("Generate preview")
+                enabled: dialog.controller.running ? !dialog.controller.stopping : !dialog.busy && dialog.durationValid && dialog.characterCount>0 && dialog.characterCount<=500 && dialog.controller.candidates.length<3
                 ghost: !!dialog.receipt
-                onClicked: { if (dialog.soundMaterial && !dialog.commitDuration()) return; dialog.stopPreview(); dialog.playbackError=""; if (dialog.soundMaterial) dialog.controller.requestSoundMaterial(input.text,duration.value,!dialog.musicMode && ambience.checked,inferencePrefs.runtimeEndpoint,dialog.modelChoice); else dialog.controller.request(input.text,inferencePrefs.runtimeEndpoint); }
+                onClicked: { if (dialog.controller.running) { dialog.controller.stop(); return; } if (dialog.soundMaterial && !dialog.commitDuration()) return; dialog.stopPreview(); dialog.playbackError=""; if (dialog.soundMaterial) dialog.controller.requestSoundMaterial(input.text,duration.value,!dialog.musicMode && ambience.checked,inferencePrefs.runtimeEndpoint,dialog.modelChoice); else dialog.controller.request(input.text,inferencePrefs.runtimeEndpoint); }
             }
             EchoButton {
                 objectName: dialog.controlPrefix+"Accept"

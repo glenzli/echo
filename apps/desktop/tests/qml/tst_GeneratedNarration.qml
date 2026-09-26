@@ -10,11 +10,12 @@ TestCase {
     QtObject { id: inferencePrefs; property string runtimeEndpoint: "" }
     QtObject {
         id: generatedNarration
-        property bool running: false; property bool accepting: false
+        property bool running: false; property bool accepting: false; property bool preparing: false; property bool stopping: false
         property string detailsJson: ""; property string errorText: ""; property url audioUrl: ""
         property var candidates: []; property string selectedCandidateId: ""; property var receipts: ({})
         signal accepted(string assetId)
-        function discard() { detailsJson=""; errorText=""; candidates=[]; selectedCandidateId=""; receipts=({}); }
+        function stop() { stopping=true; }
+        function discard() { preparing=false; stopping=false; detailsJson=""; errorText=""; candidates=[]; selectedCandidateId=""; receipts=({}); }
         function selectCandidate(id) { detailsJson=JSON.stringify(receipts[id]); selectedCandidateId=id; }
         function removeSelected() { candidates=candidates.filter(c=>c.id!==selectedCandidateId); if(candidates.length) selectCandidate(candidates[0].id); else { detailsJson=""; selectedCandidateId=""; } }
         function request(text,endpoint) { running=true; }

@@ -7824,6 +7824,20 @@ Seed: %5</source>
 时长：%4 秒
 种子：%5</translation>
         </message>
+        <message>
+            <source>Effective prompt: %1
+Preparation model: %2
+Rules: %3
+Text job: %4</source>
+            <translation>实际生成提示：%1
+准备模型：%2
+规则版本：%3
+文本任务：%4</translation>
+        </message>
+        <message>
+            <source>Sound job: %1</source>
+            <translation>声音任务：%1</translation>
+        </message>
     </context>
     <context>
         <name>UnsavedEditDialog</name>
@@ -8644,6 +8658,10 @@ Seed: %5</source>
             <source>Could not save this generated sound. The candidate is still available; try again.</source>
             <translation>无法保存这条生成的声音。候选仍然保留，请重试。</translation>
         </message>
+        <message>
+            <source>Could not prepare the sound description locally. Check Infer Runtime and Echo’s text access, then try again. No audio was generated.</source>
+            <translation>未能在本机准备声音描述。请检查 Infer Runtime 和 Echo 的文本访问权限后重试；尚未生成音频。</translation>
+        </message>
     </context>
     <context>
         <name>GeneratedAudioDialog</name>
@@ -8899,21 +8917,6 @@ Seed: %5</source>
             <translation>时长（秒）</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="165" />
-            <source>Describe the sound in English, including its setting and distance…</source>
-            <translation>用英文描述声音，也可以说明场景和远近…</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="165" />
-            <source>Describe the instruments, mood and pace in English…</source>
-            <translation>用英文描述乐器、氛围和节奏…</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="176" />
-            <source>Local sound model · English prompts</source>
-            <translation>本地声音模型 · 英文描述</translation>
-        </message>
-        <message>
             <location filename="../qml/GeneratedAudioDialog.qml" line="180" />
             <source>Changes apply to the next candidate. Keeping uses the selected audio and its settings.</source>
             <translation>更改会用于下一个候选。保留时使用当前选中的音频及其设置。</translation>
@@ -8927,6 +8930,62 @@ Seed: %5</source>
             <location filename="../qml/GeneratedAudioDialog.qml" line="249" />
             <source>Seed %1</source>
             <translation>种子 %1</translation>
+        </message>
+        <message>
+            <source>Soft sparse piano notes, gentle reflective instrumental background, warm intimate room, no vocals or percussion.</source>
+            <translation>轻柔稀疏的钢琴音符，温柔沉思的器乐背景，温暖亲近的房间氛围，不要人声或打击乐。</translation>
+        </message>
+        <message>
+            <source>A warm slowly evolving ambient synthesizer pad, calm spacious instrumental texture, no vocals or drums.</source>
+            <translation>温暖、缓慢变化的氛围合成器铺底，平静开阔的器乐质感，不要人声或鼓声。</translation>
+        </message>
+        <message>
+            <source>Gentle fingerpicked acoustic guitar, simple warm instrumental background, relaxed tempo, no vocals or percussion.</source>
+            <translation>轻柔的指弹木吉他，简单温暖的器乐背景，舒缓节奏，不要人声或打击乐。</translation>
+        </message>
+        <message>
+            <source>Gentle rain outside a closed window, soft steady patter, distant outdoor ambience, no speech or music.</source>
+            <translation>关闭的窗户外下着小雨，轻柔均匀的雨点声，远处的室外环境声，不要说话声或音乐。</translation>
+        </message>
+        <message>
+            <source>A quiet room with soft air ventilation, subtle steady room tone, no speech or music.</source>
+            <translation>安静的房间里有轻微的通风声，细微稳定的房间底声，不要说话声或音乐。</translation>
+        </message>
+        <message>
+            <source>Slow footsteps on a gravel path, distinct close crunches, natural outdoor sound, no speech or music.</source>
+            <translation>碎石小路上缓慢的脚步声，近处清晰的踩踏沙沙声，自然的室外声音，不要说话声或音乐。</translation>
+        </message>
+        <message>
+            <source>A wooden door slowly closes with a soft creak and a single gentle latch click, no speech or music.</source>
+            <translation>木门慢慢关上，发出轻微的吱呀声，随后一声轻轻的门闩咔哒声，不要说话声或音乐。</translation>
+        </message>
+        <message>
+            <source>Distant road traffic heard from a quiet park, occasional cars passing, soft continuous background, no speech or music.</source>
+            <translation>从安静的公园听到远处道路的交通声，偶尔有汽车经过，轻柔持续的背景声，不要说话声或音乐。</translation>
+        </message>
+        <message>
+            <source>Describe the instruments, mood and pace in Chinese or English…</source>
+            <translation>用中文或英文描述乐器、氛围和节奏…</translation>
+        </message>
+        <message>
+            <source>Describe the sound in Chinese or English, including its setting and distance…</source>
+            <translation>用中文或英文描述声音，包括环境和远近…</translation>
+        </message>
+        <message>
+            <source>Local models · Chinese / English</source>
+            <translation>本地模型 · 支持中英文</translation>
+        </message>
+        <message>
+            <source>Stopping… The submitted task may finish; its result will be discarded.</source>
+            <translation>正在停止… 已提交的任务可能继续完成，结果将被丢弃。</translation>
+        </message>
+        <message>
+            <source>Preparing your sound description locally…</source>
+            <translation>正在本机准备声音描述…</translation>
+        </message>
+        <message>
+            <source>Stop</source>
+            <translation>停止</translation>
         </message>
     </context>
     <context>

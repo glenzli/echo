@@ -44,8 +44,8 @@ pub fn record_generated_audio(
     } else {
         30
     };
-    let sound_material = receipt["schema_version"] == 2
-        && (request.get("model_choice").is_none()
+    let sound_material = matches!(receipt["schema_version"].as_u64(), Some(2 | 3))
+        && ((receipt["schema_version"] == 2 && request.get("model_choice").is_none())
             || matches!(
                 choice,
                 Some(
@@ -57,9 +57,12 @@ pub fn record_generated_audio(
         && receipt["generation_kind"] == if music { "music" } else { "sound_effect" }
         && job["intent"] == "audio.generate_sound"
         && request["model"] == "audio.generate_sound"
-        && request["prompt"] == receipt["input_text"]
+        && prompt_matches(receipt)
         && request["prompt"].as_str().is_some_and(|v| {
-            !v.trim().is_empty() && v.chars().count() <= 500 && !v.chars().any(char::is_control)
+            !v.trim().is_empty()
+                && v.len() <= 2000
+                && (receipt["schema_version"] == 3 || v.chars().count() <= 500)
+                && !v.chars().any(char::is_control)
         })
         && request["duration_seconds"]
             .as_i64()
@@ -97,6 +100,49 @@ pub fn record_generated_audio(
         return Err(error("generation Job already belongs to another result"));
     }
     Ok(())
+}
+
+fn prompt_matches(receipt: &serde_json::Value) -> bool {
+    let request = &receipt["request"];
+    let preparation = &receipt["prompt_preparation"];
+    if receipt["schema_version"] == 3 {
+        preparation["original_prompt"] == receipt["input_text"]
+            && preparation["effective_prompt"] == request["prompt"]
+            && matches!(
+                preparation["rules_revision"].as_str(),
+                Some(
+                    "infer.sound-prompt-preparation@20260926.1"
+                        | "infer.sound-prompt-preparation@20260926.2"
+                )
+            )
+            && preparation["preparation_elapsed_ms"]
+                .as_u64()
+                .is_some_and(|v| v <= 600_000)
+            && receipt["input_text"].as_str().is_some_and(|v| {
+                !v.trim().is_empty() && v.chars().count() <= 500 && !v.chars().any(char::is_control)
+            })
+            && if preparation["text_job"].is_null() {
+                preparation["effective_prompt"] == preparation["original_prompt"]
+            } else {
+                let text_job = &preparation["text_job"];
+                text_job["app_id"] == "echo"
+                    && text_job["intent"] == "text.edit"
+                    && text_job["state"] == "succeeded"
+                    && text_job["placement"] == "local"
+                    && text_job["id"].as_str().is_some_and(|v| !v.is_empty())
+                    && text_job["model_build"]
+                        .as_str()
+                        .is_some_and(|v| !v.is_empty())
+                    && text_job["physical_model"]
+                        .as_str()
+                        .is_some_and(|v| !v.is_empty())
+                    && text_job["constraints"]["offline_required"] == true
+                    && text_job["constraints"]["fallback"] == "none"
+                    && text_job["constraints"]["max_cost_usd"].as_f64() == Some(0.0)
+            }
+    } else {
+        request["prompt"] == receipt["input_text"]
+    }
 }
 
 #[cfg(test)]

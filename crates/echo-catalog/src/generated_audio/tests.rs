@@ -1,4 +1,28 @@
 use crate::{CatalogError, open_catalog};
+
+#[test]
+fn persisted_prompt_revisions_keep_exact_original_and_effective_text() {
+    let mut receipt = serde_json::json!({
+        "schema_version": 3,
+        "input_text": "Rain, no music",
+        "request": {"prompt": "Rain, no music"},
+        "prompt_preparation": {
+            "original_prompt": "Rain, no music", "effective_prompt": "Rain, no music",
+            "rules_revision": "infer.sound-prompt-preparation@20260926.1",
+            "text_job": null, "preparation_elapsed_ms": 0
+        }
+    });
+    assert!(super::prompt_matches(&receipt));
+    receipt["prompt_preparation"]["rules_revision"] =
+        "infer.sound-prompt-preparation@20260926.2".into();
+    assert!(super::prompt_matches(&receipt));
+    receipt["request"]["prompt"] = "Rain and music".into();
+    assert!(!super::prompt_matches(&receipt));
+    receipt["request"]["prompt"] = "Rain, no music".into();
+    receipt["prompt_preparation"]["rules_revision"] = "unknown".into();
+    assert!(!super::prompt_matches(&receipt));
+}
+
 #[test]
 fn previous_disclosure_catalog_upgrades_without_losing_its_ledger() {
     let root = std::env::temp_dir().join(format!(

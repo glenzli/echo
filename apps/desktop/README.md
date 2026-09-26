@@ -456,12 +456,22 @@ including exact result selection, asynchronous generation/admission and file lif
 `GeneratedAudioDialog.qml` tracks audition per candidate and requires it before keeping.
 `GeneratedMaterialMenu.qml` exposes sound effects, music backgrounds and narration.
 Sound effects use the distinct `audio.generate_sound` intent, 1–30 seconds, an explicit seed
-and at most 500 prompt characters. English presets describe rain, room tone, footsteps, a
+and at most 500 prompt characters. Localized Chinese/English presets describe rain, room tone, footsteps, a
 door and traffic; music presets cover piano, synth pads and acoustic guitar.
 The explicit model choice routes Small-SFX or Small-Music without substituting deployments.
 Music receipts retain their own `music` category; absent choice in old sound receipts still
 means Small-SFX. Open Small remains hidden until authorized local execution is verified.
-This workflow does not promise seamless loops or prompt translation.
+This workflow does not promise seamless loops. `prepare_sound_material_prompt` uses Infer's
+explicit versioned helper: English passes through; Chinese/mixed descriptions use one faithful
+local Qwen3.5 4B text Job before audio. The controller caches up to four preparations per dialog,
+keyed by whitespace-normalized original and endpoint; seed, model and duration retries reuse it.
+New generations and cache reuse call `validate_for_generation`; legacy preparation receipts remain
+readable but cannot start new audio. The SDK rejects common exclusion changes, without claiming
+complete semantic equivalence; explicit audition and acceptance still apply.
+Preparation failures never submit audio. Stop retains existing candidates; a task already submitted
+may finish, but its result is discarded. Close clears candidates and prompt preparations.
+Schema 3 receipts retain original/effective prompts, rules, text Job and sound Job. Schema 1 narration
+and schema 2 sound receipts stay readable. `SourceDisclosureDialog` exposes the preparation record.
 Core `generated_audio` stages immutable WAV bytes and mandatory typed receipts; Catalog
 validates duration, prompt, seed and generation kind before accepting the material.
 Changing the input applies to the next generation; accepting keeps the selected audio and
@@ -472,6 +482,10 @@ a fresh caller-owned catalog directory. `ECHO_SOUND_EFFECT_LIVE_ROOT` runs the s
 playback and acceptance contract against the local sound model;
 `ECHO_SOUND_MATERIAL_MODEL=stable_audio_3_small_music` selects the music path. These integration modes need
 the normal GUI event loop. Neither mode touches the user’s existing sound library.
+`ECHO_GENERATION_PROMPT_A/B` and `ECHO_GENERATION_SECONDS` set focused bilingual fixtures;
+identical prompts verify preparation reuse across seeds. The opt-in public contract
+`crates/echo-core/tests/infer_audio_routes_contract.rs` uses `ECHO_ROUTE_LIVE_ROOT` to verify
+speech, transcription, alignment, events, both embedding families and summary routing with synthetic audio.
 
 Audio exports carry the source-kind union in a bounded `echo.source-disclosure.v1` container
 comment (WAV LIST/INFO/ICMT or FLAC comment). `echo-domain::portable_disclosure` owns that

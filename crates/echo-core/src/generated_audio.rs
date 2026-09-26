@@ -18,6 +18,8 @@ struct Receipt {
     #[serde(skip_serializing_if = "Option::is_none")]
     material_category: Option<String>,
     input_text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prompt_preparation: Option<infer_runtime_client::PreparedSoundPrompt>,
     /// The exact bounded request sent to Runtime; source bytes stay independent.
     request: serde_json::Value,
     runtime: RuntimeProvenance,
@@ -84,6 +86,7 @@ fn stage(
             generation_kind: None,
             material_category: None,
             input_text: text.into(),
+            prompt_preparation: None,
             request: serde_json::to_value(crate::infer_runtime::speech::request(text))
                 .map_err(failure)?,
             runtime,
@@ -108,9 +111,17 @@ pub fn accept_generated_audio(
         .parent()
         .ok_or_else(|| failure("missing catalog root"))?;
     let receipt = &candidate.receipt;
+    if receipt.schema_version == 3 {
+        receipt
+            .prompt_preparation
+            .as_ref()
+            .ok_or_else(|| failure("missing sound prompt preparation"))?
+            .validate_for_generation(&receipt.input_text, "echo")
+            .map_err(failure)?;
+    }
     let relative = Path::new("media/generated")
         .join(&receipt.output_hash)
-        .join(if receipt.schema_version == 2 {
+        .join(if receipt.generation_kind.is_some() {
             "sound.wav"
         } else {
             "narration.wav"
@@ -263,8 +274,45 @@ pub fn generate_sound_material(
     config: InferRuntimeConfig,
 ) -> Result<GeneratedAudioCandidate, CoreError> {
     spec.validate()?;
-    let (bytes, runtime, request) = crate::infer_runtime::sound_generation::generate(config, spec)?;
-    stage_sound_material(spec, directory, &bytes, runtime, request)
+    let preparation = prepare_sound_material_prompt(&spec.prompt, config.clone())?;
+    generate_prepared_sound_material(spec, &preparation, directory, config)
+}
+
+/// Prepare once, then retain this validated provenance for candidate retries.
+/// # Errors
+/// Rejects invalid prompts and unavailable or inconsistent local text Jobs.
+pub fn prepare_sound_material_prompt(
+    prompt: &str,
+    config: InferRuntimeConfig,
+) -> Result<String, CoreError> {
+    let normalized = prompt.split_whitespace().collect::<Vec<_>>().join(" ");
+    if prompt.chars().count() > 500 {
+        return Err(failure("prompt exceeds 500 characters"));
+    }
+    let prepared = crate::infer_runtime::sound_generation::prepare(config, &normalized)?;
+    serde_json::to_string(&prepared).map_err(failure)
+}
+
+/// Generate from a previously prepared prompt without repeating the text Job.
+/// # Errors
+/// Rejects stale/invalid preparation, invalid audio and inconsistent provenance.
+pub fn generate_prepared_sound_material(
+    spec: &SoundMaterialSpec,
+    preparation: &str,
+    directory: &Path,
+    config: InferRuntimeConfig,
+) -> Result<GeneratedAudioCandidate, CoreError> {
+    spec.validate()?;
+    let prepared = crate::infer_runtime::sound_generation::decode_preparation(
+        preparation,
+        &spec.normalized_prompt(),
+    )?;
+    let (bytes, runtime, request) =
+        crate::infer_runtime::sound_generation::generate(config, spec, &prepared)?;
+    let mut candidate = stage_sound_material(spec, directory, &bytes, runtime, request)?;
+    candidate.receipt.schema_version = 3;
+    candidate.receipt.prompt_preparation = Some(prepared);
+    Ok(candidate)
 }
 
 fn stage_sound_material(
@@ -323,6 +371,7 @@ fn stage_sound_material(
                 .into(),
             ),
             input_text: spec.normalized_prompt(),
+            prompt_preparation: None,
             request,
             runtime,
             output_hash: ContentHash::from(blake3::hash(bytes)).to_string(),

@@ -40,28 +40,41 @@ GeneratedAudioController::GeneratedAudioController(
     QString catalog,
     QObject* parent,
     Generate generate,
-    Kind kind
+    Kind kind,
+    Prepare prepare
 ) :
-    QObject(parent), kind_(kind), generate_(std::move(generate)),
+    QObject(parent), kind_(kind), prepare_(std::move(prepare)), generate_(std::move(generate)),
     catalog_(QFileInfo(catalog).absoluteFilePath()) {
+    if (!prepare_)
+        prepare_ = [](const QString& prompt, const QString& endpoint) {
+            const auto json = echo::desktop::prepare_sound_material_prompt(
+                prompt.toStdString(),
+                endpoint.toStdString()
+            );
+            return QString::fromUtf8(json.data(), static_cast<qsizetype>(json.size()));
+        };
     if (!generate_)
         generate_ = [kind](
                         const GeneratedAudioRequest& input,
                         const QString& directory,
                         const QString& endpoint
                     ) {
-            if (kind == Kind::SoundMaterial)
+            if (kind == Kind::SoundMaterial) {
+                echo::desktop::SoundMaterialRequestWire request;
+                request.model = input.model.toStdString();
+                request.prompt = input.text.toStdString();
+                request.preparation = input.preparation.toStdString();
+                request.duration_seconds = static_cast<std::uint32_t>(input.durationSeconds);
+                request.seed = input.seed;
+                request.ambience = input.ambience;
                 return std::make_shared<RuntimeResult>(
                     echo::desktop::generate_sound_material_candidate(
-                        input.model.toStdString(),
-                        input.text.toStdString(),
-                        static_cast<std::uint32_t>(input.durationSeconds),
-                        input.seed,
-                        input.ambience,
+                        request,
                         directory.toStdString(),
                         endpoint.toStdString()
                     )
                 );
+            }
             return std::make_shared<RuntimeResult>(echo::desktop::generate_narration_candidate(
                 input.text.toStdString(),
                 directory.toStdString(),
@@ -115,10 +128,20 @@ void GeneratedAudioController::removeSelected() {
     error_.clear();
     emit stateChanged();
 }
+void GeneratedAudioController::stop() {
+    if (!running_ || accepting_ || stopping_)
+        return;
+    ++generation_;
+    stopping_ = true;
+    error_.clear();
+    emit stateChanged();
+}
 void GeneratedAudioController::discard() {
     if (accepting_)
         return;
     ++generation_;
+    stopping_ = running_;
+    preparations_.clear();
     candidates_.clear();
     selected_id_.clear();
     error_.clear();
@@ -170,8 +193,68 @@ void GeneratedAudioController::start(const GeneratedAudioRequest& input, const Q
         emit stateChanged();
         return;
     }
+    running_ = true;
+    stopping_ = false;
+    if (kind_ != Kind::SoundMaterial) {
+        beginGeneration(input, endpoint);
+        return;
+    }
+    const auto normalized = input.text.simplified();
+    const auto cached =
+        std::find_if(preparations_.begin(), preparations_.end(), [&](const auto& value) {
+            return value.text == normalized && value.endpoint == endpoint;
+        });
+    if (cached != preparations_.end()) {
+        auto prepared = input;
+        prepared.preparation = cached->json;
+        beginGeneration(prepared, endpoint);
+        return;
+    }
+    preparing_ = true;
+    emit stateChanged();
+    const auto generation = generation_;
+    auto* watcher = new QFutureWatcher<QString>(this);
+    connect(
+        watcher,
+        &QFutureWatcher<QString>::finished,
+        this,
+        [this, watcher, generation, input, endpoint, normalized] {
+            const auto preparation = watcher->result();
+            watcher->deleteLater();
+            preparing_ = false;
+            if (generation != generation_ || preparation.isEmpty()) {
+                running_ = false;
+                stopping_ = false;
+                if (generation == generation_)
+                    error_ =
+                        tr("Could not prepare the sound description locally. Check Infer Runtime "
+                           "and Echo’s text access, then try again. No audio was generated.");
+                emit stateChanged();
+                return;
+            }
+            if (preparations_.size() >= 4)
+                preparations_.erase(preparations_.begin());
+            preparations_.push_back({normalized, endpoint, preparation});
+            auto prepared = input;
+            prepared.preparation = preparation;
+            beginGeneration(prepared, endpoint);
+        }
+    );
+    watcher->setFuture(QtConcurrent::run([input, endpoint, prepare = prepare_] {
+        try {
+            return prepare(input.text, endpoint);
+        } catch (const std::exception&) {
+            return QString{};
+        }
+    }));
+}
+void GeneratedAudioController::beginGeneration(
+    const GeneratedAudioRequest& input,
+    const QString& endpoint
+) {
     auto directory = std::make_shared<QTemporaryDir>();
     if (!directory->isValid()) {
+        running_ = false;
         error_ = tr("Could not create a temporary audio file.");
         emit stateChanged();
         return;
@@ -188,6 +271,7 @@ void GeneratedAudioController::start(const GeneratedAudioRequest& input, const Q
             auto outcome = watcher->result();
             watcher->deleteLater();
             running_ = false;
+            stopping_ = false;
             if (generation == generation_) {
                 if (outcome.candidate) {
                     selected_id_ = QUuid::createUuid().toString(QUuid::WithoutBraces);

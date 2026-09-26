@@ -1,7 +1,34 @@
 //! Bounded local sound materials through the authenticated, capability-negotiated SDK.
 use super::{InferRuntimeConfig, InferRuntimeError, RuntimeProvenance};
 use crate::{SoundMaterialModel, SoundMaterialSpec};
-use infer_runtime_client::{SoundGenerationRequest, SoundModelChoice};
+use infer_runtime_client::{PreparedSoundPrompt, SoundGenerationRequest, SoundModelChoice};
+
+pub(crate) fn prepare(
+    config: InferRuntimeConfig,
+    prompt: &str,
+) -> Result<PreparedSoundPrompt, InferRuntimeError> {
+    let client = super::build_sdk_client(config)?;
+    let prepared = super::SdkTransport::run(client.prepare_sound_prompt(prompt))?;
+    prepared
+        .validate_for_generation(prompt, "echo")
+        .map_err(super::map_sdk_error)?;
+    Ok(prepared)
+}
+
+pub(crate) fn decode_preparation(
+    json: &str,
+    prompt: &str,
+) -> Result<PreparedSoundPrompt, InferRuntimeError> {
+    if json.len() > 80_000 {
+        return Err(super::protocol("invalid_sound_prompt_preparation"));
+    }
+    let prepared: PreparedSoundPrompt = serde_json::from_str(json)
+        .map_err(|_| super::protocol("invalid_sound_prompt_preparation"))?;
+    prepared
+        .validate_for_generation(prompt, "echo")
+        .map_err(super::map_sdk_error)?;
+    Ok(prepared)
+}
 
 pub(crate) fn request(
     spec: &SoundMaterialSpec,
@@ -26,8 +53,13 @@ pub(crate) fn request(
 pub(crate) fn generate(
     config: InferRuntimeConfig,
     spec: &SoundMaterialSpec,
+    prepared: &PreparedSoundPrompt,
 ) -> Result<(Vec<u8>, RuntimeProvenance, serde_json::Value), InferRuntimeError> {
-    let request = request(spec)?;
+    prepared
+        .validate_for_generation(&spec.normalized_prompt(), "echo")
+        .map_err(super::map_sdk_error)?;
+    let mut request = request(spec)?;
+    request.prompt.clone_from(&prepared.effective_prompt);
     let client = super::build_sdk_client(config)?;
     let (response, snapshot) = super::SdkTransport::run(async {
         let response = client.generate_sound_effect(&request).await?;
@@ -71,3 +103,6 @@ pub(crate) fn generate(
         request,
     ))
 }
+
+#[cfg(test)]
+mod tests;

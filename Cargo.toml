@@ -33,7 +33,7 @@ echo-desktop-bridge = { path = "crates/echo-desktop-bridge" }
 echo-domain = { path = "crates/echo-domain" }
 echo-ir = { path = "crates/echo-ir" }
 echo-bridge = { path = "crates/echo-bridge" }
-infer-runtime-client = { git = "https://github.com/glenzli/infer-runtime.git", rev = "8e24713bf05c63865ad8cb228df901cb51e99095" }
+infer-runtime-client = { git = "https://github.com/glenzli/infer-runtime.git", rev = "c74c503a27b74d76ab01bc1d9990d56e21c45969" }
 rusqlite = { version = "0.40.1", features = ["bundled", "backup"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"

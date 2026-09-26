@@ -36,23 +36,21 @@ pub(crate) fn accept(
 }
 
 pub(crate) fn generate_sound_material(
-    model: &str,
-    prompt: &str,
-    duration_seconds: u32,
-    seed: u32,
-    ambience: bool,
+    input: &crate::ffi::SoundMaterialRequestWire,
     directory: &str,
     endpoint: &str,
 ) -> Result<Box<GeneratedAudioCandidate>, String> {
     let spec = echo_core::SoundMaterialSpec {
-        model: echo_core::SoundMaterialModel::from_choice(model).map_err(|e| e.to_string())?,
-        prompt: prompt.trim().into(),
-        duration_seconds,
-        seed,
-        ambience,
+        model: echo_core::SoundMaterialModel::from_choice(&input.model)
+            .map_err(|e| e.to_string())?,
+        prompt: input.prompt.trim().into(),
+        duration_seconds: input.duration_seconds,
+        seed: input.seed,
+        ambience: input.ambience,
     };
-    echo_core::generate_sound_material(
+    echo_core::generate_prepared_sound_material(
         &spec,
+        &input.preparation,
         Path::new(directory),
         echo_core::InferRuntimeConfig {
             base_url: endpoint.into(),
@@ -60,5 +58,16 @@ pub(crate) fn generate_sound_material(
         },
     )
     .map(|candidate| Box::new(GeneratedAudioCandidate(candidate)))
+    .map_err(|e| e.to_string())
+}
+
+pub(crate) fn prepare_sound_prompt(prompt: &str, endpoint: &str) -> Result<String, String> {
+    echo_core::prepare_sound_material_prompt(
+        prompt,
+        echo_core::InferRuntimeConfig {
+            base_url: endpoint.into(),
+            credential_path: echo_core::infer_runtime_credential_path().unwrap_or_default(),
+        },
+    )
     .map_err(|e| e.to_string())
 }

@@ -157,7 +157,8 @@ int main(int argc, char** argv) {
             captured = input;
             return generate(input, root, endpoint);
         },
-        GeneratedAudioController::Kind::SoundMaterial
+        GeneratedAudioController::Kind::SoundMaterial,
+        [](const QString&, const QString&) { return QStringLiteral("prepared fixture"); }
     );
     const int beforeSound = calls;
     sound.request("wrong intent", "");
@@ -187,6 +188,79 @@ int main(int argc, char** argv) {
     controller.requestSoundMaterial("wrong intent", 8, true, "");
     assert(!controller.running());
 
+    // Preparation is retained for seed/duration/model retries; stopping before
+    // handoff must never submit audio, and failure must preserve old candidates.
+    std::atomic<int> preparations = 0, soundCalls = 0;
+    QSemaphore prepareRelease, soundRelease;
+    bool rejectPreparation = false, rejectSound = false;
+    GeneratedAudioController staged(
+        "catalog",
+        nullptr,
+        [&](const GeneratedAudioRequest& input, const QString& root, const QString& endpoint) {
+            ++soundCalls;
+            assert(input.preparation == "ready:" + input.text);
+            if (input.text == "slow sound")
+                soundRelease.acquire();
+            if (rejectSound)
+                throw std::runtime_error("private audio failure");
+            return generate(input, root, endpoint);
+        },
+        GeneratedAudioController::Kind::SoundMaterial,
+        [&](const QString& text, const QString&) {
+            ++preparations;
+            if (text == "slow prepare")
+                prepareRelease.acquire();
+            if (rejectPreparation)
+                throw std::runtime_error("private preparation failure");
+            return "ready:" + text;
+        }
+    );
+    staged.requestSoundMaterial("rain", 3, true, "one");
+    waitFor([&] { return !staged.running(); });
+    const auto retained = staged.selectedCandidateId();
+    assert(preparations == 1 && soundCalls == 1);
+    rejectSound = true;
+    staged.requestSoundMaterial("rain", 4, false, "one", "stable_audio_3_small_music");
+    waitFor([&] { return !staged.running(); });
+    assert(preparations == 1 && soundCalls == 2 && staged.selectedCandidateId() == retained);
+    assert(!staged.errorText().isEmpty() && !staged.errorText().contains("private"));
+    rejectSound = false;
+    staged.requestSoundMaterial("rain", 3, true, "one");
+    waitFor([&] { return !staged.running(); });
+    assert(preparations == 1 && soundCalls == 3 && staged.candidates().size() == 2);
+    staged.removeSelected();
+    rejectPreparation = true;
+    staged.requestSoundMaterial("new prompt", 3, true, "one");
+    waitFor([&] { return !staged.running(); });
+    assert(preparations == 2 && soundCalls == 3 && staged.selectedCandidateId() == retained);
+    assert(
+        staged.errorText().contains("No audio was generated")
+        && !staged.errorText().contains("private")
+    );
+    rejectPreparation = false;
+    staged.requestSoundMaterial("slow prepare", 3, true, "one");
+    waitFor([&] { return preparations == 3; });
+    assert(staged.preparing());
+    staged.stop();
+    assert(staged.stopping() && staged.running());
+    prepareRelease.release();
+    waitFor([&] { return !staged.running(); });
+    assert(soundCalls == 3 && staged.candidates().size() == 1 && !staged.stopping());
+    staged.requestSoundMaterial("slow sound", 3, true, "one");
+    waitFor([&] { return soundCalls == 4; });
+    assert(!staged.preparing());
+    staged.stop();
+    soundRelease.release();
+    waitFor([&] { return !staged.running(); });
+    assert(staged.candidates().size() == 1 && staged.selectedCandidateId() == retained);
+    staged.requestSoundMaterial("rain", 3, true, "two");
+    waitFor([&] { return !staged.running(); });
+    assert(preparations == 5); // Endpoint changes invalidate reuse.
+    staged.discard();
+    staged.requestSoundMaterial("rain", 3, true, "two");
+    waitFor([&] { return !staged.running(); });
+    assert(preparations == 6); // A new dialog batch starts clean.
+
     // Explicit opt-in integration: real local SDK jobs, muted audio-device audition,
     // and admission into a caller-owned catalog. No production library is written.
     if (!liveRoot.isEmpty()) {
@@ -209,7 +283,7 @@ int main(int argc, char** argv) {
         const auto model =
             qEnvironmentVariable("ECHO_SOUND_MATERIAL_MODEL", "stable_audio_3_small_sfx");
         const bool musicLive = model == QStringLiteral("stable_audio_3_small_music");
-        const QString textA =
+        const QString defaultTextA =
             musicLive ? QStringLiteral(
                             "Soft sparse piano notes, warm gentle instrumental background, no "
                             "vocals or drums."
@@ -219,19 +293,24 @@ int main(int argc, char** argv) {
                       "Gentle rain outside a window, soft steady patter, no speech or music."
                   )
                 : QStringLiteral("这是一段用于测试候选对比的合成旁白。");
-        const QString textB = musicLive ? QStringLiteral(
-                                              "Warm slowly evolving ambient synthesizer pad, calm "
-                                              "instrumental texture, no vocals or drums."
-                                          )
-                              : soundLive
-                                  ? QStringLiteral(
-                                        "A wooden door closing with a soft creak and a single "
-                                        "latch click, no speech or music."
-                                    )
-                                  : QStringLiteral("这是第二个候选，用来验证选择和试听流程。");
+        const QString defaultTextB =
+            musicLive   ? QStringLiteral(
+                              "Warm slowly evolving ambient synthesizer pad, calm "
+                              "instrumental texture, no vocals or drums."
+                          )
+            : soundLive ? QStringLiteral(
+                              "A wooden door closing with a soft creak and a single "
+                              "latch click, no speech or music."
+                          )
+                        : QStringLiteral("这是第二个候选，用来验证选择和试听流程。");
+        const QString textA = qEnvironmentVariable("ECHO_GENERATION_PROMPT_A", defaultTextA);
+        const QString textB = qEnvironmentVariable("ECHO_GENERATION_PROMPT_B", defaultTextB);
+        const int seconds = qEnvironmentVariableIntValue("ECHO_GENERATION_SECONDS") > 0
+                                ? qEnvironmentVariableIntValue("ECHO_GENERATION_SECONDS")
+                                : 8;
         const QString endpoint = QStringLiteral("http://127.0.0.1:8787");
         if (soundLive)
-            live.requestSoundMaterial(textA, 8, !musicLive, endpoint, model);
+            live.requestSoundMaterial(textA, seconds, !musicLive, endpoint, model);
         else
             live.request(textA, endpoint);
         fprintf(stderr, "Live integration: generating candidate A\n");
@@ -245,12 +324,29 @@ int main(int argc, char** argv) {
         candidateAudio.close();
         fprintf(stderr, "Live integration: candidate A ready\n");
         if (soundLive)
-            live.requestSoundMaterial(textB, 5, false, endpoint, model);
+            live.requestSoundMaterial(textB, seconds, false, endpoint, model);
         else
             live.request(textB, endpoint);
         waitFor([&] { return !live.running(); }, 240000);
         assert(live.errorText().isEmpty() && live.candidates().size() == 2);
         const auto idB = live.selectedCandidateId();
+        const auto receiptB = QJsonDocument::fromJson(live.detailsJson().toUtf8()).object();
+        if (soundLive) {
+            assert(receiptA.value("schema_version").toInt() == 3);
+            const auto preparation = receiptA.value("prompt_preparation").toObject();
+            assert(preparation.value("original_prompt").toString() == textA);
+            assert(
+                preparation.value("effective_prompt")
+                == receiptA.value("request").toObject().value("prompt")
+            );
+            if (textA == textB)
+                assert(preparation == receiptB.value("prompt_preparation").toObject());
+            const auto metadata = receiptA.value("request").toObject().value("metadata").toObject();
+            assert(
+                !metadata.contains("infer.deployment_ids")
+                && !metadata.contains("infer.named_route")
+            );
+        }
         fprintf(stderr, "Live integration: candidate B ready\n");
         QAudioOutput audio;
         audio.setVolume(0);
@@ -281,7 +377,7 @@ int main(int argc, char** argv) {
         assert(assets.size() == 1);
         const auto disclosure =
             QString::fromStdString(std::string(assets[0].source_disclosure_json));
-        assert(disclosure.contains(textA) && !disclosure.contains(textB));
+        assert(disclosure.contains(textA) && (textA == textB || !disclosure.contains(textB)));
         if (soundLive) {
             assert(receiptA.value("request").toObject().value("model_choice").toString() == model);
             assert(
@@ -311,6 +407,9 @@ int main(int argc, char** argv) {
             QFile receipt(liveRoot + "/receipt.json");
             assert(receipt.open(QIODevice::WriteOnly));
             receipt.write(QJsonDocument(receiptA).toJson());
+            QFile secondReceipt(liveRoot + "/second-receipt.json");
+            assert(secondReceipt.open(QIODevice::WriteOnly));
+            secondReceipt.write(QJsonDocument(receiptB).toJson());
         }
         QFile report(liveRoot + "/validation.json");
         assert(report.open(QIODevice::WriteOnly));

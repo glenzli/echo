@@ -369,3 +369,54 @@ fn music_receipt_cannot_be_relabelled_as_effects() {
     drop(catalog);
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn prepared_receipt_survives_admission_and_rejects_detached_effective_prompt() {
+    let (root, mut candidate) = sound_fixture(false, SoundMaterialModel::SmallSfx);
+    let catalog = echo_catalog::open_catalog(&root.join("project/catalog.sqlite")).unwrap();
+    candidate.receipt.schema_version = 3;
+    candidate.receipt.prompt_preparation = Some(infer_runtime_client::PreparedSoundPrompt {
+        original_prompt: candidate.receipt.input_text.clone(),
+        effective_prompt: candidate.receipt.input_text.clone(),
+        rules_revision: infer_runtime_client::SOUND_PROMPT_RULES_REVISION.into(),
+        text_job: None,
+        preparation_elapsed_ms: 0,
+    });
+    candidate
+        .receipt
+        .prompt_preparation
+        .as_mut()
+        .unwrap()
+        .rules_revision = "infer.sound-prompt-preparation@20260926.1".into();
+    assert!(accept_generated_audio(&catalog, &candidate, "", true).is_err());
+    candidate
+        .receipt
+        .prompt_preparation
+        .as_mut()
+        .unwrap()
+        .rules_revision = infer_runtime_client::SOUND_PROMPT_RULES_REVISION.into();
+    let original = candidate.receipt.request["prompt"].clone();
+    candidate.receipt.request["prompt"] = "unrelated sound".into();
+    assert!(accept_generated_audio(&catalog, &candidate, "", true).is_err());
+    candidate.receipt.request["prompt"] = original;
+    let id = accept_generated_audio(&catalog, &candidate, "", true).unwrap();
+    catalog
+        .with_transaction(|tx| -> Result<(), CatalogError> {
+            let value: String = tx.query_row(
+                "SELECT receipt_json FROM generated_audio_receipts WHERE asset_id=?1",
+                [&id],
+                |r| r.get(0),
+            )?;
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&value).unwrap(),
+                serde_json::to_value(&candidate.receipt).unwrap()
+            );
+            let asset = &echo_catalog::list_assets(tx)?[0];
+            assert!(asset.original.path.ends_with("sound.wav"));
+            assert!(echo_catalog::asset_source_disclosure(tx, asset.id)?.has_generated_source());
+            Ok(())
+        })
+        .unwrap();
+    drop(catalog);
+    fs::remove_dir_all(root).unwrap();
+}

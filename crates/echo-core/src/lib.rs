@@ -53,7 +53,8 @@ pub use editor_transcription::{
 pub use error::{CoreError, CoreErrorKind};
 pub use generated_audio::{
     GeneratedAudioCandidate, SoundMaterialModel, SoundMaterialSpec, accept_generated_audio,
-    generate_narration, generate_sound_material,
+    generate_narration, generate_prepared_sound_material, generate_sound_material,
+    prepare_sound_material_prompt,
 };
 // Preserve the original narration facade for existing consumers.
 pub use generated_audio::{
