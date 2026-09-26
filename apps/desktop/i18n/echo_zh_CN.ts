@@ -8648,238 +8648,283 @@ Seed: %5</source>
     <context>
         <name>GeneratedAudioDialog</name>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="75" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="96" />
             <source>This candidate could not be played. Generate it again.</source>
             <translation>无法播放此候选，请重新生成。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="88" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="119" />
             <source>Add a narration</source>
             <translation>补充旁白</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="89" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="119" />
+            <source>Create background music</source>
+            <translation>生成背景配乐</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="119" />
+            <source>Create sound effects</source>
+            <translation>生成音效</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="120" />
             <source>AI generated</source>
             <translation>AI 生成</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="91" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="122" />
             <source>Write a short narration to accompany your sound. Preview it before keeping it as a separate, clearly marked material.</source>
             <translation>为声音写一段简短旁白，试听后再采纳为单独的素材，并保留明确的生成标记。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="91" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="122" />
             <source>Describe a sound effect or short music background. Listen to each candidate, then keep the one that fits.</source>
             <translation>描述一段音效或简短配乐。分别试听候选，再保留合适的声音。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="95" />
-            <source>Generation model</source>
-            <translation>生成模型</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="105" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="143" />
             <source>Soft piano background</source>
             <translation>轻柔钢琴配乐</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="106" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="144" />
             <source>Ambient synth pad</source>
             <translation>氛围合成音垫</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="107" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="145" />
             <source>Light acoustic guitar</source>
             <translation>轻柔木吉他</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="127" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="165" />
             <source>What would you like to add?</source>
             <translation>想补充些什么？</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="136" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="175" />
             <source>%1 / 500 characters</source>
             <translation>%1 / 500 字</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="137" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="176" />
             <source>Local model · Mandarin voice</source>
             <translation>本地模型 · 普通话音色</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="148" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="187" />
             <source>This is an added narration, not recorded dialogue. Its generation label and model record stay with the accepted source.</source>
             <translation>这是后来补充的旁白，并非现场录下的对白。采纳后，生成标记与模型记录会随素材保留。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="173" />
-            <source>Preview narration</source>
-            <translation>试听旁白</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="183" />
-            <source>%1 seconds · Preview candidate</source>
-            <translation>%1 秒 · 试听候选</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="193" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="264" />
             <source>Also collect in Materials</source>
             <translation>同时收藏到素材库</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="198" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="271" />
             <source>Saving material…</source>
             <translation>正在保存素材…</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="198" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="271" />
             <source>Generating locally…</source>
             <translation>正在本地生成…</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="198" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="271" />
             <source>Listen before keeping this candidate.</source>
             <translation>先试听，再决定是否采纳。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="199" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="271" />
+            <source>Three previews ready. Remove one to generate another.</source>
+            <translation>已有三个候选，移除一个后可继续生成。</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="277" />
             <source>Close</source>
             <translation>关闭</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="202" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="277" />
+            <source>Discard and close</source>
+            <translation>丢弃并关闭</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="280" />
+            <source>The current local task may finish, but its result will be discarded.</source>
+            <translation>当前本地任务可能继续完成，但结果会被丢弃。</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="285" />
             <source>Generate preview</source>
             <translation>生成试听</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="209" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="292" />
             <source>Keep in Materials</source>
             <translation>保留到素材</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="209" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="292" />
             <source>Keep in project</source>
             <translation>保留到项目</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="190" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="261" />
             <source>Kept in Materials. You can add it to a project later.</source>
             <translation>保留到素材中，之后可以加入项目。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="190" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="22" />
+            <source>Sound effects and ambience</source>
+            <translation>音效与环境声</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="23" />
+            <source>Short background music</source>
+            <translation>简短配乐</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="133" />
+            <source>Sound type</source>
+            <translation>声音用途</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="196" />
+            <source>Your previews will appear here</source>
+            <translation>生成的候选会显示在这里</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="201" />
+            <source>Generate up to three candidates, compare them, then keep one.</source>
+            <translation>最多生成三个候选，试听比较后保留一个。</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="214" />
+            <source>Candidate %1 · Heard</source>
+            <translation>候选 %1 · 已试听</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="227" />
+            <source>Pause preview</source>
+            <translation>暂停试听</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="227" />
+            <source>Play preview</source>
+            <translation>播放试听</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="240" />
+            <source>Preview position</source>
+            <translation>试听进度</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="254" />
+            <source>Closing discards previews you have not kept.</source>
+            <translation>关闭后，未保留的候选将被丢弃。</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="261" />
             <source>Kept with this project. Add it to a track when you are ready.</source>
             <translation>随当前项目保留，需要时再加入轨道。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="166" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="220" />
             <source>%1 / 3</source>
             <translation>%1 / 3</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="18" />
-            <source>Sound effects · Small-SFX</source>
-            <translation>音效 · Small-SFX</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="19" />
-            <source>Music · Small-Music</source>
-            <translation>配乐 · Small-Music</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="160" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="214" />
             <source>Candidate %1</source>
             <translation>候选 %1</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="202" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="285" />
             <source>Generate another</source>
             <translation>再生成一个</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="186" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="243" />
             <source>Remove candidate</source>
             <translation>移除此候选</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="141" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="180" />
             <source>Text changes apply to the next candidate. Keeping uses the selected audio.</source>
             <translation>修改文字仅用于下一次生成；保留操作采纳当前选中的音频。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="88" />
-            <source>Generate a sound</source>
-            <translation>生成声音</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="104" />
-            <location filename="../qml/GeneratedAudioDialog.qml" line="109" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="142" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="147" />
             <source>Choose a starting point…</source>
             <translation>选择一个起点…</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="110" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="148" />
             <source>Rain outside a window</source>
             <translation>窗外雨声</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="111" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="149" />
             <source>Quiet room</source>
             <translation>安静的房间</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="112" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="150" />
             <source>Footsteps on gravel</source>
             <translation>碎石路上的脚步</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="113" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="151" />
             <source>A wooden door closing</source>
             <translation>木门关闭</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="114" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="152" />
             <source>Distant traffic</source>
             <translation>远处车流</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="118" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="156" />
             <source>Seconds</source>
             <translation>秒</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="119" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="157" />
             <source>Duration in seconds</source>
             <translation>时长（秒）</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="127" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="165" />
             <source>Describe the sound in English, including its setting and distance…</source>
             <translation>用英文描述声音，也可以说明场景和远近…</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="137" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="165" />
+            <source>Describe the instruments, mood and pace in English…</source>
+            <translation>用英文描述乐器、氛围和节奏…</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedAudioDialog.qml" line="176" />
             <source>Local sound model · English prompts</source>
             <translation>本地声音模型 · 英文描述</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="141" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="180" />
             <source>Changes apply to the next candidate. Keeping uses the selected audio and its settings.</source>
             <translation>更改会用于下一个候选。保留时使用当前选中的音频及其设置。</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="144" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="183" />
             <source>Use as background ambience</source>
             <translation>作为环境背景声</translation>
         </message>
         <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="173" />
-            <source>Preview sound</source>
-            <translation>试听声音</translation>
-        </message>
-        <message>
-            <location filename="../qml/GeneratedAudioDialog.qml" line="184" />
+            <location filename="../qml/GeneratedAudioDialog.qml" line="249" />
             <source>Seed %1</source>
             <translation>种子 %1</translation>
         </message>
@@ -8900,6 +8945,11 @@ Seed: %5</source>
             <location filename="../qml/GeneratedMaterialMenu.qml" line="22" />
             <source>Narration…</source>
             <translation>旁白…</translation>
+        </message>
+        <message>
+            <location filename="../qml/GeneratedMaterialMenu.qml" line="29" />
+            <source>A local generation is still finishing…</source>
+            <translation>本地生成任务仍在收尾…</translation>
         </message>
     </context>
 </TS>

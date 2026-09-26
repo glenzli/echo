@@ -23,6 +23,11 @@ Menu {
         enabled: !generatedNarration.running && !generatedNarration.accepting
         onTriggered: narrationDialog.present()
     }
+    MenuItem {
+        visible: generatedSoundMaterial.running || generatedNarration.running
+        enabled: false
+        text: qsTr("A local generation is still finishing…")
+    }
     GeneratedSoundMaterialDialog { id: soundDialog; assemblyId: menu.assemblyId; onMaterialAccepted: assetId => menu.materialAccepted(assetId) }
     GeneratedNarrationDialog { id: narrationDialog; assemblyId: menu.assemblyId; onMaterialAccepted: assetId => menu.materialAccepted(assetId) }
 }

@@ -81,4 +81,12 @@ TestCase {
         verify(findChild(dialog,"narrationText").height>=100);
     }
 
+    function test_review_keeps_dialog_size_and_explicit_discard() {
+        openDialog(); const height=dialog.height; candidate(); waitForRendering(dialog.contentItem);
+        compare(dialog.height,height);
+        const close=findChild(dialog,"narrationClose"); verify(close.enabled);
+        mouseClick(close); tryCompare(dialog,"visible",false);
+        compare(generatedNarration.candidates.length,0);
+    }
+
 }
