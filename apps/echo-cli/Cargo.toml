@@ -14,6 +14,7 @@ echo-ai.workspace = true
 echo-bridge.workspace = true
 echo-catalog.workspace = true
 echo-core.workspace = true
+echo-desktop-bridge.workspace = true
 
 [lints]
 workspace = true

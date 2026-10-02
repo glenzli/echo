@@ -1,6 +1,7 @@
 //! Catalog connection lifecycle and schema ownership.
 
 use std::{
+    io::Read,
     path::{Path, PathBuf},
     sync::Mutex,
 };
@@ -81,6 +82,110 @@ pub fn open_catalog(path: &Path) -> Result<Catalog, CatalogError> {
         connection: Mutex::new(connection),
         path: path.to_owned(),
     })
+}
+
+/// The exact schema revision accepted by a read-only attachment.
+#[must_use]
+pub const fn supported_schema_revision() -> CatalogSchemaRevision {
+    SCHEMA_VERSION
+}
+
+/// Failure specific to attaching an existing Catalog without filesystem writes.
+#[derive(Debug, thiserror::Error)]
+pub enum ReadOnlyCatalogError {
+    #[error(transparent)]
+    Catalog(#[from] CatalogError),
+    #[error("{0}")]
+    UnsupportedStorage(String),
+}
+
+/// Attaches an existing catalog without creating, initializing, or migrating it.
+///
+/// The connection uses `SQLITE_OPEN_READ_ONLY`; write attempts through the
+/// usual transaction API fail. The canonical revision must already be current.
+/// Callers that need migrations must explicitly use [`open_catalog`] instead.
+/// Only a quiescent rollback-journal database is supported: WAL headers and
+/// existing journal/WAL/SHM sidecars are refused before SQLite attachment.
+/// This avoids read-only SQLite creating shared-memory sidecars. Callers must
+/// not concurrently change the database's journal mode or replace its file.
+///
+/// # Errors
+///
+/// Returns [`CatalogErrorKind::SchemaMismatch`] for missing, malformed, older,
+/// or unknown schema metadata, and a catalog error if the file cannot be read.
+pub fn open_catalog_read_only(path: &Path) -> Result<Catalog, ReadOnlyCatalogError> {
+    let path = path.canonicalize().map_err(CatalogError::from)?;
+    verify_read_only_storage(&path)?;
+    let connection = Connection::open_with_flags(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .map_err(CatalogError::from)?;
+    let stored_version: Option<String> = connection
+        .query_row(
+            "SELECT value FROM catalog_meta WHERE key = 'schema_version'",
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| {
+            CatalogError::new(
+                CatalogErrorKind::SchemaMismatch,
+                format!("cannot read catalog schema revision: {error}"),
+            )
+        })?;
+    if !stored_version.as_deref().is_some_and(|version| {
+        version
+            .parse::<CatalogSchemaRevision>()
+            .is_ok_and(|revision| revision == SCHEMA_VERSION)
+    }) {
+        return Err(CatalogError::new(
+            CatalogErrorKind::SchemaMismatch,
+            format!(
+                "read-only attachment requires schema {SCHEMA_VERSION}; found {}",
+                stored_version.as_deref().unwrap_or("no schema revision"),
+            ),
+        )
+        .into());
+    }
+    Ok(Catalog {
+        connection: Mutex::new(connection),
+        path,
+    })
+}
+
+fn verify_read_only_storage(path: &Path) -> Result<(), ReadOnlyCatalogError> {
+    let mut file = std::fs::File::open(path).map_err(CatalogError::from)?;
+    let mut header = [0_u8; 20];
+    file.read_exact(&mut header).map_err(|error| {
+        CatalogError::new(
+            CatalogErrorKind::SchemaMismatch,
+            format!("invalid catalog header: {error}"),
+        )
+    })?;
+    if &header[..16] != b"SQLite format 3\0" {
+        return Err(CatalogError::new(
+            CatalogErrorKind::SchemaMismatch,
+            "file is not a SQLite catalog",
+        )
+        .into());
+    }
+    if header[18] != 1 || header[19] != 1 {
+        return Err(ReadOnlyCatalogError::UnsupportedStorage(
+            "read-only inspection requires a rollback-journal catalog; WAL storage is unsupported"
+                .into(),
+        ));
+    }
+    for suffix in ["-journal", "-wal", "-shm"] {
+        let mut sidecar = path.as_os_str().to_os_string();
+        sidecar.push(suffix);
+        if Path::new(&sidecar)
+            .try_exists()
+            .map_err(CatalogError::from)?
+        {
+            return Err(ReadOnlyCatalogError::UnsupportedStorage(
+                "read-only inspection requires a quiescent catalog without journal/WAL/SHM sidecars".into(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_lines)] // Explicit dispatch keeps every supported migration visible.

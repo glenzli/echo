@@ -246,6 +246,17 @@ limiter，离线导出与流式试听使用同一分块边界和执行状态。`
 会话供恢复；正常关闭前必须处理未保存修改。记忆库身份不会因编辑或保存自动产生。
 独立编辑首版支持打开音频、工程保存/另存、单音与多轨编辑和音频导出；AI 自动分析保持关闭。
 
+2026-10-02 的正式工具入口先交付已保存状态的只读闭环：
+`echo-cli edit inspect --session <现有独立会话目录>` 消费 desktop bridge 的
+`editor_commands` typed facade；`edit capabilities` 仅声明已支持的 `inspect`。
+返回素材内容身份与最新调整 revision、活跃编排 revision 与其固定来源 revision，
+时间统一为毫秒，哈希是 Catalog 已记录身份而非本次重新验证。该紧凑投影不表示完整处理文档。
+入口不接入 GUI 内存草稿、不读取全局记忆库、转写或凭据，也不启动准备、试听或导出。
+Catalog owner 以只读模式附着；缺失、非独立、旧版和未知 schema 均结构化拒绝，
+不创建目录、迁移或写入会话标记。首版要求无 journal/WAL/SHM sidecar 的静止 rollback-journal
+Catalog；读取文件头后、SQLite 附着前拒绝 WAL，调用期间不得替换数据库或切换 journal 模式。
+`apply`、`preview`、`export` 仍待各自生产入口与取消、发布回执合同形成后独立交付。
+
 ### 多轨编辑交互的细化
 
 2026-09-21 的编排编辑里程碑增加暂态多片段选择，保留一个当前片段供精细检查器使用。

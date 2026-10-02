@@ -1,11 +1,12 @@
 //! Echo's operator CLI composition boundary.
 //!
 //! [`commands`] owns argument routing; each child module owns one durable
-//! command family: Catalog initialization, asset import, and Library listing.
+//! command family, including saved independent-editor inspection in [`edit`].
 
 mod catalog;
 mod commands;
 mod credentials;
+mod edit;
 mod import;
 mod library;
 mod list;

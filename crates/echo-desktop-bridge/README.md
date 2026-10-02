@@ -14,6 +14,24 @@ jobs. `editor_project.rs` owns portable `.echo` snapshots: project-owned resourc
 are streamed into SQLite, verified on reopen, and restored under relative paths.
 Neither owner attaches the user's Library catalog.
 
+[`editor_commands.rs`](src/editor_commands.rs) is the typed Rust consumer facade
+for `echo-cli edit capabilities` and `echo-cli edit inspect --session <directory>`.
+Version 1 exposes only saved identity and timing: each asset's recorded BLAKE3
+hash and latest adjustment revision, plus active assembly revisions and their
+exact pinned source identities. Durations are milliseconds; revision 0 means
+an unadjusted Original. Recorded hashes are not a new source-byte verification.
+This projection is not a complete adjustment or assembly document.
+
+The explicit session must already exist, carry the independent-editor marker,
+and use the exact supported Catalog schema. Catalog owns the read-only attachment
+and rejects old/unknown schemas without initialization or migration. It also
+rejects WAL headers and journal/WAL/SHM sidecars before SQLite attachment, avoiding
+read-only SQLite's sidecar creation. Version 1 supports a quiescent rollback-journal
+catalog; callers must not replace the file or change journal mode concurrently.
+Errors are versioned JSON on stdout with a nonzero CLI exit status. No default
+Library, transcripts, credentials, GUI drafts, audio preparation, or new publication
+is involved; `apply`, `preview`, and `export` are not supported operations.
+
 User-authored album lists and mutations cross the ABI as one explicit contract;
 the Catalog keeps them separate from rebuildable smart-album candidates.
 

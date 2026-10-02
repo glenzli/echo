@@ -78,7 +78,10 @@ pub use audio_semantic_index::{
     search_audio_semantic_segments, upsert_audio_semantic_segment,
 };
 pub use audio_space::{AudioSpaceAsset, list_audio_space};
-pub use catalog::{Catalog, CatalogStats, open_catalog};
+pub use catalog::{
+    Catalog, CatalogStats, ReadOnlyCatalogError, open_catalog, open_catalog_read_only,
+    supported_schema_revision,
+};
 pub use contextual_facets::{
     AppendContextualAnalysis, ContextualKeywordFacet, list_contextual_keyword_facets,
     record_contextual_analysis,

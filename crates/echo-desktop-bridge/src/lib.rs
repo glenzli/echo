@@ -4,6 +4,7 @@
 //! cache paths: they talk to this crate through the generated CXX ABI, and it
 //! owns the durable [`LibrarySession`] lifecycle.
 
+pub mod editor_commands;
 mod editor_project;
 mod editor_recovery;
 mod editor_session;

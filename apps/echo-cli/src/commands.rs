@@ -3,7 +3,7 @@
 use clap::{Parser, Subcommand};
 
 use super::{
-    catalog, credentials, import, library, list, models, probe, search, semantic_search,
+    catalog, credentials, edit, import, library, list, models, probe, search, semantic_search,
     transcribe, waveform,
 };
 
@@ -16,6 +16,11 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
+    /// Inspect saved independent editing sessions through the versioned JSON contract.
+    Edit {
+        #[command(subcommand)]
+        command: edit::EditCommand,
+    },
     /// Creates (or opens) a catalog at the given `SQLite` path.
     Init {
         /// Catalog database path.
@@ -128,6 +133,7 @@ pub(crate) enum Command {
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()> {
     let cli = Cli::parse_from(std::iter::once("echo-cli".to_owned()).chain(arguments));
     match cli.command {
+        Command::Edit { command } => edit::run(command),
         Command::Init { catalog } => catalog::run_init(&catalog),
         Command::Import { catalog, source } => import::run_import(&catalog, &source),
         Command::List { catalog } => list::run_list(&catalog),

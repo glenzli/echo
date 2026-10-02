@@ -2358,3 +2358,125 @@ fn rendered_spectral_working_copy_revision_adds_frozen_copy_table() {
     assert_eq!(table_count, 1);
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn read_only_attachment_never_creates_a_missing_catalog() {
+    let root = std::env::temp_dir().join(format!("echo-readonly-missing-{}", uuid::Uuid::now_v7()));
+    assert!(open_catalog_read_only(&root.join("nested/catalog.sqlite")).is_err());
+    assert!(!root.exists());
+}
+
+#[test]
+fn read_only_attachment_preserves_bytes_and_rejects_writes() {
+    let root = std::env::temp_dir().join(format!("echo-readonly-current-{}", uuid::Uuid::now_v7()));
+    let path = root.join("catalog.sqlite");
+    drop(open_catalog(&path).unwrap());
+    let before = std::fs::read(&path).unwrap();
+    let catalog = open_catalog_read_only(&path).unwrap();
+    assert_eq!(
+        catalog.stats().unwrap().schema_version,
+        supported_schema_revision()
+    );
+    let error = catalog
+        .with_transaction(|tx| {
+            tx.execute(
+                "INSERT INTO catalog_meta(key,value) VALUES('readonly-test','forbidden')",
+                [],
+            )?;
+            Ok::<_, CatalogError>(())
+        })
+        .unwrap_err();
+    assert!(error.message.contains("readonly"), "{error}");
+    drop(catalog);
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn read_only_attachment_refuses_missing_old_and_unknown_schema_without_migration() {
+    let old = crate::schema::MEMORY_INFO_PREDECESSOR.to_string();
+    for version in [
+        None,
+        Some(old.as_str()),
+        Some("20990101.1"),
+        Some("not-a-revision"),
+    ] {
+        let root =
+            std::env::temp_dir().join(format!("echo-readonly-schema-{}", uuid::Uuid::now_v7()));
+        let path = root.join("catalog.sqlite");
+        let catalog = open_catalog(&path).unwrap();
+        catalog
+            .with_transaction(|tx| {
+                if let Some(version) = version {
+                    tx.execute(
+                        "UPDATE catalog_meta SET value=?1 WHERE key='schema_version'",
+                        [version],
+                    )?;
+                } else {
+                    tx.execute("DELETE FROM catalog_meta WHERE key='schema_version'", [])?;
+                }
+                Ok::<_, CatalogError>(())
+            })
+            .unwrap();
+        drop(catalog);
+        let before = std::fs::read(&path).unwrap();
+        let error = open_catalog_read_only(&path).unwrap_err();
+        assert!(matches!(
+            error,
+            ReadOnlyCatalogError::Catalog(CatalogError {
+                kind: CatalogErrorKind::SchemaMismatch,
+                ..
+            })
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[test]
+fn read_only_attachment_refuses_closed_wal_before_sqlite_can_create_sidecars() {
+    let root = std::env::temp_dir().join(format!("echo-readonly-wal-{}", uuid::Uuid::now_v7()));
+    let path = root.join("catalog.sqlite");
+    drop(open_catalog(&path).unwrap());
+    let connection = Connection::open(&path).unwrap();
+    connection
+        .pragma_update(None, "journal_mode", "WAL")
+        .unwrap();
+    drop(connection);
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+    let before = std::fs::read(&path).unwrap();
+    assert_eq!(before[18], 2);
+    assert!(matches!(
+        open_catalog_read_only(&path),
+        Err(ReadOnlyCatalogError::UnsupportedStorage(_))
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn read_only_attachment_never_recovers_or_removes_existing_sidecars() {
+    for suffix in ["-journal", "-wal", "-shm"] {
+        let root =
+            std::env::temp_dir().join(format!("echo-readonly-sidecar-{}", uuid::Uuid::now_v7()));
+        let path = root.join("catalog.sqlite");
+        drop(open_catalog(&path).unwrap());
+        let sidecar = root.join(format!("catalog.sqlite{suffix}"));
+        std::fs::write(&sidecar, b"sidecar owned by another writer").unwrap();
+        let before = std::fs::read(&path).unwrap();
+        assert!(matches!(
+            open_catalog_read_only(&path),
+            Err(ReadOnlyCatalogError::UnsupportedStorage(_))
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        assert_eq!(
+            std::fs::read(&sidecar).unwrap(),
+            b"sidecar owned by another writer"
+        );
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 2);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
