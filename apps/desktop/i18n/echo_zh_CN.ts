@@ -2302,6 +2302,14 @@
     <context>
         <name>IndependentEditor</name>
         <message>
+            <source>Conflicting edits are only in this window. Keep it open until you resolve the conflict.</source>
+            <translation>存在冲突的编辑只保留在当前窗口中。请保持窗口打开，直到冲突处理完成。</translation>
+        </message>
+        <message>
+            <source>Your latest edits have not been saved yet.</source>
+            <translation>最新编辑尚未保存。</translation>
+        </message>
+        <message>
             <location filename="../qml/IndependentEditor.qml" line="15" />
             <location filename="../qml/IndependentEditor.qml" line="68" />
             <location filename="../qml/IndependentEditor.qml" line="155" />
@@ -5398,6 +5406,18 @@
     <context>
         <name>SoundExportDialog</name>
         <message>
+            <source>Save and export</source>
+            <translation>保存并导出</translation>
+        </message>
+        <message>
+            <source>Your edits could not be saved. They are still here; resolve the save problem and try again.</source>
+            <translation>无法保存编辑。当前编辑仍保留在这里；请解决保存问题后重试。</translation>
+        </message>
+        <message>
+            <source>Created file: %1</source>
+            <translation>已生成文件：%1</translation>
+        </message>
+        <message>
             <location filename="../qml/SoundExportDialog.qml" line="102" />
             <source>Export adjusted sound</source>
             <translation>导出调整后的声音</translation>
@@ -5419,8 +5439,8 @@
         </message>
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="189" />
-            <source>Save the current adjustments before exporting so the file keeps an exact source revision.</source>
-            <translation>请先保存当前调整，再进行导出，以便文件保留准确的来源版本。</translation>
+            <source>Your latest edits will be saved before export. The original file stays unchanged.</source>
+            <translation>导出前会保存最新编辑，原始文件保持不变。</translation>
         </message>
         <message>
             <location filename="../qml/SoundExportDialog.qml" line="200" />

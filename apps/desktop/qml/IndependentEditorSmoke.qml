@@ -19,6 +19,11 @@ Item {
     property int originalClipGain: 0
     property string conflictClipId: ""
     property string conflictProjectName: ""
+    property var singleEditBaseline: ({})
+    property int singleEditHistoryIndex: 0
+    property int singlePausedPosition: 0
+    property string singlePlaybackKey: ""
+    property real singlePlaybackVolume: 0
     Connections {
         target: assemblyWaveforms
         function onWaveformsChanged() { ++smoke.waveformPublications; }
@@ -52,6 +57,17 @@ Item {
         const draft = JSON.stringify(assembly.document), base = assembly.savedRevisionBase.revisionId;
         const undoCount = assembly.undoStack.length, redoCount = assembly.redoStack.length;
         require(!assembly.saveRevision() && assembly.revisionConflict, "stale draft overwrote another revision");
+        require(shell.draftConflict && !shell.draftsRecoverable, "conflicting assembly draft was advertised as recoverable");
+        // This controller rejects the URL synchronously, without accessing a file.
+        independentEditor.saveProject("invalid:synthetic-local-destination");
+        require(independentEditor.errorText.length > 0 && !independentEditor.busy,
+                "nonlocal project destination was not rejected immediately");
+        const previousNotice = shell.notice;
+        shell.notice = "Earlier operation completed";
+        const conflictStatus = itemNamed(shell.contentItem, "independentEditorStatus");
+        require(conflictStatus && conflictStatus.text === shell.recoveryStatusText,
+                "an earlier notice concealed the unsaved conflict status");
+        shell.notice = previousNotice;
         require(JSON.stringify(assembly.document) === draft && assembly.dirty && assembly.savedRevisionBase.revisionId === base,
                 "conflict discarded the draft or advanced its save base");
         require(assembly.undoStack.length === undoCount && assembly.redoStack.length === redoCount, "conflict changed undo history");
@@ -63,6 +79,7 @@ Item {
         require(!assembly.dirty && !assembly.revisionConflict && assembly.document.revisionId === winner.revisionId,
                 "confirmed reload did not adopt the current revision");
         require(!assembly.canUndo && !assembly.canRedo, "confirmed reload retained obsolete history");
+        require(!shell.draftConflict && shell.draftsRecoverable, "confirmed reload retained a false recovery warning");
         assembly.mutate(next => { next.name = original.name; next.master = assembly.clone(original.master); next.tracks = assembly.clone(original.tracks); });
         require(assembly.saveRevision(), "new edits after conflict recovery could not save");
         facts.revisionConflicts = {saveUndoSave:true, saveRedoSave:true, draftRetained:true, historyRetained:true,
@@ -232,6 +249,7 @@ Item {
         case 0:
             if (independentEditor.busy || shell.assets.length < 2) return;
             require(backend.independentEditing, "not an independent session");
+            player.volume = 0; // Synthetic device callbacks are exercised silently.
             const jobs=backend.jobStats();
             require(jobs.pending===0 && jobs.running===0 && jobs.done===0 && jobs.failed===0, "library jobs started");
             facts.assets=shell.assets.map(value=>({id:value.id,path:value.path,gain:value.gainCentibels}));
@@ -265,7 +283,84 @@ Item {
             require(!spectrogramPreview.errorText, spectrogramPreview.errorText);
             if(!spectrogramPreview.imageUrl) return;
             facts.spectrogramReady=true;
-            editor.debugExport('file://'+fixtureRoot+'/single.wav');++stage;break;
+            singleEditBaseline = editor.adjustment.snapshot();
+            singleEditHistoryIndex = editor.adjustment._historyIndex;
+            singlePlaybackVolume = player.volume; player.volume = 0;
+            editor.playFrom(1750);
+            require(player.playing, "single-source audition did not start");
+            player.togglePause();
+            singlePausedPosition = player.position;
+            singlePlaybackKey = editor.loadedAdjustmentKey;
+            editor.setOriginalAudition(true);
+            require(player.paused && editor.loadedAdjustmentKey === singlePlaybackKey,
+                    "paused A/B restarted the device");
+            stage=40;break;
+        case 40:
+            require(player.paused && player.position === singlePausedPosition,
+                    "paused comparison advanced before explicit Play");
+            editor.setOriginalAudition(false);
+            require(player.paused && editor.loadedAdjustmentKey === singlePlaybackKey,
+                    "switching back restarted paused playback");
+            editor.setOriginalAudition(true); editor.togglePlayback();
+            require(player.playing && editor.loadedAdjustmentKey === editor.adjustmentKey() &&
+                    Math.abs(player.position - singlePausedPosition) < 100,
+                    "explicit Play did not resume the chosen comparison at the source position");
+            editor.setOriginalAudition(false);
+            require(player.playing && editor.loadedAdjustmentKey === editor.adjustmentKey() &&
+                    Math.abs(player.position - singlePausedPosition) < 100,
+                    "playing comparison changed the source position or stopped playback");
+            player.stop(); editor.setOriginalAudition(true); editor.setOriginalAudition(false);
+            require(!player.active, "stopped comparison unexpectedly started playback");
+            player.volume = singlePlaybackVolume;
+            require(editor.adjustment.sameSnapshot(editor.adjustment.snapshot(), singleEditBaseline),
+                    "comparison changed the editable draft");
+            facts.singleAudition = {pausedBothDirections:true, pausedPositionStable:true,
+                                    explicitResume:true, playingSwitch:true, stoppedSwitch:true, draftUnchanged:true};
+            editor.adjustment.beginGesture();
+            editor.adjustment.setTrimRange(500, 3500);
+            editor.adjustment.setFades(250, 500);
+            editor.adjustment.setGain(-1200);
+            editor.adjustment.endGesture();
+            require(editor.dirty, "export scenario did not have unsaved edits");
+            editor.openExport();
+            editor.exportDialog.destination = 'file://' + fixtureRoot + '/edited.wav';
+            const exportButton = itemNamed(editor.exportDialog.contentItem, "startSoundExport");
+            require(exportButton && exportButton.enabled, "dirty export action was unavailable");
+            exportButton.clicked();
+            require(!editor.dirty && !editor.exportDialog.saveErrorText,
+                    editor.exportDialog.saveErrorText || "one-click export did not save the draft");
+            facts.editedExport = {assetId:editor.asset.id, adjustmentRevision:Number(editor.asset.adjustmentRevision),
+                                  trimStartMillis:500, trimEndMillis:3500, fadeInMillis:250, fadeOutMillis:500,
+                                  gainCentibels:-1200, oneExplicitAction:true};
+            require(facts.editedExport.adjustmentRevision > 0, "saved export lacks a revision identity");
+            stage=41;break;
+        case 41:
+            if (renderExporter.running) return;
+            require(renderExporter.hasResult && editor.exportDialog.outputAvailable,
+                    renderExporter.errorText || "dirty save-and-export failed");
+            const created = itemNamed(editor.exportDialog.contentItem, "exportCreatedPath");
+            require(created && created.visible && created.text.indexOf(renderExporter.outputPath) >= 0,
+                    "completed export did not display the created file");
+            facts.editedExport.outputPath = renderExporter.outputPath;
+            shell.width = 1240; shell.height = 720;
+            stage=42;break;
+        case 42:
+            const delivery = editor.exportDialog;
+            require(delivery.x >= 0 && delivery.y >= 0 &&
+                    delivery.x + delivery.width <= delivery.parent.width + 1 &&
+                    delivery.y + delivery.height <= delivery.parent.height + 1,
+                    "export receipt or actions do not fit the minimum editing window");
+            facts.editedExport.minimumWindow = {width:shell.width, height:shell.height,
+                dialogWidth:delivery.width, dialogHeight:delivery.height, availableHeight:delivery.parent.height};
+            editor.exportDialog.close();
+            shell.width = 1500; shell.height = 900;
+            editor.undo();
+            require(editor.adjustment._historyIndex === singleEditHistoryIndex &&
+                    editor.adjustment.sameSnapshot(editor.adjustment.snapshot(), singleEditBaseline),
+                    "save-and-export lost the edit history");
+            require(shell.flushDrafts(), "original single-source draft could not be restored");
+            facts.editedExport.undoAfterSave = true;
+            editor.debugExport('file://'+fixtureRoot+'/single.wav');stage=3;break;
         case 3:
             if(renderExporter.running) return;
             require(renderExporter.hasResult,renderExporter.errorText || "single-source export failed");
@@ -299,6 +394,7 @@ Item {
             editor.save();
             require(editor.dirty && editor.projectRevisionConflict && JSON.stringify(editor.adjustment.snapshot()) === clipDraft,
                     "clip conflict lost its draft or was not exposed");
+            require(shell.draftConflict && !shell.draftsRecoverable, "conflicting clip draft was advertised as recoverable");
             editor.projectReloadDialog.open(); editor.projectReloadDialog.reject();
             require(editor.dirty && JSON.stringify(editor.adjustment.snapshot()) === clipDraft, "cancel clip reload discarded edits");
             require(JSON.stringify(editor.adjustment._history) === clipHistory && editor.adjustment._historyIndex === clipHistoryIndex,

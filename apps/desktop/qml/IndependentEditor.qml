@@ -32,6 +32,12 @@ ApplicationWindow {
     property string clipId: ""
     property bool multitrack: false
     property bool projectDirty: false
+    readonly property bool draftsRecoverable: !editor.dirty && !assembly.dirty
+    readonly property bool draftConflict: editor.projectRevisionConflict || assembly.revisionConflict
+    readonly property string recoveryStatusText: draftConflict
+        ? qsTr("Conflicting edits are only in this window. Keep it open until you resolve the conflict.")
+        : !draftsRecoverable ? qsTr("Your latest edits have not been saved yet.")
+                             : qsTr("Changes are recoverable. Save the project to keep a portable copy.")
     property bool ready: false
     property bool allowClose: false
     property bool closeAfterSave: false
@@ -237,7 +243,7 @@ ApplicationWindow {
             RowLayout {
                 anchors.fill: parent; anchors.margins: 8
                 BusyIndicator { visible: independentEditor.busy; running: visible; implicitWidth: 22; implicitHeight: 22 }
-                Text { id: statusText; Layout.fillWidth: true; text: independentEditor.errorText || window.notice || (independentEditor.busy ? qsTr("Working on your project…") : window.projectDirty ? qsTr("Changes are recoverable. Save the project to keep a portable copy.") : qsTr("Original files stay unchanged")); wrapMode: Text.WordWrap; color: independentEditor.errorText ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
+                Text { id: statusText; objectName: "independentEditorStatus"; Layout.fillWidth: true; text: window.draftConflict ? window.recoveryStatusText : independentEditor.errorText || window.notice || (independentEditor.busy ? qsTr("Working on your project…") : window.projectDirty ? window.recoveryStatusText : qsTr("Original files stay unchanged")); wrapMode: Text.WordWrap; color: independentEditor.errorText || window.draftConflict ? Theme.warningText : Theme.textMuted; font.pixelSize: Theme.fontMeta }
             }
         }
     }

@@ -16,6 +16,10 @@ Popup {
 
     property url destination
     property bool exportRenderedWorkingCopy: false
+    property bool attempted: false
+    property string saveErrorText: ""
+    readonly property bool outputAvailable: attempted && !exporter.running && exporter.outputPath.length > 0
+    signal saveRequested()
 
     parent: Overlay.overlay
     x: Math.round((parent.width - width) / 2)
@@ -29,6 +33,8 @@ Popup {
 
     function present(): void {
         destination = "";
+        attempted = false;
+        saveErrorText = "";
         exportRenderedWorkingCopy = renderedWorkingCopy !== null && renderedWorkingCopy !== undefined;
         open();
     }
@@ -39,9 +45,19 @@ Popup {
     }
 
     function startExport(): void {
-        exporter.exportOptions=deliverySettings.options;
-        if (!asset || (!exportRenderedWorkingCopy && draft.dirty) || destination.toString().length === 0)
+        if (!asset || asset.pathStatus === "missing" || exporter.running || destination.toString().length === 0)
             return;
+        attempted = false;
+        saveErrorText = "";
+        if (!exportRenderedWorkingCopy && draft.dirty) {
+            saveRequested();
+            if (draft.dirty) {
+                saveErrorText = qsTr("Your edits could not be saved. They are still here; resolve the save problem and try again.");
+                return;
+            }
+        }
+        exporter.exportOptions=deliverySettings.options;
+        attempted = true;
         if (exportRenderedWorkingCopy && renderedWorkingCopy) {
             exporter.exportRenderedSpectralWorkingCopy(asset.id, Number(asset.adjustmentRevision || 0), Number(renderedWorkingCopy.id), renderedWorkingCopy.cachePath, destination);
             return;
@@ -186,7 +202,7 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 visible: dialog.draft.dirty && !dialog.exportRenderedWorkingCopy
-                text: qsTr("Save the current adjustments before exporting so the file keeps an exact source revision.")
+                text: qsTr("Your latest edits will be saved before export. The original file stays unchanged.")
                 color: Theme.warningText
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap
@@ -245,7 +261,8 @@ Popup {
 
             Text {
                 Layout.fillWidth: true
-                visible: dialog.exporter.hasResult
+                objectName: "exportReceipt"
+                visible: dialog.outputAvailable
                 text: dialog.exporter.errorText.length > 0 ? qsTr("Audio created, but Echo could not save its source record.") : qsTr("Audio created · %1 LUFS · %2 dBTP").arg(dialog.exporter.integratedLufs.toFixed(1)).arg(dialog.exporter.truePeakDbtp.toFixed(1))
                 color: dialog.exporter.errorText.length > 0 ? Theme.warningText : Theme.accentSelectionText
                 font.pixelSize: Theme.fontBody
@@ -254,11 +271,34 @@ Popup {
 
             Text {
                 Layout.fillWidth: true
-                visible: !dialog.exporter.running && !dialog.exporter.hasResult && dialog.exporter.errorText.length > 0
+                objectName: "exportFailure"
+                visible: dialog.attempted && !dialog.exporter.running && !dialog.outputAvailable && dialog.exporter.errorText.length > 0
                 text: qsTr("Echo could not export this sound. Check the destination and try again.")
                 color: Theme.warningText
                 font.pixelSize: Theme.fontBody
                 wrapMode: Text.WordWrap
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: dialog.saveErrorText.length > 0
+                text: dialog.saveErrorText
+                color: Theme.warningText
+                font.pixelSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+            }
+
+            TextEdit {
+                objectName: "exportCreatedPath"
+                Layout.fillWidth: true
+                visible: dialog.outputAvailable
+                text: dialog.outputAvailable ? qsTr("Created file: %1").arg(dialog.exporter.outputPath) : ""
+                textFormat: TextEdit.PlainText
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.Wrap
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontMeta
             }
 
             RowLayout {
@@ -278,8 +318,9 @@ Popup {
 
                 EchoButton {
                     visible: !dialog.exporter.running
-                    text: qsTr("Export audio")
-                    enabled: (dialog.exportRenderedWorkingCopy || !dialog.draft.dirty) && dialog.destination.toString().length > 0 && dialog.asset && dialog.asset.pathStatus !== "missing"
+                    objectName: "startSoundExport"
+                    text: dialog.draft.dirty && !dialog.exportRenderedWorkingCopy ? qsTr("Save and export") : qsTr("Export audio")
+                    enabled: dialog.destination.toString().length > 0 && dialog.asset && dialog.asset.pathStatus !== "missing"
                     onClicked: dialog.startExport()
                 }
             }

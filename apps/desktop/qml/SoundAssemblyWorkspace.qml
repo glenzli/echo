@@ -730,9 +730,13 @@ Rectangle {
     }
 
     function crossfadeCandidate(): var {
-        if (!selectedClip || selectedTrackIndex < 0)
+        // Document replacement can arrive before the derived selection binding.
+        // Resolve both clips from the same current track snapshot.
+        const track = tracks[selectedTrackIndex];
+        const selected = track ? track.clips.find(clip => clip.id === selectedClipId) : null;
+        if (!selected)
             return null;
-        const candidates = tracks[selectedTrackIndex].clips.filter(clip => clip.id !== selectedClipId).map(clip => Editing.crossfade(selectedClip, clip)).filter(value => value);
+        const candidates = track.clips.filter(clip => clip.id !== selectedClipId).map(clip => Editing.crossfade(selected, clip)).filter(value => value);
         candidates.sort((a, b) => a.duration - b.duration);
         return candidates.length ? candidates[0] : null;
     }

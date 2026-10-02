@@ -339,7 +339,8 @@ Rectangle {
         if (!hasAsset || asset.pathStatus === "missing")
             return;
         if (diagnosticMode.length>0 || !ownsActivePlayback()) {
-            playFrom(defaultPlaybackStart());
+            const start = player.paused && loadedPath === asset.path ? player.position : defaultPlaybackStart();
+            playFrom(start);
         } else {
             player.togglePause();
         }
@@ -351,7 +352,9 @@ Rectangle {
         const resumeAt = loadedPath === (hasAsset ? asset.path : "") ? player.position : defaultPlaybackStart();
         const wasLoaded = ownsActivePlayback();
         auditionOriginal = enabled;
-        if (wasLoaded)
+        // A paused comparison changes the next audition, without briefly starting
+        // the device. Play will rebuild at the paused source position if needed.
+        if (wasLoaded && !player.paused)
             playFrom(resumeAt);
     }
 
@@ -462,6 +465,8 @@ Rectangle {
         exportDialog.present();
     }
 
+    property alias exportDialog: exportDialog
+
     function debugExport(destination: url, options): void {
         exportDialog.debugExport(destination, options);
     }
@@ -553,6 +558,7 @@ Rectangle {
         draft: adjustmentDraft
         exporter: renderExporter
         renderedWorkingCopy: workspace.activeRenderedSpectralWorkingCopy()
+        onSaveRequested: workspace.save()
     }
 
     Connections {
