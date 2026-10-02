@@ -969,6 +969,7 @@ Rectangle {
             }
             SoundSourceBrowser {
                 id: sourceBrowser
+                objectName: "assemblySourceBrowser"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 editorMode: true
@@ -1019,7 +1020,7 @@ Rectangle {
                         objectName: "assemblyAddSound"
                         text: qsTr("Add sound")
                         ghost: true
-                        enabled: workspace.hasDocument && workspace.totalClipCount() < 256
+                        enabled: (workspace.hasDocument || workspace.independentMode) && workspace.totalClipCount() < 256
                         onClicked: {
                             if (!workspace.sourcesVisible)
                                 sourceBrowser.sourceTab = workspace.independentMode ? 0 : 2;
@@ -1459,7 +1460,9 @@ Rectangle {
         }
         Text {
             Layout.fillWidth: true
-            text: qsTr("Select sounds in Audio Space, then choose Sequence or Layer. Existing assemblies remain available in the sidebar.")
+            text: workspace.independentMode
+                ? qsTr("Choose Add sound to start a new arrangement from your project sources.")
+                : qsTr("Select sounds in Audio Space, then choose Sequence or Layer. Existing assemblies remain available in the sidebar.")
             color: Theme.textSecondary
             font.pixelSize: Theme.fontBody
             wrapMode: Text.WordWrap

@@ -4929,6 +4929,11 @@
             <translation>构建声音序列或分层场景</translation>
         </message>
         <message>
+            <location filename="../qml/SoundAssemblyWorkspace.qml" line="1464" />
+            <source>Choose Add sound to start a new arrangement from your project sources.</source>
+            <translation>选择“添加声音”，用工程素材开始新的编排。</translation>
+        </message>
+        <message>
             <location filename="../qml/SoundAssemblyWorkspace.qml" line="1389" />
             <source>Select sounds in Audio Space, then choose Sequence or Layer. Existing assemblies remain available in the sidebar.</source>
             <translation>在声音空间选择声音，然后选择“序列”或“分层”。已有编排会保留在侧边栏中。</translation>

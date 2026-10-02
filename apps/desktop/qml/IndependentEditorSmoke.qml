@@ -512,6 +512,25 @@ Item {
                         Object.keys(assembly.savedRevisionBase).length === 0 && !assembly.canUndo && !assembly.canRedo,
                         "archiving the last project retained a stale conflict or undo base");
                 facts.archiveClearsConflict = true;
+                const addSound = itemNamed(assembly, "assemblyAddSound");
+                require(addSound && addSound.enabled, "empty independent project disabled Add sound");
+                addSound.clicked();
+                require(assembly.sourcesVisible, "Add sound did not open the project sources");
+                const sources = itemNamed(assembly, "assemblySourceBrowser");
+                require(sources && sources.visible && sources.filteredAssets.length > 0,
+                        "empty project did not expose its retained sources");
+                const retained = sources.filteredAssets.find(asset => !asset.assemblyId && asset.pathStatus === "present");
+                require(retained, "archiving the assembly lost usable project sources");
+                sources.addSource(retained);
+                require(assembly.hasDocument && assembly.document.id !== archivedRemote.id &&
+                        assembly.totalClipCount() === 1 && assembly.tracks[0].clips[0].assetId === retained.id,
+                        "adding a retained source did not start a new arrangement");
+                require(assembly.checkpointRevision(), "new arrangement could not save after archival");
+                const restarted = backend.soundAssembly(assembly.document.id);
+                require(restarted && !restarted.error && restarted.tracks[0].clips[0].assetId === retained.id,
+                        "new arrangement was not persisted through the normal service");
+                facts.emptyAssemblyRecovery = {addSoundEnabled:true, sourcesRetained:true,
+                                               addSourceCreatesArrangement:true, checkpointSaved:true};
             }
             reportJson=JSON.stringify({ok:true,reopening:reopening,facts:facts});break;
         }
