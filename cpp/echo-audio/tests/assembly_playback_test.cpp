@@ -203,6 +203,61 @@ void live_mixing(const AssemblyClipSource& clip, const std::filesystem::path& ro
     stream.stop();
     assert(!stream.update_mix(controls));
 }
+void repeated_boundary_recovery(AssemblyClipSource clip) {
+    clip.gain_centibels = -2400;
+    clip.timeline_start_millis = 14'399'000;
+    AssemblyMixPlan plan;
+    plan.limiter_enabled = false;
+    plan.render_start_millis = 14'399'200;
+    plan.render_end_millis = 14'399'800;
+    plan.tracks.assign(
+        8,
+        AssemblyTrackMix{
+            .gain_centibels = -2400,
+            .clips = std::vector<AssemblyClipSource>(32, clip)
+        }
+    );
+    for (int cycle = 0; cycle < 12; ++cycle) {
+        // Fail at different block boundaries, then retry with a fresh renderer/session.
+        int blocks = 0;
+        MemorySink partial;
+        bool cancelled = false;
+        try {
+            (void)OfflineAssemblyWavRenderer::render(
+                plan,
+                partial,
+                {.cancelled = [&] { return blocks >= cycle % 4; },
+                 .progress = [&](double) { ++blocks; }}
+            );
+        } catch (const OfflineRenderCancelled&) {
+            cancelled = true;
+        }
+        assert(cancelled && partial.bytes_.size() <= 44 + 3 * 4096 * 6);
+        parity(plan);
+        AssemblyPlaybackSession session(plan, false);
+        until([&] { return session.buffered_frames() >= 4096 || !session.error().empty(); });
+        assert(session.error().empty() && session.buffered_frames() <= session.capacity_frames);
+        session.seek(300);
+        session.seek(100);
+        until([&] {
+            return session.position_millis() == 100 && session.buffered_frames() >= 4096;
+        });
+        session.pause();
+        const auto started = Clock::now();
+        session.stop();
+        assert(Clock::now() - started < 500ms);
+    }
+    plan.tracks[0].clips.push_back(clip);
+    bool rejected = false;
+    try {
+        AssemblyMixer excess(plan);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected); // The 257th clip must fail before opening any source.
+    std::cout << "12 cancellation/retry/seek/stop cycles at 4-hour/256-clip boundary passed\n";
+}
+
 int main() {
     const auto root =
         std::filesystem::temp_directory_path()
@@ -215,6 +270,7 @@ int main() {
     }
     AssemblyClipSource clip{.path = source.string(), .source_end_millis = 1000};
     live_mixing(clip, root);
+    repeated_boundary_recovery(clip);
     AssemblyMixPlan plan;
     plan.tracks = {
         AssemblyTrackMix{.clips = {clip}},
@@ -251,6 +307,46 @@ int main() {
     MemorySink negative;
     (void)OfflineAssemblyWavRenderer::render(fallback, negative);
     assert(std::abs(pcm24(negative.bytes_, 123, 0) + 0.3F) < 0.001F);
+    // Our own WAV delivery with trailing disclosure metadata is valid input too.
+    MemorySink disclosed;
+    const std::string comment =
+        R"(Echo source disclosure: {"schema":"echo.source-disclosure.v1","scope":"referenced_sources","kinds":["ai_generated"]})";
+    (void)OfflineAssemblyWavRenderer::render(fallback, disclosed, {}, comment);
+    const auto disclosed_path = root / "disclosed.wav";
+    {
+        std::ofstream file(disclosed_path, std::ios::binary);
+        file.write(
+            reinterpret_cast<const char*>(disclosed.bytes_.data()),
+            static_cast<std::streamsize>(disclosed.bytes_.size())
+        );
+    }
+    auto disclosed_plan = fallback;
+    disclosed_plan.tracks[0].clips[0].path = disclosed_path.string();
+    {
+        AssemblyMixer disclosed_mixer(disclosed_plan);
+        assert(std::abs(disclosed_mixer.next()[0] + 0.3F) < 0.001F);
+    }
+    parity(disclosed_plan);
+    // Extra metadata must not let a partial PCM payload bypass truncation checks,
+    // even when the requested clip lies entirely within the bytes that survived.
+    std::filesystem::resize_file(disclosed_path, 44 + 48000 * 6 / 2);
+    disclosed_plan.tracks[0].clips[0].source_end_millis = 100;
+    bool disclosed_truncated = false;
+    try {
+        AssemblyMixer broken(disclosed_plan);
+        (void)broken.next();
+    } catch (const std::runtime_error&) {
+        disclosed_truncated = true;
+    }
+    assert(disclosed_truncated);
+    {
+        std::ofstream repaired(disclosed_path, std::ios::binary | std::ios::trunc);
+        repaired.write(
+            reinterpret_cast<const char*>(disclosed.bytes_.data()),
+            static_cast<std::streamsize>(disclosed.bytes_.size())
+        );
+    }
+    parity(disclosed_plan); // A repaired source can be retried without stale failed state.
     // Re-read the actual PCM24 output, including signed samples and exact seek.
     const auto pcm = root / "prepared.wav";
     {

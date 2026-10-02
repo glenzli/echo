@@ -270,3 +270,59 @@ fn zero_workers_rejects_before_recovering_live_jobs() {
     drop(catalog);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+fn assert_shutdown_releases_catalog(label: &str, finish: impl FnOnce(WorkerPool)) {
+    let root = std::env::temp_dir().join(format!("echo-worker-{label}-{}", std::process::id()));
+    let catalog = Arc::new(open_catalog(&root.join("catalog.sqlite")).expect("catalog opens"));
+    let pool = WorkerPool::start(
+        &catalog,
+        &WorkerConfig {
+            cache_root: root.join("cache"),
+            infer_runtime: crate::InferRuntimeConfig {
+                base_url: "http://127.0.0.1:1".to_owned(),
+                credential_path: root.join("missing-infer-runtime.token"),
+            },
+        },
+        2,
+    )
+    .expect("workers start");
+    let stop = Arc::clone(&pool.stop);
+    finish(pool);
+    let references_after_shutdown = Arc::strong_count(&catalog);
+
+    // Also clean up a regressed implementation before reporting the failure.
+    stop.store(true, Ordering::Release);
+    let deadline = std::time::Instant::now() + Duration::from_secs(3);
+    while Arc::strong_count(&catalog) != 1 && std::time::Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(10));
+    }
+    drop(catalog);
+    std::fs::remove_dir_all(root).expect("fixture cleans up");
+    assert_eq!(
+        references_after_shutdown, 1,
+        "shutdown left background threads attached"
+    );
+}
+
+#[test]
+fn dropping_worker_pools_releases_all_threads_on_every_restart() {
+    for attempt in 0..12 {
+        assert_shutdown_releases_catalog(&format!("drop-{attempt}"), drop);
+    }
+}
+
+#[test]
+fn explicit_worker_stop_releases_all_threads() {
+    assert_shutdown_releases_catalog("explicit-stop", WorkerPool::stop);
+}
+
+#[test]
+fn unwinding_worker_owner_releases_all_threads() {
+    assert_shutdown_releases_catalog("unwind", |pool| {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _pool = pool;
+            panic!("synthetic owner failure");
+        }));
+        assert!(result.is_err());
+    });
+}

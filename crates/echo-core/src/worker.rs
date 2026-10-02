@@ -34,7 +34,8 @@ pub struct WorkerConfig {
     pub infer_runtime: crate::InferRuntimeConfig,
 }
 
-/// The worker pool handle.
+/// The worker pool handle. Dropping it stops and joins all background threads,
+/// waiting for in-flight jobs just like [`Self::stop`].
 #[derive(Debug)]
 pub struct WorkerPool {
     stop: Arc<AtomicBool>,
@@ -75,26 +76,27 @@ impl WorkerPool {
 
         let stop = Arc::new(AtomicBool::new(false));
         let state_revision = Arc::new(AtomicU64::new(1));
-        let mut handles = Vec::new();
+        // Own started threads immediately so a later spawn failure also shuts them down.
+        let mut pool = Self {
+            stop: Arc::clone(&stop),
+            state_revision: Arc::clone(&state_revision),
+            handles: Vec::new(),
+        };
         for _ in 0..worker_count {
             let catalog = Arc::clone(catalog);
             let config = config.clone();
             let stop = stop.clone();
             let state_revision = Arc::clone(&state_revision);
-            handles.push(thread::spawn(move || {
+            pool.handles.push(thread::spawn(move || {
                 worker_loop(&catalog, &config, &stop, &state_revision);
             }));
         }
-        handles.push(crate::analysis_recovery::spawn(
+        pool.handles.push(crate::analysis_recovery::spawn(
             Arc::clone(catalog),
             config.infer_runtime.clone(),
             Arc::clone(&stop),
         ));
-        Ok(Self {
-            stop,
-            state_revision,
-            handles,
-        })
+        Ok(pool)
     }
 
     /// Monotonic process-local identity for durable worker state transitions.
@@ -109,8 +111,14 @@ impl WorkerPool {
 
     /// Stops the pool, waiting for in-flight jobs.
     pub fn stop(self) {
+        drop(self);
+    }
+}
+
+impl Drop for WorkerPool {
+    fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
-        for handle in self.handles {
+        for handle in self.handles.drain(..) {
             let _ = handle.join();
         }
     }

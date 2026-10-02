@@ -33,13 +33,17 @@ std::unique_ptr<PreparedPcmReader> PreparedPcmReader::open(const std::string& pa
         return nullptr;
     const unsigned sample_bytes = bits / 8;
     const auto bytes = little(h + 40, 4);
+    const auto riff_bytes = static_cast<std::uint64_t>(little(h + 4, 4));
     if (little(h + 28, 4) != 48000 * 2 * sample_bytes || little(h + 32, 2) != 2 * sample_bytes
-        || bytes % (2 * sample_bytes)
-        || static_cast<std::uint64_t>(little(h + 4, 4)) != 36ULL + bytes)
+        || bytes % (2 * sample_bytes) || riff_bytes < 36ULL + bytes)
         throw std::runtime_error("invalid prepared PCM header");
     input.seekg(0, std::ios::end);
     if (!input || input.tellg() < static_cast<std::streamoff>(44ULL + bytes))
         throw std::runtime_error("truncated prepared PCM source");
+    // Valid delivery WAVs may carry metadata after PCM. Only our exact cache layout
+    // belongs to this fast path; let the general decoder interpret extra RIFF chunks.
+    if (riff_bytes != 36ULL + bytes)
+        return nullptr;
     return std::unique_ptr<PreparedPcmReader>(
         new PreparedPcmReader(std::move(input), bytes, sample_bytes)
     );
