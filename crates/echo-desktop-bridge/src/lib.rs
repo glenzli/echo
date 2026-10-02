@@ -894,6 +894,11 @@ mod ffi {
             asset_id: &str,
             adjustment: &AssetAdjustmentWire,
         ) -> Result<()>;
+        /// Checks delivery paths against all registered Originals before writing.
+        fn session_validate_export_destination(
+            self: &LibrarySession,
+            output_path: &str,
+        ) -> Result<()>;
         /// Records provenance after a WAV has been atomically published.
         fn session_record_render_export(
             self: &LibrarySession,
@@ -1526,6 +1531,11 @@ impl LibrarySession {
         adjustment: &ffi::AssetAdjustmentWire,
     ) -> Result<(), String> {
         self.set_asset_adjustment(asset_id, adjustment)
+            .map_err(|error| error.message)
+    }
+
+    fn session_validate_export_destination(&self, output_path: &str) -> Result<(), String> {
+        self.validate_export_destination(output_path)
             .map_err(|error| error.message)
     }
 

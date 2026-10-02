@@ -229,3 +229,44 @@ fn audio_event_job_without_credentials_fails_without_publishing_evidence() {
     std::fs::remove_file(source).expect("source removes");
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn zero_workers_rejects_before_recovering_live_jobs() {
+    let root = std::env::temp_dir().join(format!("echo-zero-workers-{}", std::process::id()));
+    let catalog = Arc::new(open_catalog(&root.join("catalog.sqlite")).unwrap());
+    catalog
+        .with_transaction(|transaction| {
+            enqueue_job(
+                transaction,
+                "live-job",
+                JobKind::Transcribe,
+                &serde_json::json!({}),
+                1,
+            )?;
+            claim_next_job(transaction, 2)
+        })
+        .unwrap();
+    let error = WorkerPool::start(
+        &catalog,
+        &WorkerConfig {
+            cache_root: root.join("cache"),
+            infer_runtime: crate::InferRuntimeConfig {
+                base_url: "http://127.0.0.1:1".to_owned(),
+                credential_path: root.join("absent.token"),
+            },
+        },
+        0,
+    )
+    .unwrap_err();
+    assert!(error.message.contains("at least one worker"));
+    assert_eq!(
+        catalog
+            .with_transaction(|transaction| job_by_id(transaction, "live-job"))
+            .unwrap()
+            .unwrap()
+            .state,
+        JobState::Running
+    );
+    drop(catalog);
+    std::fs::remove_dir_all(root).unwrap();
+}

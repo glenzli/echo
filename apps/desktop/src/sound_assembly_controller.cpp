@@ -377,6 +377,12 @@ void SoundAssemblyController::start(
                             pinned_sources,
                             job = std::move(*projected)](std::stop_token stop_token) mutable {
         try {
+            if (!preview) {
+                if (const auto error = backend_.validateExportDestination(destination);
+                    !error.isEmpty()) {
+                    throw std::runtime_error(error.toStdString());
+                }
+            }
             const double preparation_share = preview ? 1.0 : 0.6;
             PreparedAssemblySourceCache source_cache(
                 QDir(preview_directory_.path()).filePath(QStringLiteral("sources"))
@@ -500,6 +506,12 @@ void SoundAssemblyController::start(
             );
             if (stop_token.stop_requested()) {
                 throw echo::audio::OfflineRenderCancelled();
+            }
+            if (!preview) {
+                if (const auto error = backend_.validateExportDestination(destination);
+                    !error.isEmpty()) {
+                    throw std::runtime_error(error.toStdString());
+                }
             }
             if (!output.commit()) {
                 throw std::runtime_error(output.errorString().toStdString());

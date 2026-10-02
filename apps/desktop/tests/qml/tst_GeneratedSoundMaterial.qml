@@ -49,12 +49,18 @@ TestCase {
         candidate();verify(!findChild(dialog,"soundMaterialPrompt").readOnly);dialog.close();tryCompare(dialog,"visible",false);compare(generatedSoundMaterial.detailsJson,"");compare(test.accepted.length,0);
     }
     function test_each_candidate_needs_its_own_audition_and_capacity_is_visible() {
-        openDialog(); candidate();
+        openDialog(); findChild(dialog,"soundMaterialPrompt").text="Rain"; candidate();
         const first=generatedSoundMaterial.selectedCandidateId;
         dialog.heardCandidates[first]=true; dialog.reviewed=true;
         candidate(); verify(!dialog.reviewed); verify(!findChild(dialog,"soundMaterialAccept").enabled);
         generatedSoundMaterial.selectCandidate(first); verify(dialog.reviewed);
         candidate(); verify(!findChild(dialog,"soundMaterialGenerate").enabled);
+        // Candidate creation schedules layout; the action may be below the
+        // clipped viewport once all three previews are shown.
+        waitForRendering(dialog.contentItem);
+        const body=findChild(dialog,"soundMaterialBody");
+        body.contentItem.contentY=Math.max(0,body.contentItem.contentHeight-body.availableHeight);
+        waitForRendering(dialog.contentItem);
         mouseClick(findChild(dialog,"soundMaterialRemove")); compare(generatedSoundMaterial.candidates.length,2);
         verify(findChild(dialog,"soundMaterialGenerate").enabled);
     }

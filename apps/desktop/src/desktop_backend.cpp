@@ -2539,6 +2539,15 @@ QString DesktopBackend::cacheRoot() const {
     return QString::fromUtf8(path.data(), path.size());
 }
 
+QString DesktopBackend::validateExportDestination(const QString& outputPath) const {
+    try {
+        session_->session_validate_export_destination(outputPath.toStdString());
+        return {};
+    } catch (const std::exception& error) {
+        return QString::fromUtf8(error.what());
+    }
+}
+
 QString DesktopBackend::recordRenderExport(
     const QString& assetId,
     qint64 adjustmentRevisionId,

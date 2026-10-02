@@ -2,7 +2,7 @@
 //! File hashing stays off the Qt thread and Catalog remains the sole owner of
 //! provenance persistence.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use echo_catalog::{
     AssetLookup, RecordRenderExport, RenderExportFormat, find_by_id,
@@ -13,7 +13,74 @@ use echo_domain::AssetId;
 
 use crate::session::{LibrarySession, SessionError, now_millis};
 
+// Resolve the existing target (including symlinks), or its real parent
+// when the destination has not yet been created. Never open it for writing.
+fn export_path_identity(path: &Path) -> std::io::Result<PathBuf> {
+    match path.canonicalize() {
+        Ok(path) => Ok(path),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            // Do not turn a dangling symlink into an apparently new target.
+            if std::fs::symlink_metadata(path).is_ok_and(|entry| entry.file_type().is_symlink()) {
+                return Err(error);
+            }
+            let absolute = std::path::absolute(path)?;
+            let parent = absolute.parent().ok_or(error)?;
+            Ok(parent.canonicalize()?.join(
+                absolute
+                    .file_name()
+                    .ok_or_else(|| std::io::Error::other("export destination has no file name"))?,
+            ))
+        }
+        Err(error) => Err(error),
+    }
+}
+
 impl LibrarySession {
+    /// Rejects a delivery that would replace any registered Original, including
+    /// project-only materials and sources outside the current mix. Call before
+    /// rendering and immediately before atomic publication; a post-write
+    /// provenance check cannot protect the source bytes.
+    pub(crate) fn validate_export_destination(
+        &self,
+        output_path: &str,
+    ) -> Result<(), SessionError> {
+        let destination =
+            export_path_identity(Path::new(output_path)).map_err(|error| SessionError {
+                message: format!("cannot resolve export destination: {error}"),
+            })?;
+        let paths = self.catalog().with_transaction(|transaction| {
+            let mut statement = transaction.prepare("SELECT path FROM assets")?;
+            statement
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(echo_catalog::CatalogError::from)
+        })?;
+        // File-system inspection must not hold the Catalog's writer mutex.
+        #[cfg(unix)]
+        let destination_metadata = destination.metadata().ok();
+        for path in paths {
+            let same_path =
+                export_path_identity(Path::new(&path)).is_ok_and(|source| source == destination);
+            #[cfg(unix)]
+            let same_identity = {
+                use std::os::unix::fs::MetadataExt;
+                destination_metadata.as_ref().is_some_and(|target| {
+                    std::fs::metadata(&path).is_ok_and(|source| {
+                        source.dev() == target.dev() && source.ino() == target.ino()
+                    })
+                })
+            };
+            #[cfg(not(unix))]
+            let same_identity = false;
+            if same_path || same_identity {
+                return Err(SessionError {
+                    message: "render destination cannot replace the immutable original".to_owned(),
+                });
+            }
+        }
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn record_render_export(
         &self,

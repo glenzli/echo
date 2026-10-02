@@ -160,3 +160,80 @@ fn session_records_verified_original_render() {
     assert_eq!(provenance_count, 1);
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn destination_preflight_protects_all_originals_before_publication() {
+    let root = std::env::temp_dir().join(format!("echo-export-preflight-{}", std::process::id()));
+    fs::create_dir_all(root.join("nested")).unwrap();
+    let source = root.join("other-original.wav");
+    fs::write(&source, b"immutable original").unwrap();
+    let session = crate::session::open_session(
+        root.join("catalog.sqlite").to_str().unwrap(),
+        root.join("cache").to_str().unwrap(),
+    )
+    .unwrap();
+    session
+        .catalog()
+        .with_transaction(|transaction| {
+            register_asset(
+                transaction,
+                &AssetRegistrationInput {
+                    content_hash: ContentHash::new([71; 32]),
+                    path: &source,
+                    size_bytes: 18,
+                    codec: Some("pcm"),
+                    duration_millis: Some(1000),
+                    recorded_at_millis: None,
+                    imported_at_millis: 1,
+                },
+            )
+        })
+        .unwrap();
+    let reject = |path: &Path| {
+        let error = session
+            .validate_export_destination(path.to_str().unwrap())
+            .unwrap_err();
+        assert!(
+            error.message.contains("immutable original"),
+            "{}",
+            error.message
+        );
+        assert_eq!(fs::read(&source).unwrap(), b"immutable original");
+    };
+    reject(&source);
+    reject(&root.join("nested/../other-original.wav"));
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(&source, root.join("alias.wav")).unwrap();
+        reject(&root.join("alias.wav"));
+        std::os::unix::fs::symlink(&root, root.join("directory-alias")).unwrap();
+        reject(&root.join("directory-alias/other-original.wav"));
+        fs::hard_link(&source, root.join("hardlink.wav")).unwrap();
+        reject(&root.join("hardlink.wav"));
+    }
+    let delivery = root.join("new-delivery.wav");
+    session
+        .validate_export_destination(delivery.to_str().unwrap())
+        .unwrap();
+    assert!(!delivery.exists());
+    fs::write(&delivery, b"prior delivery").unwrap();
+    session
+        .validate_export_destination(delivery.to_str().unwrap())
+        .unwrap();
+    assert_eq!(fs::read(&delivery).unwrap(), b"prior delivery");
+    // A missing Original remains reserved, rather than becoming a new export.
+    fs::remove_file(&source).unwrap();
+    assert!(
+        session
+            .validate_export_destination(source.to_str().unwrap())
+            .is_err()
+    );
+    #[cfg(unix)]
+    assert!(
+        session
+            .validate_export_destination(root.join("alias.wav").to_str().unwrap())
+            .is_err()
+    );
+    drop(session);
+    fs::remove_dir_all(root).unwrap();
+}

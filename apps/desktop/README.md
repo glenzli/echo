@@ -511,3 +511,12 @@ Cargo invocation that produced the linked static library, including fresh-cache 
 Historical test/lint output variants do not affect that selection. Missing or ambiguous
 artifact identity stops the build before header synchronization. `tests/cxxbridge_headers_contract.py`
 covers stale-cache coexistence, fresh artifact reuse, failed builds and missing headers.
+
+
+Offline delivery checks its resolved destination against all Catalog Originals before
+rendering and again before atomic publication. This includes spectral working copies,
+mixdowns, other project materials and symlink aliases. Ordinary prior export files remain
+replaceable. `render_exports/tests.rs` covers path identity without writing audio, and
+`SourceDisclosureSmoke.qml` exercises the packaged working-copy rejection and retry path.
+This preflight is not a cross-process file-system transaction; cooperating writers still
+need a shared ownership protocol to eliminate a concurrent path/import race.

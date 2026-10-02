@@ -37,6 +37,9 @@ pub(crate) enum Command {
     Probe {
         /// Recording file to probe.
         source: std::path::PathBuf,
+        /// Emit one versioned JSON object with explicit units, without raw metadata.
+        #[arg(long)]
+        json: bool,
     },
     /// Builds a waveform pyramid and publishes it into the cache.
     Waveform {
@@ -89,8 +92,8 @@ pub(crate) enum Command {
         #[arg(long)]
         endpoint: Option<String>,
         /// Worker threads (default 2).
-        #[arg(long, default_value_t = 2)]
-        workers: usize,
+        #[arg(long, default_value = "2")]
+        workers: std::num::NonZeroUsize,
     },
     /// Reports job queue statistics and failures.
     Jobs {
@@ -128,7 +131,7 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
         Command::Init { catalog } => catalog::run_init(&catalog),
         Command::Import { catalog, source } => import::run_import(&catalog, &source),
         Command::List { catalog } => list::run_list(&catalog),
-        Command::Probe { source } => probe::run_probe(&source),
+        Command::Probe { source, json } => probe::run_probe(&source, json),
         Command::Waveform { cache, source } => waveform::run_waveform(&cache, &source),
         Command::Models { root } => {
             let root = root.unwrap_or_else(models::default_model_root);
@@ -153,7 +156,7 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
         } => {
             let cache = cache.unwrap_or_else(library::default_cache_root);
             let endpoint = endpoint.unwrap_or_else(transcribe::default_runtime_endpoint);
-            library::run_scan(&catalog, &cache, &endpoint, workers)
+            library::run_scan(&catalog, &cache, &endpoint, workers.get())
         }
         Command::Jobs { catalog } => library::run_jobs(&catalog),
         Command::Search {
@@ -172,3 +175,6 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> anyhow::Result<()>
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

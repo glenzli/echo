@@ -222,6 +222,13 @@ void RenderExportController::exportAdjusted(
         QSaveFile output(output_path);
         output.setDirectWriteFallback(false);
         try {
+            if (const auto error = backend_.validateExportDestination(output_path);
+                !error.isEmpty()) {
+                throw std::runtime_error(error.toStdString());
+            }
+            if (stop_token.stop_requested()) {
+                throw echo::audio::OfflineRenderCancelled();
+            }
             if (!output.open(QIODevice::WriteOnly)) {
                 throw std::runtime_error(output.errorString().toStdString());
             }
@@ -259,6 +266,10 @@ void RenderExportController::exportAdjusted(
             );
             if (stop_token.stop_requested()) {
                 throw echo::audio::OfflineRenderCancelled();
+            }
+            if (const auto error = backend_.validateExportDestination(output_path);
+                !error.isEmpty()) {
+                throw std::runtime_error(error.toStdString());
             }
             if (!output.commit()) {
                 throw std::runtime_error(output.errorString().toStdString());
@@ -384,6 +395,13 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
         QSaveFile output(output_path);
         output.setDirectWriteFallback(false);
         try {
+            if (const auto error = backend_.validateExportDestination(output_path);
+                !error.isEmpty()) {
+                throw std::runtime_error(error.toStdString());
+            }
+            if (stop_token.stop_requested()) {
+                throw echo::audio::OfflineRenderCancelled();
+            }
             if (!output.open(QIODevice::WriteOnly)) {
                 throw std::runtime_error(output.errorString().toStdString());
             }
@@ -422,6 +440,10 @@ void RenderExportController::exportRenderedSpectralWorkingCopy(
             );
             if (stop_token.stop_requested()) {
                 throw echo::audio::OfflineRenderCancelled();
+            }
+            if (const auto error = backend_.validateExportDestination(output_path);
+                !error.isEmpty()) {
+                throw std::runtime_error(error.toStdString());
             }
             if (!output.commit()) {
                 throw std::runtime_error(output.errorString().toStdString());

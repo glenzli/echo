@@ -424,6 +424,7 @@ dependencies = [
  "echo-bridge",
  "echo-catalog",
  "echo-core",
+ "serde_json",
 ]
 
 [[package]]

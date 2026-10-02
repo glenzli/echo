@@ -20,6 +20,8 @@ Item {
     function deliveryProfile(format) { return {format:format,sampleRate:44100,channels:1,bitrateKbps:192,includeMemoryInfo:true}; }
     function deliveryExtension(format) { return format==="flac24"?"flac":format==="mp3"?"mp3":format==="aac_m4a"?"m4a":"wav"; }
     property var originalIds: []
+    property var protectedOriginals: []
+    property int protectedIndex: 0
     function require(value,message) { if(!value) throw new Error(message); }
     function tapeStep() {
         switch(stage) {
@@ -155,7 +157,21 @@ Item {
             require(renderedSpectralWorkingCopy.hasResult && renderedSpectralWorkingCopy.operationCount===1,renderedSpectralWorkingCopy.errorText || "working-copy erase failed");
             facts.workingCopyErased=true;
             renderExporter.exportOptions={format:"wav_pcm24",sampleRate:48000,channels:2,includeMemoryInfo:true};
+            protectedOriginals=backend.listAssets(true);protectedIndex=0;
+            facts.protectedOriginalPaths=protectedOriginals.map(source=>source.path);
+            stage=22;break;
+        case 22:
+            if(protectedIndex<protectedOriginals.length) {
+                const source=protectedOriginals[protectedIndex];
+                renderExporter.exportRenderedSpectralWorkingCopy(editor.asset.id,Number(editor.asset.adjustmentRevision||0),renderedSpectralWorkingCopy.workingCopyId,renderedSpectralWorkingCopy.cachePath,(source.path.startsWith('/')?'file://':'file:')+source.path);
+                stage=23;break;
+            }
+            facts.originalOverwriteRejected=true;
             renderExporter.exportRenderedSpectralWorkingCopy(editor.asset.id,Number(editor.asset.adjustmentRevision||0),renderedSpectralWorkingCopy.workingCopyId,renderedSpectralWorkingCopy.cachePath,'file://'+fixtureRoot+'/working-copy.wav');stage=11;break;
+        case 23:
+            if(renderExporter.running)return;
+            require(!renderExporter.hasResult && renderExporter.errorText.indexOf("immutable original")>=0,"working-copy export did not reject an Original: "+renderExporter.errorText);
+            ++protectedIndex;stage=22;break;
         case 11:
             if(renderExporter.running) return;
             require(renderExporter.hasResult,renderExporter.errorText || "working-copy delivery failed");

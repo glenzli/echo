@@ -48,7 +48,16 @@ pub enum ImportOutcome {
 /// [`CoreErrorKind::AudioEngineRejected`] when the probe refuses the source,
 /// and [`CoreErrorKind::Catalog`] when registration fails.
 pub fn import_asset(catalog_path: &Path, source: &Path) -> Result<ImportOutcome, CoreError> {
-    import_asset_with_probe(catalog_path, source, &audio_engine_probe)
+    // Library sources must remain addressable when another process opens the
+    // Catalog from a different working directory. Portable editor intake owns
+    // its separate, intentionally relative resource registration path.
+    let source = source.canonicalize().map_err(|error| {
+        CoreError::new(
+            CoreErrorKind::SourceUnavailable,
+            format!("cannot resolve {}: {error}", source.display()),
+        )
+    })?;
+    import_asset_with_probe(catalog_path, &source, &audio_engine_probe)
 }
 
 fn audio_engine_probe(source: &Path) -> Result<Option<AudioProbe>, CoreError> {

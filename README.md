@@ -49,6 +49,10 @@ Echo 与 [Shadow](../shadow) 属于同一系列：Shadow 面向照片与 RAW，E
 - 已保存混音可从记忆库重新打开来源项目；当前不将一个混音项目嵌套为另一个项目的片段。项目内精细编辑使用原始频谱修复，渲染后工作副本仍属于单音处理入口。
 - 声音编排不是通用 DAW：当前不提供录音、输入监听、MIDI、速度网格、时间拉伸、插件宿主、发送总线、任意路由、轨道参数自动化或视频同步。
 
+### 自动化检查
+
+`echo-cli probe <音频文件> --json` 输出一个版本化 JSON 对象，包含 `has_audio`、编码/容器、`sample_rate_hz`、`channels` 和 `duration_ms`；默认仍为人类可读文本。此检查不打开 Catalog、不启动推理，也不输出原始自由文本元数据。`echo-cli import` 保存绝对来源路径，方便从另一工作目录继续使用。CLI 目前没有 DSP 编辑或音频导出命令；这些能力仍由桌面处理服务提供。
+
 ### 运行开发版
 
 已有准备好的本地开发环境时，可启动当前 canonical debug：
@@ -113,6 +117,10 @@ Echo is the audio sibling of [Shadow](../shadow): Shadow works with photographs 
 - Neural denoise, source separation, ambience generation, and audio extension remain unavailable; short narration generation has an explicit candidate workflow. The public repository does not distribute model files. Source labels come from user declarations or imported file declarations and propagate conservatively for whole referenced sources. Exports embed a compact source-kind declaration in WAV/FLAC metadata, and Echo restores it on import. These are unauthenticated declarations; external conversion may strip them. Private notes and paths remain in Echo.
 - Saved mixes reopen their source project; nesting a mix project inside another project is not supported. Project clip editing supports original spectral repair; post-render working copies remain in the single-sound workspace.
 - Sound Assembly is not a general-purpose DAW. Recording, input monitoring, MIDI, tempo grids, time stretching, plug-in hosting, sends, arbitrary routing, track-parameter automation, and video sync are outside the current module.
+
+### Automation inspection
+
+`echo-cli probe <audio-file> --json` emits one versioned JSON object with `has_audio`, codec/container, `sample_rate_hz`, `channels`, and `duration_ms`. Human-readable text remains the default. Inspection opens no Catalog, starts no inference, and excludes raw free-text metadata. `echo-cli import` retains absolute source paths so another working directory can continue using them. The CLI does not yet expose DSP editing or audio export; those remain desktop service capabilities.
 
 ### Run the development build
 

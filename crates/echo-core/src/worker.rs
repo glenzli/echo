@@ -54,6 +54,12 @@ impl WorkerPool {
         config: &WorkerConfig,
         worker_count: usize,
     ) -> Result<Self, CoreError> {
+        if worker_count == 0 {
+            return Err(CoreError::new(
+                CoreErrorKind::Other,
+                "a worker pool requires at least one worker",
+            ));
+        }
         let now = crate::util::now_millis();
         catalog
             .with_transaction(|transaction| recover_interrupted_jobs(transaction, now))

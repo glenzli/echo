@@ -289,6 +289,7 @@ class DesktopBackend : public QObject {
     /// detail for the controller to present.
     [[nodiscard]] QString
     exportSourceDisclosure(const QString& id, qint64 assemblyRevision = 0) const;
+    [[nodiscard]] QString validateExportDestination(const QString& outputPath) const;
     [[nodiscard]] QString recordRenderExport(
         const QString& assetId,
         qint64 adjustmentRevisionId,
