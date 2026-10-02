@@ -16,6 +16,9 @@ Rectangle {
     readonly property bool editingProjectClip: projectClipId.length > 0
     signal returnToProjectRequested()
     signal projectClipSaved(var revision)
+    signal projectRevisionReloaded(var revision)
+    property bool projectRevisionConflict: false
+    property alias projectReloadDialog: projectReloadConfirmation
     signal showMaterialRequested(string assetId)
     property string acceptedNarrationId: ""
 
@@ -470,6 +473,8 @@ Rectangle {
         const key=current ? JSON.stringify([current.id,current.path,current.pathStatus,current.durationMillis,backend.independentEditing === true ? 0 : current.adjustmentRevision,projectClipId]) : "";
         if(key===sourceIdentity) return;
         sourceIdentity=key;
+        if (projectRevisionConflict) processingRecipeNoticePopup.close();
+        projectRevisionConflict=false;
         acceptedNarrationId="";
         noiseProfile.cancel(); noiseCaptureIdentity=""; noiseCaptureObsolete=false;
         player.stop();
@@ -500,9 +505,14 @@ Rectangle {
         }
         function onProjectClipSaved(revision): void {
             if (workspace.editingProjectClip) {
+                workspace.projectRevisionConflict = false;
+                processingRecipeNoticePopup.close();
                 workspace.projectDocument = revision;
                 workspace.projectClipSaved(revision);
             }
+        }
+        function onProjectClipSaveConflicted(): void {
+            if (workspace.editingProjectClip) workspace.projectRevisionConflict = true;
         }
         function onAdjustmentSaveFailed(message): void { workspace.showProcessingRecipeNotice(message); }
         function onProcessingRecipesChanged(): void {
@@ -1296,13 +1306,48 @@ Rectangle {
         onRevertRequested: batchId => workspace.revertProcessingRecipeBatch(batchId)
     }
 
+    Dialog {
+        id: projectReloadConfirmation
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(480, parent.width - 32)
+        modal: true
+        title: qsTr("Reload the latest project version?")
+        standardButtons: Dialog.Cancel
+        contentItem: ColumnLayout {
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Reloading discards this clip's unsaved edits and opens the latest project version. Cancel keeps your edits here.")
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+            }
+            EchoButton {
+                text: qsTr("Discard clip edits and reload")
+                onClicked: projectReloadConfirmation.accept()
+            }
+        }
+        onAccepted: {
+            const latest = backend.soundAssembly(workspace.projectDocument.id);
+            if (!latest || latest.error) {
+                workspace.showProcessingRecipeNotice(latest && latest.error ? latest.error : qsTr("The project could not be reloaded. Your edits are still here."));
+                return;
+            }
+            player.stop();
+            adjustmentDraft.resetFromAsset();
+            workspace.projectRevisionConflict = false;
+            processingRecipeNoticePopup.close();
+            workspace.projectRevisionReloaded(latest);
+        }
+    }
+
     Popup {
         id: processingRecipeNoticePopup
 
         parent: Overlay.overlay
         x: Math.round((parent.width - width) / 2)
         y: 18
-        implicitWidth: Math.min(540, processingRecipeNoticeRow.implicitWidth + 28)
+        implicitWidth: Math.min(700, parent.width - 32)
         implicitHeight: processingRecipeNoticeRow.implicitHeight + 20
         padding: 0
         closePolicy: Popup.NoAutoClose
@@ -1322,12 +1367,18 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 text: workspace.processingRecipeNotice
+                wrapMode: Text.WordWrap
                 color: Theme.textPrimary
                 font.pixelSize: Theme.fontBody
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
 
+            EchoButton {
+                visible: workspace.projectRevisionConflict
+                text: qsTr("Reload project…")
+                onClicked: projectReloadConfirmation.open()
+            }
             EchoButton {
                 visible: workspace.lastProcessingRecipeBatchId.length > 0
                 text: qsTr("Undo batch")
@@ -1340,7 +1391,7 @@ Rectangle {
     Timer {
         id: processingRecipeNoticeTimer
         interval: workspace.lastProcessingRecipeBatchId.length > 0 ? 6000 : 2600
-        onTriggered: processingRecipeNoticePopup.close()
+        onTriggered: if (!workspace.projectRevisionConflict) processingRecipeNoticePopup.close()
     }
     GeneratedMaterialMenu {
         id: generationMenu

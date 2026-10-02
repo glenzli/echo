@@ -202,6 +202,12 @@ ApplicationWindow {
                 onDirtyChanged: if (dirty) { window.projectDirty = true; recoveryTimer.restart(); }
                 onReturnToProjectRequested: { if (window.flushDrafts()) { window.clipId = ""; window.multitrack = true; } }
                 onProjectClipSaved: revision => assembly.acceptClipRevision(revision)
+                onProjectRevisionReloaded: revision => {
+                    assembly.loadRevision(revision);
+                    window.clipId = "";
+                    window.clipAsset = null;
+                    window.multitrack = true;
+                }
                 onShowMaterialRequested: assetId => {
                     if (!window.flushDrafts()) return;
                     if (window.clipId) {

@@ -309,3 +309,279 @@ fn precision_source_trim_reanchors_bypassed_assembly_gain() {
     drop(session);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+fn based_document(revision: &crate::ffi::SoundAssemblyRevisionWire) -> serde_json::Value {
+    let mut document: serde_json::Value = serde_json::from_str(&revision.document_json).unwrap();
+    document["revisionId"] = revision.revision_id.into();
+    document
+}
+
+#[test]
+fn assembly_save_checks_the_base_before_deduplication_and_can_retry_after_reload() {
+    let root = fixture_root("expected-base");
+    let catalog = root.join("catalog.sqlite");
+    let cache = root.join("cache");
+    let first = open_session(catalog.to_str().unwrap(), cache.to_str().unwrap()).unwrap();
+    let second = open_session(catalog.to_str().unwrap(), cache.to_str().unwrap()).unwrap();
+    let asset = register(&first.catalog, 0x78, "/sounds/base.wav", 2000);
+    let initial = first
+        .create_sound_assembly("Initial", &[asset.to_string()], 0)
+        .unwrap();
+    let mut stale = based_document(&initial);
+    let mut remote = stale.clone();
+    remote["name"] = "Elsewhere".into();
+    let latest = second.save_sound_assembly(&remote.to_string()).unwrap();
+    for name in ["Unsaved draft", "Elsewhere"] {
+        stale["name"] = name.into();
+        let error = first.save_sound_assembly(&stale.to_string()).err().unwrap();
+        assert!(
+            error
+                .to_string()
+                .starts_with("[assembly_revision_conflict]")
+        );
+        assert_eq!(
+            first
+                .sound_assembly(&initial.assembly_id)
+                .unwrap()
+                .revision_id,
+            latest.revision_id
+        );
+        assert_eq!(
+            first
+                .sound_assembly_history(&initial.assembly_id, 0)
+                .unwrap()
+                .len(),
+            2
+        );
+    }
+    let current = based_document(&latest);
+    assert_eq!(
+        first
+            .save_sound_assembly(&current.to_string())
+            .unwrap()
+            .revision_id,
+        latest.revision_id
+    );
+    stale["revisionId"] = latest.revision_id.into();
+    stale["name"] = "Explicitly retried draft".into();
+    let retried = first.save_sound_assembly(&stale.to_string()).unwrap();
+    assert_eq!(retried.revision_number, 3);
+    assert!(
+        !serde_json::from_str::<serde_json::Value>(&retried.document_json)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .contains_key("revisionId")
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn assembly_save_rejects_invalid_or_foreign_bases_without_publishing() {
+    let root = fixture_root("invalid-base");
+    let session = open_session(
+        root.join("catalog.sqlite").to_str().unwrap(),
+        root.join("cache").to_str().unwrap(),
+    )
+    .unwrap();
+    let asset = register(&session.catalog, 0x79, "/sounds/base.wav", 2000);
+    let initial = session
+        .create_sound_assembly("Initial", &[asset.to_string()], 0)
+        .unwrap();
+    let other = session
+        .create_sound_assembly("Other", &[asset.to_string()], 0)
+        .unwrap();
+    let mut document = based_document(&initial);
+    document["name"] = "Must not publish".into();
+    for expected in serde_json::json!([null, "1", -1, 1.5, true, 18446744073709551615u64])
+        .as_array()
+        .unwrap()
+    {
+        document["revisionId"] = expected.clone();
+        assert!(
+            session
+                .save_sound_assembly(&document.to_string())
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("invalid expected assembly revision")
+        );
+    }
+    for expected in [0, other.revision_id] {
+        document["revisionId"] = expected.into();
+        assert!(
+            session
+                .save_sound_assembly(&document.to_string())
+                .err()
+                .unwrap()
+                .to_string()
+                .starts_with("[assembly_revision_conflict]")
+        );
+    }
+    assert_eq!(
+        session
+            .sound_assembly_history(&initial.assembly_id, 0)
+            .unwrap()
+            .len(),
+        1
+    );
+    // Existing internal callers without a base retain their legacy contract.
+    document.as_object_mut().unwrap().remove("revisionId");
+    assert_eq!(
+        session
+            .save_sound_assembly(&document.to_string())
+            .unwrap()
+            .revision_number,
+        2
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn stale_clip_save_does_not_append_adjustments_and_fresh_retry_is_atomic() {
+    let root = fixture_root("clip-expected-base");
+    let catalog = root.join("catalog.sqlite");
+    let cache = root.join("cache");
+    let first = open_session(catalog.to_str().unwrap(), cache.to_str().unwrap()).unwrap();
+    let second = open_session(catalog.to_str().unwrap(), cache.to_str().unwrap()).unwrap();
+    let asset = register(&first.catalog, 0x7a, "/sounds/clip.wav", 2000);
+    let initial = first
+        .create_sound_assembly("Initial", &[asset.to_string()], 0)
+        .unwrap();
+    let stale = based_document(&initial);
+    let mut remote = stale.clone();
+    remote["name"] = "Elsewhere".into();
+    let latest = second.save_sound_assembly(&remote.to_string()).unwrap();
+    let fields = crate::session::adjustment_wire_fields(None, Some(2000));
+    let mut adjustment = crate::session::asset_adjustment_wire(fields);
+    adjustment.gain_centibels = -600;
+    let counts = || {
+        first
+            .catalog
+            .with_transaction::<_, echo_catalog::CatalogError>(|tx| {
+                Ok((
+                    tx.query_row(
+                        "SELECT COUNT(*) FROM asset_adjustment_revisions",
+                        [],
+                        |row| row.get::<_, i64>(0),
+                    )
+                    .unwrap(),
+                    tx.query_row(
+                        "SELECT COUNT(*) FROM project_adjustment_revisions",
+                        [],
+                        |row| row.get::<_, i64>(0),
+                    )
+                    .unwrap(),
+                ))
+            })
+            .unwrap()
+    };
+    let before = counts();
+    let clip = &initial.clip_sources[0].clip_id;
+    let error = first
+        .save_project_clip_adjustment(&stale.to_string(), clip, &asset.to_string(), &adjustment)
+        .err()
+        .unwrap();
+    assert!(
+        error
+            .to_string()
+            .starts_with("[assembly_revision_conflict]")
+    );
+    assert_eq!(counts(), before);
+    assert_eq!(
+        first
+            .sound_assembly(&initial.assembly_id)
+            .unwrap()
+            .revision_id,
+        latest.revision_id
+    );
+    let mut invalid = based_document(&latest);
+    invalid["tracks"][0]["gainCentibels"] = 100_000.into();
+    assert!(
+        first
+            .save_project_clip_adjustment(
+                &invalid.to_string(),
+                clip,
+                &asset.to_string(),
+                &adjustment
+            )
+            .is_err()
+    );
+    assert_eq!(
+        counts(),
+        before,
+        "invalid authored content must roll back the appended adjustment"
+    );
+    assert_eq!(
+        first
+            .sound_assembly(&initial.assembly_id)
+            .unwrap()
+            .revision_id,
+        latest.revision_id
+    );
+    let saved = first
+        .save_project_clip_adjustment(
+            &based_document(&latest).to_string(),
+            clip,
+            &asset.to_string(),
+            &adjustment,
+        )
+        .unwrap();
+    assert_eq!(saved.revision_number, 3);
+    assert_eq!(counts(), (before.0 + 1, before.1 + 1));
+    assert!(saved.clip_sources[0].adjustment_revision_id > 0);
+    first
+        .catalog
+        .with_transaction::<_, echo_catalog::CatalogError>(|tx| {
+            assert!(echo_catalog::latest_adjustment_graph(tx, asset)?.is_none());
+            Ok(())
+        })
+        .unwrap();
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn competing_sessions_cannot_both_publish_from_the_same_assembly_base() {
+    let root = fixture_root("competing-bases");
+    let catalog = root.join("catalog.sqlite");
+    let cache = root.join("cache");
+    let session = open_session(catalog.to_str().unwrap(), cache.to_str().unwrap()).unwrap();
+    let asset = register(&session.catalog, 0x7b, "/sounds/concurrent.wav", 2000);
+    let initial = session
+        .create_sound_assembly("Initial", &[asset.to_string()], 0)
+        .unwrap();
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+    let mut handles = Vec::new();
+    for name in ["First writer", "Second writer"] {
+        let writer = open_session(catalog.to_str().unwrap(), cache.to_str().unwrap()).unwrap();
+        let mut document = based_document(&initial);
+        document["name"] = name.into();
+        let barrier = barrier.clone();
+        handles.push(std::thread::spawn(move || {
+            barrier.wait();
+            writer.save_sound_assembly(&document.to_string()).is_ok()
+        }));
+    }
+    let successes = handles
+        .into_iter()
+        .map(|handle| usize::from(handle.join().unwrap()))
+        .sum::<usize>();
+    assert_eq!(successes, 1);
+    assert_eq!(
+        session
+            .sound_assembly_history(&initial.assembly_id, 0)
+            .unwrap()
+            .len(),
+        2
+    );
+    let stale = based_document(&initial);
+    assert!(
+        session
+            .save_sound_assembly(&stale.to_string())
+            .err()
+            .unwrap()
+            .to_string()
+            .starts_with("[assembly_revision_conflict]")
+    );
+    let _ = std::fs::remove_dir_all(root);
+}

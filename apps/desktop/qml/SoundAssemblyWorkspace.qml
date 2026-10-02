@@ -35,6 +35,9 @@ Rectangle {
     property var redoStack: []
     property bool dirty: false
     property string savedDocumentJson: ""
+    property var savedRevisionBase: ({})
+    property bool revisionConflict: false
+    property alias reloadDialog: reloadConfirmation
     property string errorText: ""
     property bool memorySavedNotice: false
     readonly property string noticeText: memorySavedNotice ? qsTr("This version is now in your memory library.") : ""
@@ -139,6 +142,7 @@ Rectangle {
         pendingPreviewJson = "";
         previewMarkerId = "";
         selectedMarkerId = "";
+        rememberRevisionBase(revision);
         document = clone(revision);
         selectedTrackIndex = document.tracks.length > 0 ? 0 : -1;
         selectedClipId = document.tracks.length > 0 && document.tracks[0].clips.length > 0 ? document.tracks[0].clips[0].id : "";
@@ -163,8 +167,48 @@ Rectangle {
         loadRevision(backend.soundAssembly(assemblyId));
     }
 
+    function rememberRevisionBase(revision: var): void {
+        savedRevisionBase = {revisionId: revision.revisionId, revisionNumber: revision.revisionNumber,
+                             createdAtMillis: revision.createdAtMillis};
+        revisionConflict = false;
+        errorText = "";
+    }
+
+    function withSavedRevisionBase(value: var): var {
+        const next = clone(value);
+        for (const key of Object.keys(savedRevisionBase)) next[key] = savedRevisionBase[key];
+        return next;
+    }
+
+    function archiveCurrentAssembly(): void {
+        if (!hasDocument) return;
+        if (backend.archiveSoundAssembly(document.id)) {
+            stopPlayback();
+            document = ({});
+            savedDocumentJson = "";
+            savedRevisionBase = ({});
+            revisionConflict = false;
+            errorText = "";
+            undoStack = [];
+            redoStack = [];
+            dirty = false;
+            refreshAssemblies();
+        } else {
+            presentError(qsTr("The assembly could not be archived."));
+        }
+    }
+
     function historySnapshot(): var {
-        return {document: clone(document), ids: selectedClipIds.slice(), primary: selectedClipId, marker: selectedMarkerId};
+        const content = clone(document);
+        for (const key of ["revisionId", "revisionNumber", "createdAtMillis"]) delete content[key];
+        return {document: content, ids: selectedClipIds.slice(), primary: selectedClipId, marker: selectedMarkerId};
+    }
+
+    function reloadLatestRevision(): void {
+        // Called only after explicit confirmation. A failed read retains the draft.
+        soundAssemblyController.cancel();
+        materialPlayer.stop();
+        loadRevision(backend.soundAssembly(document.id));
     }
 
     function pushUndo(): void {
@@ -276,7 +320,7 @@ Rectangle {
         future.push(historySnapshot());
         undoStack = previous;
         redoStack = future;
-        publishDocument(target.document);
+        publishDocument(withSavedRevisionBase(target.document));
         selectedClipIds = target.ids;
         selectedClipId = target.primary;
         selectedMarkerId = target.marker || "";
@@ -294,7 +338,7 @@ Rectangle {
         previous.push(historySnapshot());
         undoStack = previous;
         redoStack = future;
-        publishDocument(target.document);
+        publishDocument(withSavedRevisionBase(target.document));
         selectedClipIds = target.ids;
         selectedClipId = target.primary;
         selectedMarkerId = target.marker || "";
@@ -319,11 +363,13 @@ Rectangle {
     function checkpointRevision(): var {
         if (!hasDocument)
             return null;
-        const saved = backend.saveSoundAssembly(document);
+        const saved = backend.saveSoundAssembly(withSavedRevisionBase(document));
         if (!saved || saved.error) {
+            if (saved && saved.errorCode === "assembly_revision_conflict") revisionConflict = true;
             presentError(saved && saved.error ? saved.error : qsTr("The assembly version could not be saved."));
             return null;
         }
+        rememberRevisionBase(saved);
         publishDocument(clone(saved));
         savedDocumentJson = authoredJson(document);
         dirty = false;
@@ -342,10 +388,7 @@ Rectangle {
             return;
         if (authoredJson(revision)===authoredJson(document)) return;
         pushUndo();
-        const next=clone(revision);
-        next.revisionId=document.revisionId;
-        next.revisionNumber=document.revisionNumber;
-        next.createdAtMillis=document.createdAtMillis;
+        const next=withSavedRevisionBase(revision);
         publishDocument(next);
         dirty=authoredJson(document)!==savedDocumentJson;
         reconcileSelection();
@@ -412,6 +455,7 @@ Rectangle {
     }
     function acceptClipRevision(revision: var): void {
         pushUndo();
+        rememberRevisionBase(revision);
         document = clone(revision);
         savedDocumentJson = authoredJson(document);
         dirty = false;
@@ -1066,16 +1110,7 @@ Rectangle {
                     }
                     MenuItem {
                         text: qsTr("Archive assembly")
-                        onTriggered: {
-                            if (backend.archiveSoundAssembly(workspace.document.id)) {
-                                workspace.document = ({});
-                                workspace.savedDocumentJson = "";
-                                workspace.dirty = false;
-                                workspace.refreshAssemblies();
-                            } else {
-                                workspace.presentError(qsTr("The assembly could not be archived."));
-                            }
-                        }
+                        onTriggered: workspace.archiveCurrentAssembly()
                     }
                 }
             }
@@ -1430,15 +1465,39 @@ Rectangle {
 
     AssemblyExportDialog { id:exportDialog; exporter:soundAssemblyController }
 
+    Dialog {
+        id: reloadConfirmation
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(480, parent.width - 32)
+        modal: true
+        title: qsTr("Reload the latest project version?")
+        standardButtons: Dialog.Cancel
+        contentItem: ColumnLayout {
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Reloading discards this unsaved draft and its undo history. Cancel keeps your edits here.")
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+            }
+            EchoButton {
+                text: qsTr("Discard draft and reload")
+                onClicked: reloadConfirmation.accept()
+            }
+        }
+        onAccepted: workspace.reloadLatestRevision()
+    }
+
     Popup {
         id: errorPopup
         parent: Overlay.overlay
         x: Math.round((parent.width - width) / 2)
         y: 18
-        width: Math.min(620, errorLabel.implicitWidth + 36)
-        height: errorLabel.implicitHeight + 24
+        width: Math.min(620, parent.width - 32)
+        height: errorContent.implicitHeight + 24
         visible: workspace.errorText.length > 0 || soundAssemblyController.errorText.length > 0 || workspace.noticeText.length > 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        closePolicy: workspace.revisionConflict ? Popup.NoAutoClose : Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         background: Rectangle {
             radius: Theme.controlRadius
@@ -1447,13 +1506,22 @@ Rectangle {
             border.color: workspace.errorText || soundAssemblyController.errorText ? Theme.warningText : Theme.accentBorder
         }
 
-        contentItem: Text {
-            id: errorLabel
-            text: workspace.errorText || soundAssemblyController.errorText || workspace.noticeText
-            color: workspace.errorText || soundAssemblyController.errorText ? Theme.warningText : Theme.accentSelectionText
-            font.pixelSize: Theme.fontBody
-            wrapMode: Text.WordWrap
-            horizontalAlignment: Text.AlignHCenter
+        contentItem: ColumnLayout {
+            id: errorContent
+            Text {
+                Layout.fillWidth: true
+                text: workspace.errorText || soundAssemblyController.errorText || workspace.noticeText
+                color: workspace.errorText || soundAssemblyController.errorText ? Theme.warningText : Theme.accentSelectionText
+                font.pixelSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+            }
+            EchoButton {
+                Layout.alignment: Qt.AlignHCenter
+                visible: workspace.revisionConflict
+                text: qsTr("Reload latest version…")
+                onClicked: reloadConfirmation.open()
+            }
         }
     }
 
@@ -1487,7 +1555,7 @@ Rectangle {
         id: errorTimer
         interval: 5000
         onTriggered: {
-            workspace.errorText = "";
+            if (!workspace.revisionConflict) workspace.errorText = "";
             workspace.memorySavedNotice = false;
         }
     }

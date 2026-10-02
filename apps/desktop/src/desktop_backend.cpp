@@ -1148,7 +1148,7 @@ DesktopBackend::soundAssemblyAtRevision(const QString& assemblyId, qlonglong rev
 QVariantMap DesktopBackend::saveSoundAssembly(const QVariantMap& document) {
     QVariantMap authored = document;
     authored.remove(QStringLiteral("assemblyId"));
-    authored.remove(QStringLiteral("revisionId"));
+    // revisionId is the persisted base, checked atomically by the session.
     authored.remove(QStringLiteral("revisionNumber"));
     authored.remove(QStringLiteral("createdAtMillis"));
     authored.remove(QStringLiteral("clipSources"));
@@ -1158,6 +1158,15 @@ QVariantMap DesktopBackend::saveSoundAssembly(const QVariantMap& document) {
         emit soundAssembliesChanged();
         return soundAssemblyRevisionForQml(revision);
     } catch (const rust::Error& error) {
+        if (QString::fromUtf8(error.what())
+                .startsWith(QStringLiteral("[assembly_revision_conflict]"))) {
+            return {
+                {QStringLiteral("errorCode"), QStringLiteral("assembly_revision_conflict")},
+                {QStringLiteral("error"),
+                 tr("This project changed elsewhere. Your draft is still here; reload the latest "
+                    "version before saving again.")}
+            };
+        }
         return {{QStringLiteral("error"), QString::fromUtf8(error.what())}};
     }
 }
@@ -2260,7 +2269,16 @@ bool DesktopBackend::setAssetAdjustment(
         emit assetsChanged();
         return true;
     } catch (const rust::Error& error) {
-        emit adjustmentSaveFailed(QString::fromUtf8(error.what()));
+        const auto message = QString::fromUtf8(error.what());
+        if (message.startsWith(QStringLiteral("[assembly_revision_conflict]"))) {
+            emit projectClipSaveConflicted();
+            emit adjustmentSaveFailed(
+                tr("This project changed elsewhere. Your clip edits are still here; reload the "
+                   "project to continue.")
+            );
+        } else {
+            emit adjustmentSaveFailed(message);
+        }
         qWarning("cannot update adjustment for %s: %s", qPrintable(id), error.what());
         return false;
     }

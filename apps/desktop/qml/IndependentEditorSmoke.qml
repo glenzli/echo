@@ -16,6 +16,9 @@ Item {
     property int auditionWaitTicks: 0
     property real auditionVolume: 0.8
     property int waveformPublications: 0
+    property int originalClipGain: 0
+    property string conflictClipId: ""
+    property string conflictProjectName: ""
     Connections {
         target: assemblyWaveforms
         function onWaveformsChanged() { ++smoke.waveformPublications; }
@@ -28,6 +31,42 @@ Item {
             if (found) return found;
         }
         return null;
+    }
+    function checkRevisionConflicts() {
+        require(assembly.saveRevision(), "revision regression baseline failed");
+        const original = assembly.clone(assembly.document);
+        assembly.setTrackValue(0, "gainCentibels", original.tracks[0].gainCentibels - 10);
+        const edited = assembly.saveRevision();
+        require(edited, "edited revision failed to save");
+        assembly.undo();
+        require(assembly.document.revisionId === edited.revisionId && assembly.dirty, "undo restored an obsolete save base");
+        const undone = assembly.saveRevision();
+        require(undone, "save after undo conflicted with its own prior save");
+        assembly.redo();
+        require(assembly.document.revisionId === undone.revisionId && assembly.saveRevision(), "redo did not retain the current save base");
+        const remote = assembly.clone(assembly.document);
+        remote.name = "Saved by another editor";
+        const winner = backend.saveSoundAssembly(remote);
+        require(winner && !winner.error, "second writer did not publish");
+        assembly.setMasterValue("gainCentibels", original.master.gainCentibels - 25);
+        const draft = JSON.stringify(assembly.document), base = assembly.savedRevisionBase.revisionId;
+        const undoCount = assembly.undoStack.length, redoCount = assembly.redoStack.length;
+        require(!assembly.saveRevision() && assembly.revisionConflict, "stale draft overwrote another revision");
+        require(JSON.stringify(assembly.document) === draft && assembly.dirty && assembly.savedRevisionBase.revisionId === base,
+                "conflict discarded the draft or advanced its save base");
+        require(assembly.undoStack.length === undoCount && assembly.redoStack.length === redoCount, "conflict changed undo history");
+        assembly.reloadDialog.open(); assembly.reloadDialog.reject();
+        require(JSON.stringify(assembly.document) === draft && assembly.revisionConflict, "cancel reload discarded the draft");
+        require(!assembly.saveRevision(), "repeated stale save bypassed the precondition");
+        require(backend.soundAssembly(assembly.document.id).revisionId === winner.revisionId, "failed save published a revision");
+        assembly.reloadDialog.open(); assembly.reloadDialog.accept();
+        require(!assembly.dirty && !assembly.revisionConflict && assembly.document.revisionId === winner.revisionId,
+                "confirmed reload did not adopt the current revision");
+        require(!assembly.canUndo && !assembly.canRedo, "confirmed reload retained obsolete history");
+        assembly.mutate(next => { next.name = original.name; next.master = assembly.clone(original.master); next.tracks = assembly.clone(original.tracks); });
+        require(assembly.saveRevision(), "new edits after conflict recovery could not save");
+        facts.revisionConflicts = {saveUndoSave:true, saveRedoSave:true, draftRetained:true, historyRetained:true,
+                                  cancelReload:true, repeatedStaleSaveRejected:true, explicitReload:true, freshSave:true};
     }
     function checkPendingInputs() {
         assembly.markersVisible=false; assembly.inspectorVisible=true;
@@ -162,7 +201,7 @@ Item {
         facts.waveformReuse = true;
     }
     function checkBatchEditing() {
-        const before = JSON.stringify(assembly.document);
+        const before = assembly.authoredJson(assembly.document);
         const a = assembly.tracks[0].clips[0], b = assembly.tracks[1].clips[0];
         const undoCount = assembly.undoStack.length;
         assembly.selectClip(0, a.id, 0, false);
@@ -172,7 +211,7 @@ Item {
         require(assembly.tracks[0].clips[0].timelineStartMillis === a.timelineStartMillis + 1500, "group move lost alignment");
         require(assembly.selectedClipId === b.id, "group move changed the active inspector clip");
         require(assembly.undoStack.length === undoCount + 1, "group move created multiple history steps");
-        assembly.undo(); require(JSON.stringify(assembly.document) === before && assembly.selectionCount === 2, "group undo failed");
+        assembly.undo(); require(assembly.authoredJson(assembly.document) === before && assembly.selectionCount === 2, "group undo failed");
         assembly.redo(); assembly.undo();
         assembly.duplicateSelectedClip(); require(assembly.totalClipCount() === 4 && assembly.selectionCount === 2, "batch duplicate failed");
         assembly.undo();
@@ -185,7 +224,7 @@ Item {
         require(assembly.tracks[0].clips.length === 2 && assembly.tracks[1].clips.length === 0, "global ripple did not preserve background tails");
         require(assembly.tracks[0].clips[1].timelineStartMillis === 2000 && assembly.tracks[0].clips[1].sourceStartMillis === 4000, "ripple source mapping failed");
         assembly.undo(); assembly.undo();
-        require(JSON.stringify(assembly.document) === before, "batch editing changed originals after undo");
+        require(assembly.authoredJson(assembly.document) === before, "batch editing changed originals after undo");
         facts.batchEditing = {selection: true, move: true, duplicate: true, split: true, ripple: true, undoRedo: true};
     }
     function step() {
@@ -235,10 +274,60 @@ Item {
             stage=22;break;
         case 22:
             checkPendingInputs();
+            checkRevisionConflicts();
             checkBatchEditing();
             checkEditingContext();
             assembly.mutate(next=>{next.name='Independent arrangement';next.tracks[0].clips[0].fadeInMillis=120;next.tracks[1].clips[0].timelineStartMillis=500;});
             assembly.selectClip(1, assembly.tracks[1].clips[0].id);
+            require(assembly.saveRevision(), "clip conflict baseline could not save");
+            conflictClipId = assembly.selectedClipId;
+            conflictProjectName = assembly.document.name;
+            assembly.openClipEditor();
+            stage=23;break;
+        case 23:
+            if (!editor.editingProjectClip || !editor.hasAsset) return;
+            originalClipGain = editor.adjustment.gainCentibels;
+            editor.adjustment.setGain(originalClipGain - 25);
+            const clipDraft = JSON.stringify(editor.adjustment.snapshot());
+            const clipHistory = JSON.stringify(editor.adjustment._history);
+            const clipHistoryIndex = editor.adjustment._historyIndex;
+            require(editor.canUndo, "clip draft did not record undo history");
+            const remoteProject = assembly.clone(assembly.document);
+            remoteProject.name = "Changed while editing the clip";
+            const clipWinner = backend.saveSoundAssembly(remoteProject);
+            require(clipWinner && !clipWinner.error, "remote clip project could not save");
+            editor.save();
+            require(editor.dirty && editor.projectRevisionConflict && JSON.stringify(editor.adjustment.snapshot()) === clipDraft,
+                    "clip conflict lost its draft or was not exposed");
+            editor.projectReloadDialog.open(); editor.projectReloadDialog.reject();
+            require(editor.dirty && JSON.stringify(editor.adjustment.snapshot()) === clipDraft, "cancel clip reload discarded edits");
+            require(JSON.stringify(editor.adjustment._history) === clipHistory && editor.adjustment._historyIndex === clipHistoryIndex,
+                    "clip conflict or cancel altered undo history");
+            editor.returnToProjectRequested();
+            require(!shell.multitrack && editor.dirty, "normal navigation silently discarded conflicting clip edits");
+            editor.projectReloadDialog.open(); editor.projectReloadDialog.accept();
+            require(shell.multitrack && !editor.projectRevisionConflict && !editor.dirty && assembly.document.revisionId === clipWinner.revisionId,
+                    "confirmed clip recovery did not return to the latest project");
+            require(!editor.canUndo && !editor.canRedo, "confirmed clip reload retained discarded history");
+            assembly.selectClip(1, conflictClipId, 0, false);
+            assembly.openClipEditor();
+            stage=24;break;
+        case 24:
+            if (!editor.editingProjectClip || !editor.hasAsset) return;
+            require(!editor.canUndo && !editor.canRedo, "reopening the clip revived discarded history");
+            editor.adjustment.setGain(originalClipGain - 25);
+            editor.save();
+            require(!editor.dirty && !editor.projectRevisionConflict, "clip edits after reload could not save");
+            editor.adjustment.setGain(originalClipGain);
+            editor.save();
+            require(!editor.dirty, "clip gain restoration could not save");
+            editor.returnToProjectRequested();
+            require(shell.multitrack, "return after recovered clip save failed");
+            assembly.mutate(next => next.name = conflictProjectName);
+            require(assembly.saveRevision(), "recovered project title restoration failed");
+            facts.clipRevisionConflicts = {draftRetained:true, historyRetainedOnCancel:true, discardedHistoryCleared:true,
+                                           cancelReload:true, navigationPreservesDraft:true,
+                                           explicitReload:true, returnedToLatestProject:true, freshClipSave:true};
             stage=20;break;
         case 20:
             if(Object.values(assemblyWaveforms.waveforms).filter(levels=>levels.length>0).length!==2) return;
@@ -315,6 +404,19 @@ Item {
             require(Object.values(assemblyWaveforms.waveforms).every(levels=>levels.length>0),"empty project waveform");
             facts.tracks=assembly.tracks.length;facts.assembly=assembly.document;
             require(backend.listRoots().length===0,"a scan root was registered");
+            if (!reopening) {
+                const archivedRemote = assembly.clone(assembly.document);
+                archivedRemote.name = "Remote version before archival";
+                const archiveWinner = backend.saveSoundAssembly(archivedRemote);
+                require(archiveWinner && !archiveWinner.error, "archive conflict setup failed");
+                assembly.setMasterValue("gainCentibels", assembly.document.master.gainCentibels - 1);
+                require(!assembly.saveRevision() && assembly.revisionConflict, "archive setup did not conflict");
+                assembly.archiveCurrentAssembly();
+                require(!assembly.hasDocument && !assembly.revisionConflict && !assembly.errorText &&
+                        Object.keys(assembly.savedRevisionBase).length === 0 && !assembly.canUndo && !assembly.canRedo,
+                        "archiving the last project retained a stale conflict or undo base");
+                facts.archiveClearsConflict = true;
+            }
             reportJson=JSON.stringify({ok:true,reopening:reopening,facts:facts});break;
         }
     }

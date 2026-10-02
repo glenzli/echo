@@ -207,12 +207,19 @@ impl LibrarySession {
         &self,
         document_json: &str,
     ) -> Result<SoundAssemblyRevisionWire, SessionError> {
-        let document = serde_json::from_str::<SoundAssembly>(document_json)
+        let value: serde_json::Value = serde_json::from_str(document_json)
+            .map_err(|error| session_error(format!("assembly document is invalid: {error}")))?;
+        let expected = expected_assembly_revision(&value)?;
+        let document: SoundAssembly = serde_json::from_value(value)
             .map_err(|error| session_error(format!("assembly document is invalid: {error}")))?;
         document.validate().map_err(domain_error)?;
-        let revision = self.catalog.with_transaction(|transaction| {
-            record_sound_assembly(transaction, &document, now_millis())
-        })?;
+        let revision = self
+            .catalog
+            .with_transaction(|transaction| -> Result<_, SessionError> {
+                let latest = latest_sound_assembly(transaction, document.id())?;
+                check_assembly_revision(expected, latest.as_ref())?;
+                Ok(record_sound_assembly(transaction, &document, now_millis())?)
+            })?;
         self.resolve_sound_assembly_revision(&revision)
     }
 
@@ -225,6 +232,7 @@ impl LibrarySession {
     ) -> Result<SoundAssemblyRevisionWire, SessionError> {
         let mut document: serde_json::Value =
             serde_json::from_str(document_json).map_err(|e| session_error(e.to_string()))?;
+        let expected = expected_assembly_revision(&document)?;
         let source_id = parse_asset_id(asset_id)?;
         let assembly_id = document
             .get("id")
@@ -235,7 +243,9 @@ impl LibrarySession {
         let revision = self
             .catalog
             .with_transaction(|tx| -> Result<_, SessionError> {
-                if latest_sound_assembly(tx, assembly_id_typed)?.is_none() {
+                let latest = latest_sound_assembly(tx, assembly_id_typed)?;
+                check_assembly_revision(expected, latest.as_ref())?;
+                if latest.is_none() {
                     return Err(session_error("project does not exist"));
                 }
                 let asset = match find_by_id(tx, source_id)? {
@@ -514,6 +524,36 @@ impl LibrarySession {
             created_at_millis: revision.created_at_millis,
         })
     }
+}
+
+// The desktop carries its persisted base alongside authored content. Older
+// internal callers omit it; a present value must never silently disable the check.
+fn expected_assembly_revision(document: &serde_json::Value) -> Result<Option<i64>, SessionError> {
+    document
+        .get("revisionId")
+        .map(|value| {
+            value
+                .as_i64()
+                .filter(|revision| *revision >= 0)
+                .ok_or_else(|| session_error("invalid expected assembly revision"))
+        })
+        .transpose()
+}
+
+// Run inside the same transaction as every resulting assembly/clip write,
+// before content deduplication and before appending a project adjustment.
+fn check_assembly_revision(
+    expected: Option<i64>,
+    latest: Option<&SoundAssemblyRevision>,
+) -> Result<(), SessionError> {
+    if expected
+        .is_some_and(|expected| expected != latest.map_or(0, |revision| revision.revision_id))
+    {
+        return Err(session_error(
+            "[assembly_revision_conflict] project changed since this draft was opened",
+        ));
+    }
+    Ok(())
 }
 
 fn assembly_summary_wire(value: echo_catalog::SoundAssemblySummary) -> SoundAssemblySummaryWire {

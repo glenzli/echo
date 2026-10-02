@@ -1583,6 +1583,14 @@
     <context>
         <name>DesktopBackend</name>
         <message>
+            <source>This project changed elsewhere. Your draft is still here; reload the latest version before saving again.</source>
+            <translation>此工程已在别处更改。你的草稿仍保留在这里；请重新载入最新版本后再保存。</translation>
+        </message>
+        <message>
+            <source>This project changed elsewhere. Your clip edits are still here; reload the project to continue.</source>
+            <translation>此工程已在别处更改。你的片段编辑仍保留在这里；请重新载入工程后继续。</translation>
+        </message>
+        <message>
             <location filename="../src/desktop_sound_library.cpp" line="44" />
             <source>Choose a local audio file.</source>
             <translation>请选择本地音频文件。</translation>
@@ -4667,6 +4675,22 @@
     <context>
         <name>SoundAssemblyWorkspace</name>
         <message>
+            <source>Reload the latest project version?</source>
+            <translation>重新载入最新工程版本？</translation>
+        </message>
+        <message>
+            <source>Reloading discards this unsaved draft and its undo history. Cancel keeps your edits here.</source>
+            <translation>重新载入会丢弃此未保存草稿及其撤销历史。取消则会保留当前编辑。</translation>
+        </message>
+        <message>
+            <source>Discard draft and reload</source>
+            <translation>丢弃草稿并重新载入</translation>
+        </message>
+        <message>
+            <source>Reload latest version…</source>
+            <translation>重新载入最新版本…</translation>
+        </message>
+        <message>
             <location filename="../qml/SoundAssemblyWorkspace.qml" line="134" />
             <source>The assembly could not be opened.</source>
             <translation>无法打开该编排。</translation>
@@ -5075,6 +5099,26 @@
     </context>
     <context>
         <name>SoundEditingWorkspace</name>
+        <message>
+            <source>Reload the latest project version?</source>
+            <translation>重新载入最新工程版本？</translation>
+        </message>
+        <message>
+            <source>Reloading discards this clip&#x27;s unsaved edits and opens the latest project version. Cancel keeps your edits here.</source>
+            <translation>重新载入会丢弃此片段未保存的编辑，并打开最新工程版本。取消则会保留当前编辑。</translation>
+        </message>
+        <message>
+            <source>Discard clip edits and reload</source>
+            <translation>丢弃片段编辑并重新载入</translation>
+        </message>
+        <message>
+            <source>The project could not be reloaded. Your edits are still here.</source>
+            <translation>无法重新载入工程。你的编辑仍保留在这里。</translation>
+        </message>
+        <message>
+            <source>Reload project…</source>
+            <translation>重新载入工程…</translation>
+        </message>
         <message>
             <location filename="../qml/SoundEditingWorkspace.qml" line="922" />
             <source>Apply recipe</source>

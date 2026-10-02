@@ -296,6 +296,12 @@ ApplicationWindow {
                 if (!dirty) window.showSoundAssembly();
             }
             onProjectClipSaved: revision => soundAssembly.acceptClipRevision(revision)
+            onProjectRevisionReloaded: revision => {
+                soundAssembly.loadRevision(revision);
+                window.projectClipId = "";
+                window.projectEditAsset = null;
+                window.showSoundAssembly();
+            }
             onShowMaterialRequested: assetId => {
                 if (soundEditor.editingProjectClip) {
                     if (soundEditor.dirty) soundEditor.save();
